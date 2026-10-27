@@ -114,7 +114,8 @@
   }
   // свой CSS стиля врагов (анимации приёмов 'css:имя', позы замаха) — поле css в enemies.js
   const css = () => { const A2 = styleArt(); return [A2.base.css, A2.own.css].filter((x) => typeof x === 'string').join('\n'); };
-  const top = (type) => { const d = defOf(type); return d && !broken.has(type) ? (+d.top || 150) * (+d.scale || 1) : (TOP[type] || 140) * (SCALE[type] || 1); };
+  // 28.10: topBoss - рост вожака, если он заметно выше рядового (тыквенный голем): полоска здоровья не на голове
+  const top = (type, boss) => { const d = defOf(type); return d && !broken.has(type) ? (+(boss && d.topBoss) || +d.top || 150) * (+d.scale || 1) : (TOP[type] || 140) * (SCALE[type] || 1); };
 
   /* ---------- где кто стоит ---------- */
   // строй лицом к врагу: шеренги — вертикальные ряды; первая — ближе всех к врагам

@@ -1575,7 +1575,7 @@ try {
     ].join('\n');
 
     return {
-      hw_pumpkin: { draw: pumpkin, top: 146, attacks: { shield: 'css:hwroll', duck: 'throw', scatter: 'burst' }, missile: { svg: M_SEEDS } },
+      hw_pumpkin: { draw: pumpkin, top: 146, topBoss: 212, attacks: { shield: 'css:hwroll', duck: 'throw', scatter: 'burst' }, missile: { svg: M_SEEDS } },
       hw_pumpkinlet: { draw: pumpkinlet, top: 60, attacks: { shield: 'lunge', duck: 'leap', scatter: 'css:hwtumble' } },
       hw_ghost: { draw: ghost, top: 160, attacks: { shield: 'css:hwpass', duck: 'swoop', scatter: 'wave' } },
       hw_bat: { draw: bat, top: 150, attacks: { shield: 'swoop', duck: 'css:hwflock', scatter: 'css:hwscreech' } },
