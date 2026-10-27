@@ -157,27 +157,33 @@
       `<svg x="0" y="${M.LOW.top}" width="${M.W}" height="${M.H - M.LOW.top}" viewBox="0 ${M.LOW.top} ${M.W} ${M.H - M.LOW.top}">${scopeIds(LW.svg, 'cyl-')}</svg>`,
     ];
     const qd = defsOf(scopeIds(Q.svg, 'cyq-')), ld = defsOf(scopeIds(LW.svg, 'cyl-'));
+    // 28.10 (hw-city-dead, договор с художником - шапка cityhw.js): свой «мёртвый» рисунок стиля (hw.dead, quarter(…, { dead: true })) - как есть
+    const DH = (L.hw && L.hw.dead) || null;
+    let Qd = null; try { const q = ART.quarter(st, M.QW, { auction: auOpen(), dead: true }); if (q && q.dead) Qd = q; } catch { Qd = null; }
+    let fairD = ''; try { if (DH && typeof DH.scene === 'function') fairD = scopeIds(DH.scene({ city: true, ...(MS ? { magic: true, magicName: String(X.hero().ms) } : {}) }), 'cyfd-'); } catch { fairD = ''; }
     const layers = [
-      { x: 0, y: 0, w: M.QW + 40, h: 1080, svg: street[0] },
-      { x: M.QW + 8, y: 0, w: L.width - 8, h: 1080, svg: street[1] },
+      { x: 0, y: 0, w: M.QW + 40, h: 1080, svg: street[0], ...(Qd ? { dead: `<svg x="0" y="0" width="${M.QW + 40}" height="1080" viewBox="0 0 ${M.QW + 40} 1080">${scopeIds(Qd.svg, 'cyqd-')}</svg>` } : {}) },
+      { x: M.QW + 8, y: 0, w: L.width - 8, h: 1080, svg: street[1], ...(fairD ? { dead: `<svg x="${M.QW + 8}" y="0" width="${L.width - 8}" height="1080" viewBox="8 0 ${L.width - 8} 1080">${fairD}</svg>` } : {}) },
       { x: 0, y: M.LOW.top, w: M.W, h: M.H - M.LOW.top, svg: street[2] },
     ];
+    const qdd = Qd ? defsOf(scopeIds(Qd.svg, 'cyqd-')) : '';
     // предметы квартала и нижней улицы ссылаются на градиенты своего слоя (в SVG-версии они в том же документе) — кладём их рядом
     const props = [
-      ...Q.props.map((p) => ({ x: p.x, y: p.y, w: p.w, h: p.h, z: p.z, dx: 0, svg: qd + scopeIds(p.svg(), 'cyq-') })),
+      ...Q.props.map((p, i) => ({ x: p.x, y: p.y, w: p.w, h: p.h, z: p.z, dx: 0, svg: qd + scopeIds(p.svg(), 'cyq-'), ...(Qd && Qd.props && Qd.props[i] ? { svgDead: qdd + scopeIds(Qd.props[i].svg(), 'cyqd-') } : {}) })),
       ...LW.props.map((p) => ({ x: p.x, y: p.y, w: p.w, h: p.h, z: p.z, dx: 0, svg: ld + scopeIds(p.svg(), 'cyl-') })),
-      ...(L.props || []).map((p, i) => (p.divider ? null : { x: p.x, y: p.y, w: p.w, h: p.h, z: p.z, dx: M.QW, svg: scopeIds(p.svg(), 'cyp' + i + '-') })).filter(Boolean),
+      ...(L.props || []).map((p, i) => (p.divider ? null : { x: p.x, y: p.y, w: p.w, h: p.h, z: p.z, dx: M.QW, svg: scopeIds(p.svg(), 'cyp' + i + '-'),
+        ...(DH && DH.props && DH.props[i] && typeof DH.props[i].svg === 'function' ? { svgDead: scopeIds(DH.props[i].svg(), 'cypd' + i + '-') } : {}) })).filter(Boolean),
     ];
-    return finish(root, el, gl, { L, map, st, street, sky, qprops: Q.props, layers, props });
+    return finish(root, el, gl, { L, map, st, street, sky, qprops: Q.props, layers, props, skyDead: (DH && DH.sky) || null });
   }
 
   // общее у Ярмарки и городов округов: Pixi (или SVG-версия), обводка, сцена на паузе, состояние города
   function finish(root, el, gl, sc) {
-    const { L, map, st, street, sky, qprops, layers, props } = sc;
+    const { L, map, st, street, sky, qprops, layers, props, skyDead } = sc;
     let G = null;
     if (gl) {
       G = window.LGCityGL.create({
-        host: el.querySelector('.cy-view'), labelHost: el, W: WD.W, H: WD.H, top: TOP, sky, mode: rmode(), V: window.LG_CITYV, layers, props,
+        host: el.querySelector('.cy-view'), labelHost: el, W: WD.W, H: WD.H, top: TOP, sky, skyDead, mode: rmode(), V: window.LG_CITYV, layers, props,
         onDirty: () => kick(), onFail: (why) => glFail(why),
       });
     }
@@ -342,6 +348,7 @@
   /* ===================== человечки ===================== */
   // l — ник, v — { n (имя), lv, lk (облик), g (снаряжение), gh (призрак), aw }; мирный вид (руки свободны, без шлема), без анимаций SVG
   function walkerSvg(l, v) {
+    if (hwGh()) v = { ...v, gh: 1 };   // 28.10 (hw-city-dead, решение В3): ночь Тыквенной Луны - все в городе «понарошку» призраками (только вид)
     if (X.fig) return X.fig(l, v);   // 25.10: общий с шахтой путь (app.js figSvg)
     const hero = { look: v.lk || null, gear: v.g || {}, ghost: !!v.gh };
     return still(X.doodle(l, hero, 'walk', 'peace'));
@@ -1202,8 +1209,48 @@
     fitRoom();
   }
   // герой поменялся (пришёл ответ игры) — перерисовать интерфейс места (Кузня — только список вещей: у неё своё окно; Тренер — сам)
+  /* 28.10 (hw-city): «Ночь Тыквенной Луны» - хэллоуинский вид города канала (hwc.look: настройка канала quest.hwCity) и портал на месте
+     ворот (hwc.portal: город превращён, ночь ещё не прошла). Рисунок - общий с оверлеем стрима (cityhw.js): убранство по зданиям и портал
+     запекаются в картинки один раз (предметы citygl), город - в холодном тоне (tint спрайтов). Живого на сайте ничего (кадр в покое не
+     рисуется) - ни пепла, ни вращения воронки: зрителям без видеокарты не тяжелее, чем обычно. Только Pixi (SVG-версия - как была). */
+  const hwNow = () => { const h = X && X.hero(); return (h && h.hwc) || null; };
+  // портал открыт (с превращения до конца ночи) - все человечки «Города» призраками; карточку героя и куклу «Персонажа» это не трогает
+  let hwGhK = false;
+  const hwGh = () => hwGhK;
+  function hwGhSet(on) {
+    on = !!on; if (on === hwGhK) return; hwGhK = on;
+    if (!S || !S.gl) return;
+    for (const w of [...S.others.values(), ...(S.me ? [S.me] : [])]) { if (!w.v) continue; const svg = walkerSvg(w.l, w.v); S.gl.relook(w, svg, labOf(w.l, w.v, !!w.mine)); }
+    kick();
+  }
+  let hwJs = null;
+  function hwApply() {
+    if (!S || !S.gl) return;
+    const c = isCamp() ? null : hwNow(), k = c ? (c.look ? 'l' : '') + (c.portal ? 'p' : '') : '';   // 28.10 (стример): Перепутье не преображается
+    if (k === (S.hwk || '') || S.hwPlay) { if (S.hwk == null) S.hwk = k; if (!S.hwPlay) hwGhSet(!!(c && c.portal)); return; }   // первый взгляд без Хэллоуина - запомнить: превращение при нас покажем сценой
+    if (k && !window.LGCityHW) { if (!hwJs) hwJs = townJs(`/site/cityhw.js?v=${(window.LG_CITYV || {}).hw || ''}`).catch((e) => { hwJs = null; console.warn('[город] Хэллоуин', e); }); hwJs.then(() => { if (window.LGCityHW) hwApply(); }); return; }
+    const was = S.hwk; S.hwk = k;
+    const L = window.LGCityHW, sc = { B: WD.BUILDINGS.filter(bOk), AREA: WD.AREA, fair: !inTown() }, hw = S.L && S.L.hw, o = { frame: hw && hw.frame, decor: hw && hw.decor, dx: inTown() ? 0 : M.QW };
+    const TC = [0x8e, 0x9a, 0xb8], tint = (q) => { const v = TC.map((x) => Math.round(255 + (x - 255) * q)); S.gl.tint(q <= 0 ? null : (v[0] << 16) | (v[1] << 8) | v[2]); kick(); };
+    // мёртвый город: живое пламя костра лагеря (CSS-слой поверх Pixi) гаснет - свет только у тыкв и конфет
+    const fire = (on) => { for (const e of S.el.querySelectorAll('.cy-camp-fl')) e.style.display = on ? '' : 'none'; };
+    // убранство и портал - прямо в мёртвых плитках (кадр их не рисует); вид выключен, а ночь идёт - портал предметами
+    const stat = () => { fire(!(c && c.look)); hwGhSet(!!(c && c.portal)); S.gl.dropProps('hw'); S.gl.dropProps('hwp');
+      if (c && c.look) S.gl.setDeadArt(L.art(sc, { ...o, portal: !!c.portal })); else if (c && c.portal) S.gl.addProps(L.portal(sc, o), 'hwp');
+      S.gl.setDead(!!(c && c.look)); tint(0); };   // 28.10 (hw-city-dead): мёртвый город - перекраска при запекании
+    // зритель смотрит город в момент превращения (портал только что открылся) - та же сцена, но без тряски и с меньшим числом частиц;
+    // открыл позже - сразу итоговый вид. Повторного показа нет
+    if (was != null && !/p/.test(was) && c && c.portal && c.look && c.at && Date.now() - c.at < 20000 && !reduce() && S.cam) {
+      S.gl.dropProps('hw'); S.gl.dropProps('hwp'); S.gl.setDeadArt(null);
+      setTimeout(() => { if (S) fire(false); }, 3000);
+      S.hwPlay = L.play({ sc, art: o, world: S.cam, screen: S.view, light: true, ghosts: () => hwGhSet(true), dead: (w) => { if (S && S.gl) { S.gl.setDead(true, w); kick(); } }, bake: () => { if (S && S.gl) { S.gl.setDeadArt(L.art(sc, { ...o, portal: true })); kick(); } }, done: () => { if (S) { S.hwPlay = null; kick(); } } });
+      return;
+    }
+    stat(); kick();
+  }
   function heroChanged() {
     if (!S) return;
+    hwApply();
     if (window.LGTrade) window.LGTrade.heroChanged();   // 23.10: окно обмена — сумка поменялась
     chatInit();   // 21.10: чат открыли / закрыли тестерам
     const h = X.hero();
@@ -2191,6 +2238,7 @@
     if (!S.me && h) spawnMe();
     if (!h) { hud('Героя пока нет — он появится, когда ты напишешь в чат на стриме'); return; }
     hud(); enter();
+    hwApply();   // 28.10 (hw-city)
     buildStart();   // 23.10 (стройка): таймеры над зданиями в лесах
     setTimeout(() => { if (S) S.el.classList.add('went'); }, 6000);   // подсказка — только первые секунды
   }
