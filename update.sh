@@ -11,10 +11,9 @@ LAST_VERSION_FILE=".last_version"           # Файл для хранения �
 CURRENT_INTERVAL=$INTERVAL_NORMAL           # Текущий интервал (по умолчанию обычный)
 
 echo "Запуск мониторинга версий..."
+echo ""
 
 while true; do
-    # 0. Чистим терминал чтобы красиво было
-    clear
     # 1. Получаем текущую версию
     CURRENT_VERSION=$(curl -L -s --max-time 15 "$ENDPOINT")
 
@@ -86,4 +85,5 @@ while true; do
     # Спим установленное количество времени
     echo "Ожидание $((CURRENT_INTERVAL / 60)) мин..."
     sleep "$CURRENT_INTERVAL"
+    echo ""
 done
