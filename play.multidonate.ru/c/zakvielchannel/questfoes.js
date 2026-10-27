@@ -1324,207 +1324,270 @@ try {
 try {
 /* Стиль «Легион» — враги «Ночи Тыквенной Луны» (Изнанка). Договор — styles/ENEMIES.md: ноги в (0, 0), смотрит ВЛЕВО,
    ширина ~200, рост — top; классы qb-idle (всё тело), qb-arm (замах, transform-origin — плечо), qb-eye (мерцание).
-   Без filter и без <text>. Оверлей боя ищет врага в 'enemies' стиля, потом в 'enemies-hollow' (modules/quest/client/battle.js — // HW:).
+   Без filter, без SMIL и без <text>. Оверлей боя ищет врага в 'enemies' стиля, потом в 'enemies-hollow' (modules/quest/client/battle.js — // HW:).
+   27.10 (art/hollow-monsters, решение стримера): монстры — в стиле «мёртвого мира», как места Изнанки (hollowart.js): холодная гамма, гниль,
+   лохмотья, трещины. Тёплый свет — только тыквы (глаза и пасти тыквоголовов, фонарь Джека) и огоньки; красный — только глаза.
+   У каждого — свои атаки на три вида (attacks: shield / duck / scatter) и свои снаряды; приёмы 'css:имя' — в поле css (только transform / opacity).
+   Вожак (o.boss) помечен классом hwb: замах у него заметнее (css), рисунок — со своими приметами.
    Ключи: hw_pumpkin (тыквоголов / Тыквенный голем), hw_pumpkinlet (тыквёнок), hw_ghost (призрак / Плакальщица), hw_bat (нетопырь / Вампир),
    hw_witch (ведьма на метле / Старшая ведьма), hw_zombie (мертвец / Мертвец-староста), hw_spider (паук / Паучиха-вдова),
-   hw_cat (чёрный кот / Кот-ведьмак), hw_scarecrow (пугало / Пугало-жнец), hw_crow (ворон), hw_jack (Джек — запасной бой). */
+   hw_cat (чёрный кот / Кот-ведьмак), hw_scarecrow (пугало / Пугало-жнец), hw_skeleton (костяк / Костяной страж), hw_crow (ворон), hw_jack (Джек — запасной бой). */
 (function () {
   'use strict';
   if (!window.MDDoodle || !window.MDDoodle.addPart) return;
   window.MDDoodle.addPart('legion', 'enemies-hollow', function () {
-    const LINE = '#f5f2ff', INK = '#15122e';
+    // обводка-наклейка — серо-голубая (эскиз B): враг читается на тёмном фоне, но не «праздничный» белый
+    const LINE = '#9aa3b8', INK = '#0d0e14';
+    // палитра «мёртвого мира»
+    const C = {
+      rot: '#76857c', rotD: '#55635c', rotL: '#93a197',            // гниющая кожа
+      cloth: '#3a4150', clothD: '#272c37', clothL: '#4c5464',       // лохмотья
+      dark: '#21242c', wood: '#3a3530', woodD: '#28241f', straw: '#7d7660', strawD: '#5c5748',
+      bone: '#c4beac', boneD: '#9c9686', ghost: '#b4c2d8', ghostD: '#8a98b0', ghostL: '#d6e0ee',
+      lilac: '#6a5a8a', lilacD: '#4a3e66', lilacL: '#8a7aa8', fur: '#1a1c24', furL: '#2e323e',
+      pump: '#b8561c', pumpD: '#7e3a14', rotP: '#4e3a2c', vine: '#3a4436', fire: '#ffb347', fireY: '#ffd34d', eye: '#e0283a', hole: '#0b0c10', metal: '#6a6e78',
+    };
+    const f1 = (n) => (Math.round(n * 10) / 10).toString();
     const O = (w = 3) => `stroke="${LINE}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"`;
     const I = (w = 2) => `stroke="${INK}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"`;
     const sp = (o, a = 1.2) => (a + ((o.seed || 0) % 7) / 10).toFixed(2);
     const limb = (d, w, c) => `<path d="${d}" stroke="${LINE}" stroke-width="${w + 6}" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="${d}" stroke="${c}" stroke-width="${w}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
-    // тыква: центр (x, y), полуширина r, лицо смотрит влево
-    function pumpkinHead(x, y, r, o = {}) {
-      const c = o.dark ? '#d9661a' : '#ff7a1a', s = o.dark ? '#9a3e0c' : '#c4520e', glow = o.glow || '#ffd34d';
-      return `<path d="M${x - 2} ${y - r * 0.85} q2 -14 12 -16" fill="none" stroke="#4e7a2e" stroke-width="${Math.max(4, r * 0.16)}" stroke-linecap="round"/>`
-        + `<ellipse cx="${x}" cy="${y}" rx="${r}" ry="${r * 0.86}" fill="${c}" ${O(3.4)}/>`
-        + `<path d="M${x - r * 0.45} ${y - r * 0.8} q-8 ${r * 0.8} 0 ${r * 1.6} M${x} ${y - r * 0.86} v${r * 1.72} M${x + r * 0.45} ${y - r * 0.8} q8 ${r * 0.8} 0 ${r * 1.6}" fill="none" stroke="${s}" stroke-width="3"/>`
-        + `<g class="qb-eye"><path d="M${x - r * 0.62} ${y - r * 0.05} l${r * 0.2} ${-r * 0.36} l${r * 0.2} ${r * 0.36} z M${x - r * 0.05} ${y - r * 0.08} l${r * 0.2} ${-r * 0.36} l${r * 0.2} ${r * 0.36} z" fill="${glow}" ${I(2)}/>`
-        + `<path d="M${x - r * 0.68} ${y + r * 0.3} q${r * 0.6} ${r * 0.4} ${r * 1.2} 0 l-${r * 0.16} ${r * 0.1} l-${r * 0.14} -${r * 0.12} l-${r * 0.16} ${r * 0.14} l-${r * 0.16} -${r * 0.14} l-${r * 0.14} ${r * 0.12} l-${r * 0.16} -${r * 0.12} z" fill="${glow}" ${I(2)}/></g>`;
-    }
-    const PUMPKIN = `<svg width="40" height="40" viewBox="-20 -20 40 40"><ellipse rx="15" ry="13" fill="#ff7a1a" stroke="${INK}" stroke-width="2.4"/><path d="M-6 -12 q-4 12 0 24 M6 -12 q4 12 0 24" fill="none" stroke="#c4520e" stroke-width="2"/><path d="M-1 -13 q1 -6 5 -7" stroke="#4e7a2e" stroke-width="3" fill="none"/></svg>`;
+    const idle = (o, a, inner) => `<g class="qb-idle${o.boss ? ' hwb' : ''}" style="animation-duration:${sp(o, a)}s">${inner}</g>`;
+    const shadow = (rx) => `<ellipse cx="2" cy="0" rx="${rx}" ry="${f1(rx * 0.2)}" fill="#000" opacity=".3"/>`;
+    const svg40 = (inner) => `<svg width="40" height="40" viewBox="-20 -20 40 40">${inner}</svg>`;
 
-    // ── тыквоголов: тело-чучело с тыквой вместо головы; голем — каменная тыква огромная, руки-лозы ──
+    // тыква-голова: гниющая, тёмные пятна, лицо светится (тыква — тёплый свет). Центр (x, y), полуширина r, лицо влево
+    function pumpkinHead(x, y, r, o = {}) {
+      const g = o.glow || C.fire;
+      return `<path d="M${f1(x - 2)} ${f1(y - r * 0.85)} q2 -14 12 -18" fill="none" stroke="${C.vine}" stroke-width="${f1(Math.max(4, r * 0.16))}" stroke-linecap="round"/>`
+        + `<path d="M${f1(x - r)} ${f1(y)} Q${f1(x - r)} ${f1(y - r * 0.9)} ${f1(x)} ${f1(y - r * 0.86)} Q${f1(x + r)} ${f1(y - r * 0.9)} ${f1(x + r)} ${f1(y - r * 0.05)} Q${f1(x + r * 0.7)} ${f1(y + r * 0.2)} ${f1(x + r * 0.6)} ${f1(y + r * 0.5)} Q${f1(x)} ${f1(y + r * 0.95)} ${f1(x - r * 0.7)} ${f1(y + r * 0.7)} Q${f1(x - r)} ${f1(y + r * 0.5)} ${f1(x - r)} ${f1(y)} Z" fill="${o.dark ? C.pumpD : C.pump}" ${O(3.4)}/>`
+        + `<path d="M${f1(x - r * 0.45)} ${f1(y - r * 0.8)} q-8 ${f1(r * 0.8)} 0 ${f1(r * 1.5)} M${f1(x + r * 0.45)} ${f1(y - r * 0.8)} q8 ${f1(r * 0.8)} 0 ${f1(r * 1.3)} M${f1(x + r * 0.3)} ${f1(y + r * 0.2)} q${f1(r * 0.4)} ${f1(-r * 0.1)} ${f1(r * 0.62)} ${f1(r * 0.25)} q-${f1(r * 0.2)} ${f1(r * 0.3)} -${f1(r * 0.5)} ${f1(r * 0.3)} z" fill="${C.rotP}" stroke="${C.pumpD}" stroke-width="2.4" opacity=".9"/>`
+        + `<g class="qb-eye"><path d="M${f1(x - r * 0.64)} ${f1(y - r * 0.08)} l${f1(r * 0.22)} ${f1(-r * 0.38)} l${f1(r * 0.2)} ${f1(r * 0.38)} z M${f1(x - r * 0.08)} ${f1(y - r * 0.1)} l${f1(r * 0.2)} ${f1(-r * 0.34)} l${f1(r * 0.18)} ${f1(r * 0.34)} z M${f1(x - r * 0.7)} ${f1(y + r * 0.28)} q${f1(r * 0.6)} ${f1(r * 0.42)} ${f1(r * 1.14)} -${f1(r * 0.04)} l-${f1(r * 0.17)} ${f1(r * 0.1)} l-${f1(r * 0.13)} -${f1(r * 0.13)} l-${f1(r * 0.17)} ${f1(r * 0.15)} l-${f1(r * 0.16)} -${f1(r * 0.15)} l-${f1(r * 0.14)} ${f1(r * 0.12)} l-${f1(r * 0.17)} -${f1(r * 0.1)} z" fill="${g}" ${I(2)}/></g>`;
+    }
+
+    /* ---------- снаряды (40×40, центр в середине, летят вращаясь) ---------- */
+    const M_SEEDS = svg40(`<path d="M-12 -4 q4 -8 8 0 q-4 6 -8 0 z M2 -12 q4 -8 8 0 q-4 6 -8 0 z M0 4 q4 -8 8 0 q-4 6 -8 0 z M-10 10 q4 -8 8 0 q-4 6 -8 0 z" fill="${C.bone}" stroke="${INK}" stroke-width="1.8"/>`);
+    const M_ROTPUMP = svg40(`<circle r="17" fill="${C.fire}" opacity=".25"/><path d="M-14 0 q0 -12 14 -12 q14 0 14 12 q0 12 -14 12 q-14 0 -14 -12 z" fill="${C.pump}" stroke="${INK}" stroke-width="2.4"/><path d="M-6 -12 q-4 12 0 24 M6 -12 q4 12 0 22" fill="none" stroke="${C.rotP}" stroke-width="2.4"/><path d="M-9 -2 l3 -5 l3 5 z M2 -2 l3 -5 l3 5 z M-8 4 q8 5 16 0" fill="${C.fireY}" stroke="${INK}" stroke-width="1.4"/><path d="M-1 -12 q1 -5 5 -6" stroke="${C.vine}" stroke-width="3" fill="none"/>`);
+    const M_HAND = svg40(`<path d="M-14 6 q0 -10 8 -12 l2 -10 q2 -3 4 0 l0 9 l3 -11 q2 -3 4 0 l-1 12 l4 -8 q3 -2 3 2 l-4 12 q-2 10 -12 10 q-10 0 -11 -4 z" fill="${C.rot}" stroke="${INK}" stroke-width="2.2"/><path d="M-14 6 l-4 2 l2 4" stroke="${C.bone}" stroke-width="3" fill="none" stroke-linecap="round"/>`);
+    const M_SKULL = svg40(`<path d="M-12 8 v-5 q-5 -3 -5 -11 q0 -11 17 -11 q17 0 17 11 q0 8 -5 11 v5 z" fill="${C.bone}" stroke="${INK}" stroke-width="2.4"/><circle cx="-6" cy="-4" r="4" fill="${C.hole}"/><circle cx="6" cy="-4" r="4" fill="${C.hole}"/><circle cx="6" cy="-4" r="1.6" fill="${C.eye}"/><path d="M-6 8 v-4 M0 8 v-4 M6 8 v-4" stroke="${INK}" stroke-width="1.6"/>`);
+    const M_CROW = svg40(`<path d="M-16 2 q8 -14 18 -6 q8 -10 16 -4 q-8 2 -10 8 q4 4 2 8 q-6 -2 -10 -6 q-8 6 -16 0 z" fill="${C.fur}" stroke="${LINE}" stroke-width="1.8"/><path d="M-16 2 l-5 2 l5 2" fill="${C.straw}"/><circle cx="-11" cy="0" r="1.6" fill="${C.eye}"/>`);
+    const M_POTION = svg40(`<circle r="16" fill="${C.lilacL}" opacity=".25"/><path d="M-4 -16 h8 v7 q10 5 10 15 q0 10 -14 10 q-14 0 -14 -10 q0 -10 10 -15 z" fill="${C.lilac}" stroke="${INK}" stroke-width="2.2"/><path d="M-9 2 q9 -4 18 0 v4 q-9 6 -18 0 z" fill="${C.lilacL}"/><rect x="-5" y="-19" width="10" height="5" rx="1.5" fill="${C.wood}" stroke="${INK}" stroke-width="1.6"/>`);
+    const M_WEB = svg40(`<circle r="15" fill="${C.ghostL}" opacity=".25"/><path d="M0 -15 V15 M-15 0 H15 M-11 -11 L11 11 M11 -11 L-11 11 M-7 -7 Q0 -11 7 -7 Q11 0 7 7 Q0 11 -7 7 Q-11 0 -7 -7 Z" fill="none" stroke="${C.ghostL}" stroke-width="2"/><circle r="4" fill="${C.lilac}" stroke="${INK}" stroke-width="1.4"/>`);
+
+    /* ── тыквоголов: пугало-тело в лохмотьях, гнилая тыква-голова; Тыквенный голем — громада из гнилых тыкв, руки-лозы, корона из обломков ── */
     function pumpkin(o) {
-      if (o.boss) return `<g class="qb-idle" style="animation-duration:${sp(o, 1.6)}s">
-        ${limb('M-30 0 v-36 M26 0 v-36', 16, '#6a4a2e')}
-        <path d="M-56 -36 Q-62 -110 0 -118 Q62 -110 56 -36 Q0 -22 -56 -36 Z" fill="#c4520e" ${O(4)}/>
-        <path d="M-40 -100 q-10 30 0 60 M0 -116 v80 M40 -100 q10 30 0 60" fill="none" stroke="#8a3a0a" stroke-width="4"/>
-        <g class="qb-arm" style="transform-origin:-46px -80px">${limb('M-46 -80 Q-90 -70 -100 -30', 12, '#4e7a2e')}<circle cx="-100" cy="-28" r="12" fill="#ff7a1a" ${O(3)}/></g>
-        ${limb('M46 -80 Q86 -60 90 -24', 12, '#4e7a2e')}
-        ${pumpkinHead(-2, -150, 40, { dark: true, glow: '#ff4a2a' })}
-        <path d="M-30 -186 l6 -14 l8 10 l8 -12 l8 12 l8 -10 l6 14 z" fill="#ffd34d" ${I(2)}/></g>`;
-      return `<g class="qb-idle" style="animation-duration:${sp(o)}s">
-        ${limb('M-14 0 v-34 M12 0 v-34', 11, '#3a2e4a')}
-        <path d="M-26 -30 Q-30 -80 0 -84 Q30 -80 26 -30 Q0 -22 -26 -30 Z" fill="#5a3a7a" ${O(3.4)}/>
-        <path d="M-20 -70 l40 30 M20 -70 l-40 30" stroke="#d8b860" stroke-width="3"/>
-        <g class="qb-arm" style="transform-origin:-22px -70px">${limb('M-22 -70 Q-50 -64 -58 -40', 9, '#5a3a7a')}<path d="M-62 -44 l-6 -14 M-58 -42 l-2 -16 M-54 -42 l4 -14" stroke="#d8b860" stroke-width="3" stroke-linecap="round"/></g>
-        ${pumpkinHead(-2, -108, 28, {})}</g>`;
+      if (o.boss) return idle(o, 1.6, limb('M-30 0 v-36 M26 0 v-36', 16, C.vine)
+        + `<path d="M-58 -34 Q-66 -112 0 -120 Q64 -112 58 -34 Q0 -18 -58 -34 Z" fill="${C.pumpD}" ${O(4)}/>`
+        + `<path d="M-40 -102 q-12 32 0 62 M0 -118 v82 M40 -102 q12 32 0 62 M-30 -70 q14 -6 20 6 q-8 10 -20 -6 z M18 -56 q12 -4 18 6 q-10 8 -18 -6 z" fill="${C.rotP}" stroke="${C.rotP}" stroke-width="4"/>`
+        + `<g class="qb-arm" style="transform-origin:-46px -82px">${limb('M-46 -82 Q-94 -72 -104 -28', 13, C.vine)}<path d="M-104 -36 q-14 2 -14 14 q2 12 14 12 q12 -2 12 -14 q-2 -12 -12 -12 z" fill="${C.pumpD}" ${O(3)}/></g>`
+        + limb('M46 -82 Q88 -62 92 -26', 13, C.vine)
+        + `<g class="hwx-head">${pumpkinHead(-2, -152, 42, { dark: true, glow: C.fireY })}</g>`
+        + `<path d="M-30 -188 l6 -16 l7 11 l9 -14 l8 13 l7 -10 l5 16 z" fill="${C.boneD}" ${O(2.6)}/>`);
+      return idle(o, 1.2, limb('M-14 0 l-2 -34 M12 0 l3 -34', 11, C.dark)
+        + `<path d="M-27 -30 Q-31 -82 0 -86 Q30 -82 27 -30 L18 -38 L12 -24 L4 -36 L-4 -22 L-12 -36 L-20 -24 Z" fill="${C.cloth}" ${O(3.4)}/>`
+        + `<path d="M-18 -72 l34 26 M16 -74 l-30 30 M-12 -58 q6 -4 12 2 q-4 6 -12 -2 z" stroke="${C.strawD}" stroke-width="3" fill="${C.clothD}"/>`
+        + `<g class="qb-arm" style="transform-origin:-22px -70px">${limb('M-22 -70 Q-50 -64 -58 -40', 9, C.cloth)}<path d="M-62 -44 l-7 -14 M-58 -42 l-3 -16 M-54 -42 l3 -14" stroke="${C.straw}" stroke-width="3" stroke-linecap="round"/></g>`
+        // голова-тыква отдельной группой: в приём 'css:hwroll' она срывается и катится на строй
+        + `<g class="hwx-head">${pumpkinHead(-2, -110, 29, {})}</g>`);
     }
     function pumpkinlet(o) {
-      return `<g class="qb-idle" style="animation-duration:${sp(o, 0.8)}s">${limb('M-10 0 v-10 M10 0 v-10', 7, '#4e7a2e')}${pumpkinHead(0, -30, 22, {})}</g>`;
+      return idle(o, 0.8, shadow(18) + limb('M-10 0 v-10 M10 0 v-10', 7, C.vine) + pumpkinHead(0, -30, 22, {}));
     }
 
-    // ── призрак: простыня с дырами-глазами; Плакальщица — в вуали, со свечой ──
+    /* ── призрак: рваная простыня, холодный, сквозь него видно туман; Плакальщица — в чёрной вуали, слёзы, свеча-огонёк ── */
     function ghost(o) {
-      const b = o.boss, c = b ? '#d8e8ff' : '#e8f4ff', h = b ? 170 : 130, w = b ? 62 : 48;
-      let hem = ''; for (let i = 0; i < 6; i++) hem += ` q${-w / 6} ${i % 2 ? -14 : 14} ${-w / 3} 0`;
-      return `<g class="qb-idle" style="animation-duration:${sp(o, 2)}s"><g transform="translate(0 -18)">
-        <ellipse cx="0" cy="22" rx="${w * 0.8}" ry="8" fill="#000" opacity=".18"/>
-        <path d="M${-w} -34 C${-w} ${-h} ${w} ${-h} ${w} -34${hem} Z" fill="${c}" opacity=".9" ${O(3.4)}/>
-        <path d="M${-w + 12} ${-h + 60} Q${-w + 4} -70 ${-w + 10} -44" stroke="#b8cce8" stroke-width="4" fill="none" opacity=".7"/>
-        <g class="qb-eye"><ellipse cx="-20" cy="${-h + 50}" rx="8" ry="12" fill="${INK}"/><ellipse cx="6" cy="${-h + 52}" rx="7" ry="11" fill="${INK}"/><circle cx="-18" cy="${-h + 46}" r="2.4" fill="#9fffd0"/><circle cx="8" cy="${-h + 48}" r="2.2" fill="#9fffd0"/></g>
-        <ellipse cx="-8" cy="${-h + 78}" rx="8" ry="10" fill="${INK}"/>
-        <g class="qb-arm" style="transform-origin:${-w + 6}px ${-h + 80}px"><path d="M${-w + 6} ${-h + 80} q-30 6 -40 26 q16 -4 24 4 q4 -14 16 -18" fill="${c}" ${O(3)}/></g>
-        ${b ? `<path d="M${-w - 4} ${-h + 40} Q0 ${-h - 20} ${w + 4} ${-h + 40} L${w} ${-h + 70} Q0 ${-h + 20} ${-w} ${-h + 70} Z" fill="#3a2e4a" opacity=".85" ${O(3)}/><g transform="translate(${-w - 30} ${-h + 104})"><rect x="-5" y="-18" width="10" height="20" fill="#efe6d2" ${I(2)}/><path d="M0 -20 q-6 -8 0 -16 q6 8 0 16 z" fill="#ffd34d"><animate attributeName="opacity" values=".7;1;.8" dur=".9s" repeatCount="indefinite"/></path></g>` : ''}
-      </g></g>`;
+      const b = o.boss, h = b ? 172 : 132, w = b ? 62 : 48;
+      let hem = ''; for (let i = 0; i < 6; i++) hem += ` q${f1(-w / 6)} ${i % 2 ? -18 : 12} ${f1(-w / 3)} ${i % 2 ? 4 : -2}`;
+      return idle(o, 2, `<g transform="translate(0 -20)">`
+        + `<ellipse cx="0" cy="24" rx="${f1(w * 0.7)}" ry="7" fill="#000" opacity=".2"/>`
+        + `<path d="M${-w} -30 C${-w} ${-h} ${w} ${-h} ${w} -30${hem} Z" fill="${C.ghost}" opacity=".88" ${O(3.4)}/>`
+        + `<path d="M${w - 6} -40 C${w - 4} ${-h + 40} ${w - 30} ${-h + 10} ${w - 40} ${-h + 18} C${w - 22} ${-h + 40} ${w - 18} -70 ${w - 26} -36 Z M${-w + 14} -50 l10 -18 l4 14 z" fill="${C.ghostD}" opacity=".8"/>`
+        + `<path d="M${-w + 12} ${-h + 58} Q${-w + 4} -72 ${-w + 10} -46" stroke="${C.ghostL}" stroke-width="4" fill="none" opacity=".8"/>`
+        + `<g class="qb-eye"><path d="M-28 ${-h + 42} q8 -6 14 2 q-2 12 -8 14 q-8 -4 -6 -16 z M0 ${-h + 46} q8 -6 13 2 q-2 11 -7 12 q-7 -3 -6 -14 z" fill="${C.hole}"/><circle cx="-20" cy="${-h + 52}" r="2.4" fill="${C.ghostL}"/><circle cx="7" cy="${-h + 55}" r="2.2" fill="${C.ghostL}"/></g>`
+        + `<path d="M-14 ${-h + 72} q4 -6 10 0 q2 12 -5 18 q-7 -6 -5 -18 z" fill="${C.hole}"/>`
+        + `<g class="qb-arm" style="transform-origin:${-w + 6}px ${-h + 80}px"><path d="M${-w + 6} ${-h + 80} q-30 6 -42 28 l8 -2 l2 8 q10 -14 22 -16" fill="${C.ghost}" ${O(3)}/></g>`
+        + (b ? `<path d="M${-w - 4} ${-h + 40} Q0 ${-h - 22} ${w + 4} ${-h + 40} L${w} ${-h + 80} L${w - 10} ${-h + 66} Q0 ${-h + 18} ${-w + 6} ${-h + 66} L${-w} ${-h + 84} Z" fill="${C.fur}" opacity=".92" ${O(3)}/>`
+          + `<path d="M-22 ${-h + 62} v14 M5 ${-h + 66} v12" stroke="${C.ghostL}" stroke-width="3" stroke-linecap="round" opacity=".9"/>`
+          + `<g transform="translate(${-w - 32} ${-h + 104})"><rect x="-5" y="-18" width="10" height="20" rx="2" fill="${C.bone}" ${I(1.8)}/><path d="M0 -30 q6 6 0 11 q-6 -5 0 -11 z" fill="${C.fire}"/></g>` : '')
+        + `</g>`);
     }
 
-    // ── нетопырь: висит в воздухе (тело ~ на −110); Вампир — в плаще, с бледным лицом ──
+    /* ── нетопырь: висит в воздухе (тело ~ на −110), рваные перепонки; Вампир — серый плащ, бледное лицо, красные глаза ── */
     function bat(o) {
-      if (o.boss) return `<g class="qb-idle" style="animation-duration:${sp(o, 1.4)}s">
-        <ellipse cx="0" cy="0" rx="40" ry="8" fill="#000" opacity=".18"/>
-        <path d="M-6 -150 C-80 -170 -110 -110 -96 -60 L-70 -80 L-60 -50 L-40 -76 L-22 -40 L0 -70 L22 -40 L40 -76 L60 -50 L70 -80 L96 -60 C110 -110 80 -170 6 -150 Z" fill="#1c1424" ${O(3.4)}/>
-        <path d="M-20 -150 L-28 -40 Q0 -30 28 -40 L20 -150 Z" fill="#2a1f38" ${O(3)}/>
-        <path d="M-24 -150 Q0 -128 24 -150" fill="#b0182a" ${O(2.4)}/>
-        <circle cx="-4" cy="-172" r="22" fill="#e8e0f0" ${O(3.4)}/><path d="M-26 -186 q22 -16 44 0 q-10 -4 -22 4 q-12 -8 -22 -4 z" fill="#1c1424"/>
-        <g class="qb-eye"><circle cx="-14" cy="-174" r="4" fill="#ff2a3a"/><circle cx="4" cy="-174" r="4" fill="#ff2a3a"/></g>
-        <path d="M-14 -160 l3 7 l3 -7 M0 -160 l3 7 l3 -7" fill="#fff" ${I(1.4)}/>
-        <g class="qb-arm" style="transform-origin:-18px -140px"><path d="M-18 -140 q-26 10 -34 30" stroke="#e8e0f0" stroke-width="7" fill="none" stroke-linecap="round"/></g></g>`;
-      return `<g class="qb-idle" style="animation-duration:${sp(o, 0.6)}s">
-        <ellipse cx="0" cy="0" rx="24" ry="6" fill="#000" opacity=".15"/>
-        <g transform="translate(0 -110)">
-          <path d="M-4 -4 Q-40 -34 -74 -14 L-60 -6 L-56 8 L-40 -2 L-30 12 L-14 2 Z" fill="#3a2e4a" ${O(3)}><animateTransform attributeName="transform" type="rotate" values="0 -6 -2;-18 -6 -2;0 -6 -2" dur=".4s" repeatCount="indefinite"/></path>
-          <path d="M4 -4 Q40 -34 74 -14 L60 -6 L56 8 L40 -2 L30 12 L14 2 Z" fill="#3a2e4a" ${O(3)}><animateTransform attributeName="transform" type="rotate" values="0 6 -2;18 6 -2;0 6 -2" dur=".4s" repeatCount="indefinite"/></path>
-          <ellipse cx="0" cy="2" rx="16" ry="20" fill="#4a3a5e" ${O(3)}/>
-          <path d="M-12 -14 l-4 -16 l10 10 z M2 -16 l6 -15 l4 14 z" fill="#4a3a5e" ${O(2.6)}/>
-          <g class="qb-eye"><circle cx="-8" cy="-2" r="3.4" fill="#ffd34d"/><circle cx="4" cy="-3" r="3.4" fill="#ffd34d"/></g>
-          <path d="M-6 8 l2 5 l2 -5" fill="#fff" ${I(1.2)}/>
-        </g></g>`;
+      if (o.boss) return idle(o, 1.4, `<path d="M-6 -150 C-80 -172 -112 -110 -98 -58 L-72 -80 L-64 -52 L-42 -76 L-24 -38 L0 -68 L22 -40 L40 -76 L60 -48 L72 -80 L98 -58 C112 -110 80 -172 6 -150 Z" fill="${C.fur}" ${O(3.4)}/>`
+        + `<path d="M-60 -100 l10 14 l-12 4 z M54 -110 l-8 16 l12 2 z" fill="${C.hole}"/>`
+        + `<path d="M-20 -150 L-28 -40 Q0 -30 28 -40 L20 -150 Z" fill="${C.furL}" ${O(3)}/><path d="M-24 -150 Q0 -128 24 -150" fill="${C.cloth}" ${O(2.4)}/>`
+        + `<path d="M-26 -172 Q-26 -196 -4 -196 Q18 -196 18 -172 Q18 -152 -4 -150 Q-26 -152 -26 -172 Z" fill="${C.ghostL}" ${O(3.4)}/><path d="M-28 -186 q22 -18 46 0 q-10 -4 -22 4 q-12 -8 -24 -4 z" fill="${C.fur}"/>`
+        + `<g class="qb-eye"><circle cx="-14" cy="-174" r="4" fill="${C.eye}"/><circle cx="4" cy="-174" r="4" fill="${C.eye}"/></g><path d="M-14 -160 l3 7 l3 -7 M0 -160 l3 7 l3 -7" fill="${C.bone}" ${I(1.4)}/>`
+        + `<g class="qb-arm" style="transform-origin:-18px -140px"><path d="M-18 -140 q-26 10 -36 30 l-8 2" stroke="${C.ghostL}" stroke-width="7" fill="none" stroke-linecap="round"/></g>`);
+      return idle(o, 0.6, shadow(24) + `<g transform="translate(0 -110)">`
+        + `<path d="M-4 -4 Q-40 -36 -76 -14 L-62 -6 L-58 8 L-42 -2 L-32 12 L-14 2 Z M4 -4 Q40 -36 76 -14 L62 -6 L58 8 L42 -2 L32 12 L14 2 Z" fill="${C.furL}" ${O(3)}/>`
+        + `<path d="M-50 -14 l6 8 l-8 2 z M46 -18 l-4 10 l8 0 z" fill="${C.hole}"/>`
+        + `<path d="M0 -24 Q16 -22 16 2 Q14 22 0 22 Q-14 22 -16 2 Q-16 -14 -12 -14 L-18 -32 L-6 -20 Q-2 -24 2 -18 L8 -32 L10 -18 Z" fill="${C.fur}" ${O(3)}/>`
+        + `<g class="qb-eye"><circle cx="-8" cy="-2" r="3.4" fill="${C.eye}"/><circle cx="4" cy="-3" r="3.4" fill="${C.eye}"/></g><path d="M-6 8 l2 5 l2 -5" fill="${C.bone}" ${I(1.2)}/></g>`);
     }
 
-    // ── ведьма на метле (парит); Старшая ведьма — выше шляпа, котёл-брошь, зелёная кожа ──
+    /* ── ведьма на метле (парит): серо-лиловое тряпьё, бледно-зелёная кожа, бородавки; Старшая ведьма — выше шляпа, котелок у пояса ── */
     function witch(o) {
-      const b = o.boss, skin = b ? '#8fd16a' : '#b8e08a', robe = b ? '#3a1f5e' : '#5b3fa0';
-      return `<g class="qb-idle" style="animation-duration:${sp(o, 1.6)}s">
-        <ellipse cx="0" cy="0" rx="40" ry="7" fill="#000" opacity=".16"/>
-        <g transform="translate(0 -70)">
-          <path d="M-70 10 L80 -6" stroke="${LINE}" stroke-width="12" stroke-linecap="round"/><path d="M-70 10 L80 -6" stroke="#8a5a2b" stroke-width="7" stroke-linecap="round"/>
-          <path d="M70 -14 L110 -24 L104 -6 L114 4 L72 4 Z" fill="#d8b860" ${O(3)}/>
-          <path d="M-20 4 Q-30 -60 0 -70 Q30 -60 26 4 Z" fill="${robe}" ${O(3.4)}/>
-          <path d="M-14 6 l-10 22 M10 4 l6 22" stroke="${LINE}" stroke-width="8" stroke-linecap="round"/><path d="M-14 6 l-10 22 M10 4 l6 22" stroke="#2a1a3a" stroke-width="4" stroke-linecap="round"/>
-          <circle cx="-4" cy="-84" r="18" fill="${skin}" ${O(3.4)}/>
-          <path d="M-22 -90 q-6 2 -14 0 l8 -4" fill="${skin}" ${O(2.4)}/>
-          <g class="qb-eye"><circle cx="-12" cy="-88" r="3" fill="${INK}"/><circle cx="2" cy="-88" r="3" fill="${INK}"/></g>
-          <path d="M-14 -76 q8 4 14 0" fill="none" ${I(2)}/>
-          <path d="M-34 -96 Q0 ${b ? -112 : -104} 30 -96 L18 -94 Q8 ${b ? -150 : -132} -2 ${b ? -168 : -140} Q-4 ${b ? -146 : -122} -22 -94 Z" fill="#2a1f38" ${O(3.4)}/>
-          <path d="M-20 -96 Q0 -102 18 -96" stroke="#ff8a1f" stroke-width="4" fill="none"/>
-          <path d="M12 -86 q22 14 18 40" stroke="#ff8a1f" stroke-width="4" fill="none" stroke-linecap="round"/>
-          <g class="qb-arm" style="transform-origin:-16px -50px">${limb('M-16 -50 Q-40 -54 -52 -70', 7, robe)}<circle cx="-54" cy="-74" r="6" fill="#9fffd0" ${I(1.6)}/></g>
-          ${b ? `<circle cx="2" cy="-40" r="7" fill="#2a2a34" ${O(2.4)}/>` : ''}
-        </g></g>`;
+      const b = o.boss, skin = b ? '#7f9480' : '#94a892', robe = b ? C.lilacD : C.lilac;
+      return idle(o, 1.6, shadow(40) + `<g transform="translate(0 -70)">`
+        + `<path d="M-72 10 L82 -6" stroke="${LINE}" stroke-width="12" stroke-linecap="round"/><path d="M-72 10 L82 -6" stroke="${C.wood}" stroke-width="7" stroke-linecap="round"/>`
+        + `<path d="M72 -14 L114 -26 L106 -8 L118 4 L74 4 Z M90 -18 l14 20" fill="${C.straw}" ${O(3)}/>`
+        + `<path d="M-22 4 Q-32 -60 0 -70 Q30 -60 26 4 L16 -4 L8 10 L0 -2 L-8 12 L-14 -2 Z" fill="${robe}" ${O(3.4)}/>`
+        + `<path d="M-14 6 l-10 22 M10 4 l6 22" stroke="${LINE}" stroke-width="8" stroke-linecap="round"/><path d="M-14 6 l-10 22 M10 4 l6 22" stroke="${C.dark}" stroke-width="4" stroke-linecap="round"/>`
+        + `<path d="M-22 -84 Q-22 -102 -4 -102 Q14 -102 14 -84 Q14 -68 -4 -66 Q-16 -66 -20 -76 l-14 -6 l14 -4 z" fill="${skin}" ${O(3.4)}/>`
+        + `<g class="qb-eye"><circle cx="-12" cy="-88" r="3" fill="${C.eye}"/><circle cx="2" cy="-88" r="3" fill="${C.eye}"/></g><path d="M-14 -76 q8 4 14 0 M-26 -82 l0.1 0" stroke="${INK}" stroke-width="2.4" fill="none" stroke-linecap="round"/>`
+        + `<path d="M-36 -96 Q0 ${b ? -112 : -104} 32 -96 L18 -94 Q10 ${b ? -150 : -132} 6 ${b ? -170 : -142} l-10 6 Q-8 ${b ? -146 : -122} -22 -94 Z" fill="${C.fur}" ${O(3.4)}/><path d="M-20 -96 Q0 -102 18 -96" stroke="${C.lilacL}" stroke-width="4" fill="none"/>`
+        + `<path d="M12 -86 q24 14 18 44 M16 -80 q14 14 6 34" stroke="${C.boneD}" stroke-width="3.4" fill="none" stroke-linecap="round"/>`
+        + `<g class="qb-arm" style="transform-origin:-16px -50px">${limb('M-16 -50 Q-40 -54 -52 -70', 7, robe)}<circle cx="-54" cy="-74" r="6" fill="${C.lilacL}" ${I(1.6)}/></g>`
+        + (b ? `<path d="M-4 -34 q12 -4 16 6 q-2 10 -10 10 q-10 -2 -6 -16 z" fill="${C.dark}" ${O(2.4)}/>` : '')
+        + `</g>`);
     }
-    const FROGDUST = `<svg width="40" height="40" viewBox="-20 -20 40 40"><circle r="10" fill="#9fffd0" opacity=".6"/><path d="M-6 2 q6 -10 12 0 q-6 6 -12 0 z" fill="#5aa83a" stroke="${INK}" stroke-width="1.6"/><circle cx="-3" cy="-3" r="2" fill="#fff"/><circle cx="3" cy="-3" r="2" fill="#fff"/></svg>`;
 
-    // ── мертвец: зелёный, лохмотья, руки вперёд; староста — с лопатой и шляпой ──
+    /* ── мертвец: гниющая кожа, рваная рубаха, рёбра сквозь дыру, отвисшая челюсть, красный глаз; староста — драный цилиндр, ржавая лопата ── */
     function zombie(o) {
-      const b = o.boss, skin = '#8aa86a', cl = b ? '#4a3a2e' : '#5a6a7a';
-      return `<g class="qb-idle" style="animation-duration:${sp(o, 1.8)}s">
-        ${limb('M-16 0 l-4 -40 M12 0 l2 -40', 12, '#3a3a44')}
-        <path d="M-30 -36 L-26 -100 Q0 -112 26 -100 L30 -36 L20 -44 L12 -32 L4 -44 L-6 -30 L-14 -44 L-22 -32 Z" fill="${cl}" ${O(3.4)}/>
-        <path d="M-10 -90 l6 10 M8 -70 l-4 8" stroke="#2a2a34" stroke-width="2.4"/>
-        <circle cx="-2" cy="-122" r="24" fill="${skin}" ${O(3.4)}/>
-        <path d="M-14 -138 l4 6 M4 -142 l2 7" stroke="#5a7a3a" stroke-width="2.4"/>
-        <g class="qb-eye"><circle cx="-12" cy="-124" r="5.4" fill="#fff" ${I(1.6)}/><circle cx="-13" cy="-124" r="2" fill="${INK}"/><circle cx="6" cy="-126" r="3.6" fill="#ffd34d" ${I(1.4)}/></g>
-        <path d="M-16 -110 h20" stroke="${INK}" stroke-width="2.4"/><path d="M-12 -110 v4 M-6 -110 v4 M0 -110 v4" stroke="${INK}" stroke-width="2"/>
-        <g class="qb-arm" style="transform-origin:-22px -92px">${limb('M-22 -92 L-64 -88', 10, skin)}<path d="M-64 -92 l-8 -2 M-64 -88 l-9 1 M-64 -84 l-7 3" stroke="${skin}" stroke-width="4" stroke-linecap="round"/>
-          ${b ? `<path d="M-60 -120 V-40" stroke="${LINE}" stroke-width="10" stroke-linecap="round"/><path d="M-60 -120 V-40" stroke="#8a5a2b" stroke-width="5"/><path d="M-72 -44 h24 l-4 26 h-16 z" fill="#9aa3ad" ${O(3)}/>` : ''}</g>
-        ${limb('M20 -92 L52 -82', 10, skin)}
-        ${b ? `<path d="M-26 -140 h48 M-16 -140 v-18 h28 v18" fill="#2a2a34" ${O(3)}/>` : ''}</g>`;
+      const b = o.boss;
+      return idle(o, 1.8, limb('M-14 0 l-2 -42 M12 0 l4 -40', 12, C.dark)
+        + `<path d="M-30 -38 L-27 -100 Q-2 -112 24 -100 L30 -40 L22 -46 L16 ${b ? -22 : -34} L8 -44 L-2 -30 L-10 -44 L-18 ${b ? -24 : -32} L-24 -44 Z" fill="${b ? '#33303a' : C.cloth}" ${O(3.4)}/>`
+        + `<path d="M-16 -86 q8 -6 18 -2 q-2 14 -10 18 q-8 -4 -8 -16 Z M10 -66 l8 -4 l-2 10 Z" fill="${C.clothD}"/><path d="M-12 -82 q6 -2 12 0 M-12 -76 q6 -2 12 0" stroke="${C.bone}" stroke-width="3" stroke-linecap="round"/>`
+        + `<path d="M-26 -122 Q-28 -150 -2 -152 Q22 -150 22 -126 Q22 -112 13 -108 L11 -100 Q-4 -94 -16 -100 L-20 -108 Q-27 -112 -26 -122 Z" fill="${C.rot}" ${O(3.4)}/>`
+        + `<path d="M-6 -151 l4 10 l-4 6 M-18 -148 q-6 -8 -2 -14 M-8 -152 q0 -10 6 -12" stroke="${INK}" stroke-width="2.4" fill="none" stroke-linecap="round"/>`
+        + `<path d="M-17 -112 Q-6 -104 6 -110 L4 -100 Q-6 -96 -15 -102 Z M-20 -128 a7 8 0 1 0 14 0 a7 8 0 1 0 -14 0 Z M8 -146 Q20 -140 20 -126 Q20 -114 12 -110 Q14 -126 8 -146 Z" fill="${C.hole}" opacity=".85"/>`
+        + `<g class="qb-eye"><circle cx="-13" cy="-127" r="2.4" fill="${C.eye}"/><circle cx="6" cy="-129" r="${b ? 4.4 : 3.6}" fill="${C.eye}" stroke="${C.hole}" stroke-width="1.6"/></g>`
+        + `<path d="M-14 -110 v4 M-9 -108 v5 M-4 -108 v4 M1 -109 v4" stroke="${C.bone}" stroke-width="2.2"/>`
+        + `<g class="qb-arm" style="transform-origin:-22px -92px">${limb('M-22 -92 Q-42 -96 -62 -90', 10, C.rot)}<path d="M-62 -94 l-10 -4 M-63 -90 l-11 0 M-62 -86 l-9 4" stroke="${C.bone}" stroke-width="3.4" stroke-linecap="round"/>`
+        + (b ? `<path d="M-58 -128 L-60 -36" stroke="${LINE}" stroke-width="10" stroke-linecap="round"/><path d="M-58 -128 L-60 -36" stroke="${C.woodD}" stroke-width="5"/><path d="M-73 -40 h26 l-5 26 q-8 6 -16 0 z" fill="${C.metal}" ${O(3)}/>` : '') + `</g>`
+        + limb('M20 -92 Q34 -74 40 -56', 10, C.rotD)
+        + (b ? `<path d="M-28 -146 h48 M-18 -146 v-20 l26 -4 l4 22" fill="#1c1e26" ${O(3)}/>` : ''));
     }
 
-    // ── паук: широкий и низкий; вдова — чёрная с красными песочными часами ──
+    /* ── паук: широкий, низкий, облезлый, лапы-ломаные; вдова — чёрная, грязно-лиловые песочные часы, паутина на спине ── */
     function spider(o) {
-      const b = o.boss, c = b ? '#1c1424' : '#3a2e4a', w = b ? 1.25 : 1;
-      let legs = ''; for (let i = 0; i < 4; i++) { const dx = (i - 1.5) * 22 * w; legs += limb(`M${dx} -40 Q${dx - 30 - i * 6} -80 ${dx - 54 - i * 8} 0`, 5, c) + limb(`M${dx} -40 Q${dx + 34 + i * 4} -78 ${dx + 58 + i * 6} 0`, 5, c); }
-      return `<g class="qb-idle" style="animation-duration:${sp(o, 1)}s">${legs}
-        <ellipse cx="${20 * w}" cy="${-52 * w}" rx="${46 * w}" ry="${36 * w}" fill="${c}" ${O(3.4)}/>
-        ${b ? `<path d="M${14 * w} ${-66 * w} h${14 * w} l-${14 * w} ${14 * w} h${14 * w} z" fill="#d8182a" ${I(1.6)}/>` : `<path d="M${4 * w} ${-74 * w} q16 8 32 0 M${2 * w} ${-58 * w} q18 8 36 0" stroke="#6a5a7e" stroke-width="3" fill="none"/>`}
-        <circle cx="${-30 * w}" cy="${-42 * w}" r="${22 * w}" fill="${c}" ${O(3.4)}/>
-        <g class="qb-eye"><circle cx="${-40 * w}" cy="${-48 * w}" r="4" fill="#ff2a3a"/><circle cx="${-30 * w}" cy="${-52 * w}" r="4" fill="#ff2a3a"/><circle cx="${-44 * w}" cy="${-38 * w}" r="2.6" fill="#ff2a3a"/><circle cx="${-34 * w}" cy="${-40 * w}" r="2.6" fill="#ff2a3a"/></g>
-        <g class="qb-arm" style="transform-origin:${-44 * w}px ${-30 * w}px"><path d="M${-44 * w} ${-30 * w} l-8 10 M${-36 * w} ${-26 * w} l-4 12" stroke="#d8d0e0" stroke-width="4" stroke-linecap="round"/></g></g>`;
+      const b = o.boss, c = b ? C.fur : C.furL, w = b ? 1.25 : 1;
+      let L = ''; for (let i = 0; i < 4; i++) { const dx = (i - 1.5) * 22 * w; L += `M${f1(dx)} -40 L${f1(dx - 26 - i * 6)} ${f1(-82 + i * 4)} L${f1(dx - 52 - i * 8)} 0 M${f1(dx)} -40 L${f1(dx + 30 + i * 4)} ${f1(-80 + i * 4)} L${f1(dx + 56 + i * 6)} 0 `; }
+      return idle(o, 1, shadow(70) + limb(L, 5, c)
+        + `<path d="M${f1(-24 * w)} ${f1(-52 * w)} Q${f1(-24 * w)} ${f1(-90 * w)} ${f1(20 * w)} ${f1(-90 * w)} Q${f1(66 * w)} ${f1(-90 * w)} ${f1(66 * w)} ${f1(-52 * w)} Q${f1(66 * w)} ${f1(-16 * w)} ${f1(20 * w)} ${f1(-16 * w)} Q${f1(-24 * w)} ${f1(-16 * w)} ${f1(-24 * w)} ${f1(-52 * w)} Z" fill="${c}" ${O(3.4)}/>`
+        + (b ? `<path d="M${f1(14 * w)} ${f1(-68 * w)} h${f1(14 * w)} l-${f1(14 * w)} ${f1(16 * w)} h${f1(14 * w)} z" fill="${C.lilacL}" ${I(1.6)}/><path d="M${f1(-6 * w)} ${f1(-80 * w)} l${f1(16 * w)} ${f1(10 * w)} M${f1(44 * w)} ${f1(-82 * w)} l${f1(-14 * w)} ${f1(12 * w)} M${f1(52 * w)} ${f1(-40 * w)} l${f1(-18 * w)} ${f1(-6 * w)}" stroke="${C.ghostD}" stroke-width="1.6" opacity=".8"/>`
+          : `<path d="M${f1(4 * w)} ${f1(-74 * w)} q16 8 32 0 M${f1(2 * w)} ${f1(-58 * w)} q18 8 36 0 M${f1(40 * w)} ${f1(-44 * w)} l6 -6 l4 8 z" stroke="${C.cloth}" stroke-width="3" fill="${C.hole}"/>`)
+        + `<circle cx="${f1(-30 * w)}" cy="${f1(-42 * w)}" r="${f1(22 * w)}" fill="${c}" ${O(3.4)}/>`
+        + `<g class="qb-eye"><circle cx="${f1(-40 * w)}" cy="${f1(-48 * w)}" r="4" fill="${C.eye}"/><circle cx="${f1(-30 * w)}" cy="${f1(-52 * w)}" r="4" fill="${C.eye}"/><circle cx="${f1(-44 * w)}" cy="${f1(-38 * w)}" r="2.6" fill="${C.eye}"/><circle cx="${f1(-34 * w)}" cy="${f1(-40 * w)}" r="2.6" fill="${C.eye}"/></g>`
+        + `<g class="qb-arm" style="transform-origin:${f1(-44 * w)}px ${f1(-30 * w)}px"><path d="M${f1(-44 * w)} ${f1(-30 * w)} l-8 10 M${f1(-36 * w)} ${f1(-26 * w)} l-4 12" stroke="${C.bone}" stroke-width="4" stroke-linecap="round"/></g>`);
     }
 
-    // ── чёрный кот: выгнутая спина, хвост трубой; Кот-ведьмак — в шляпе, с зелёными глазами-огнями ──
+    /* ── чёрный кот: облезлый, выгнутая спина, рваное ухо, хвост-кость; Кот-ведьмак — в драной шляпе, глаза холодно-голубые ── */
     function cat(o) {
-      const b = o.boss, c = '#1c1424';
-      return `<g class="qb-idle" style="animation-duration:${sp(o, 1)}s">
-        ${limb('M-30 0 v-24 M-14 0 v-22 M26 0 v-26 M40 0 v-24', 8, c)}
-        <path d="M-40 -26 Q-30 -${b ? 86 : 74} 6 -${b ? 82 : 70} Q46 -68 50 -28 Q4 -18 -40 -26 Z" fill="${c}" ${O(3.4)}/>
-        <path d="M48 -40 Q86 -60 70 -110 Q66 -122 76 -126" fill="none" stroke="${LINE}" stroke-width="16" stroke-linecap="round"/><path d="M48 -40 Q86 -60 70 -110 Q66 -122 76 -126" fill="none" stroke="${c}" stroke-width="10" stroke-linecap="round"/>
-        <circle cx="-46" cy="-50" r="22" fill="${c}" ${O(3.4)}/>
-        <path d="M-64 -62 l-2 -26 l16 16 z M-36 -66 l8 -24 l6 22 z" fill="${c}" ${O(3)}/>
-        <g class="qb-eye"><ellipse cx="-56" cy="-52" rx="4.4" ry="6" fill="${b ? '#6dffb0' : '#ffd34d'}"/><ellipse cx="-42" cy="-53" rx="4.4" ry="6" fill="${b ? '#6dffb0' : '#ffd34d'}"/><path d="M-56 -56 v8 M-42 -57 v8" stroke="${INK}" stroke-width="2"/></g>
-        <path d="M-52 -42 l3 3 l3 -3 M-70 -46 h-14 M-70 -42 l-14 4 M-30 -46 h12" stroke="#efe6ff" stroke-width="1.4" fill="none"/>
-        <g class="qb-arm" style="transform-origin:-36px -30px">${limb('M-36 -30 Q-58 -24 -66 -6', 7, c)}<path d="M-72 -8 l-4 -4 M-68 -6 l-3 -6 M-64 -6 l0 -6" stroke="#efe6ff" stroke-width="2" stroke-linecap="round"/></g>
-        ${b ? `<path d="M-74 -70 Q-46 -80 -18 -70 L-30 -68 Q-38 -104 -50 -118 Q-52 -92 -62 -70 Z" fill="#2a1f38" ${O(3)}/><path d="M-62 -72 h30" stroke="#6dffb0" stroke-width="3"/>` : ''}</g>`;
+      const b = o.boss, c = C.fur;
+      return idle(o, 1, limb('M-30 0 v-24 M-14 0 v-22 M26 0 v-26 M40 0 v-24', 8, c)
+        + `<path d="M-40 -26 Q-30 -${b ? 88 : 76} 6 -${b ? 84 : 72} Q46 -70 50 -28 L40 -30 L34 -22 L26 -30 L18 -22 L8 -30 L-4 -22 L-14 -30 Q-28 -20 -40 -26 Z" fill="${c}" ${O(3.4)}/>`
+        + `<path d="M48 -40 Q86 -60 70 -110 Q66 -122 76 -126" fill="none" stroke="${LINE}" stroke-width="15" stroke-linecap="round"/><path d="M48 -40 Q86 -60 70 -110 Q66 -122 76 -126" fill="none" stroke="${c}" stroke-width="9" stroke-linecap="round"/><path d="M74 -96 l6 -4 M70 -110 l7 -1" stroke="${C.bone}" stroke-width="3" stroke-linecap="round"/>`
+        + `<path d="M-66 -50 Q-66 -72 -46 -72 Q-26 -72 -26 -50 Q-26 -30 -46 -30 Q-66 -30 -66 -50 Z M-64 -62 l-2 -26 l10 8 l-3 6 l9 0 z M-36 -66 l8 -24 l6 22 z" fill="${c}" ${O(3.4)}/>`
+        + `<g class="qb-eye"><ellipse cx="-56" cy="-52" rx="4.4" ry="6" fill="${b ? C.ghostL : C.fireY}"/><ellipse cx="-42" cy="-53" rx="4.4" ry="6" fill="${b ? C.ghostL : C.fireY}"/><path d="M-56 -56 v8 M-42 -57 v8" stroke="${INK}" stroke-width="2"/></g>`
+        + `<path d="M-52 -42 l3 3 l3 -3 M-70 -46 h-14 M-70 -42 l-14 4 M-30 -46 h12 M-14 -56 l6 10 l6 -8 l6 10 M20 -62 l4 8 l5 -7" stroke="#5a5f6e" stroke-width="2" fill="none" stroke-linecap="round"/>`
+        + `<g class="qb-arm" style="transform-origin:-36px -30px">${limb('M-36 -30 Q-58 -24 -66 -6', 7, c)}<path d="M-72 -8 l-4 -4 M-68 -6 l-3 -6 M-64 -6 l0 -6" stroke="${C.bone}" stroke-width="2" stroke-linecap="round"/></g>`
+        + (b ? `<path d="M-76 -70 Q-46 -82 -16 -70 L-30 -68 Q-36 -102 -54 -120 L-50 -100 Q-58 -90 -62 -70 Z" fill="${C.cloth}" ${O(3)}/>` : ''));
     }
 
-    // ── пугало: крест-шест, мешок-голова, солома; Пугало-жнец — с серпом и вороном на плече ──
+    /* ── пугало: гнилой шест, мешок-голова с прорехами, солома торчит, красные огоньки-глаза; Пугало-жнец — серп, ворон на плече ── */
     function scarecrow(o) {
       const b = o.boss;
-      return `<g class="qb-idle" style="animation-duration:${sp(o, 2.2)}s">
-        <path d="M0 0 V-150" stroke="${LINE}" stroke-width="12" stroke-linecap="round"/><path d="M0 0 V-150" stroke="#6a4a2e" stroke-width="7"/>
-        <path d="M-34 -30 l-6 14 M-24 -28 l-2 16 M24 -30 l6 14" stroke="#d8b860" stroke-width="4" stroke-linecap="round"/>
-        <path d="M-30 -36 L-28 -110 Q0 -118 28 -110 L30 -36 L16 -44 L4 -32 L-8 -44 L-20 -32 Z" fill="${b ? '#5a3a2e' : '#6a7a3a'}" ${O(3.4)}/>
-        <rect x="6" y="-90" width="14" height="14" fill="#c8a04a" ${I(1.6)}/><path d="M8 -88 l10 10 M18 -88 l-10 10" stroke="#5a3a2e" stroke-width="1.4"/>
-        <path d="M-60 -104 H60" stroke="${LINE}" stroke-width="10" stroke-linecap="round"/><path d="M-60 -104 H60" stroke="#6a4a2e" stroke-width="5"/>
-        <path d="M-64 -100 l-6 10 M-60 -100 l-2 12 M60 -100 l6 10 M56 -100 l2 12" stroke="#d8b860" stroke-width="3" stroke-linecap="round"/>
-        <path d="M-24 -116 Q-30 -160 0 -164 Q30 -160 24 -116 Z" fill="#d8c08a" ${O(3.4)}/>
-        <path d="M-20 -150 l6 6 M-14 -150 l-6 6 M0 -152 l6 6 M6 -152 l-6 6" stroke="${INK}" stroke-width="2.6"/>
-        <path class="qb-eye" d="M-16 -132 q10 6 22 0" stroke="${INK}" stroke-width="2.4" fill="none"/>
-        <path d="M-34 -160 Q0 -176 34 -160 Q0 -150 -34 -160 Z M-14 -164 Q-8 -190 10 -184 Q16 -170 14 -162 Z" fill="#c8a04a" ${O(3)}/>
-        ${b ? `<g class="qb-arm" style="transform-origin:-56px -104px"><path d="M-56 -104 L-70 -40" stroke="${LINE}" stroke-width="9" stroke-linecap="round"/><path d="M-56 -104 L-70 -40" stroke="#6a4a2e" stroke-width="4"/><path d="M-70 -40 Q-118 -36 -120 -76 Q-104 -54 -70 -50 Z" fill="#c8ccd4" ${O(3)}/></g>
-          <g transform="translate(40 -118)"><path d="M0 0 q-10 -14 2 -20 q12 0 12 10 l10 4 l-12 2 q-2 8 -12 4 z" fill="#1c1424" ${O(2.4)}/><circle cx="2" cy="-12" r="2" fill="#ffd34d"/></g>`
-        : `<g class="qb-arm" style="transform-origin:-56px -104px"><path d="M-56 -104 l-8 -10 M-56 -104 l-12 2" stroke="#d8b860" stroke-width="4" stroke-linecap="round"/></g>`}</g>`;
-    }
-    // ── ворон (зовут пугала): маленький, в воздухе ──
-    function crow(o) {
-      return `<g class="qb-idle" style="animation-duration:${sp(o, 0.5)}s"><ellipse cx="0" cy="0" rx="18" ry="4" fill="#000" opacity=".14"/><g transform="translate(0 -80)">
-        <path d="M-4 0 Q-30 -26 -50 -10 Q-34 -8 -26 2 Z" fill="#1c1424" ${O(2.6)}><animateTransform attributeName="transform" type="rotate" values="0 -4 0;-20 -4 0;0 -4 0" dur=".35s" repeatCount="indefinite"/></path>
-        <ellipse cx="4" cy="2" rx="18" ry="10" fill="#1c1424" ${O(2.6)}/><path d="M18 4 l14 -6 l-4 10 z" fill="#1c1424" ${O(2)}/>
-        <circle cx="-12" cy="-4" r="9" fill="#1c1424" ${O(2.6)}/><path d="M-20 -4 l-10 3 l10 2 z" fill="#ffb347" ${I(1.4)}/><circle class="qb-eye" cx="-14" cy="-6" r="2" fill="#ffd34d"/>
-        <path d="M4 0 Q20 -30 42 -16 Q28 -12 20 0 Z" fill="#2a1f38" ${O(2.6)}><animateTransform attributeName="transform" type="rotate" values="0 4 0;22 4 0;0 4 0" dur=".35s" repeatCount="indefinite"/></path></g></g>`;
-    }
-    // ── Джек-Фонарщик (запасной бой hwBossSimple): длинный, в лохмотьях, цилиндр, тыква-голова, фонарь ──
-    function jack(o) {
-      return `<g class="qb-idle" style="animation-duration:${sp(o, 2)}s">
-        ${limb('M-14 0 l-4 -60 M14 0 l4 -60', 12, '#2a2236')}
-        <path d="M-34 -50 L-30 -150 Q0 -162 30 -150 L34 -50 L22 -60 L12 -44 L2 -60 L-8 -44 L-18 -60 L-26 -46 Z" fill="#2e2438" ${O(3.4)}/>
-        <path d="M-30 -150 L-48 -110 M30 -150 L48 -114" stroke="#2e2438" stroke-width="10" stroke-linecap="round"/>
-        <g class="qb-arm" style="transform-origin:-30px -140px">${limb('M-30 -140 Q-60 -120 -66 -90', 9, '#2e2438')}<path d="M-66 -90 V-70" stroke="${INK}" stroke-width="2"/>
-          <g transform="translate(-66 -56)"><path d="M-12 -14 h24 l-4 26 h-16 z" fill="#3a3a44" ${O(2.6)}/><ellipse cx="0" cy="0" rx="8" ry="10" fill="#ffb347"><animate attributeName="opacity" values=".7;1;.8" dur="1.1s" repeatCount="indefinite"/></ellipse></g></g>
-        ${limb('M30 -140 Q56 -116 60 -84', 9, '#2e2438')}
-        ${pumpkinHead(0, -186, 32, { glow: '#ffd34d' })}
-        <path d="M-28 -212 h56 M-18 -212 v-30 h36 v30" fill="#1c1424" ${O(3)}/><path d="M-18 -220 h36" stroke="#ff8a1f" stroke-width="4"/></g>`;
+      return idle(o, 2.2, shadow(30)
+        + `<path d="M0 0 V-150 M-60 -104 H60" stroke="${LINE}" stroke-width="11" stroke-linecap="round"/><path d="M0 0 V-150 M-60 -104 H60" stroke="${C.woodD}" stroke-width="6"/>`
+        + `<path d="M-34 -30 l-6 14 M-24 -28 l-2 16 M24 -30 l6 14 M-64 -100 l-6 10 M-60 -100 l-2 12 M60 -100 l6 10 M56 -100 l2 12" stroke="${C.straw}" stroke-width="3.4" stroke-linecap="round"/>`
+        + `<path d="M-30 -36 L-28 -110 Q0 -118 28 -110 L30 -36 L16 -44 L4 -30 L-8 -44 L-20 -30 Z" fill="${b ? '#33303a' : C.cloth}" ${O(3.4)}/>`
+        + `<path d="M6 -92 h14 v14 h-14 z M-16 -70 q6 -6 12 0 q-2 8 -12 0 z" fill="${C.clothD}" stroke="${C.strawD}" stroke-width="1.6"/>`
+        + `<path d="M-24 -116 Q-30 -160 0 -164 Q30 -160 24 -116 Q0 -108 -24 -116 Z" fill="${C.strawD}" ${O(3.4)}/>`
+        + `<path d="M-20 -150 l6 6 M-14 -150 l-6 6 M10 -130 q4 6 0 12" stroke="${INK}" stroke-width="2.4" fill="none"/>`
+        + `<g class="qb-eye"><circle cx="-10" cy="-140" r="3.4" fill="${C.eye}"/><circle cx="6" cy="-142" r="3" fill="${C.eye}"/></g><path d="M-16 -128 q4 4 8 0 q4 4 8 0 q4 4 8 0" stroke="${INK}" stroke-width="2.4" fill="none"/>`
+        + `<path d="M-34 -160 Q0 -178 34 -160 Q0 -150 -34 -160 Z M-14 -164 Q-8 -192 10 -186 Q16 -172 14 -162 Z" fill="${C.wood}" ${O(3)}/>`
+        + (b ? `<g class="qb-arm" style="transform-origin:-56px -104px"><path d="M-56 -104 L-72 -40" stroke="${LINE}" stroke-width="9" stroke-linecap="round"/><path d="M-56 -104 L-72 -40" stroke="${C.woodD}" stroke-width="4"/><path d="M-72 -40 Q-124 -38 -122 -92 Q-104 -56 -70 -50 Z" fill="${C.metal}" ${O(3)}/></g>`
+            + `<g transform="translate(40 -118)"><path d="M0 0 q-10 -14 2 -20 q12 0 12 10 l10 4 l-12 2 q-2 8 -12 4 z" fill="${C.fur}" ${O(2.4)}/><circle cx="2" cy="-12" r="2" fill="${C.eye}"/></g>`
+          : `<g class="qb-arm" style="transform-origin:-56px -104px"><path d="M-56 -104 l-8 -10 M-56 -104 l-12 2" stroke="${C.straw}" stroke-width="4" stroke-linecap="round"/></g>`));
     }
 
+    /* ── ворон (зовут пугала): маленький, в воздухе, облезлый, красный глаз ── */
+    function crow(o) {
+      return idle(o, 0.5, shadow(18) + `<g transform="translate(0 -80)">`
+        + `<path d="M-4 0 Q-30 -28 -52 -10 L-44 -8 L-40 0 L-30 -2 L-26 2 Z M4 0 Q20 -32 44 -16 L36 -12 L32 -4 L24 -4 L20 0 Z" fill="${C.furL}" ${O(2.6)}/>`
+        + `<path d="M-14 -12 Q-24 -12 -22 -2 Q-20 6 -10 6 Q4 12 20 6 L34 0 L22 -2 Q16 -10 4 -8 Q-4 -14 -14 -12 Z" fill="${C.fur}" ${O(2.6)}/>`
+        + `<path d="M-21 -4 l-10 3 l10 2 z" fill="${C.straw}" ${I(1.4)}/><circle class="qb-eye" cx="-15" cy="-5" r="2" fill="${C.eye}"/></g>`);
+    }
+
+    /* ── костяк (скелет Изнанки): серые кости, ржавый меч, щит-обломок, трещины; Костяной страж — шлем-череп с рогами, щит из крышки гроба ── */
+    function skeleton(o) {
+      const b = o.boss, bn = C.bone;
+      return idle(o, 1.5, shadow(30)
+        + limb('M-14 0 l3 -50 M14 0 l-3 -50', 6, bn)
+        + `<path d="M-22 -50 h44 l-6 -58 h-32 Z" fill="${C.dark}" ${O(3)}/>`
+        + `<path d="M-18 -58 q18 -6 36 0 M-18 -70 q18 -6 36 0 M-18 -82 q18 -6 36 0 M-16 -94 q16 -6 32 0 M0 -108 v58" stroke="${bn}" stroke-width="5" fill="none" stroke-linecap="round"/>`
+        + `<path d="M-22 -50 l-6 -2 l2 -6 M22 -50 l6 -2" stroke="${C.cloth}" stroke-width="4" fill="none"/>`
+        + `<g class="qb-arm" style="transform-origin:-18px -100px">${limb('M-18 -100 l-30 20', 5, bn)}<path d="M-50 -80 l-48 -12 l-4 6 l46 14 z" fill="${C.metal}" ${O(2.6)}/><path d="M-86 -88 l-6 8 M-70 -84 l-4 6" stroke="${C.rotP}" stroke-width="3"/></g>`
+        + limb('M18 -100 l20 26', 5, bn)
+        + (b ? `<path d="M22 -96 h34 l-2 56 q-15 10 -30 0 z" fill="${C.wood}" ${O(3)}/><path d="M39 -88 v34 M30 -76 h18" stroke="${C.boneD}" stroke-width="4"/>`
+          : `<path d="M28 -84 q16 -4 24 8 l-6 26 q-12 2 -20 -8 z" fill="${C.cloth}" ${O(3)}/><path d="M34 -70 l10 6" stroke="${C.clothD}" stroke-width="3"/>`)
+        + `<path d="M-24 -132 Q-26 -158 0 -158 Q26 -158 24 -132 Q22 -118 12 -116 V-108 H-12 V-116 Q-22 -118 -24 -132 Z" fill="${bn}" ${O(3.4)}/>`
+        + `<path d="M4 -158 l-4 10 l6 6 M-8 -116 v-6 M-2 -116 v-6 M4 -116 v-6 M10 -116 v-6" stroke="${INK}" stroke-width="2" fill="none"/>`
+        + `<g class="qb-eye"><path d="M-18 -136 q6 -6 12 0 q-2 8 -6 8 q-6 -2 -6 -8 z M2 -136 q6 -6 12 0 q-2 8 -6 8 q-6 -2 -6 -8 z" fill="${C.hole}"/><circle cx="-12" cy="-133" r="2.4" fill="${C.eye}"/><circle cx="8" cy="-133" r="2.4" fill="${C.eye}"/></g>`
+        + (b ? `<path d="M-26 -140 Q-26 -166 0 -168 Q26 -166 26 -140 Z M-24 -150 q-20 -6 -24 -26 q14 10 26 12 M24 -150 q20 -6 24 -26 q-14 10 -26 12" fill="${C.metal}" ${O(3)}/>` : ''));
+    }
+
+    /* ── Джек-Фонарщик (запасной бой hwBossSimple): только перекрашен в холодную гамму; фонарь и тыква — тёплые ── */
+    function jack(o) {
+      return idle(o, 2, shadow(40)
+        + limb('M-14 0 l-4 -60 M14 0 l4 -60', 12, C.dark)
+        + `<path d="M-34 -50 L-30 -150 Q0 -162 30 -150 L34 -50 L22 -60 L12 -44 L2 -60 L-8 -44 L-18 -60 L-26 -46 Z" fill="${C.clothD}" ${O(3.4)}/>`
+        + `<path d="M-30 -150 L-48 -110 M30 -150 L48 -114" stroke="${C.clothD}" stroke-width="10" stroke-linecap="round"/>`
+        + `<g class="qb-arm" style="transform-origin:-30px -140px">${limb('M-30 -140 Q-60 -120 -66 -90', 9, C.clothD)}<path d="M-66 -90 V-70" stroke="${INK}" stroke-width="2"/>`
+        + `<g transform="translate(-66 -56)"><circle r="26" fill="${C.fire}" opacity=".2"/><path d="M-12 -14 h24 l-4 26 h-16 z" fill="${C.metal}" ${O(2.6)}/><ellipse cx="0" cy="0" rx="8" ry="10" fill="${C.fire}"/></g></g>`
+        + limb('M30 -140 Q56 -116 60 -84', 9, C.clothD)
+        + pumpkinHead(0, -186, 32, { glow: C.fireY })
+        + `<path d="M-28 -212 h56 M-18 -212 v-30 h36 v30" fill="${C.fur}" ${O(3)}/><path d="M-18 -220 h36" stroke="${C.lilacL}" stroke-width="4"/>`);
+    }
+
+    /* ---------- свои приёмы атак ('css:имя'): класс qb-atk-имя на ~1,2 с; только transform / opacity ---------- */
+    const A = (name, kf, extra = '') => `.qb .qb-foe.qb-atk-${name}{animation:qba-${name} 1.15s ease-in-out both;transform-box:fill-box;transform-origin:50% 100%}@keyframes qba-${name}{${kf}}${extra}`;
+    const css = [
+      // вожак замахивается заметнее рядовых
+      '.qb.st-tele .hwb .qb-arm{transform:rotate(-130deg)}',
+      // тыквоголов катит тыкву на строй: сам приседает, тыква катится влево
+      A('hwroll', '20%{transform:translateX(10px) scale(1.04,.92)}45%{transform:translateX(-30px)}100%{transform:none}',
+        '.qb .qb-foe .hwx-head{transform-box:fill-box;transform-origin:50% 50%}.qb .qb-foe.qb-atk-hwroll .hwx-head{animation:qba-hwroll2 1.15s ease-in both}@keyframes qba-hwroll2{0%{transform:none}15%{transform:translateY(-30px) rotate(20deg)}70%{transform:translate(-520px,90px) rotate(-900deg)}85%{transform:translate(-540px,90px) rotate(-960deg);opacity:0}86%{transform:none;opacity:0}100%{transform:none;opacity:1}}'),
+      // мертвецы хватают за ноги: уходят в землю и выныривают ближе
+      A('hwdig', '0%{transform:none}30%{transform:translateY(40px) scale(1,.35);opacity:.2}60%{transform:translate(-260px,30px) scale(1,.4);opacity:.25}80%{transform:translate(-280px,0) scale(1.05,1);opacity:1}100%{transform:none}'),
+      // призрак проходит сквозь строй и возвращается
+      A('hwpass', '0%{transform:none;opacity:1}20%{transform:translateX(-80px);opacity:.55}55%{transform:translateX(-620px) translateY(-20px);opacity:.35}75%{transform:translateX(-640px);opacity:0}76%{transform:translateX(40px);opacity:0}100%{transform:none;opacity:1}'),
+      // пугало машет серпом: разворот-взмах на месте с шагом вперёд
+      A('hwscythe', '15%{transform:translateX(16px) rotate(6deg)}40%{transform:translateX(-120px) rotate(-14deg)}55%{transform:translateX(-140px) rotate(10deg)}100%{transform:none}',
+        '.qb .qb-foe.qb-atk-hwscythe .qb-arm{animation:qba-hwscythe2 1.15s ease-in-out both}@keyframes qba-hwscythe2{20%{transform:rotate(-140deg)}45%{transform:rotate(60deg)}100%{transform:none}}'),
+      // ведьма таранит на метле: разгон низко над землёй и уход вверх
+      A('hwbroom', '15%{transform:translateX(30px) rotate(-6deg)}45%{transform:translate(-560px,60px) rotate(8deg)}65%{transform:translate(-620px,-180px) rotate(-14deg);opacity:.6}66%{opacity:0}67%{transform:translate(60px,-120px);opacity:0}100%{transform:none;opacity:1}'),
+      // нетопыри пикируют стаей: зигзаг сверху
+      A('hwflock', '15%{transform:translate(20px,-120px)}35%{transform:translate(-160px,40px)}50%{transform:translate(-280px,-60px)}65%{transform:translate(-420px,60px)}100%{transform:none}'),
+      // визг: стая взмывает и рассыпается
+      A('hwscreech', '0%{transform:none}20%{transform:translateY(-60px) scale(1.15)}30%{transform:translate(-10px,-60px) scale(1.15)}40%{transform:translate(10px,-60px) scale(1.15)}60%{transform:translate(-200px,-140px) scale(.8);opacity:.4}100%{transform:none;opacity:1}'),
+      // кот шипит: выгибает спину, дрожит
+      A('hwhiss', '15%{transform:scale(1.08,1.2)}25%{transform:scale(1.08,1.2) translateX(-4px)}35%{transform:scale(1.08,1.2) translateX(4px)}45%{transform:scale(1.08,1.2) translateX(-4px)}60%{transform:translateX(-90px) scale(1.04,.9)}100%{transform:none}'),
+      // костяк рассыпается и собирается рядом со строем
+      A('hwcollapse', '20%{transform:scale(1.1,.2) translateY(10px);opacity:.6}40%{transform:translateX(-300px) scale(1.2,.15);opacity:.4}60%{transform:translateX(-320px) scale(.9,1.1);opacity:1}75%{transform:translateX(-300px)}100%{transform:none}'),
+      // тыквёнок катится кувырком
+      A('hwtumble', '0%{transform:none}50%{transform:translateX(-300px) rotate(-360deg)}60%{transform:translateX(-320px) rotate(-380deg)}100%{transform:none}'),
+      // ворон клюёт рывком
+      A('hwpeck', '20%{transform:translate(20px,-30px) rotate(10deg)}45%{transform:translate(-460px,60px) rotate(-20deg)}60%{transform:translate(-440px,40px)}100%{transform:none}'),
+    ].join('\n');
+
     return {
-      hw_pumpkin: { draw: pumpkin, top: 146, attacks: { shield: 'charge', duck: 'throw', scatter: 'burst' }, missile: { svg: PUMPKIN } },
-      hw_pumpkinlet: { draw: pumpkinlet, top: 60, attacks: { shield: 'lunge', duck: 'leap', scatter: 'leap' } },
-      hw_ghost: { draw: ghost, top: 160, attacks: { shield: 'lunge', duck: 'swoop', scatter: 'wave' } },
-      hw_bat: { draw: bat, top: 150, attacks: { shield: 'swoop', duck: 'swoop', scatter: 'swoop' } },
-      hw_witch: { draw: witch, top: 214, attacks: { shield: 'lunge', duck: 'swoop', scatter: 'burst' }, missile: { svg: FROGDUST } },
-      hw_zombie: { draw: zombie, top: 158, attacks: { shield: 'lunge', duck: 'leap', scatter: 'wave' } },
-      hw_spider: { draw: spider, top: 100, attacks: { shield: 'lunge', duck: 'leap', scatter: 'spit' }, missile: { blob: '#7dff6a' } },
-      hw_cat: { draw: cat, top: 112, attacks: { shield: 'lunge', duck: 'leap', scatter: 'wave' } },
-      hw_scarecrow: { draw: scarecrow, top: 196, attacks: { shield: 'lunge', duck: 'throw', scatter: 'wave' }, missile: { emoji: '🐦‍⬛', size: 30 } },
-      hw_crow: { draw: crow, top: 104, attacks: { shield: 'swoop', duck: 'swoop', scatter: 'swoop' } },
-      hw_jack: { draw: jack, top: 256, scale: 1.15, attacks: { shield: 'lunge', duck: 'throw', scatter: 'burst' }, missile: { svg: PUMPKIN } },
+      hw_pumpkin: { draw: pumpkin, top: 146, attacks: { shield: 'css:hwroll', duck: 'throw', scatter: 'burst' }, missile: { svg: M_SEEDS } },
+      hw_pumpkinlet: { draw: pumpkinlet, top: 60, attacks: { shield: 'lunge', duck: 'leap', scatter: 'css:hwtumble' } },
+      hw_ghost: { draw: ghost, top: 160, attacks: { shield: 'css:hwpass', duck: 'swoop', scatter: 'wave' } },
+      hw_bat: { draw: bat, top: 150, attacks: { shield: 'swoop', duck: 'css:hwflock', scatter: 'css:hwscreech' } },
+      hw_witch: { draw: witch, top: 214, attacks: { shield: 'css:hwbroom', duck: 'swoop', scatter: 'burst' }, missile: { svg: M_POTION } },
+      hw_zombie: { draw: zombie, top: 158, attacks: { shield: 'lunge', duck: 'throw', scatter: 'css:hwdig' }, missile: { svg: M_HAND } },
+      hw_spider: { draw: spider, top: 100, attacks: { shield: 'lunge', duck: 'leap', scatter: 'spit' }, missile: { svg: M_WEB, blob: C.lilacL } },
+      hw_cat: { draw: cat, top: 112, attacks: { shield: 'lunge', duck: 'leap', scatter: 'css:hwhiss' } },
+      hw_scarecrow: { draw: scarecrow, top: 196, attacks: { shield: 'css:hwscythe', duck: 'throw', scatter: 'burst' }, missile: { svg: M_CROW } },
+      hw_skeleton: { draw: skeleton, top: 160, scale: 1.15, attacks: { shield: 'lunge', duck: 'throw', scatter: 'css:hwcollapse' }, missile: { svg: M_SKULL } },
+      hw_crow: { draw: crow, top: 104, attacks: { shield: 'css:hwpeck', duck: 'swoop', scatter: 'css:hwflock' } },
+      hw_jack: { draw: jack, top: 256, scale: 1.15, attacks: { shield: 'lunge', duck: 'throw', scatter: 'burst' }, missile: { svg: M_ROTPUMP } },
+      css,
     };
   });
 })();

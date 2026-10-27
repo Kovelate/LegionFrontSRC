@@ -230,8 +230,8 @@
     if (v.vote && !v.vote.done) return top + voteHtml(v) + (qaOn() ? qaSquad(v) : '');
     if (v.loot) return top + lootHtml(v);
     if (v.sh && v.sh.items && v.sh.items.length) return top + shopHtml(v) + (qaOn() ? qaHero(v) : '');   // 23.10: лавка — прилавок
-    if (qaOn()) return top + (v.gather ? `<section class="q-card"><p class="muted">Сбор отряда · <span data-until="${v.gather.until}"></span> с${partyOf(v) === 'q' ? ' · вступишь, когда отряд остановится' : ''}</p></section>` : '') + qaSquad(v, true) + qaHero(v);   // 26.10: «в отряде / не в отряде» - значок у заголовка   // 25.10: вступить / покинуть, панель героя
-    return top + `<section class="q-card"><p>${v.party === 'in' ? 'Твой герой в отряде.' : v.party === 'ghost' ? 'Твой герой — призрак в этом походе.' : v.party === 'q' ? 'Ты в очереди: вступишь, когда отряд остановится.' : 'Ты не в отряде — пиши «поход» в чат, когда стример объявит сбор.'}</p>${v.gather ? `<p class="muted">Сбор отряда · <span data-until="${v.gather.until}"></span> с</p>` : ''}</section>`;
+    if (qaOn()) return top + (v.gather ? `<section class="q-card"><p class="muted">${gwName(v)} · <span data-until="${v.gather.until}"></span> с${partyOf(v) === 'q' ? ' · вступишь, когда отряд остановится' : ''}</p></section>` : '') + qaSquad(v, true) + qaHero(v);   // 26.10: «в отряде / не в отряде» - значок у заголовка   // 25.10: вступить / покинуть, панель героя
+    return top + `<section class="q-card"><p>${v.party === 'in' ? 'Твой герой в отряде.' : v.party === 'ghost' ? 'Твой герой — призрак в этом походе.' : v.party === 'q' ? 'Ты в очереди: вступишь, когда отряд остановится.' : (v.gather && v.gather.hw ? 'Ты не в отряде — пиши «портал» в чат, чтобы шагнуть в Изнанку с отрядом.' : 'Ты не в отряде — пиши «поход» в чат, когда стример объявит сбор.')}</p>${v.gather ? `<p class="muted">${gwName(v)} · <span data-until="${v.gather.until}"></span> с</p>` : ''}</section>`;
   }
   /* 26.10 (п. 26): арена босса - площадки (контуры как на стриме), опасные - красным, уцелеющие - зелёным, своя - «ты»; кнопки «прыжок N»:
      на соседнюю (или на любую, если механика разрешает) - уходят строкой */
@@ -1164,10 +1164,11 @@
     if (!a.replace(/<[^>]*>/g, '').trim()) a = layHint(v);
     return tw + a;
   }
+  const gwName = (v) => (v.gather && v.gather.hw ? '🎃 Сбор у портала' : 'Сбор отряда');   // 28.10 (hw-portal-map)
   // нет действий - коротко, что сейчас происходит
   function layHint(v) {
-    const p = partyOf(v), g = v.gather ? `<p class="q-big">Сбор отряда · <span data-until="${v.gather.until}"></span> с</p>` : '';
-    const t = v.k === 'rest' ? 'Привал: отряд отдыхает у костра' : v.k === 'travel' ? 'Отряд в пути' : v.k === 'town' ? 'Отряд в городе' : v.k === 'gather' || v.gather ? 'Стример собирает отряд' : 'Отряд на карте - стример выбирает, куда идти';
+    const p = partyOf(v), g = v.gather ? `<p class="q-big">${gwName(v)} · <span data-until="${v.gather.until}"></span> с</p>` : '';
+    const t = v.k === 'rest' ? 'Привал: отряд отдыхает у костра' : v.k === 'travel' ? 'Отряд в пути' : v.k === 'town' ? 'Отряд в городе' : v.gather && v.gather.hw ? 'Отряд собирается у портала - пиши «портал»' : v.k === 'gather' || v.gather ? 'Стример собирает отряд' : 'Отряд на карте - стример выбирает, куда идти';
     const me = p === 'in' ? 'Ты в отряде - жди следующего места: кнопки появятся здесь' : p === 'q' ? 'Вступишь, когда отряд остановится' : p === 'ghost' ? 'Твой герой - призрак: в поход - после воскрешения' : 'Ты не в отряде - нажми «вступить в поход?» сверху или напиши «поход»';
     return `<div class="q-stage"><b>${esc(KIND_RU[v.k] || 'Поход')}</b><span>${esc(t)}</span></div>${g}<p class="muted ql-hint">${esc(me)}</p>`;
   }

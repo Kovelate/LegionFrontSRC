@@ -71,7 +71,7 @@
     let hw = null;
     try { hw = D && D.part ? D.part('enemies-hollow', {}) : null; } catch (e) { hw = null; }
     try { if (!hw) { const f = D && D.locations && D.locations.legion && D.locations.legion['enemies-hollow']; hw = f ? f({}) : null; } } catch (e) { hw = null; }
-    if (hw) own = Object.assign({}, own || {}, hw);   // все ключи hw_* — с обычными не пересекаются
+    if (hw) { const c0 = own && own.css; own = Object.assign({}, own || {}, hw); own.css = [c0, hw.css].filter((x) => typeof x === 'string' && x).join('\n'); }   // все ключи hw_* — с обычными не пересекаются; HW: 27.10 — css приёмов Изнанки склеиваем со стилем
     // 22.10: монстры данжей — свой файл стиля enemies-dungeon, иначе «Легион» (styles/legion/enemies-dungeon.js); ключи dg_* (стаи) и dgb_* (боссы, PR #49), css — склеиваем
     let dg = null;
     try { dg = D && D.part ? D.part('enemies-dungeon', {}) : null; } catch (e) { dg = null; }
