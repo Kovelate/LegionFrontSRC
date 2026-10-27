@@ -6,9 +6,9 @@ FILES_LIST="files.link"                     # Файл со списком сс�
 
 INTERVAL_NORMAL=600                         # Обычный интервал (10 минут)
 INTERVAL_ERROR=2400                         # Интервал при ошибке (40 минут)
-
-LAST_VERSION_FILE=".last_version"           # Файл для хранения версии
 CURRENT_INTERVAL=$INTERVAL_NORMAL           # Текущий интервал (по умолчанию обычный)
+
+LAST_VERSION_FILE="last_version"            # Файл для хранения последней версии
 
 echo "Запуск мониторинга версий..."
 echo ""

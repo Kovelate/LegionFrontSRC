@@ -1648,7 +1648,8 @@
   // рисунок полок с ценами в монетах (кому покупки за монеты открыты); иначе — баллы, как на стриме
   function shopView(id, st) {
     if (!st || !csOn()) return st;
-    const h = X.hero(), conv = (it) => { if (lockedHere(it)) return { ...it, priceText: '🔒' }; const c = coinsFor(it, h); return c ? { ...it, price: c, priceText: shortMoney(c) } : it; };
+    const h = X.hero(), conv = (it) => { if (it && it.out) return { ...it, priceText: 'Закончились' };   // 27.10: звёзды и сферы закончились (enchantMatsOut)
+      if (lockedHere(it)) return { ...it, priceText: '🔒' }; const c = coinsFor(it, h); return c ? { ...it, price: c, priceText: shortMoney(c) } : it; };
     const L2 = (a) => (a || []).map(conv);
     return { ...st, stands: (st.stands || []).map((x) => ({ ...x, top: L2(x.top), mid: L2(x.mid), case: L2(x.case) })), shelf1: L2(st.shelf1), shelf2: L2(st.shelf2), case: L2(st.case), mats: L2(st.mats), amulets: L2(st.amulets) };
   }
