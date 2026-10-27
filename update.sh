@@ -57,6 +57,10 @@ while true; do
                     git add .
                     git commit -m "Update to version $CURRENT_VERSION ($COMMIT_DATE)"
                     
+                    # 5. Пушим на сервер
+                    echo "Отправка изменений на сервер"
+                    git push origin main
+                    
                     # Возвращаем обычный интервал, если до этого была ошибка
                     CURRENT_INTERVAL=$INTERVAL_NORMAL
                     echo "Обновление завершено. Ждем следующей проверки..."
