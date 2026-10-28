@@ -305,7 +305,7 @@
   /* ---------- мастер первого запуска стримера (часть 3): 5 шагов, можно пропустить, снова - «? Как играть» ---------- */
   const wizKey = () => 'lgWiz:' + (ownLogin() || curLogin());
   const wizSeen = () => ls.get(wizKey()) === '1';
-  const W = { m: null, step: 0, style: null, styleSel: '', mode: 'self', busy: false };
+  const W = { m: null, step: 0, style: null, styleSel: '', mode: 'self', busy: false, saved: '', err: '' };
   const STEPS = ['Что за игра', 'Окно игры', 'Пульт', 'Стиль канала', 'Что дальше'];
   const myLink = () => `${location.origin}/c/${encodeURIComponent(ownLogin() || curLogin())}/`;
   const descText = () => `Играю со зрителями в «Поход Легиона»: твой герой, вещи и город - ${myLink()} . На стриме напиши в чат «поход» - и ты в отряде.`;
@@ -313,7 +313,7 @@
   function wizOpenImpl(step) {
     if (W.m) W.m.close();
     W.m = modal('wz-main', 'Как играть - мастер стримера');
-    W.step = Math.max(0, Math.min(STEPS.length - 1, step || 0));
+    W.step = Math.max(0, Math.min(STEPS.length - 1, step || 0)); W.saved = ''; W.err = '';
     W.m.box.addEventListener('click', wizClick);
     W.m.box.addEventListener('wz-esc', () => wizEnd(false));
     wizRender();
@@ -347,9 +347,12 @@
         const st = W.style, L = st && st.lock;
         if (!st) return `<h2>Стиль канала</h2><p class="wz-t">Загружаем стили…</p>`;
         const name = (id) => ((st.styles || []).find((x) => x.id === id) || {}).name || id;
-        if (L && !L.canChange && !st.admin) return `<h2>Стиль канала</h2>
-          <p class="wz-t">Стиль канала - <b>${esc(name(st.active))}</b>. ${L.changed ? 'Смена стиля уже использована.' : 'Сменить его можно будет один раз - после победы над Закхуэлем (конец пролога).'}</p>
-          <p class="wz-note">Свой стиль герой может получить Печатью Метаморфозы - она падает с Закхуэля.</p>`;
+        const bn = st.bn || { g: 'Закхуэля', i: 'Закхуэлем' };   // 28.10: имя босса Пролога канала (сервер, /api/style)
+        // 28.10 (fix/style-live): стиль сохранён - явное подтверждение с превью (человечек в этом стиле); замок - тот же вид
+        if (W.saved || (L && !L.canChange && !st.admin)) return `<h2>Стиль канала</h2>
+          ${styleCard(st.active, name(st.active))}
+          <p class="wz-t">${W.saved ? 'Оверлей, окно игры и сайт у зрителей перерисуются сами - перезагружать ничего не нужно.' : ''} ${L && L.changed ? 'Смена стиля уже использована.' : `Сменить его можно будет один раз - после победы над ${bn.i} (конец пролога).`}</p>
+          <p class="wz-note">Свой стиль герой может получить Печатью Метаморфозы - она падает с ${bn.g}.</p>`;
         return `<h2>Стиль канала</h2>
           <p class="wz-t">Стиль меняет героев зрителей и стартовый лагерь. Враги, боссы и города мира - общие для всех.</p>
           <div class="wz-seg" role="radiogroup" aria-label="Кто выбирает">
@@ -357,7 +360,8 @@
             <button type="button" role="radio" data-mode="chat" aria-checked="${W.mode === 'chat'}">Выбрать со зрителями</button></div>
           <div class="wz-pickbox"${W.mode === 'chat' ? ' hidden' : ''}></div>
           ${W.mode === 'chat' ? '<p class="wz-t">После «Начать сюжет» первым будет опрос чата за стиль. Пока опроса нет - стиль «Легион».</p>' : ''}
-          <p class="wz-warn">⚠ ${L && L.once ? 'Это твоя единственная смена стиля - потом стиль закроется насовсем.' : 'Сменить стиль потом можно только один раз - после победы над Закхуэлем (конец пролога).'}</p>
+          <p class="wz-warn">⚠ ${L && L.once ? 'Это твоя единственная смена стиля - потом стиль закроется насовсем.' : `Сменить стиль потом можно только один раз - после победы над ${bn.i} (конец пролога).`}</p>
+          ${W.err ? `<p class="wz-err" role="alert">${esc(W.err)}</p>` : ''}
           <div class="wz-row"><button type="button" class="btn primary" data-stylesave ${W.busy ? 'disabled' : ''}>${W.mode === 'chat' ? 'Выбирать будет чат' : `Выбрать «${esc(name(W.styleSel || 'legion'))}»`}</button></div>`;
       }
       default: return `<h2>Что дальше</h2>
@@ -381,14 +385,36 @@
     if (pb && !pb.hidden) pb.appendChild(pickFrame(W.styleSel || 'legion', (id) => { if (!id) return; W.styleSel = id; const b = W.m && W.m.box.querySelector('[data-stylesave]'); if (b) { const st = W.style; b.textContent = `Выбрать «${((st && st.styles) || []).find((x) => x.id === id)?.name || id}»`; } }));
     setTimeout(() => { try { const f = W.m && (W.m.box.querySelector('[data-next], [data-done]')); if (f) f.focus({ preventScroll: true }); } catch {} }, 0);
   }
+  // 28.10 (fix/style-live): карточка «Стиль канала - X» с человечком в этом стиле (сайт уже перерисован в стиль канала - window.LG.restyle)
+  function styleCard(id, nm) {
+    let pic = '';
+    try { const D = window.MDDoodle; if (D && D.active === id) pic = D.jDoodle(D.jhash('wz:' + (ownLogin() || curLogin())), ''); } catch { pic = ''; }
+    return `<div class="wz-stok" role="status" data-style-ok="${esc(id)}"><div class="wz-stpic" aria-hidden="true">${pic}</div><div><b>Стиль канала - ${esc(nm)}</b><span>Герои зрителей, лагерь «Перепутье» и оверлей - в этом стиле.</span></div></div>`;
+  }
+  // почему не сохранилось - понятными словами (замок, нет прав, нет связи), а не тихий откат
+  const STYLE_ERR = { roles_closed: 'режим стримера этого канала тебе пока закрыт (нет прав)', streamer_only: 'стиль меняет только стример - владелец этого канала (нет прав)', login_required: 'ты не вошёл - войди через Twitch и повтори', rate_limited: 'слишком часто - подожди минуту и повтори', no_channel: 'канал не найден', bad_origin: 'страница открыта не с адреса сайта - обнови её и повтори' };
+  function styleErr(r) {
+    const e = String((r && r.error) || '');
+    if (!r || /нет связи/i.test(e)) return 'Стиль не сохранён: нет связи с сайтом. Проверь интернет и нажми ещё раз.';
+    if (STYLE_ERR[e]) return `Стиль не сохранён: ${STYLE_ERR[e]}.`;
+    if (r.lock || /закрыт|использована|уже выбран/i.test(e)) return `Стиль не сохранён - замок стиля: ${e}.`;
+    return `Стиль не сохранён: ${e || 'неизвестная ошибка'}.`;
+  }
   async function styleSave() {
     const st = W.style; if (!st || W.busy) return;
-    W.busy = true; wizRender();
+    W.busy = true; W.err = ''; wizRender();
     const body = W.mode === 'chat' ? { vote: true } : { id: W.styleSel || 'legion', ...(st.lock && st.lock.once ? { confirm: true } : {}) };
     const r = await H.api('/api/style', body);
     W.busy = false;
-    if (r && r.ok) { W.style = { ...st, ...r }; H.toast(W.mode === 'chat' ? 'Стиль выберет чат после «Начать сюжет»' : 'Стиль канала выбран - оверлей перезагрузится сам'); W.step = 4; }
-    else H.toast((r && r.error) || 'Не сохранено', true);
+    if (r && r.ok) {
+      W.style = { ...st, ...r };
+      if (W.mode === 'chat') { H.toast('Стиль выберет чат после «Начать сюжет»'); W.step = 4; wizRender(); return; }
+      // сайт - сразу в новом стиле (остальным страницам и оверлею - событием сервера), потом подтверждение с превью
+      W.saved = r.active || body.id;
+      try { if (window.LG && window.LG.restyle) await window.LG.restyle(W.saved); } catch {}
+      try { if (H.styleLine) H.styleLine(); } catch {}
+    } else W.err = r && r.confirm ? 'Смена стиля - одна: нажми ещё раз, чтобы подтвердить.' : styleErr(r);
+    if (r && r.confirm) W.style = { ...st, lock: { ...(st.lock || {}), once: true } };
     wizRender();
   }
   function wizClick(e) {
@@ -476,6 +502,8 @@
     wizT = setTimeout(() => { wizT = 0; if (H.curTab() === 'streamer' && !W.m && !TR && !wizSeen()) wizOpen(0); }, 600);
   }
 
+  // стиль канала сменился (событие сервера «style» - сайт перерисован): подтверждение в мастере - с человечком уже в новом стиле
+  document.addEventListener('lg-style', () => { if (W.m && W.step === 3 && W.saved) wizRender(); });
   window.LGStart = {
     init(h) { H = h; },
     sync() { swRender(); markOpen(); if (F.el) findRender(); wizMaybe(); },

@@ -13,6 +13,9 @@
   let adj = 0; try { adj = Math.max(-10, Math.min(30, +localStorage.getItem(ADJ) || 0)); } catch (e) { adj = 0; }
   const esc = (s) => (X ? X.esc(s) : String(s ?? ''));
   const now = () => (X ? X.now() : Date.now());
+  // 28.10 (prologue-boss-name): имя босса Пролога канала в падежах (questlive: bn; нет - «Закхуэль», канал zakvielchannel)
+  const BNZ = { n: 'Закхуэль', g: 'Закхуэля', d: 'Закхуэлю', a: 'Закхуэля', i: 'Закхуэлем', p: 'Закхуэле' };
+  const bn = () => (NEW && NEW.bn) || (CUR && CUR.bn) || BNZ;
   // 28.10 (стример: «слово ПРИГНИСЬ на вкладке появляется, когда на оверлее время уже вышло»): задержка стрима нужна зрителю - он видит
   // эфир с опозданием. Сам стример видит оверлей вживую: на его канале задержки нет (только своя подстройка)
   const isOwner = () => { try { const me = X && X.login ? X.login() : '', ch = String((window.LG_CH && window.LG_CH.login) || '').toLowerCase(); return !!me && me === ch; } catch (e) { return false; } };
@@ -176,6 +179,7 @@
   function bannerHtml(v) {
     if (!v || !v.on) return '';
     const head = (icon, t, right) => `<div class="qb-h">${svgI(icon)}<b>${t}</b>${right ? `<span class="qb-r">${right}</span>` : ''}</div>`;
+    if (v.nb) return head('clock', 'В отряд никто не присоединился :(');   // 28.10 (empty-party)
     if (v.b && !(v.b.gb && v.bg)) {   // 25.10: генерированный босс с видом механики (bg) - плашка босса ниже
       const b = v.b, m = meIn(b), stage = b.st === 'party' ? `ход отряда · <span data-until="${b.until}"></span> с` : b.st === 'tele' ? `ход врага · <span data-until="${b.until}"></span> с` : b.st === 'end' ? 'бой окончен' : 'удары';
       let line = '';
@@ -190,7 +194,7 @@
     if (v.lair && v.lair.is) {
       const I = v.lair.is, my = (I.at && I.at.my) || (I.pick && I.pick.my) || 0;
       const t = I.pick ? `выбор острова · <span data-until="${I.pick.until}"></span> с` : I.doom ? `какой остров уничтожить · <span data-until="${I.doom.until}"></span> с` : 'острова';
-      return head('isle', 'Закхуэль · острова', t) + `<div class="qb-b">${heroThumb()}<div class="qb-m"><div>${my ? `ты на острове ${my}` : I.pick ? '<b class="urge">Пиши номер острова: 1–4</b>' : 'ты не на острове'}</div>${hpBar(v.lair.hp)}</div>${svgI('right', 'go')}</div>`;
+      return head('isle', `${bn().n} · острова`, t) + `<div class="qb-b">${heroThumb()}<div class="qb-m"><div>${my ? `ты на острове ${my}` : I.pick ? '<b class="urge">Пиши номер острова: 1–4</b>' : 'ты не на острове'}</div>${hpBar(v.lair.hp)}</div>${svgI('right', 'go')}</div>`;
     }
     if (v.bg) {   // 25.10: бой с генерированным боссом - механика и что писать
       const g = v.bg, M = g.mech;
@@ -246,10 +250,11 @@
   /* ---------- вкладка ---------- */
   function tabHtml(v) {
     if (!v || !v.on) return '<p class="empty">Похода сейчас нет. Как только стример поведёт отряд — здесь будет видно, где твой герой и что писать в чат.</p>';
+    if (v.nb) return '<section class="q-card"><p class="q-big">В отряд никто не присоединился :(</p><p class="muted">Отряд возвращается в город. Стример объявит новый сбор - пиши «поход» в чат.</p></section>';   // 28.10 (empty-party): сбор кончился, в отряде никого
     if (qaOn()) return '';   // 26.10 (стример): тестерам кнопок - раскладка по схеме (layPaint); остальным - как было
     // 26.10 (стример): своё участие - значком у заголовка (зелёный «в отряде», красный «не в отряде», жёлтый «вступишь на остановке» - написал «поход», пока отряд в пути: вступит на ближайшей остановке, серый «призрак»)
     const pp = partyOf(v), pb = pp === 'in' ? ['in', 'в отряде'] : pp === 'q' ? ['q', 'вступишь на остановке'] : pp === 'ghost' ? ['gh', 'призрак'] : ['out', 'не в отряде'];
-    const top = `<div class="q-top"><div><h2>${esc(v.b ? `Бой · ${v.b.title || v.t}` : v.lair ? 'Логово Закхуэля' : v.tr ? `${v.tr.icon || ''} ${v.tr.name}` : `${KIND_RU[v.k] || 'Поход'}${v.t ? ' · ' + v.t : ''}`)} <span class="q-pt ${pb[0]}" role="status">${pb[1]}</span></h2><p class="muted">${esc([v.ter, v.roll && v.roll.n ? `бросок ${v.roll.by}: ${v.roll.n}` : '', v.n ? `отряд ${v.n}` : ''].filter(Boolean).join(' · '))}</p>${v.dg ? `<p class="q-dg">⚠ ${esc(v.dg)}</p>` : ''}${lwHtml(v, 'q-dg')}</div>`
+    const top = `<div class="q-top"><div><h2>${esc(v.b ? `Бой · ${v.b.title || v.t}` : v.lair ? `Логово ${bn().g}` : v.tr ? `${v.tr.icon || ''} ${v.tr.name}` : `${KIND_RU[v.k] || 'Поход'}${v.t ? ' · ' + v.t : ''}`)} <span class="q-pt ${pb[0]}" role="status">${pb[1]}</span></h2><p class="muted">${esc([v.ter, v.roll && v.roll.n ? `бросок ${v.roll.by}: ${v.roll.n}` : '', v.n ? `отряд ${v.n}` : ''].filter(Boolean).join(' · '))}</p>${v.dg ? `<p class="q-dg">⚠ ${esc(v.dg)}</p>` : ''}${lwHtml(v, 'q-dg')}</div>`
       + `<div class="q-sync"><button type="button" class="q-dl" aria-expanded="false">${svgI('clock')}как на стриме · ${delayS(v)} с</button><div class="q-dlp" hidden><p>Сайт показывает бой с задержкой твоего стрима. Обгоняет стрим — прибавь, отстаёт — убавь.</p><div class="q-dlb"><button type="button" data-adj="-1" aria-label="Меньше на секунду">−</button><b>${delayS(v)} с</b><button type="button" data-adj="1" aria-label="Больше на секунду">+</button><button type="button" data-adj="0">как у стримера</button></div></div></div></div>`;
     // 23.10: отряд в округе ★1–2 — первая остановка — город округа: участнику отряда (кому открыты города) — кнопка входа
     const h0 = X.hero(), tw = v.town && h0 && h0.cy && h0.tw && X.openTown ? `<p class="q-town"><button type="button" class="btn primary" data-qtown="${esc(v.town.id)}">🏘 Войти в город «${esc(v.town.name)}»</button></p>` : '';
@@ -393,7 +398,7 @@
   function lairWords(v) {
     const X0 = v.lair; if (!X0 || !qaOn()) return '';
     let h = '';
-    if (X0.tele) h += `<section class="q-card q-urge"><p class="q-big">Закхуэль атакует!</p><p class="muted">${X0.tele.got} из ${X0.tele.need} нужных</p>${X0.tele.ok ? `<p class="qa-st ok">${svgI('check', 'ok')} слово принято</p>` : `<div class="q-ncw"><span>Напечатай в строке внизу:</span>${wd(X0.tele.word, 'big')}</div>`}</section>`;
+    if (X0.tele) h += `<section class="q-card q-urge"><p class="q-big">${bn().n} атакует!</p><p class="muted">${X0.tele.got} из ${X0.tele.need} нужных</p>${X0.tele.ok ? `<p class="qa-st ok">${svgI('check', 'ok')} слово принято</p>` : `<div class="q-ncw"><span>Напечатай в строке внизу:</span>${wd(X0.tele.word, 'big')}</div>`}</section>`;
     if (X0.spell) h += `<section class="q-card"><p><b>Сорви заклинание</b> - повтори фразу целиком${X0.spell.until ? ` · <span data-until="${X0.spell.until}"></span> с` : ''}</p><div class="q-ncw">${X0.spell.words.map((w) => wd(w)).join(' ')}</div></section>`;
     if (X0.mass) h += `<section class="q-card"><p><b>Общее заклинание</b> - повтори фразу</p><div class="q-ncw">${X0.mass.words.map((w) => wd(w)).join(' ')}</div></section>`;
     if (X0.deal) h += `<section class="q-card"><p>Сделка с демоном: половина здоровья за монеты. Согласен - напечатай ${wd('сделка', 'sm')}</p></section>`;
@@ -401,7 +406,7 @@
   }
   function lairHtml(v) {
     const X0 = v.lair;
-    const st = X0.st === 'party' ? 'Ход отряда' : X0.st === 'boss' || X0.st === 'tele' ? 'Ход Закхуэля' : X0.st === 'end' ? 'Бой окончен' : 'Логово';
+    const st = X0.st === 'party' ? 'Ход отряда' : X0.st === 'boss' || X0.st === 'tele' ? `Ход ${bn().g}` : X0.st === 'end' ? 'Бой окончен' : 'Логово';
     return `<div class="q-stage ${X0.st === 'party' ? 'party' : ''}"><b>${st}</b><span>фаза ${X0.phase || 1}${X0.round ? ` · раунд ${X0.round}` : ''}</span></div>`
       + `<section class="q-card"><p>${X0.hp == null ? 'Ты не в этом бою' : X0.hp > 0 ? (X0.acted ? `${svgI('check', 'ok')} ход принят` : X0.st === 'party' ? 'Твой ход - кнопки выше или строкой' : 'Твой герой в бою') : 'Твой герой пал'}</p>${X0.hp != null ? hpBar(X0.hp) : ''}</section>` + lairWords(v);
   }
@@ -1381,7 +1386,7 @@
     + '<section class="q-card ql-inv" aria-label="Сумка"><div data-ql="ih"></div><div class="ql-bag" data-qlp="bag"></div><div data-ql="bagf"></div></section></div>'
     + '</div>';
   const libOn = () => !!(window.LGInventory && X.invMount && X.invData);
-  function layTitle(v) { return v.b ? `Бой · ${v.b.title || v.t}` : v.lair ? 'Логово Закхуэля' : v.tr ? `${v.tr.icon || ''} ${v.tr.name}` : `${KIND_RU[v.k] || 'Поход'}${v.t ? ' · ' + v.t : ''}`; }
+  function layTitle(v) { return v.b ? `Бой · ${v.b.title || v.t}` : v.lair ? `Логово ${bn().g}` : v.tr ? `${v.tr.icon || ''} ${v.tr.name}` : `${KIND_RU[v.k] || 'Поход'}${v.t ? ' · ' + v.t : ''}`; }
   // шапка: место и значок участия; мелко - «Всего в отряде: N», местность, бросок; справа - покинуть / вступить и «как на стриме»
   function layTop(v) {
     const pp = partyOf(v), pb = pp === 'in' ? ['in', 'в отряде'] : pp === 'q' ? ['q', 'вступишь на остановке'] : pp === 'ghost' ? ['gh', 'призрак'] : ['out', 'не в отряде'];
@@ -1613,7 +1618,7 @@
     else if (v.ev) { art = skEvent(v.ev, v); what = v.ev.name; }
     else if (v.pz) { art = skPuzzle(v.pz, v); what = v.pz.name; }   // 28.10 (map-puzzles)
     else if (v.sh && v.sh.items && v.sh.items.length) { art = skShop(v); what = 'лавка'; }
-    else if (v.lair) { art = skLair(v); what = 'логово Закхуэля'; }
+    else if (v.lair) { art = skLair(v); what = `логово ${bn().g}`; }
     else if (v.k === 'rest') { art = skRest(v); what = 'привал'; }
     else if (v.loot) { art = skGround() + `<rect class="sk-gold" x="170" y="120" width="60" height="44" rx="6"/><path class="sk-l" d="M170 138h60"/>` + skParty(v, 40, 360, SKG - 2, 0.8, 12) + skT(200, 90, v.loot.name, 'sk-tm'); what = 'делёж вещи'; }
     else if (v.k === 'town') { art = skGround() + [60, 150, 240, 320].map((x, i) => `<rect class="sk-s" x="${x}" y="${120 - i % 2 * 20}" width="60" height="${76 + i % 2 * 20}"/><path class="sk-m" d="M${x - 6} ${120 - i % 2 * 20}L${x + 30} ${84 - i % 2 * 20} ${x + 66} ${120 - i % 2 * 20}Z"/>`).join(''); what = 'город'; }
@@ -1633,7 +1638,7 @@
     if (bar) { if (bh !== keyBar) { keyBar = bh; bar.innerHTML = bh ? `<button type="button" class="q-bar">${bh}</button>` : ''; bar.hidden = !bh; ncPaint(bar); const btn = bar.querySelector('button'); if (btn) btn.onclick = () => X.tab('quest'); clocks(); } }
     if (!el || !shown) return;
     qaBind(el); qaSeen(NEW);   // 25.10: кнопки похода — обработчик один на вкладку; «принято» по самому бою
-    if (v && v.on && qaOn()) { layPaint(el, v); return; }   // 26.10 (стример): тестерам кнопок - раскладка по схеме
+    if (v && v.on && qaOn() && !v.nb) { layPaint(el, v); return; }   // 26.10 (стример): тестерам кнопок - раскладка по схеме
     if (QL.wrap) { layDrop(el); keyTab = ''; }
     let th = tabHtml(v);
     if (v && v.on && qaOn() && !th.includes('class="q-card qa-hero"')) th += qaHero(v);   // 26.10 (п. 35): персонаж - на вкладке всегда

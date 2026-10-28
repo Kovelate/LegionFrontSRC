@@ -279,6 +279,7 @@
   /* 26.10 (art/camp): лагерь «Перепутье» - та же сборка, что у города округа (куски фона, предметы по глубине, Pixi), рисунок - по стилю
      канала (campart.js). Магической лавки и шахты в лагере нет. */
   function buildCamp(root, gl, st, L) {
+    Object.assign(TOWN.L, campName());   // 28.10 (fix/style-live): стиль канала сменили на лету - и название лагеря по новому стилю
     const TL = TOWN.L, A = window.LGCampArt.draw(TL, st, { guy: smithGuy, name: campName() });
     WD = { W: TL.W, H: TL.H, QW: 0, AREA: TL.AREA, BUILDINGS: TL.BUILDINGS, town: TL };
     const map = window.LGCampMap.map(TL), sky = A.sky;

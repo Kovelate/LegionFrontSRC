@@ -55,20 +55,12 @@
   /* ---------- стиль человечков: сайт берёт из него цвета обводки, названия вещей, ролей, характеристик и монет ---------- */
   // 19.10: в доке OBS сборки человечков нет — стиль канала из LG_STYLES (первый — стиль канала)
   const sty = () => { try { return (D() && D().active) || (window.LG_STYLES && window.LG_STYLES[0]) || 'legion'; } catch { return 'legion'; } };
-  const SKIN = { legion: 'forge', cats: 'den', monkeys: 'rage', ugabugi: 'rage' };  // 22.10: Уга-Буги — то же оформление камня и дерева, что у Обезьян   // оформление сайта для каждого стиля (выбирает стример)
+  // 28.10: оформление сайта для каждого стиля - одна таблица с сервером (packages/site-ui: STYLE_SKIN, skinOf; нет стиля - «Арсенал»)
   const names = () => { try { return (D().names || {})[sty()] || {}; } catch { return {}; } };
   const partCache = {};
   function part(n) { const k = sty() + ':' + n; if (!(k in partCache)) { try { partCache[k] = D().part(n) || null; } catch { partCache[k] = null; } } return partCache[k]; }
-  const GROUPS = {
-    cats: { mage: 'Коты-колдуны', heal: 'Мурлыки-жрецы', phys: 'Котоармия и рогаточники', recruit: 'Котята' },
-    monkeys: { mage: 'Шаманы', heal: 'Жрецы банана', phys: 'Громилы и плевуны', recruit: 'Мартышки' },
-    ugabugi: { mage: 'Шаманы и колдуны костей', heal: 'Знахари', phys: 'Громилы и охотники', recruit: 'Юнцы' },
-  };
-  const COPY = {
-    cats: { bag: 'Корзинка', empty: 'Корзинка пуста. Вещи добываются в Походе и покупаются на Ярмарке.', on: 'Мур! Надето', off: 'Снято', none: 'Выбери вещь в корзинке или на котике' },
-    ugabugi: { bag: 'Мешок из шкуры', empty: 'Мешок пуст. Вещи добываются в Походе и выменяются на Ярмарке.', on: 'Уга! Надето', off: 'Снято', none: 'Выбери вещь в мешке или на пещерном человеке' },
-  };
-  const word = (k, fb) => ((COPY[sty()] || {})[k]) || fb;
+  // 28.10: тексты сайта в голосе стиля (группы Легиона, сумка, кнопки) - packages/site-ui STYLE_TEXT, у всех 7 стилей
+  const word = (k, fb) => SU.styleText(sty(), 'copy', k) || fb;
   const nameOf = (it) => { const n = names().items; return (n && n[it.id] && n[it.id].name) || it.baseName || it.name; };
   // 18.10: у «Легиона» нет names.json — его названия исходные (baseName с сервера, роли — как в Легионере)
   const ROLE_BASE = GD.roleNames();
@@ -76,7 +68,7 @@
   const stLabel = (k) => { const h = part('hero'), l = h && h.stats && h.stats[k] && h.stats[k].label; const t = l ? String(l).replace(/^[^\p{L}]+/u, '').trim() : ''; return t || ST[k] || XST[k] || k; };
   function applyStyle() {
     const root = document.documentElement; root.dataset.style = sty();
-    if (!DEMO) root.dataset.skin = SKIN[sty()] || 'poster';
+    if (!DEMO) root.dataset.skin = SU.skinOf(sty());
     let e = document.getElementById('dd-css'); if (!e) { e = document.createElement('style'); e.id = 'dd-css'; document.head.appendChild(e); }
     try { e.textContent = (D() && D().style && D().style.css) || ''; } catch { e.textContent = ''; }
   }
@@ -308,19 +300,57 @@
     if (!smSecs().some((x) => x.id === SM.cur)) { smShow(''); if (gone) toast(`Раздел «${gone}» закрыл администратор игры`); }
   }
   // стиль канала: оформление сайта и пультов во фреймах меняем на месте (атрибуты), человечков сайта — новой сборкой стилей
-  function smRestyle(st) {
-    const skin = SKIN[st] || 'poster', root = document.documentElement;
+  function smRestyle(st) { siteRestyle(st); }
+  /* 28.10 (fix/style-live): стиль канала сменили (мастер, «Настройки игры», пульт) - сервер шлёт событие «style» всем открытым страницам
+     сайта канала (и зрителям, и стримеру не в режиме стримера). Оформление - на месте, человечки - новой сборкой стилей сайта
+     (/doodle.js - стиль канала), потом перерисовать сайт и открытые «Город» / «Поход». Без перезагрузки страницы. → Promise */
+  let restyleP = null, restyleTo = '';
+  function siteRestyle(st) {
+    if (!/^[\w-]{1,30}$/.test(String(st || '')) || DEMO) return Promise.resolve(false);
+    if (restyleTo === st && restyleP) return restyleP;
+    const skin = SU.skinOf(st), root = document.documentElement;
     root.dataset.style = st; if (!DEMO) root.dataset.skin = skin;
     for (const b of Object.values(SM.frames)) { try { b.querySelector('iframe').contentDocument.documentElement.setAttribute('data-skin', skin); } catch {} }
-    if (DOCK) return;   // в доке человечков нет
+    if (SM.data) SM.data.style = st;
+    try { localStorage.removeItem('lgStyle'); } catch {}   // временный выбор стиля зрителя - стиль канала важнее
+    if (DOCK) return Promise.resolve(true);   // в доке человечков нет
     const have = () => { try { return !!(D() && D().styles && D().styles[st]); } catch { return false; } };
-    // перерисовать только сайт (героя, Легион, журнал) — режим стримера с его фреймами не трогаем
-    const redraw = () => { if (!have()) return; try { D().use(st); } catch {} window.LG.rerender(true); };   // сборки нет — оформление уже сменено, человечки прежние
-    if (have()) { redraw(); return; }
-    const sc = document.createElement('script');
-    sc.src = (window.LG_BASE || '') + '/doodle.js?v=' + Date.now();
-    sc.onload = sc.onerror = redraw;
-    document.head.appendChild(sc);
+    const redraw = () => {
+      restyleP = null; restyleTo = '';
+      if (!have()) return false;   // сборки нет — оформление уже сменено, человечки прежние
+      try { D().use(st); } catch {}
+      window.LG.rerender(true);
+      // открытые «Город» и «Поход» - заново в новом стиле (city.js сам пересобирает город, если стиль другой)
+      if ($('#tab-city').classList.contains('on')) { try { if (window.LGCity) window.LGCity.close(); } catch {} openCity(); }
+      if ($('#tab-quest') && $('#tab-quest').classList.contains('on')) { questTab(false); questTab(true); }
+      smStyleLine();
+      try { document.dispatchEvent(new CustomEvent('lg-style', { detail: { style: st } })); } catch {}
+      return true;
+    };
+    if (have()) return Promise.resolve(redraw());
+    restyleTo = st;
+    restyleP = new Promise((ok) => {
+      const sc = document.createElement('script');
+      sc.src = (window.LG_BASE || '') + '/doodle.js?v=' + Date.now();
+      sc.onload = sc.onerror = () => ok(redraw());
+      document.head.appendChild(sc);
+    });
+    return restyleP;
+  }
+  // 28.10 (fix/style-live): режим стримера - строка «Стиль канала: X» и что с замком (выбрать / закрыт до победы над Закхуэлем / смена)
+  function smStyleLine() {
+    const el = $('#smStyle'); if (!el) return;
+    api('/api/style').then((r) => {
+      if (!r || !r.ok) { el.hidden = true; return; }
+      const L = r.lock || {}, nm = ((r.styles || []).find((x) => x.id === r.active) || {}).name || r.active;
+      const why = L.vote ? 'выберет чат после «Начать сюжет»' : !L.chosen ? 'можно выбрать: «? Как играть» → «Стиль канала»' : L.changed ? 'смена стиля использована' : L.once ? 'одна смена доступна' : 'закрыт до победы над Закхуэлем';
+      el.innerHTML = `Стиль канала: <b>${esc(nm)}</b> · ${esc(why)}`; el.dataset.style = r.active; el.hidden = false;
+    });
+  }
+  function styleEvent(st) {
+    if (!st || st === sty()) return;
+    const nm = (() => { try { return (D().styles[st] && D().styles[st].name) || ''; } catch { return ''; } })();
+    siteRestyle(st).then(() => { const n = nm || (() => { try { return D().styles[st].name || st; } catch { return st; } })(); toast(`Стиль канала сменился: «${n}»`); });
   }
   // Комната перезапустилась с другим набором модулей (пульт во фрейме сообщает «stale» или пришло «sm» mods): страницы пульта
   // платформы другие, но посреди работы фрейм не перезагружаем — только когда стример уйдёт с него (другой раздел)
@@ -371,6 +401,7 @@
         <button type="button" class="sm-curv" tabindex="-1" aria-hidden="true"></button>
         <div class="sm-list" id="smList">
           <nav class="sm-switch" aria-label="Пульт"><span aria-current="page">Поход Легиона</span><a href="${esc(smMd())}" title="Донаты, виджеты, мини-игры, OBS и сцена">MultiDonate</a></nav>
+          <p class="sm-style" id="smStyle" aria-live="polite" hidden></p>
           <a class="sm-rd" id="smRd" href="${esc(smMd('ready'))}"></a>
           <button type="button" class="btn ghost sm sm-dock sm-donwin" id="smDonWin" title="Отдельное окно браузера: лента донатов, алерты и музыка (как окно «Донаты» на ПК)">Открыть окно последних донатов</button>
           <nav class="filters sm-nav" aria-label="Разделы пульта"></nav>
@@ -378,7 +409,7 @@
           ${!DOCK && ME && ME.roleSw ? '<button type="button" class="btn ghost sm sm-dock" id="smHelp" title="Мастер стримера: игра, окно игры, пульт, стиль канала, ссылка для зрителей">? Как играть</button>' : ''}
         </div>
       </aside><div class="sm-body"></div><div class="sm-scrim" aria-hidden="true"></div></div>`;
-    smNav();
+    smNav(); smStyleLine();
     const d = $('#smDock');
     if (d) d.onclick = () => {
       const u = location.origin + SM.data.dock;
@@ -560,7 +591,7 @@
     const v = window.LG_STARTV || {};
     const add = (tag, attrs) => new Promise((ok, bad) => { const x = document.createElement(tag); Object.assign(x, attrs); x.onload = () => ok(); x.onerror = bad; document.head.appendChild(x); });
     START = Promise.all([add('link', { rel: 'stylesheet', href: '/site/start.css' + (v.css ? '?v=' + v.css : '') }), add('script', { src: '/site/start.js' + (v.js ? '?v=' + v.js : '') })])
-      .then(() => { if (window.LGStart) window.LGStart.init({ me: () => ME, tab, smOk, api, toast, ch: CH, curTab: () => { const t = $('.tab.on'); return t ? t.id.replace(/^tab-/, '') : ''; }, sm: () => SM.data, smShow, smFrame: (id) => { const b = SM.frames[id] || (SM.data && (SM.data.sections || []).some((x) => x.id === id && x.panel) ? SM.frames.panel : null); return b ? b.querySelector('iframe') : null; } }); })
+      .then(() => { if (window.LGStart) window.LGStart.init({ me: () => ME, tab, smOk, api, toast, styleLine: () => smStyleLine(), ch: CH, curTab: () => { const t = $('.tab.on'); return t ? t.id.replace(/^tab-/, '') : ''; }, sm: () => SM.data, smShow, smFrame: (id) => { const b = SM.frames[id] || (SM.data && (SM.data.sections || []).some((x) => x.id === id && x.panel) ? SM.frames.panel : null); return b ? b.querySelector('iframe') : null; } }); })
       .catch((e) => { START = null; throw e; });
     return START;
   }
@@ -1244,8 +1275,8 @@
       : it.slot === 'material' ? `<p class="note use"><span>Материал заточки. Выбери оружие или снаряжение и нажми «Заточка» — или на стриме в Кузне: <b class="cmd">точить 3 ${it.mat === 'seal' ? 'печать' : it.mat === 'star' ? 'звезда' : 'сфера'}</b>${it.mat === 'seal' ? `<br>Гарантирует успех до +${+it.seal || 5}. ${EN().craftN} печати ${+it.seal || 5} куются в печать ${(+it.seal || 5) + 1} — в окне заточки.` : ''}</span></p>`
       : edible(it) ? `<button type="button" class="btn primary wide" data-use="${esc(it.uids[0])}"${eatCd(it, h) ? ' disabled' : ''}>${eatVerb(it)}</button><p class="note use">` + `<span>${useCmd(it) ? `Или на стриме: <b class="cmd">${useCmd(it)}</b>` : ''}${eatCd(it, h) ? `<br><span class="eatcd-t">⏳ Еда и зелья будут готовы через <b data-eat="${cdUntil(it, h)}">${mmss(cdUntil(it, h))}</b></span>` : ''}</span></p>`
       : !it.wearable ? `<p class="note use"><span>${useCmd(it) ? `На стриме напиши в чат: <b class="cmd">${useCmd(it)}</b>` : 'Используется на стриме командой в чате.'}${eatCd(it, h) ? `<br><span class="eatcd-t">⏳ ${it.effect && it.effect.revive ? 'Свиток можно будет прочитать' : 'Еда и зелья будут готовы'} через <b data-eat="${cdUntil(it, h)}">${mmss(cdUntil(it, h))}</b></span>` : (it.slot === 'food' || it.slot === 'potion') ? '<br><span class="muted">Съел или выпил — вся еда и зелья ждут 3 минуты.</span>' : it.effect && it.effect.revive ? '<br><span class="muted">Свиток возрождения — не чаще раза в час.</span>' : ''}</span></p>`
-      : it.on ? `<button type="button" class="btn ghost wide" data-off="${it.slot}">Снять</button>`
-      : `<button type="button" class="btn primary wide" data-on="${esc(it.uids[0])}">${dv.c ? 'Заменить' : 'Надеть'}</button>`;
+      : it.on ? `<button type="button" class="btn ghost wide" data-off="${it.slot}">${word('take', 'Снять')}</button>`
+      : `<button type="button" class="btn primary wide" data-on="${esc(it.uids[0])}">${dv.c ? 'Заменить' : word('wear', 'Надеть')}</button>`;
     return `<button type="button" class="x" data-close aria-label="Закрыть">${ico('x')}</button>
       <div class="d-art" data-r="${esc(it.rarity)}">${lgx(it)}${art(it)}</div>
       <div class="d-h"><span class="rar" data-r="${esc(it.rarity)}">${RAR[it.rarity] || ''}</span><span class="muted">${SLOT[it.slot] || ''}</span>${it.on ? `<span class="on">${ico('check')}надето</span>` : ''}${it.qty ? `<span class="muted">${esc(oreQty(it.q))}</span>` : it.n > 1 ? `<span class="muted">×${it.n}</span>` : ''}</div>
@@ -1823,7 +1854,7 @@
     const lk = sty() + JSON.stringify(r); if (lk === legAt && el.querySelector('.legion')) return; legAt = lk;   // ничего не поменялось — 120 человечков не перерисовываем
     const T = r.total, tot = Math.max(1, T.heroes);
     const roleLines = (g) => g.roles.filter((k) => r.roles[k] && r.roles[k].n).map((k) => `${esc(roleOf(k, r.roles[k].name))} ${r.roles[k].n}`).join(' · ');
-    const gName = (g) => (GROUPS[sty()] || {})[g.id] || g.name;
+    const gName = (g) => SU.styleText(sty(), 'groups', g.id) || g.name;
     const roster = (r.roster || []);
     const byGroup = {}; for (const v of roster) (byGroup[GROUP_OF[v.role] || 'recruit'] = byGroup[GROUP_OF[v.role] || 'recruit'] || []).push(v);
     const fig = (v) => `<li class="rf${v.ghost ? ' gh' : ''}" title="${esc(v.name)} · ур. ${v.level}"><div class="rd">${doodle(v.login, { look: v.look, gear: v.gear, ghost: v.ghost }, 'stern')}</div><span class="rn">${esc(v.name)}${awb(v.aw)}</span><span class="rlv">${v.level}</span></li>`;
@@ -2367,6 +2398,7 @@
       ES.addEventListener('mine', (e) => { try { if (window.LGMine && window.LGMine.on) window.LGMine.onEvent(JSON.parse(e.data)); } catch {} });   // 23.10: шахта   // 20.10: «Город»
       ES.addEventListener('q', (e) => { try { const d = JSON.parse(e.data); questData(d, d.now); } catch {} });   // 22.10: вкладка «Поход»
     }
+    ES.addEventListener('style', (e) => { let d = {}; try { d = JSON.parse(e.data) || {}; } catch {} styleEvent(String(d.style || '')); });   // 28.10 (fix/style-live)
     ES.addEventListener('sm', (e) => { let d = {}; try { d = JSON.parse(e.data) || {}; } catch {} if ((d.why || []).includes('mods')) { smStale = true; smStaleCheck(); } smRefresh(true, d.style); smTell(d.why); });
     ES.onopen = () => { smEs = !!q; if (DOCK) esFails = 0; if (q && smOpen++ && SM.data) smRefresh(true); };   // переподключились — что-то могли пропустить
     ES.addEventListener('busy', () => { stopLive(); esFails = 99; });
@@ -2381,11 +2413,11 @@
   });
   const shownRes = new Set();
   mqWide.addEventListener && mqWide.addEventListener('change', () => { sheet = false; renderHero(); });
-  window.LG = { rerender: (keepSm) => { last = ''; INV.artReset(); applyStyle(); if (SM.data && !keepSm) { smDrop(); if ($('#tab-streamer').classList.contains('on')) openStreamer(); } load(); if ($('#tab-legion').classList.contains('on')) legOpen(); if (logOn()) { jAt = ''; loadLog(); } } };
+  window.LG = { restyle: (st) => siteRestyle(st), rerender: (keepSm) => { last = ''; INV.artReset(); applyStyle(); if (SM.data && !keepSm) { smDrop(); if ($('#tab-streamer').classList.contains('on')) openStreamer(); } load(); if ($('#tab-legion').classList.contains('on')) legOpen(); if (logOn()) { jAt = ''; loadLog(); } } };
   /* ---------- ВРЕМЕННО: переключатель стиля сайта (для каждого зрителя свой, запоминается в браузере) ----------
      Убрать: TEMP_STYLE_SWITCH = false. Без выбора сайт берёт стиль, включённый у стримера в MultiDonate. */
   const TEMP_STYLE_SWITCH = true;
-  const STYLE_LIST = [['legion', 'Легион'], ['cats', 'Котики'], ['monkeys', 'Обезьяны'], ['ugabugi', 'Уга-Буги']];
+  const STYLE_LIST = SU.STYLES;   // 28.10: все 7 стилей (packages/site-ui)
   const BASE_STYLE = sty();
   // 18.10: стили, открытые зрителям канала (сервер: LG_STYLES; сейчас — только стиль канала). Один — выбора нет, кнопки не нужны
   const OPEN = Array.isArray(window.LG_STYLES) ? window.LG_STYLES : STYLE_LIST.map(([k]) => k);

@@ -126,5 +126,47 @@
     try { await load(); return true; } catch { el.innerHTML = note(fail); return false; }
   }
 
-  return { esc, plural, pluralN, timeAgo, MUNIT, moneyParts, money, moneyText, lack, bal, toast, confirmTwice, armed, MQ, media, is, layer, clampXY, note, loadInto };
+  /* ---------- 28.10: оформление и тексты сайта по стилю человечков (одна таблица - и для сервера, и для страницы) ----------
+     STYLES - стили по порядку (переключатель тестеров), SKINS - оформления (html[data-skin], legacy/site/public/style.css,
+     public/platform/skin.css и done.css), STYLE_SKIN - стиль → оформление; нет стиля - «Арсенал» (forge).
+     STYLE_TEXT - тексты сайта в голосе стиля: groups - группы Легиона (вкладка «Легион»), copy - сумка и кнопки «Персонажа». */
+  const STYLES = [['legion', 'Легион'], ['cats', 'Котики'], ['monkeys', 'Обезьяны'], ['veggies', 'Овощи'], ['42brothers', '42 Братухи'], ['cherts', 'Чертики'], ['ugabugi', 'Уга-Буги']];
+  const SKINS = { forge: 'Арсенал', den: 'Лежанка', rage: 'Ярость', garden: 'Грядка', club: 'VIP-зона', inferno: 'Пекло', cave: 'Пещера' };
+  const STYLE_SKIN = { legion: 'forge', cats: 'den', monkeys: 'rage', veggies: 'garden', '42brothers': 'club', cherts: 'inferno', ugabugi: 'cave' };
+  const SKIN_DEFAULT = 'forge';
+  const skinOf = (style) => STYLE_SKIN[style] || SKIN_DEFAULT;
+  const STYLE_TEXT = {
+    legion: {
+      groups: { mage: 'Маги и некроманты', heal: 'Жрецы', phys: 'Легионеры и стрелки', recruit: 'Новобранцы' },
+      copy: { bag: 'Сумка', empty: 'Сумка пуста. Вещи добываются в Походе и покупаются на Ярмарке.', on: 'Надето', off: 'Снято', none: 'Выбери вещь в сумке или на легионере', wear: 'Надеть', take: 'Снять' },
+    },
+    cats: {
+      groups: { mage: 'Коты-колдуны', heal: 'Мурлыки-жрецы', phys: 'Котоармия и рогаточники', recruit: 'Котята' },
+      copy: { bag: 'Корзинка', empty: 'Корзинка пуста. Вещи добываются в Походе и покупаются на Ярмарке.', on: 'Мур! Надето', off: 'Снято', none: 'Выбери вещь в корзинке или на котике', wear: 'Примерить', take: 'Снять' },
+    },
+    monkeys: {
+      groups: { mage: 'Шаманы', heal: 'Жрецы банана', phys: 'Громилы и плевуны', recruit: 'Мартышки' },
+      copy: { bag: 'Мешок с бананами', empty: 'Мешок пуст. Вещи отбирают в Походе и выменивают на Ярмарке.', on: 'У-у-а! Надето', off: 'Сорвано', none: 'Выбери вещь в мешке или на обезьяне', wear: 'Нацепить', take: 'Сорвать' },
+    },
+    veggies: {
+      groups: { mage: 'Колдуны-корнеплоды', heal: 'Святые кабачки', phys: 'Боевые овощи и горохострелы', recruit: 'Ростки' },
+      copy: { bag: 'Овощной ящик', empty: 'Ящик пуст. Вещи добываются в Походе и покупаются на Ярмарке.', on: 'Хрум! Надето', off: 'Снято', none: 'Выбери вещь в ящике или на овоще', wear: 'Надеть', take: 'Снять' },
+    },
+    '42brothers': {
+      groups: { mage: 'Диджеи и продюсеры', heal: 'Тамады', phys: 'Вышибалы, снайперы и охрана', recruit: 'Новички' },
+      copy: { bag: 'Барсетка', empty: 'Барсетка пуста. Шмот добывается в Походе и берётся на Ярмарке.', on: 'Йоу! Надето', off: 'Снято', none: 'Выбери шмот в барсетке или на братухе', wear: 'Нацепить', take: 'Скинуть' },
+    },
+    cherts: {
+      groups: { mage: 'Чёрт-колдуны и чернокнижники', heal: 'Исповедники', phys: 'Вояки, стрелки и шулеры', recruit: 'Бесята' },
+      copy: { bag: 'Котомка', empty: 'Котомка пуста. Вещи добываются в Походе и выторговываются на Ярмарке.', on: 'Хо-хо! Надето', off: 'Снято', none: 'Выбери вещь в котомке или на чертёнке', wear: 'Надеть', take: 'Снять' },
+    },
+    ugabugi: {
+      groups: { mage: 'Шаманы и колдуны костей', heal: 'Знахари', phys: 'Громилы и охотники', recruit: 'Юнцы' },
+      copy: { bag: 'Мешок из шкуры', empty: 'Мешок пуст. Вещи добывают в Походе и выменивают на Ярмарке.', on: 'Уга! Надето', off: 'Снято', none: 'Выбери вещь в мешке или на пещерном человеке', wear: 'Нацепить', take: 'Снять' },
+    },
+  };
+  const styleText = (style, part, k) => ((STYLE_TEXT[style] || {})[part] || {})[k];
+
+  return { esc, plural, pluralN, timeAgo, MUNIT, moneyParts, money, moneyText, lack, bal, toast, confirmTwice, armed, MQ, media, is, layer, clampXY, note, loadInto,
+    STYLES, SKINS, STYLE_SKIN, SKIN_DEFAULT, skinOf, STYLE_TEXT, styleText };
 });
