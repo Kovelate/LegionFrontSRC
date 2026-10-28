@@ -434,7 +434,48 @@
     bag: 'Сумка', storage: 'Склад', close: 'Закрыть сумку', empty: 'Здесь пусто', on: 'Надеть', off: 'Снять', eat: 'Съесть', drink: 'Выпить', use: 'Использовать',
     put: 'На склад', take: 'В сумку', all: 'Всё', worn: 'надето', noUse: 'Здесь не используется', cantUse: 'Это не надеть', wrongSlot: 'Сюда не надеть - перетащи на слот своего типа',
     full: 'Нет места', can: 'Не подходит', picked: 'выбрано', none: 'Выбери вещь в сумке или на герое', equipped: 'Надето',
+    trash: 'Выбросить', trashSub: 'перетащи сюда вещь', trashOn: 'Надетую вещь не выбросить - сначала сними', trashPick: 'Перетащи вещь сюда или выбери её и нажми «Выбросить»',
+    trashYes: 'Да, выбросить', trashNo: 'Отмена',
   };
+  const RAR_LOW = { epic: 'эпическая', legendary: 'легендарная' };
+
+  /* 28.10 (bag-trash): окно «Выбросить?» - подтверждение (необратимо). o: { title, name, rarity, n - сколько в стопке (больше 1 - выбор
+     «1 / все»), ore - кучка руды (только целиком), yes(k) - выбросить k }. Esc, «Отмена» и щелчок мимо - отмена; фокус - на «Отмена»
+     (Enter не выбросит случайно), по закрытии - обратно. Одно окно на странице. Без анимации по кадрам. */
+  let DLG = null;
+  function dlgClose() {
+    if (!DLG) return; const d = DLG; DLG = null;
+    d.el.remove(); document.removeEventListener('keydown', d.key, true);
+    if (d.back && d.back.isConnected) try { d.back.focus({ preventScroll: true }); } catch {}
+  }
+  function trashAsk(o) {
+    dlgClose();
+    const n = Math.max(1, +o.n || 1), many = n > 1 && !o.ore, rare = RAR_LOW[o.rarity] || '', t = { ...TXT, ...(o.labels || {}) };
+    const el = document.createElement('div'); el.className = 'lgi-dlgw';
+    const head = (k) => `Выбросить «${esc(o.name)}»${k > 1 ? ` (×${k})` : ''}?`;
+    el.innerHTML = `<div class="lgi-dlg" role="alertdialog" aria-modal="true" aria-labelledby="lgiDlgT" aria-describedby="lgiDlgD" data-r="${esc(o.rarity || 'common')}">`
+      + `<p class="lgi-dlgt" id="lgiDlgT">${head(many ? 1 : n)}</p>`
+      + `<p class="lgi-dlgd" id="lgiDlgD">Вещь пропадёт навсегда${o.ore ? ' (вся кучка)' : ''}, монет за неё не будет.</p>`
+      + (rare ? `<p class="lgi-dlgw-r" role="note">⚠ Это ${rare} вещь! Вернуть её не получится.</p>` : '')
+      + (many ? `<div class="lgi-dlgn" role="radiogroup" aria-label="Сколько выбросить"><label><input type="radio" name="lgiDlgN" value="1" checked> 1</label><label><input type="radio" name="lgiDlgN" value="${n}"> все (${n})</label></div>` : '')
+      + `<div class="lgi-dlgb"><button type="button" class="btn lgi-btn lgi-dlgy" data-dlg="yes">${esc(t.trashYes)}</button><button type="button" class="btn ghost lgi-btn ghost" data-dlg="no">${esc(t.trashNo)}</button></div></div>`;
+    document.body.appendChild(el);
+    const k = () => { const r = el.querySelector('input[name="lgiDlgN"]:checked'); return many && r ? Math.max(1, Math.min(n, +r.value || 1)) : n; };
+    const done = (yes) => { const kk = k(); dlgClose(); if (yes && o.yes) o.yes(kk); };
+    el.addEventListener('change', () => { el.querySelector('.lgi-dlgt').innerHTML = head(k()); });
+    el.addEventListener('click', (e) => { const b = e.target.closest('[data-dlg]'); if (b) { done(b.dataset.dlg === 'yes'); return; } if (e.target === el) done(false); });
+    const key = (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(false); return; }
+      if (e.key === 'Tab') {   // фокус - только внутри окна
+        const f = Array.from(el.querySelectorAll('button, input')).filter((x) => !x.disabled); if (!f.length) return;
+        const i = f.indexOf(document.activeElement); if (!el.contains(document.activeElement) || (e.shiftKey && i <= 0) || (!e.shiftKey && i === f.length - 1)) { e.preventDefault(); f[e.shiftKey ? f.length - 1 : 0].focus(); }
+      }
+    };
+    DLG = { el, key, back: o.back || document.activeElement };
+    document.addEventListener('keydown', key, true);
+    try { el.querySelector('[data-dlg="no"]').focus({ preventScroll: true }); } catch {}
+    return { close: () => dlgClose(), el };
+  }
 
   // здоровье, опыт, уровень, монеты - из героя сайта (опыт внутри уровня: xpInLevel / xpToNext, у старой игры - от порогов)
   function vitals(h) {
@@ -516,6 +557,10 @@
     // свой порядок: только в режиме 'equip', порядок «как в сумке» и фильтр «Все» (иначе соседи на экране - не соседи в сумке)
     const reorderOn = () => mode === 'equip' && !!A.reorder && S.sort === 'new' && S.f === 'all';
     const eqRow = () => v === 'inline' && mode !== 'storage' && O.equipped !== false;
+    // 28.10 (bag-trash): выбросить - режим 'equip' и actions.discard(uids, it, n); options.trashWhy(it) - '' или почему нельзя (вещь события…)
+    const trashOn = () => mode === 'equip' && v !== 'inline' && !!A.discard;
+    const up1 = (s) => (s ? String(s)[0].toUpperCase() + String(s).slice(1) : '');
+    const trashWhy = (it) => { if (!it) return 'Такой вещи нет'; if (it.on) return T().trashOn; let r = ''; try { r = O.trashWhy ? O.trashWhy(it) || '' : ''; } catch (e) { r = 'Нельзя'; } return up1(r); };
     const artOf = (it) => { try { const a = O.art ? O.art(it) : art(it); if (a) return a; } catch (e) { /* рисунка нет */ } return fallbackArt(it); };
     const all = () => D.items.concat(D.storage || []);
     const itemBy = (uid) => all().find((x) => x.uid === uid) || null;
@@ -557,7 +602,9 @@
       // цель броска - вся область сетки (и пустое место под ячейками), а не только ряды ячеек
       const g = (from, label) => `<div class="lgi-g" data-lgi="g-${from}"${mode === 'equip' || mode === 'storage' ? ` data-igdrop="${from}"` : ''}>${mode === 'storage' ? `<div class="lgi-gh"><b>${esc(label)}</b><span data-lgi="cap-${from}"></span></div>` : ''}<div class="cy-grid ig-grid" role="group" aria-label="${esc(label)}" data-lgi="grid-${from}"></div><p class="lgi-empty muted" data-lgi="empty-${from}" hidden>${esc(t.empty)}</p></div>`;
       const obG = obOn() ? `<div class="lgi-g lgi-ob" data-lgi="g-ob"${mode === 'storage' ? ' data-igdrop="ob"' : ''}><div class="lgi-gh"><b>${esc(t.oreBag || 'Рудная сумка')}</b><span data-lgi="cap-ob"></span></div><div class="cy-grid ig-grid" role="group" aria-label="${esc(t.oreBag || 'Рудная сумка')}" data-lgi="grid-ob"></div></div>` : '';
-      const grids = mode === 'storage' ? g('bag', t.bag) + obG + g('st', t.storage) : g('bag', O.gridLabel || t.bag) + obG;
+      // 28.10 (bag-trash): слот «Выбросить» под сеткой - только если страница дала actions.discard (вкладка «Поход»)
+      const tr = trashOn() ? `<button type="button" class="lgi-trash" data-lgi="trash" data-igdrop="trash" aria-label="${esc(t.trash)}: ${esc(t.trashPick)}" title="${esc(t.trashPick)}"><span class="lgi-tri" aria-hidden="true">🗑</span><b>${esc(t.trash)}</b><small>${esc(t.trashSub)}</small></button>` : '';
+      const grids = (mode === 'storage' ? g('bag', t.bag) + obG + g('st', t.storage) : g('bag', O.gridLabel || t.bag) + obG) + tr;
       S.ob = obOn();
       const foot = '<footer class="lgi-a" data-lgi="a"></footer>';
       const hd = O.header === false ? '' : head, det = O.detail === false ? '' : '<aside class="lgi-det" data-lgi="det" aria-live="polite"></aside>';
@@ -617,7 +664,7 @@
     }
     function cellHtml(c, from) {
       const it = c.it, off = mode === 'pick' && okOf(O.can, it) !== true;
-      const dr = mode === 'equip' ? (!!it.wearable && !!A.equip) || (from === 'bag' && reorderOn()) : mode === 'storage' ? !c.ev && !!A.move : mode === 'pick' ? !!A.drop && !off : false;
+      const dr = mode === 'equip' ? (!!it.wearable && !!A.equip) || (from === 'bag' && reorderOn()) || (trashOn() && !c.ev) :mode === 'storage' ? !c.ev && !!A.move : mode === 'pick' ? !!A.drop && !off : false;
       const ord = from === 'bag' && reorderOn() ? ' data-igdrop="cell"' : '';
       return cell(c, { art: artOf, drag: dr, off, attr: `data-from="${from}"${ord}`, extra: O.extra });
     }
@@ -628,7 +675,7 @@
       for (const ch of Array.from(g.children)) { if (ch.dataset.k) old.set(ch.dataset.k, ch); else ph.push(ch); }
       let i = 0;
       for (const c of cs) {
-        const k = [c.uids[0], c.n, sig(c.it), mode === 'pick' ? okOf(O.can, c.it) : '', reorderOn() ? 'o' : '', c.it.no || ''].join('#');
+        const k = [c.uids[0], c.n, sig(c.it), mode === 'pick' ? okOf(O.can, c.it) : '', reorderOn() ? 'o' : '', c.it.no || '', trashOn() ? 't' : ''].join('#');
         let b = old.get(k); if (b) old.delete(k); else { b = frag(cellHtml(c, from)); b.dataset.k = k; }
         if (g.children[i] !== b) g.insertBefore(b, g.children[i] || null);
         i++;
@@ -649,9 +696,11 @@
       const t = T(), dis = S.busy ? ' disabled' : '';
       if (mode === 'equip') {
         if (it.on) return A.unequip && v !== 'inline' ? `<button type="button" class="btn ghost lgi-btn" data-lgi-off="${esc(it.slot)}"${dis}>${t.off}</button>` : '';
-        if (it.wearable) return A.equip ? `<button type="button" class="btn primary lgi-btn" data-lgi-on="${esc(it.uid)}"${dis}>${t.on}</button>` : '';
-        if (USE.has(it.slot) && A.use) { const ok = okOf(O.canUse, it); return `<button type="button" class="btn primary lgi-btn" data-lgi-use="${esc(it.uid)}"${ok !== true || S.busy ? ' disabled' : ''}${ok !== true ? ` title="${esc(ok)}"` : ''}>${useLabel(it)}</button>`; }
-        return `<em class="muted">${esc(t.noUse)}</em>`;
+        // 28.10 (bag-trash): у выбранной вещи сумки - ещё «🗑» (выбросить; на телефоне перетаскивать неудобно)
+        const tb = trashOn() && !trashWhy(it) ? `<button type="button" class="btn ghost lgi-btn ghost lgi-trb" data-lgi-trash="${esc(it.uid)}"${dis} aria-label="${esc(t.trash)}" title="${esc(t.trash)}">🗑</button>` : '';
+        if (it.wearable) return (A.equip ? `<button type="button" class="btn primary lgi-btn" data-lgi-on="${esc(it.uid)}"${dis}>${t.on}</button>` : '') + tb;
+        if (USE.has(it.slot) && A.use) { const ok = okOf(O.canUse, it); return `<button type="button" class="btn primary lgi-btn" data-lgi-use="${esc(it.uid)}"${ok !== true || S.busy ? ' disabled' : ''}${ok !== true ? ` title="${esc(ok)}"` : ''}>${useLabel(it)}</button>${tb}`; }
+        return tb || `<em class="muted">${esc(t.noUse)}</em>`;
       }
       if (mode === 'storage') {
         const from = fromOf(it.uid), c = cellOf(it.uid), n = c ? c.n : 1, lab = from === 'st' ? t.take : t.put;
@@ -737,6 +786,16 @@
       const it = itemBy(src.dataset.ig), k = to === 'st' ? D.storageStack : D.stack;
       return cs.length < cap || (!!it && !it.wearable && cs.some((c) => c.it.id === it.id && c.n < k));
     }
+    // 28.10 (bag-trash): выбросить - окно подтверждения (стопка: 1 / все; эпическая и легендарная - с предупреждением), потом actions.discard
+    function trashAskFor(uid, back) {
+      if (!trashOn()) return;
+      const it = itemBy(uid); if (!it) return;
+      const why = trashWhy(it); if (why) { say(why); return; }
+      const c = cellOf(uid), uids = c ? c.uids.slice() : [uid], n = uids.length;
+      cardOff(); menuClose(false);
+      trashAsk({ name: it.name, rarity: it.rarity, n, ore: !!it.qty, labels: O.labels, back: back && back.isConnected ? back : null,
+        yes: (k) => run(A.discard, uids.slice(0, Math.max(1, Math.min(n, k))), it, k) });
+    }
     // Склад: сколько перенести - 1 / половину / всё / сколько… (правая кнопка; на телефоне - удержать и отпустить); одна вещь - карточка
     function stMenu(src, e) {
       const c = cellOf(src.dataset.ig); if (!c) return;
@@ -754,10 +813,13 @@
       const R = PE ? O.dragRoot || document.body : el, own = PE ? { src: `[data-lgi-id="${ID}"] [data-igdrag]`, tapSel: `[data-lgi-id="${ID}"] [data-ig]`, drop: `[data-lgi-id="${ID}"] [data-igdrop]` } : {};
       if (mode === 'equip') S.drag = drag(R, { ...base, ...own,
         ok: (src, t) => { const it = itemBy(src.dataset.ig); if (!it) return false;
+          if (t.dataset.igdrop === 'trash') return !trashWhy(it);   // 28.10 (bag-trash): «Выбросить» - вещь сумки, которую можно выбросить
           if (t.dataset.igdrop === 'cell') return it.on ? true : t !== src && reorderOn();   // надетое на ячейку сумки - просто снять
           return t.dataset.igdrop === 'bag' ? !!it.on : !it.on && !!it.wearable && it.slot === t.dataset.slot; },
-        onDrop: (src, t) => { const it = itemBy(src.dataset.ig); if (t.dataset.igdrop === 'cell' && it && !it.on) { run(A.reorder, src.dataset.ig, t.dataset.ig); return; } use(src.dataset.ig); }, quick: (src) => use(src.dataset.ig),
-        reject: (src, t) => { if (t !== src.closest('[data-igdrop]') && t.dataset.igdrop === 'slot') say(T().wrongSlot); } });
+        onDrop: (src, t) => { const it = itemBy(src.dataset.ig); if (t.dataset.igdrop === 'trash') { trashAskFor(src.dataset.ig, src); return; } if (t.dataset.igdrop === 'cell' && it && !it.on) { run(A.reorder, src.dataset.ig, t.dataset.ig); return; } use(src.dataset.ig); }, quick: (src) => use(src.dataset.ig),
+        // 28.10: палец удержали и отпустили на месте - меню вещи страницы (там «Выбросить»), как правая кнопка мыши
+        hold: trashOn() && O.menu ? (src) => { const r = src.getBoundingClientRect(); ctx(src, { clientX: r.left, clientY: r.bottom + 4 }); } : undefined,
+        reject: (src, t) => { if (t.dataset.igdrop === 'trash') { say(trashWhy(itemBy(src.dataset.ig))); return; } if (t !== src.closest('[data-igdrop]') && t.dataset.igdrop === 'slot') say(T().wrongSlot); } });
       else if (mode === 'storage') S.drag = drag(el, { ...base,
         ok: (src, t) => src.dataset.from !== t.dataset.igdrop && !(src.dataset.from !== 'st' && t.dataset.igdrop !== 'st') && room(t.dataset.igdrop, src),   // 26.10: сумка ↔ рудная сумка - нет (руду кладёт игра), только со склада и на склад
         onDrop: (src, t) => { const c = cellOf(src.dataset.ig); move(src.dataset.ig, src.dataset.from, c ? c.n : 1, t.dataset.igdrop); },
@@ -780,6 +842,8 @@
       const on = t.closest('[data-lgi-on]'); if (on) { use(on.dataset.lgiOn); return; }
       const off = t.closest('[data-lgi-off]'); if (off) { const it = D.items.find((x) => x.on && x.slot === off.dataset.lgiOff); if (it) use(it.uid); return; }
       const us = t.closest('[data-lgi-use]'); if (us) { use(us.dataset.lgiUse); return; }
+      const tb = t.closest('[data-lgi-trash]'); if (tb) { trashAskFor(tb.dataset.lgiTrash, tb); return; }   // 28.10 (bag-trash)
+      const tr = t.closest('[data-lgi="trash"]'); if (tr && el.contains(tr)) { if (S.sel && itemBy(S.sel) && !itemBy(S.sel).on) trashAskFor(S.sel, tr); else say(T().trashPick); return; }
       const mv = t.closest('[data-lgi-mv]'); if (mv && S.sel) { const c = cellOf(S.sel); move(S.sel, fromOf(S.sel), mv.dataset.lgiMv === 'all' && c ? c.n : 1); }
     };
     const onChange = (e) => { if (e.target.matches('[data-bsort]')) { S.sort = e.target.value; save(); chips(); grids(); mark(); } };
@@ -829,10 +893,11 @@
       update(data) { if (S.dead) return api; D = norm(data); if (!!S.ob !== obOn()) { unbind(); skeleton(); bind(); } render(); return api; },   // 26.10: рудную сумку купили - своя сетка
       set(o) { if (S.dead) return api; if (o.actions) A = o.actions; O = { ...O, ...(o.options || o) }; delete O.actions; unbind(); skeleton(); bind(); render(); return api; },
       select(uid) { select(uid); return api; },
+      discard(uid) { trashAskFor(uid); return api; },   // 28.10 (bag-trash): меню вещи страницы → «Выбросить» (то же окно подтверждения)
       state: () => ({ f: S.f, sort: S.sort, sel: S.sel, busy: S.busy }),
       dragging: () => !!(S.drag && S.drag.dragging()),
       destroy() {
-        if (S.dead) return; cardOff(); unbind(); clearTimeout(S.sayT); S.dead = true; delete el.dataset.lgiId;
+        if (S.dead) return; cardOff(); dlgClose(); unbind(); clearTimeout(S.sayT); S.dead = true; delete el.dataset.lgiId;
         if (PE) { PE.innerHTML = ''; PE.classList.remove('lgi', 'lgi--' + v, 'lgi-dollx'); delete PE.dataset.lgiId; el.classList.remove('lgi-nodoll'); }
         el.innerHTML = ''; el.classList.remove('lgi', 'lgi--' + v, 'lgi-m-' + mode, 'lgi-nodet'); el.removeAttribute('aria-busy'); delete el.__lgi;
       },
@@ -841,5 +906,5 @@
     return api;
   }
 
-  return { mount, items, cells, cell, grid, drag, menu, menuClose, art, still, lgx, EMPTY, configure, artReset, vitals, sortCells, cardHtml, tipShow, tipHide, esc, oreN, oreQty, VARIANTS, MODES, SLOTS: SLOTS5 };
+  return { mount, trashAsk, items, cells, cell, grid, drag, menu, menuClose, art, still, lgx, EMPTY, configure, artReset, vitals, sortCells, cardHtml, tipShow, tipHide, esc, oreN, oreQty, VARIANTS, MODES, SLOTS: SLOTS5 };
 });

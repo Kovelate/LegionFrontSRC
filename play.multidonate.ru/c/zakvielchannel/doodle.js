@@ -764,6 +764,25 @@
   }
   let reloading = false;
   // страницы вне MultiDonate (игры StreamClass) — слушаем поток событий сами
+  /* 28.10 (hw-npc-ghosts, стример 00:17): НПС города (кузнец, продавцы, франт, звездочёт…) в «мёртвом» хэллоуинском городе - призраки:
+     тот же облик (сид, шапка, аксессуары), призрачный рисунок стиля (как у героев-призраков), без filter (свечение - мягкий ореол
+     градиентом) и без анимации внутри; висит чуть над землёй. Стиль оборачивает своего НПС: npcWrap(обычный рисунок, те же параметры).
+     MDDoodle.npcGh (ставит город на время рисования): 'both' - обычный (.cy-npc) и призрак (.cy-npcg, скрыт) - рисунок улицы, мёртвые
+     плитки citygl показывают призрака; 'ghost' - только призрак (помещения сайта в хэллоуинском виде); нет - как было */
+  function npcGhost(seed, base, cx, s, mood, extra, look) {
+    let svg = ''; try { svg = jDoodle(jhash(seed), mood || 'happy', false, Object.assign({}, extra || {}, { ghost: true }), look); } catch (e) { return ''; }
+    const w = 120 * s, h = 170 * s, f1 = (n) => (Math.round(n * 10) / 10).toString(), id = 'npcH' + (jhash(seed) % 1e6);
+    const m = /^<svg class="jl-doodle jd-ghost" viewBox="0 0 120 170"(?: style="[^"]*")?/.exec(svg); if (!m) return '';
+    const body = `<svg class="jl-doodle jd-ghost" x="${f1(-w / 2)}" y="${f1(-h)}" width="${f1(w)}" height="${f1(h)}" viewBox="0 0 120 170" overflow="visible" style="width:${f1(w)}px;height:${f1(h)}px">`
+      + svg.slice(m[0].length + 1).replace(/<animateTransform\b[^>]*\/>/g, '');
+    return `<g class="cy-npcg" transform="translate(${f1(cx)} ${f1(base - 10 * s)})"><defs><radialGradient id="${id}"><stop offset="0" stop-color="#cfeaff" stop-opacity=".42"/><stop offset=".6" stop-color="#a8c8ff" stop-opacity=".12"/><stop offset="1" stop-color="#a8c8ff" stop-opacity="0"/></radialGradient></defs>`
+      + `<ellipse cx="0" cy="${f1(-h * 0.45)}" rx="${f1(w * 0.6)}" ry="${f1(h * 0.52)}" fill="url(#${id})"/><g class="cy-npcf">${body}</g></g>`;
+  }
+  function npcWrap(normal, seed, base, cx, s, mood, extra, look) {
+    const md = window.MDDoodle && window.MDDoodle.npcGh; if (!md || (extra && extra.ghost) || !normal) return normal;
+    const g = npcGhost(seed, base, cx, s, mood, extra, look); if (!g) return normal;
+    return md === 'ghost' ? g : `<g class="cy-npc">${normal}</g>${g.replace('<g class="cy-npcg"', '<g class="cy-npcg" display="none"')}`;
+  }
   function connect(base) {
     if (!window.EventSource) return;
     let es = null;
@@ -778,7 +797,7 @@
   const inMD = !!(src && /^https?:$/.test(window.location.protocol) && src.origin === window.location.origin);   // страница самого MultiDonate
   window.MDDoodle = {
     jrng, jhash, jpick, get CATALOG() { return catalogNow(); }, jDoodle, gearOf, defaultsFor, sameLook, lookChoices, setLooks, lookOf, seedFor, setGhosts, isGhost, setGear, feed, connect,
-    setTitles, titleOf, nickColor,
+    setTitles, titleOf, nickColor, npcGhost, npcWrap, npcGh: '',
     onLooks: (fn) => listeners.push(fn), get looks() { return LOOKS; },
     // детали активного стиля — старые имена, ими пользуются алерты и виджеты
     get J_BODIES() { return S ? S.bodies : {}; },

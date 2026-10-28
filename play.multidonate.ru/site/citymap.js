@@ -119,6 +119,9 @@
     const [bedA, bedB] = LOW.mineBed, LO = mn ? LOWER_OBST.map((x) => (x.e && x.e[0] === bedA[0] && x.e[1] === bedA[1] ? { e: [bedB[0], bedB[1], x.e[2], x.e[3]] } : x)) : LOWER_OBST;
     const OB = [...QUARTER_OBST, ...LO, ...(mn ? [{ b: [LOW.mine.x0, LOW.edge[1], LOW.mine.x1, LOW.mine.base] }] : []), ...shift(mg ? FO.filter((x) => !x.cart).concat([o.magicObst || MAGIC_OBST]) : FO, QW)];
     const BLD = BUILDINGS.filter((b) => (!b.magic || mg) && (!b.mine || mn));
+    // HW-NPC: хэллоуинские НПС на улице (legacy/site/public/hwnpc.js) - их препятствия и «здания» (где кликать, куда идти)
+    if (o && o.hwObst) OB.push(...o.hwObst);
+    if (o && o.hwB) BLD.push(...o.hwB);
     // 26.10: доска «Итоги шахты» стоит на нижней улице (земля под ней свободна) - здание там не ловится, нужна горячая точка
     // (только сам щит с шапкой, ноги столбов - земля, по ней можно пройти)
     const hot = mn ? [...HOT, { b: 'mineboard', what: '', ol: 'mineboard', r: [1060, 1150, 1148, 1268] }] : HOT;
@@ -127,7 +130,9 @@
   /** 23.10: карта любого города (Ярмарка — make(); города округов — towngen.js): ширина W, полоса AREA, препятствия OBST,
    *  здания BUILDINGS, точки HOT, home — куда встать, если рядом ничего свободного. Сетка, A*, «нитка» — общие. */
   function makeFrom(T) {
-    const W = T.W, H = T.H, QW = T.QW || 0, AREA = T.AREA, OB = T.OBST, BLD = T.BUILDINGS, HOT = T.HOT || [], home = T.home || [W / 2, AREA.y0 + 120];
+    const W = T.W, H = T.H, QW = T.QW || 0, AREA = T.AREA, OB = T.OBST, BLD = T.BUILDINGS, home = T.home || [W / 2, AREA.y0 + 120];
+    // HW-NPC: хэллоуинский НПС (hw: true, hwnpc.js) стоит прямо на улице - под ним земля, поэтому весь его рисунок - горячая точка (как доска шахты)
+    const HOT = [...(T.HOT || []), ...BLD.filter((b) => b && b.hw).map((b) => ({ b: b.id, what: '', ol: b.id, r: b.hit }))];
     const PAD = 10, C = 16;
     // препятствия разложены по полосам x (по 200 px): проверка точки смотрит только свои (путь считается быстро и на телефоне)
     const BIN = 200, bins = [];

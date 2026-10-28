@@ -66,6 +66,12 @@
     p.innerHTML = '';
     return { xml: x, bb };
   }
+  // 28.10 (hw-npc-ghosts): где на слое НПС (doodle-core.js npcWrap: .cy-npc - обычный, рядом .cy-npcg - призрак) - рамки в координатах мира
+  function npcBoxes(inner) {
+    const p = holder(); p.innerHTML = `<g>${inner}</g>`; const out = [];
+    try { const h = p.getBoundingClientRect(); for (const e of p.querySelectorAll('.cy-npc')) { const r = e.getBoundingClientRect(); if (r.width > 0 && r.height > 0) out.push({ x: r.left - h.left, y: r.top - h.top, w: r.width, h: r.height, f: 0 }); } } catch {}
+    p.innerHTML = ''; return out;
+  }
   // кусок мира [x, y, w, h] при k пикселей на единицу → canvas; pad — 1 px «нахлёста» по краям (без швов между плитками)
   async function raster(xml, x, y, w, h, k, pad) {
     const cw = Math.max(1, Math.ceil(w * k)), ch = Math.max(1, Math.ceil(h * k)), W = cw + pad * 2, H = ch + pad * 2;
@@ -273,8 +279,12 @@
         cache.set(key, e);
         return e;
       },
-      clear() { for (const e of cache.values()) if (e && e.tex) try { e.tex.destroy(true); } catch {} cache.clear(); },
+      clear,
+      // HW-NPC: источники с меткой tag заменить на list (НПС ивента ставятся поверх собранного города) - пометки пересоберутся при следующем наведении
+      set(tag, list) { for (let i = sources.length - 1; i >= 0; i--) if (sources[i] && sources[i].tag === tag) sources.splice(i, 1); for (const l of list || []) sources.push({ ...l, tag }); cuts = null;
+        for (const [key, e] of cache) if (e && typeof e.then !== 'function' && !(e.on > 0)) { if (e.tex) try { e.tex.destroy(true); } catch {} cache.delete(key); } },   // показанную сейчас обводку не трогаем (её текстуру рисует кадр)
     };
+    function clear() { for (const e of cache.values()) if (e && e.tex) try { e.tex.destroy(true); } catch {} cache.clear(); }
     // держим несколько последних (вернулся на то же здание — сразу); показанные сейчас не трогаем
     function trim() {
       for (const [key, e] of cache) {
@@ -309,7 +319,8 @@
 
     // слои фона — один раз в XML; небо — градиентом в каждой плитке (плитки непрозрачные: на кадр — одна заливка меньше)
     // 28.10 (hw-city-dead): у слоя может быть свой «мёртвый» рисунок от художника (l.dead - svg того же места и размера): его печём как есть
-    const layers = o.layers.map((l) => { const m = measure(l.svg, false); return { xml: m.xml, x: l.x, y: l.y, w: l.w, h: l.h, dxml: l.dead ? measure(l.dead, false).xml : '' }; });
+    const layers = o.layers.map((l) => { const m = measure(l.svg, false); return { xml: m.xml, x: l.x, y: l.y, w: l.w, h: l.h, dxml: l.dead ? measure(l.dead, false).xml : '', npc: !l.dead && m.xml.includes('cy-npcg') ? npcBoxes(m.xml) : [] }; });
+    const npcs = layers.flatMap((l) => l.npc);   // 28.10 (hw-npc-ghosts): НПС города - для вспышки, когда до них доходит волна
     const sky = skyDef(o.sky, o.H);
     const skyD = skyDef(o.skyDead || 'linear-gradient(#05060a 0%, #0b0d14 30%, #151824 58%, #1f2330 100%)', o.H);   // свое небо художника - o.skyDead   // 28.10 (hw-city-dead): небо Изнанки - почти чёрно-синее
     let mort = false, wave = null, maskG = null;   // мёртвый город (запечён перекрашенным), волна «умирания» от точки (маска круга)
@@ -337,8 +348,16 @@
     let deadArt = { under: '', over: '' };
     function tileXml(x, y, s, dd, raw) {
       const hit = (l) => l.x < x + s && l.x + l.w > x && l.y < y + s && l.y + l.h > y;
-      if (raw) { let out = ''; for (const l of layers) if (l.dxml && hit(l)) out += l.dxml; return out + (deadArt.over || ''); }
-      let out = `<defs>${dd ? skyD : sky}</defs><rect x="${x - 2}" y="${y - 2}" width="${s + 4}" height="${s + 4}" fill="url(#cyglsky)"/>`;
+      // 28.10 (hw-npc-ghosts): мёртвый город - НПС перекрашенного слоя убраны (.cy-npc), их призраки (.cy-npcg) печём поверх без перекраски:
+      // тот же слой, всё прочее в нём невидимо (на плитку с НПС - ещё одна картинка, один раз)
+      const nh = (l) => l.npc.some((b) => b.x < x + s && b.x + b.w > x && b.y < y + s && b.y + b.h > y);
+      if (raw) {
+        let out = ''; for (const l of layers) if (l.dxml && hit(l)) out += l.dxml;
+        let gh = ''; for (const l of layers) if (!l.dxml && l.npc.length && nh(l)) gh += `<g class="cy-gho">${l.xml}</g>`;
+        if (gh) out += '<style>.cy-gho *{visibility:hidden}.cy-gho .cy-npcg,.cy-gho .cy-npcg *{visibility:visible}.cy-gho .cy-npcg{display:inline}</style>' + gh;
+        return out + (deadArt.over || '');
+      }
+      let out = `<defs>${dd ? skyD : sky}</defs><rect x="${x - 2}" y="${y - 2}" width="${s + 4}" height="${s + 4}" fill="url(#cyglsky)"/>${dd && npcs.length ? '<style>.cy-npc{display:none}</style>' : ''}`;
       for (const l of layers) if (hit(l) && !(dd && l.dxml)) out += l.xml;
       return out + (dd ? deadArt.under || '' : '');
     }
@@ -637,10 +656,20 @@
     G.addProps = (list, tag) => { for (const p of list || []) props.push({ ...p, tag, spr: null, gen: -1, q: false, box: [p.x + (p.dx || 0) - 160, p.y - 160, p.w + 320, p.h + 320] }); dirty = true; need(); };
     G.dropProps = (tag) => { for (let i = props.length - 1; i >= 0; i--) if (props[i].tag === tag) { const p = props[i]; p.dead = true; if (p.spr) try { p.spr.destroy(true); } catch {} props.splice(i, 1); } dirty = true; need(); };
     G.hasProps = (tag) => props.some((p) => p.tag === tag);
+    // 28.10 (hw-npc-ghosts): НПС превращается в призрака, когда до него доходит волна: холодная вспышка-рябь на месте (текстура - одна на всех)
+    const fls = []; let flT = null;
+    function ghostFlash(b, t) {
+      if (!flT) { const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'), g = x.createRadialGradient(64, 64, 0, 64, 64, 64);
+        g.addColorStop(0, 'rgba(235,248,255,.95)'); g.addColorStop(0.35, 'rgba(170,210,255,.55)'); g.addColorStop(0.7, 'rgba(140,180,255,.18)'); g.addColorStop(1, 'rgba(140,180,255,0)');
+        x.fillStyle = g; x.fillRect(0, 0, 128, 128); flT = new P.Texture({ source: new P.CanvasSource({ resource: c }) }); }
+      const s = new P.Sprite(flT); s.anchor.set(0.5); s.position.set(b.x + b.w / 2, b.y + b.h * 0.55); s.alpha = 0; s.zIndex = b.y + b.h + 1;
+      const k = Math.max(b.w, b.h) * 1.3 / 128; s.scale.set(k * 0.45); walk.addChild(s); fls.push({ s, t0: t, k });
+    }
     // 28.10 (hw-city-dead): мёртвый город (фон и предметы города перекрашены при запекании); w = { x, y, ms } - волна «умирания» из точки
     G.setDead = (on, w) => {
       on = !!on; if (on === mort && !w) return;
       mort = on;
+      for (const b of npcs) b.f = 0;
       if (on && w) wave = { x: +w.x || 0, y: +w.y || 0, ms: Math.max(300, +w.ms || 4000), t0: performance.now() + Math.max(0, +w.delay || 0), R: Math.hypot(o.W, o.H) };
       else { wave = null; if (maskG) { bgD.mask = null; maskG.destroy(); maskG = null; } }
       if (!on) for (const p of props) { if (p.sprD) { p.sprD.destroy(true); p.sprD = null; } p.genD = -1; }
@@ -676,6 +705,8 @@
         more = true; dirty = true;
       }
       if (!reduce) for (const p of props) if (p.spin && p.spr && p.spr.visible) { p.spr.rotation = ((t / 1000) * (p.spinV || 1.2)) % (Math.PI * 2); more = true; dirty = true; }
+      // 28.10 (hw-city-light): p.pulse = [от, до, период с] - прозрачность дышит (сердцевина портала)
+      if (!reduce) for (const p of props) if (p.pulse && p.spr && p.spr.visible) { const [a0, a1, per] = p.pulse; p.spr.alpha = a0 + (a1 - a0) * (0.5 + 0.5 * Math.sin((t / 1000) * Math.PI * 2 / (per || 2))); more = true; dirty = true; }
       for (let i = rips.length - 1; i >= 0; i--) {
         const R = rips[i], a = Math.min(1, (t - R.t0) / 650), e = 1 - Math.pow(1 - a, 2);
         R.r.scale.set(0.3 + 0.9 * e); R.r.alpha = 0.9 * (1 - a);
@@ -693,8 +724,14 @@
         const wr = waveR();
         if (!maskG) { maskG = new P.Graphics(); world.addChild(maskG); bgD.mask = maskG; }
         maskG.clear(); maskG.circle(wave.x, wave.y, Math.max(1, wr)); maskG.fill(0xffffff);
+        for (const b of npcs) if (!b.f && Math.hypot(Math.max(b.x, Math.min(wave.x, b.x + b.w)) - wave.x, Math.max(b.y, Math.min(wave.y, b.y + b.h)) - wave.y) <= wr) { b.f = Math.round(t) || 1; if (!reduce) ghostFlash(b, t); }   // 28.10 (hw-npc-ghosts)
         if (wr >= wave.R) { bgD.mask = null; maskG.destroy(); maskG = null; wave = null; }
         more = true; dirty = true;
+      }
+      for (let i = fls.length - 1; i >= 0; i--) {   // вспышка-рябь: только масштаб и прозрачность спрайта
+        const f = fls[i], u = Math.min(1, (t - f.t0) / 900);
+        f.s.alpha = u < 0.18 ? u / 0.18 : (1 - u) / 0.82; f.s.scale.set(f.k * (0.45 + 0.85 * u)); dirty = true; more = true;
+        if (u >= 1) { f.s.destroy(); fls.splice(i, 1); }
       }
       if (!dirty) return more;
       dirty = false;
@@ -726,6 +763,7 @@
       if (G.mode === 'canvas' && ++frames > 10) { slow = dt > 60 ? slow + 1 : 0; if (slow > 20 && o.onFail) { o.onFail('медленно: ' + dt.toFixed(0) + ' мс на кадр'); return false; } }
       return more || missing > 0;
     };
+    G.npcs = () => npcs.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.w), h: Math.round(b.h), f: b.f }));   // 28.10 (hw-npc-ghosts): для проверок
     G.stats = () => ({ dl: layers.filter((l) => l.dxml).length, pd: props.filter((p) => p.svgDead).length, art: !!(deadArt.under || deadArt.over), walkN: walk.children.length, bgN: bg.children.length, bgDN: bgD.children.length, bgDVis: bgD.children.filter((c) => c.visible).length, bgVis: bg.children.filter((c) => c.visible).length, mask: !!bgD.mask, wave: !!wave, nf: G.nf, ms: G.ms, js: G.js, looks: looks.size, baked: [...looks.values()].filter((x) => x.tex).length, tiles: tiles.size, tilesBaked: [...tiles.values()].filter((t) => t.spr).length, props: props.filter((p) => p.spr).length, queue: Q.length, k, gen,
       walkers: [...walkers].slice(0, 3).map((w) => ({ x: w.x, y: w.y, vis: w.gl && w.gl.root.visible, sv: w.gl && w.gl.spr.visible, tex: w.gl && w.gl.spr.texture && w.gl.spr.texture.width, pos: w.gl && [w.gl.spr.x, w.gl.spr.y, w.gl.spr.scale.x] })) });
     G.hide = (on) => { if (canvas) canvas.style.visibility = on ? 'hidden' : ''; if (!on) dirty = true; };

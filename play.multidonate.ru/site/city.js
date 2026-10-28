@@ -13,6 +13,7 @@
   if (!M || !ART) return;
   const TOP = 170;                 // верх неба, который не показываем (сцена 1080 — видно 910)
     const IDS = { anvil: 1, forge: 1, tent: 1, shop: 1, trainer: 1, board: 1, hall: 1, auction: 1, gate: 1, storage: 1, magic: 1, mine: 1, mineboard: 1 };
+  IDS.hwshop = 1; IDS.hwpass = 1;   // HW-NPC: хэллоуинские НПС (hwnpc.js) - окна поверх города
   let X = null;                    // помощники сайта (app.js)
   // 23.10: «Города округов» (legacy/md/docs/CITY.md): какой город открыт — fair (Ярмарка, как раньше) или город округа ★1–2
   // (раскладка — towngen.js, рисунок — townart.js; оба грузятся только при входе в город округа). acc — доступ с сервера
@@ -45,6 +46,12 @@
   const reduce = () => !!(RM && RM.matches);
   const esc = window.LGSiteUi.esc;   // 25.10: общая (packages/site-ui → ui-kit), была своя копия
   const D = () => window.MDDoodle;
+  // 28.10 (hw-npc-ghosts): НПС рисуются и призраками (doodle-core.js npcWrap) - на время рисования стиля: 'both' (улица) / 'ghost' (помещения)
+  const npcAs = (md, fn) => { const d = D(); if (!d || !md) return fn(); const was = d.npcGh; d.npcGh = md; try { return fn(); } finally { d.npcGh = was; } };
+  const npcBoth = (L, fn) => npcAs(L && L.hw ? 'both' : '', fn);
+  // хэллоуинский («мёртвый») вид города сейчас (Перепутье не преображается) - НПС в помещениях тоже призраки
+  const hwDead = () => { try { if (isCamp()) return false; const c = hwNow(); return !!(c && c.look); } catch { return false; } };
+  const ghostSvg = (svg) => String(svg).replace(/(<svg class="jl-doodle jd-ghost"[^>]*?) style="[^"]*"/, '$1');   // без filter (свечение призрака - CSS filter)
   const scopeIds = (svg, p) => svg.replace(/id="([^"]+)"/g, `id="${p}$1"`).replace(/url\(#([^)]+)\)/g, `url(#${p}$1)`).replace(/href="#([^"]+)"/g, `href="#${p}$1"`);
   // 20.10: Аукцион открыт тестерам (флаг au у героя) — без таблички «скоро»; сам зал — модуль auction.js (грузится при входе)
   const auOpen = () => !!(X && X.hero() && X.hero().au);
@@ -57,6 +64,52 @@
   const csOn = () => !!(X && X.hero() && X.hero().cs);
   const mnOn = () => !!(X && X.hero() && X.hero().mn && Object.keys(X.hero().mn).length);   // 23.10: шахта открыта (тестерам, minePublic); 24.10: mn — { id шахты: … }
   const bOk = (b) => (!b.magic || msOn()) && (!b.mine || mnOn());
+  // HW-NPC (слияние 27.10): хэллоуинские НПС «Ступа сладостей» и Призрачный Фонарщик (рисунок и окна - hwnpc.js). Где - крючок
+  // cityhw.js npcSpots (только Ярмарка «Города»), когда - хэллоуинский вид города (hwc.look; Перепутье и города края - никогда).
+  // Ставятся поверх собранного города, без пересборки (hwApply → hwNpc): предметы citygl с меткой 'hwn' - «мёртвая» перекраска и тон
+  // города их не трогают (тёплые пятна), препятствия - в карту, «здания» - наведение, клик, подписи. Только Pixi (как убранство ивента).
+  let hnJs = null;
+  const hnLv = () => { const h = X && X.hero(); return h && h.hw ? Math.max(0, Math.min(20, +h.hw.p || 0)) : 0; };   // у зрителя горят его фонарики пасса
+  function hwNpc(on) {
+    if (!S || !S.gl || !S.mk) return;   // mk - только у Ярмарки (buildFair)
+    S.hnOn = on = !!on && !inTown() && !!window.LGCityHW;
+    const N = window.LGHwNpc, k = on ? 'n' + hnLv() : '';
+    if (k === (S.hnK || '')) return;
+    if (on && !N) {   // файл НПС - только когда они нужны
+      if (!hnJs) hnJs = townJs(`/site/hwnpc.js?v=${(window.LG_CITYV || {}).hn || ''}`).catch((e) => { hnJs = null; console.warn('[город] hwnpc.js', e); });
+      hnJs.then(() => { if (S && window.LGHwNpc) hwNpc(S.hnOn); }); return;
+    }
+    S.hnK = k;
+    S.gl.dropProps('hwn'); for (const e of S.el.querySelectorAll('.hwn-live, [data-hwn]')) e.remove();
+    let G = [];
+    if (on) try { G = window.LGCityHW.npcSpots({ fair: true }).map((sp) => N.geo(sp, { lv: hnLv() })).filter(Boolean); } catch (e) { console.warn('[город] хэллоуинские НПС', e); G = []; }
+    const B = G.map((g) => g.building), props = G.map((g) => ({ x: g.prop.x, y: g.prop.y, w: g.prop.w, h: g.prop.h, z: g.prop.z, dx: 0, svg: scopeIds(g.prop.svg(), 'cyh' + g.building.id + '-') }));
+    WD = B.length ? { ...M, BUILDINGS: [...M.BUILDINGS, ...B] } : M;
+    S.map = S.mk(B.length ? { hwObst: G.flatMap((g) => g.obst), hwB: B } : {});
+    if (S.ol && S.ol.set) S.ol.set('hwn', props.map((p) => ({ svg: p.svg, dx: 0 })));
+    if (props.length) S.gl.addProps(props, 'hwn');
+    // подписи и кнопки «зданий» (как у зданий города) и живые слои (искры, конфеты, призрак, мерцание огней) - только transform / opacity
+    const tags = S.el.querySelector('.cy-tags'), bar = S.el.querySelector('.cy-bar');
+    for (const b of B) {
+      if (tags) tags.insertAdjacentHTML('beforeend', `<button type="button" class="cy-tag" data-b="${b.id}" data-hwn="1" style="left:${b.tag ? b.tag[0] : (b.hit[0] + b.hit[1]) / 2}px;top:${tagY(b)}px"><span aria-hidden="true">${b.icon}</span>${esc(titleOf(b))}</button>`);
+      if (bar) bar.insertAdjacentHTML('beforeend', `<button type="button" data-b="${b.id}" data-hwn="1"><span aria-hidden="true">${b.icon}</span>${esc(titleOf(b))}</button>`);
+    }
+    if (G.length && !document.getElementById('hwnLiveCss')) { const st = document.createElement('style'); st.id = 'hwnLiveCss'; st.textContent = N.LIVE_CSS; document.head.appendChild(st); }
+    const host = S.walk || S.cam; if (host) G.forEach((g, gi) => g.live.forEach((l, i) => {
+      const d = document.createElement('div'); d.className = 'hwn-live ' + l.cls; d.setAttribute('aria-hidden', 'true');
+      d.style.cssText = `left:${l.x}px;top:${l.y}px;width:${l.w}px;height:${l.h}px;z-index:${l.z}`;
+      d.innerHTML = scopeIds(l.svg, `cyhl${gi}${i}-`); host.appendChild(d);
+    }));
+    // кто стоял на месте НПС - шаг в сторону (по стенам и воде не ходят)
+    for (const w of [...S.others.values(), ...(S.me ? [S.me] : [])]) if (!S.map.free(w.x, w.y)) { const [nx, ny] = S.map.nearest(w.x, w.y); w.x = nx; w.y = ny; w.path = null; place(w); }
+    kick();
+  }
+  // HW-NPC: окно НПС (лавка / пасс) - товар и шкала из раздела Ярмарки (fair.hw), конфеты и уровень - у героя (hero.hw)
+  async function hwOpen(id) {
+    const N = window.LGHwNpc; if (!N || !N.open) return;
+    const st = await loadStock().catch(() => null);
+    N.open(id, { hero: () => X.hero(), data: (st && st.hw) || null, D: window.MDDoodle, login: () => (X.login ? X.login() : ''), toast: (t) => X.toast && X.toast(t) });
+  }
   const titleOf = (b) => (b && b.id === 'magic' && msOn() ? String(X.hero().ms) : (b && b.title) || '');
   const still = (svg) => String(svg).replace(/<(animate|animateTransform|animateMotion|set)\b[^>]*?(\/>|>[\s\S]*?<\/\1>)/g, '');
   // чем рисовать улицу: auto — Pixi (WebGL, программный WebGL или его нет — canvas), svg — прежняя отрисовка; для проверок
@@ -131,10 +184,12 @@
     const MS = msOn() && !!L.magic;
     if (TOWN.L) return isCamp() ? buildCamp(root, gl, st, L) : buildTown(root, gl, st, L, MS);
     WD = M;
-    const map = M.make((L.obstacles || []).filter((o) => !o.divider), { magic: MS, magicObst: L.magic && L.magic.obstacle, mine: mnOn() }), Q = ART.quarter(st, M.QW, { auction: auOpen() }), LW = ART.lower(st, M, { storage: stOpen(), mine: mnOn() });
+    const mk = (hw) => M.make((L.obstacles || []).filter((o) => !o.divider), { magic: MS, magicObst: L.magic && L.magic.obstacle, mine: mnOn(), ...(hw || {}) });   // HW-NPC: mk - карта с НПС ивента (hwNpc)
+    const map = mk(), Q = ART.quarter(st, M.QW, { auction: auOpen() }), LW = ART.lower(st, M, { storage: stOpen(), mine: mnOn() });
     // небо: у стиля Ярмарки своё (.fr-skybg в css стиля), нет — как у квартала
     const skyM = /\.fr-skybg\{background:([^}]+)\}/.exec(L.css || ''), sky = skyM ? skyM[1] : Q.sky;
-    const fairSvg = scopeIds(L.scene({ city: true, ...(MS ? { magic: true, magicName: String(X.hero().ms) } : {}) }), 'cyf-');
+    // 28.10 (hw-npc-ghosts): НПС Ярмарки - и призраками рядом (скрыты): их покажут мёртвые плитки хэллоуинского города (citygl)
+    const fairSvg = npcBoth(L, () => scopeIds(L.scene({ city: true, ...(MS ? { magic: true, magicName: String(X.hero().ms) } : {}) }), 'cyf-'));
     const stars = (L.skyStars || []).map((g) => g.join('')).join('');
     root.innerHTML = shellHtml(st, gl ? '' : `<div class="cy-art" style="background:${esc(sky)}">
             <svg class="cy-q" width="${M.QW + 40}" height="1080" viewBox="0 0 ${M.QW + 40} 1080" aria-hidden="true">${scopeIds(Q.svg, 'cyq-')}</svg>
@@ -174,7 +229,7 @@
       ...(L.props || []).map((p, i) => (p.divider ? null : { x: p.x, y: p.y, w: p.w, h: p.h, z: p.z, dx: M.QW, svg: scopeIds(p.svg(), 'cyp' + i + '-'),
         ...(DH && DH.props && DH.props[i] && typeof DH.props[i].svg === 'function' ? { svgDead: scopeIds(DH.props[i].svg(), 'cypd' + i + '-') } : {}) })).filter(Boolean),
     ];
-    return finish(root, el, gl, { L, map, st, street, sky, qprops: Q.props, layers, props, skyDead: (DH && DH.sky) || null });
+    return Object.assign(finish(root, el, gl, { L, map, st, street, sky, qprops: Q.props, layers, props, skyDead: (DH && DH.sky) || null }), { mk });   // HW-NPC: mk
   }
 
   // общее у Ярмарки и городов округов: Pixi (или SVG-версия), обводка, сцена на паузе, состояние города
@@ -918,7 +973,7 @@
       if (!R.art && L.rooms && L.rooms[id] && typeof L.rooms[id].svg === 'function') {
         const st = shopView(id, stockOf(id)) || (id === 'forge' || id === 'magic' ? { stands: [], shelf1: [], shelf2: [], case: [], mats: [] } : { booths: [], amulets: [] });
         S.itemPos = {};   // 23.10: где на полках какая вещь — туда кладём кнопки товара (наведение — карточка, двойной клик — купить)
-        return `<rect width="1920" height="1080" fill="${esc(L.rooms[id].artBg || '#1d1626')}"/>` + scopeIds(still(L.rooms[id].svg(st, S.itemPos)), 'cyr-');
+        return `<rect width="1920" height="1080" fill="${esc(L.rooms[id].artBg || '#1d1626')}"/>` + scopeIds(still(npcAs(hwDead() ? 'ghost' : '', () => L.rooms[id].svg(st, S.itemPos))), 'cyr-');   // 28.10 (hw-npc-ghosts)
       }
     } catch (e) { console.warn('[город] интерьер', id, e); }
     return scopeIds(ART.room(S.st, R.art || 'plain'), 'cyr-');
@@ -967,6 +1022,7 @@
     if (!S || !IDS[id]) return;
     { const B0 = WD.BUILDINGS.find((b) => b.id === id); if (B0 && buildSay(B0)) return; }   // 23.10 (стройка): на стройке — не заходим
     if (id === 'mine') { mineOpen(); return; }
+    if (id === 'hwshop' || id === 'hwpass') { hwOpen(id); return; }   // HW-NPC: окна лавки и пасса - поверх города (hwnpc.js)
     if (id === 'mineboard') { if (X.openMineBoard) X.openMineBoard(); return; }   // 23.10: доска итогов шахты — окно поверх города   // 23.10: шахта — своя локация (mine.js), не зал «Города»
     // 23.10: сайт обновили, а страница старая (app.js LG_VER) — перезагрузить на свежий код, а не открывать старую лавку
     const V = window.LG_VER; if (V) { if (V.old() && V.reload()) return; V.check(); }
@@ -979,6 +1035,7 @@
     if (id === 'tent' && tentMine()) { try { X.api('/api/tentShop', { on: true }); } catch (e) {} }   // 24.10: стример зашёл в Будуар - награды за баллы Шатра на Twitch
     const r = S.room;
     r.dataset.b = id; r.dataset.ui = FULL[id] ? 'f' : R.ui;
+    r.classList.toggle('cy-hwd', hwDead());   // 28.10 (hw-npc-ghosts): «Заточка» (кусок улицы) - кузнец-призрак
     const hero = h ? fig(R.hero[0], R.hero[1], still(X.doodle(X.login(), X.heroLook(h), 'happy', 'peace')), R.k || 2.1, 'me') : '';
     const npcF = R.npc ? fig(R.npc[0], R.npc[1], npc(R.npc[2], R.npc[3], R.npc[4], R.npc[5]), 2.1, 'npc') : '';
     const hello = FULL[id] ? '' : helloOf(id);
@@ -1153,7 +1210,7 @@
     if (id === 'magic') return 'Посохи, мантии, амулеты, звёзды и сферы — на полках. ' + buy;
     return 'Еда лечит раны, зелья — быстрее. ' + buy;
   }
-  const npc = (seed, mood, extra, look) => { try { return still(D().jDoodle(D().jhash(seed), mood, false, extra || {}, look)); } catch { return ''; } };
+  const npc = (seed, mood, extra, look) => { try { const gh = hwDead(); const v = still(D().jDoodle(D().jhash(seed), mood, false, gh ? { ...(extra || {}), ghost: true } : extra || {}, look)); return gh ? ghostSvg(v) : v; } catch { return ''; } };   // 28.10 (hw-npc-ghosts): в хэллоуинском виде - призрак
   const say = (t) => `<p class="cy-say">${esc(t)}</p>`;
   function body(id, h) {
     if (id === 'hall' && inTown() && TOWN.acc && !TOWN.acc.own) return `${say('Ратуша закрыта: этот округ не принадлежит каналу. Стража пускает только своих.')}<p class="note">Захватите округ на стриме — Ратуша откроется (и цены в лавках станут обычными).</p>`;   // 23.10: quest/towns.js townRoom
@@ -1227,7 +1284,7 @@
   function hwApply() {
     if (!S || !S.gl) return;
     const c = isCamp() ? null : hwNow(), k = c ? (c.look ? 'l' : '') + (c.portal ? 'p' : '') : '';   // 28.10 (стример): Перепутье не преображается
-    if (k === (S.hwk || '') || S.hwPlay) { if (S.hwk == null) S.hwk = k; if (!S.hwPlay) hwGhSet(!!(c && c.portal)); return; }   // первый взгляд без Хэллоуина - запомнить: превращение при нас покажем сценой
+    if (k === (S.hwk || '') || S.hwPlay) { if (S.hwk == null) S.hwk = k; if (!S.hwPlay) { hwGhSet(!!(c && c.portal)); hwNpc(!!(c && c.look)); } return; }   // HW-NPC: НПС - и уровень пасса зрителя   // первый взгляд без Хэллоуина - запомнить: превращение при нас покажем сценой
     if (k && !window.LGCityHW) { if (!hwJs) hwJs = townJs(`/site/cityhw.js?v=${(window.LG_CITYV || {}).hw || ''}`).catch((e) => { hwJs = null; console.warn('[город] Хэллоуин', e); }); hwJs.then(() => { if (window.LGCityHW) hwApply(); }); return; }
     const was = S.hwk; S.hwk = k;
     const L = window.LGCityHW, sc = { B: WD.BUILDINGS.filter(bOk), AREA: WD.AREA, fair: !inTown() }, hw = S.L && S.L.hw, o = { frame: hw && hw.frame, decor: hw && hw.decor, dx: inTown() ? 0 : M.QW };
@@ -1237,13 +1294,15 @@
     // убранство и портал - прямо в мёртвых плитках (кадр их не рисует); вид выключен, а ночь идёт - портал предметами
     const stat = () => { fire(!(c && c.look)); hwGhSet(!!(c && c.portal)); S.gl.dropProps('hw'); S.gl.dropProps('hwp');
       if (c && c.look) S.gl.setDeadArt(L.art(sc, { ...o, portal: !!c.portal })); else if (c && c.portal) S.gl.addProps(L.portal(sc, o), 'hwp');
-      S.gl.setDead(!!(c && c.look)); tint(0); };   // 28.10 (hw-city-dead): мёртвый город - перекраска при запекании
+      S.gl.setDead(!!(c && c.look)); tint(0); hwNpc(!!(c && c.look));   // HW-NPC: НПС ивента - только в хэллоуинском виде Ярмарки
+      // мерцание огня - на сайте облегчённо: 3 тыквы у ворот (остальной свет запечён); телефон с «меньше движения» - без него
+      const fl = S.cam.querySelector('.hwc-fls'); if (fl) fl.remove(); if (c && c.look && !reduce()) { const f = L.flickers(sc, 3); if (f) S.cam.appendChild(f); } };   // 28.10 (hw-city-dead): мёртвый город - перекраска при запекании
     // зритель смотрит город в момент превращения (портал только что открылся) - та же сцена, но без тряски и с меньшим числом частиц;
     // открыл позже - сразу итоговый вид. Повторного показа нет
     if (was != null && !/p/.test(was) && c && c.portal && c.look && c.at && Date.now() - c.at < 20000 && !reduce() && S.cam) {
-      S.gl.dropProps('hw'); S.gl.dropProps('hwp'); S.gl.setDeadArt(null);
+      S.gl.dropProps('hw'); S.gl.dropProps('hwp'); S.gl.setDeadArt(null); hwNpc(false);   // HW-NPC: НПС появятся после сцены
       setTimeout(() => { if (S) fire(false); }, 3000);
-      S.hwPlay = L.play({ sc, art: o, world: S.cam, screen: S.view, light: true, ghosts: () => hwGhSet(true), dead: (w) => { if (S && S.gl) { S.gl.setDead(true, w); kick(); } }, bake: () => { if (S && S.gl) { S.gl.setDeadArt(L.art(sc, { ...o, portal: true })); kick(); } }, done: () => { if (S) { S.hwPlay = null; kick(); } } });
+      S.hwPlay = L.play({ sc, art: o, world: S.cam, screen: S.view, light: true, ghosts: () => hwGhSet(true), dead: (w) => { if (S && S.gl) { S.gl.setDead(true, w); kick(); } }, bake: () => { if (S && S.gl) { S.gl.setDeadArt(L.art(sc, { ...o, portal: true })); kick(); } }, done: () => { if (S) { S.hwPlay = null; hwNpc(!!(hwNow() || {}).look); const f = L.flickers(sc, 3); if (f && !reduce() && !S.cam.querySelector('.hwc-fls')) S.cam.appendChild(f); kick(); } } });
       return;
     }
     stat(); kick();
@@ -2292,7 +2351,9 @@
     // 23.10: окно наковальни отдельно от сцены — для проверок (test/enchant-ui.test.ts): разметка, подключение к панели, выбор вещи
     anvil: { body: (h) => forgeBody(h), mount: (P, ctx) => { X = X || ctx; forgeAfter(X.hero(), P); }, pick: (uid, P) => pickForge(uid, P), uid: () => FX.uid, off: () => igOff() },
     // для проверок и снимков: где мой герой, кто виден
-    debug: () => S && { me: S.me && [S.me.x, S.me.y], others: [...S.others.keys()], hidden: S.hidden, ghosts: S.ghosts.size, n: S.n, camX: S.camX, camY: S.camY, z: S.z, inCity: S.inCity, render: S.gl ? (S.gl.mode || 'pixi…') : 'svg', fail: GLFAIL, lod: { lv: S.q.lv, r: S.q.r && +S.q.r.toFixed(2), lock: S.q.lock, res: S.gl && S.gl.res ? S.gl.res() : null, cull: [...S.others.values()].filter((w) => w.cull).length, nolab: [...S.others.values()].filter((w) => w.nolab).length }, gl: S.gl && S.gl.stats(), ol: S.ol && S.ol.stats() },
+    npcs: () => (S && S.gl && S.gl.npcs ? S.gl.npcs() : []),
+    room: (id) => openPanel(id),   // 28.10 (hw-npc-ghosts): открыть помещение - для снимков   // 28.10 (hw-npc-ghosts): НПС Ярмарки на улице (рамки)
+    debug: () => S && { me: S.me && [S.me.x, S.me.y], others: [...S.others.keys()], hidden: S.hidden, ghosts: S.ghosts.size, n: S.n, camX: S.camX, camY: S.camY, z: S.z, inCity: S.inCity, render: S.gl ? (S.gl.mode || 'pixi…') : 'svg', fail: GLFAIL, lod: { lv: S.q.lv, r: S.q.r && +S.q.r.toFixed(2), lock: S.q.lock, res: S.gl && S.gl.res ? S.gl.res() : null, cull: [...S.others.values()].filter((w) => w.cull).length, nolab: [...S.others.values()].filter((w) => w.nolab).length }, gl: S.gl && S.gl.stats(), ol: S.ol && S.ol.stats(), npc: WD.BUILDINGS.filter((b) => b.hw).map((b) => b.id) },   // HW-NPC: npc - хэллоуинские НПС на улице
     // 23.10: для замера плавности — где сейчас другие (после кадра): ник, x, y, идёт, убран качеством, нарисован, прозрачность; nf — номер кадра Pixi
     peek: () => S && { nf: S.gl ? (S.gl.nf || 0) : -1, z: S.z, w: [...S.others.values()].map((w) => [w.l, w.x, w.y, w.path ? 1 : 0, w.cull ? 1 : 0, w.gl ? (w.gl.root.visible ? 1 : 0) : (w.shown ? 1 : 0), w.gl ? w.gl.root.alpha : 1]) },
     hideOthers: (on) => S && setHidden(!!on),

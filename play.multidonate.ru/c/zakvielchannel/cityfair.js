@@ -38,7 +38,8 @@ try {
       let svg = ''; try { svg = DD.jDoodle(DD.jhash(seed), mood || 'happy', false, extra || {}, look); } catch (e) { return ''; }
       const w = 120 * s, h = 170 * s;
       const body = svg.replace(/<svg class="jl-doodle( jd-ghost)?" viewBox="0 0 120 170"( style="([^"]*)")?/, (m, gh, st, css) => `<svg class="jl-doodle${gh || ''}" x="${f1(-w / 2)}" y="${f1(-h)}" width="${f1(w)}" height="${f1(h)}" viewBox="0 0 120 170" overflow="visible" style="${css ? css + ';' : ''}position:static;width:${f1(w)}px;height:${f1(h)}px;filter:none"`);
-      return `<g transform="translate(${f1(cx)} ${f1(base)})"><g><animateTransform attributeName="transform" type="rotate" values="0;2.5;0;-2.5;0" dur="4.2s" repeatCount="indefinite"/>${body}</g></g>`;
+      const out = `<g transform="translate(${f1(cx)} ${f1(base)})"><g><animateTransform attributeName="transform" type="rotate" values="0;2.5;0;-2.5;0" dur="4.2s" repeatCount="indefinite"/>${body}</g></g>`;
+      return DD.npcWrap ? DD.npcWrap(out, seed, base, cx, s, mood, extra, look) : out;   // 28.10 (hw-npc-ghosts): звездочёт в «мёртвом» городе - призрак
     }
     function magicShop(T0) {
       const T = Object.assign({}, DEF, T0 || {});
@@ -1826,18 +1827,37 @@ try {
     const D = window.MDDoodle;
     /* ===== цвета и кирпичики ===== */
     const INK = '#2b1d18';                       // обводка — как у котиков
-    const CREAM = '#fff4e0', MILK = '#f7f3ea', PINK = '#ff8fa3', GOLD = '#ffcf4a';
-    const TERRA = '#c8664a', TERRA_D = '#8f3f2c', TERRA_L = '#e08a68';
-    const BRICK = '#a9503c', BRICK_D = '#7a3426';
-    const CARD = '#d9a066', CARD_D = '#a8743f', CARD_L = '#ecc08a';
-    const WOOD = '#a8754f', WOOD_D = '#6e4a2f';
-    const NIGHT1 = '#2a2858', NIGHT2 = '#3a3270', ROOF_FAR = '#24224a', ROOF_MID = '#3b2f5e';
+    let CREAM = '#fff4e0', MILK = '#f7f3ea', PINK = '#ff8fa3', GOLD = '#ffcf4a';
+    let TERRA = '#c8664a', TERRA_D = '#8f3f2c', TERRA_L = '#e08a68';
+    let BRICK = '#a9503c', BRICK_D = '#7a3426';
+    let CARD = '#d9a066', CARD_D = '#a8743f', CARD_L = '#ecc08a';
+    let WOOD = '#a8754f', WOOD_D = '#6e4a2f';
+    let NIGHT1 = '#2a2858', NIGHT2 = '#3a3270', ROOF_FAR = '#24224a', ROOF_MID = '#3b2f5e';
     const O = (w = 5) => `stroke="${INK}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"`;
     // 25.10 (art/fair-city): общий набор деталей (styles/legion/fair.js → MDDoodle.fairKit): плитка террасы, черепица, фонари, деревья
-    const K = D.fairKit({ id: 'ct', line: INK, ink: INK, metal: '#2a2440', glass: '#ffd76a', bark: '#6e4a2f', leaf: '#5a9a4a', leafD: '#3e7436', leafL: '#8cc46a', wood: WOOD, woodD: WOOD_D, woodL: '#c8956a',
+    let K = D.fairKit({ id: 'ct', line: INK, ink: INK, metal: '#2a2440', glass: '#ffd76a', bark: '#6e4a2f', leaf: '#5a9a4a', leafD: '#3e7436', leafL: '#8cc46a', wood: WOOD, woodD: WOOD_D, woodL: '#c8956a',
       pave: { mortar: TERRA_D, stone: TERRA, alt: '#d87a5c', light: '#f0a07e', dark: TERRA_D },
       roofs: { plum: { a: '#5a3a5a', b: '#664266', c: '#4e3250', edge: '#3e2a46' }, far: { a: '#4a3456', b: '#523a5e', c: '#42304e', edge: '#3a2846' } } });
     const rnd = (() => { let s = 23; return () => (s = (s * 16807) % 2147483647) / 2147483647; })();
+    /* ===== HW: 28.10 (art/hw-dead-city) - «мёртвая» Ярмарка Изнанки (договор - шапка site/public/cityhw.js, hw.dead) =====
+       Тот же город, только мёртвый: геометрия, места, препятствия и обводки (data-ol) - те же, меняется облик. DEAD - идёт сборка мёртвого
+       вида (withDead): палитра холодная и выцветшая, огней нет (окна чёрные или заколочены, фонари разбиты, горн остыл, гирлянды погасли),
+       жителей нет, рыбы - скелеты, картон размок и порван, ткань шатра висит лохмотьями. Свет в мёртвом городе - только тыквы и конфеты
+       убранства (cityhw.js) и красное зарево за крышами. Неподвижно: анимации снимаются (рисунок запекается в картинку). */
+    let DEAD = false;
+    const DEAD_PAL = { CREAM: '#7c786f', MILK: '#6e6c69', PINK: '#6a5662', GOLD: '#8a7a52', TERRA: '#3a404e', TERRA_D: '#252a34', TERRA_L: '#4a5060',
+      BRICK: '#4a3e46', BRICK_D: '#2e2830', CARD: '#4e463a', CARD_D: '#332d25', CARD_L: '#5a5244', WOOD: '#4a4038', WOOD_D: '#2e2822',
+      NIGHT1: '#0c0f16', NIGHT2: '#141822', ROOF_FAR: '#151922', ROOF_MID: '#1e222c' };
+    let KD = null;   // набор деталей мёртвого вида (символы - свои, с префиксом ctd)
+    function withDead(fn) {
+      const save = { CREAM, MILK, PINK, GOLD, TERRA, TERRA_D, TERRA_L, BRICK, BRICK_D, CARD, CARD_D, CARD_L, WOOD, WOOD_D, NIGHT1, NIGHT2, ROOF_FAR, ROOF_MID, K };
+      const set = (P) => { ({ CREAM, MILK, PINK, GOLD, TERRA, TERRA_D, TERRA_L, BRICK, BRICK_D, CARD, CARD_D, CARD_L, WOOD, WOOD_D, NIGHT1, NIGHT2, ROOF_FAR, ROOF_MID } = P); };
+      if (!KD) KD = D.fairKit({ id: 'ctd', line: INK, ink: INK, metal: '#22252e', glass: '#2a2e38', bark: '#2e2822', leaf: '#3a4038', leafD: '#2a2e2a', leafL: '#4a5048', wood: DEAD_PAL.WOOD, woodD: DEAD_PAL.WOOD_D, woodL: '#5a5046',
+        pave: { mortar: '#1c1f27', stone: '#353a47', alt: '#3d4251', light: '#4c5262', dark: '#1c1f27' },
+        roofs: { plum: { a: '#2e2a34', b: '#353040', c: '#28252e', edge: '#1e1c24' }, far: { a: '#24222a', b: '#2a2832', c: '#201e26', edge: '#18161e' } } });
+      set(DEAD_PAL); K = KD; DEAD = true;
+      try { return fn(); } finally { DEAD = false; set(save); K = save.K; }
+    }
     const f1 = (v) => +(+v).toFixed(1);
     // 23.10: монетка у цены — того металла, что самый крупный в цене («1з 20с» - золото, «6с» - серебро, «40м» - медь); 🔒 - без монетки
     const priceCoin = (pt, x, y) => { const c = /з/.test(pt) ? ['#e8b923', '#6a4a0a', '#a07a1a'] : /с/.test(pt) ? ['#dfe3ea', '#4a525e', '#8e97a4'] : /[мб]/.test(pt) ? ['#cd7f3c', '#5a2c0c', '#8f4e1e'] : null; return c ? `<circle cx="${x}" cy="${y}" r="10" fill="${c[0]}" stroke="${c[1]}" stroke-width="2.5"/><circle cx="${x}" cy="${y}" r="5" fill="none" stroke="${c[2]}" stroke-width="2"/>` : ''; };
@@ -1850,7 +1870,13 @@ try {
 
     // человечек внутри сцены (продавцы, кузнец, франт): рисуется выбранным стилем человечков.
     // Размер задаём и атрибутами, и style: общий CSS .jl-doodle (из «Алертов») иначе сжимает его до 120×170
+    // 28.10 (hw-npc-ghosts): в «мёртвом» хэллоуинском городе НПС - призраки (doodle-core.js npcWrap; манекены и образцы - anim 'none' - нет)
     function guy(seed, base, cx, s, mood = 'happy', extra = {}, look, anim = 'idle') {
+      if (DEAD) return '';   // HW: в мёртвом городе жителей нет (призраки - у общего слоя cityhw.js)
+      const out = guy0(seed, base, cx, s, mood, extra, look, anim);
+      return anim === 'none' || !D.npcWrap ? out : D.npcWrap(out, seed, base, cx, s, mood, extra, look);
+    }
+    function guy0(seed, base, cx, s, mood, extra, look, anim) {
       const svg = D.jDoodle(D.jhash(seed), mood, false, extra, look);
       const w = 120 * s, h = 170 * s;
       const body = svg.replace(/<svg class="jl-doodle( jd-ghost)?" viewBox="0 0 120 170"( style="([^"]*)")?/, (m, gh, st, css) => `<svg class="jl-doodle${gh || ''}" x="${f1(-w / 2)}" y="${f1(-h)}" width="${f1(w)}" height="${f1(h)}" viewBox="0 0 120 170" overflow="visible" style="${css ? css + ';' : ''}position:static;width:${f1(w)}px;height:${f1(h)}px;filter:none"`);
@@ -1864,7 +1890,7 @@ try {
     }
 
     /* ---------- мелочи: рыбы, молоко, колбаса, консервы, клубки ---------- */
-    const fish = (x, y, s = 1, c = '#8fb6c8', rot = 0) => `<g transform="translate(${x} ${y}) rotate(${rot}) scale(${s})"><path d="M-26 0 C-14 -14 10 -14 20 0 C10 14 -14 14 -26 0 Z" fill="${c}" ${O(2.6)}/><path d="M18 0 L32 -11 L30 0 L32 11 Z" fill="${c}" ${O(2.6)}/><circle cx="-15" cy="-3" r="2.6" fill="${INK}"/><path d="M-6 -7 q4 7 0 14 M2 -8 q4 8 0 16" fill="none" stroke="${INK}" stroke-width="1.6" opacity=".5"/></g>`;
+    const fish = (x, y, s = 1, c = '#8fb6c8', rot = 0) => DEAD ? fishbone(x, y, s * 0.9, rot, '#a8a294') : `<g transform="translate(${x} ${y}) rotate(${rot}) scale(${s})"><path d="M-26 0 C-14 -14 10 -14 20 0 C10 14 -14 14 -26 0 Z" fill="${c}" ${O(2.6)}/><path d="M18 0 L32 -11 L30 0 L32 11 Z" fill="${c}" ${O(2.6)}/><circle cx="-15" cy="-3" r="2.6" fill="${INK}"/><path d="M-6 -7 q4 7 0 14 M2 -8 q4 8 0 16" fill="none" stroke="${INK}" stroke-width="1.6" opacity=".5"/></g>`;
     const fishbone = (x, y, s = 1, rot = 0, c = CREAM) => `<g transform="translate(${x} ${y}) rotate(${rot}) scale(${s})"><path d="M-22 0 H18" stroke="${INK}" stroke-width="6" stroke-linecap="round"/><path d="M-22 0 H18" stroke="${c}" stroke-width="3" stroke-linecap="round"/>`
       + [-12, -4, 4, 12].map((x) => `<path d="M${x} -8 Q${x + 4} 0 ${x} 8" fill="none" stroke="${INK}" stroke-width="5" stroke-linecap="round"/><path d="M${x} -8 Q${x + 4} 0 ${x} 8" fill="none" stroke="${c}" stroke-width="2.4" stroke-linecap="round"/>`).join('')
       + `<circle cx="-27" cy="0" r="7" fill="${c}" ${O(2.4)}/><circle cx="-29" cy="-2" r="1.6" fill="${INK}"/><path d="M18 0 l10 -8 v16 Z" fill="${c}" ${O(2.4)}/></g>`;
@@ -1883,13 +1909,16 @@ try {
     // фонарь-уличный с котом-флюгером
     function lamp(x, base, h = 300) {
       const top = base - h;
+      if (DEAD) return `<g transform="rotate(${x % 2 ? 5 : -6} ${x} ${base})"><rect x="${x - 6}" y="${top + 60}" width="12" height="${h - 60}" fill="#22252e" ${O(3)}/><path d="M${x - 22} ${base} h44" stroke="#22252e" stroke-width="10" stroke-linecap="round"/>`   // HW: разбитый фонарь, не горит
+        + `<path d="M${x - 20} ${top + 64} h40 l-6 -44 h-28 Z" fill="#191b22" ${O(4)}/><path d="M${x - 12} ${top + 30} l10 14 l-4 10 M${x + 8} ${top + 26} l-6 18" stroke="#4a4e5a" stroke-width="2.4" fill="none"/><path d="M${x - 26} ${top + 20} h52 l-10 -16 h-32 Z" fill="#22252e" ${O(3)}/>`
+        + `<path d="M${x - 6} ${top + 100} q-22 30 -6 70 q12 30 -4 60" stroke="#0a0b10" stroke-width="5" fill="none" stroke-linecap="round"/></g>`;
       return `<circle cx="${x}" cy="${top + 40}" r="74" fill="url(#ctGlow)" opacity=".75"><animate attributeName="opacity" values=".6;.85;.65;.8;.6" dur="3s" repeatCount="indefinite"/></circle>`
         + `<rect x="${x - 6}" y="${top + 60}" width="12" height="${h - 60}" fill="#2a2440" ${O(3)}/><path d="M${x - 22} ${base} h44" stroke="#2a2440" stroke-width="10" stroke-linecap="round"/>`
         + `<path d="M${x - 20} ${top + 64} h40 l-6 -44 h-28 Z" fill="#ffd76a" ${O(4)}/><path d="M${x - 26} ${top + 20} h52 l-10 -16 h-32 Z" fill="#2a2440" ${O(3)}/>`
         + catSil(x, top + 4, 0.32, '#2a2440', false);
     }
     // дымок из трубы
-    const smoke = (x, y, k = 0) => [0, 1, 2].map((i) => `<circle cx="${x}" cy="${y}" r="${12 + i * 6}" fill="#b9b2d6" opacity="0"><animate attributeName="cy" values="${y};${y - 120}" dur="5s" begin="${(i * 1.6 + k).toFixed(1)}s" repeatCount="indefinite"/><animate attributeName="cx" values="${x};${x + 30 + i * 8}" dur="5s" begin="${(i * 1.6 + k).toFixed(1)}s" repeatCount="indefinite"/><animate attributeName="opacity" values=".45;0" dur="5s" begin="${(i * 1.6 + k).toFixed(1)}s" repeatCount="indefinite"/></circle>`).join('');
+    const smoke = (x, y, k = 0) => DEAD ? '' : [0, 1, 2].map((i) => `<circle cx="${x}" cy="${y}" r="${12 + i * 6}" fill="#b9b2d6" opacity="0"><animate attributeName="cy" values="${y};${y - 120}" dur="5s" begin="${(i * 1.6 + k).toFixed(1)}s" repeatCount="indefinite"/><animate attributeName="cx" values="${x};${x + 30 + i * 8}" dur="5s" begin="${(i * 1.6 + k).toFixed(1)}s" repeatCount="indefinite"/><animate attributeName="opacity" values=".45;0" dur="5s" begin="${(i * 1.6 + k).toFixed(1)}s" repeatCount="indefinite"/></circle>`).join('');
     // кирпичная труба
     function chimney(x, base, w, h, col = BRICK, withSmoke = true) {
       let s = `<rect x="${x - w / 2}" y="${base - h}" width="${w}" height="${h}" fill="${col}" ${O(4)}/><rect x="${x - w / 2 - 6}" y="${base - h - 12}" width="${w + 12}" height="14" rx="2" fill="${BRICK_D}" ${O(3.5)}/>`;
@@ -1937,6 +1966,10 @@ try {
       const mx = (x1 + x2) / 2, my = Math.max(y1, y2) + sag;
       let s = `<path d="M${x1} ${y1} Q${mx} ${my} ${x2} ${y2}" fill="none" stroke="#2a2440" stroke-width="3.5"/>`;
       const n = Math.max(2, Math.round(Math.hypot(x2 - x1, y2 - y1) / step));
+      if (DEAD) {   // HW: гирлянда погасла - тёмные колбочки, часть разбита (одним путём)
+        let b = ''; for (let i = 1; i < n; i++) { if (i % 4 === 2) continue; const t = i / n, x = (1 - t) ** 2 * x1 + 2 * (1 - t) * t * mx + t * t * x2, y = (1 - t) ** 2 * y1 + 2 * (1 - t) * t * my + t * t * y2; b += `M${f1(x)} ${f1(y + 5)} c7 2 7 13 0 15 c-7 -2 -7 -13 0 -15 Z`; }
+        return s + `<path d="${b}" fill="#2a2e38" stroke="#14161c" stroke-width="1.8"/>`;
+      }
       for (let i = 1; i < n; i++) {
         const t = i / n, x = f1((1 - t) ** 2 * x1 + 2 * (1 - t) * t * mx + t * t * x2), y = f1((1 - t) ** 2 * y1 + 2 * (1 - t) * t * my + t * t * y2), c = BULB_C[(i * 3) % BULB_C.length];
         s += `<circle cx="${x}" cy="${f1(y + 12)}" r="13" fill="${c}" opacity=".22"><animate attributeName="opacity" values=".3;.08;.3" dur="${(1.4 + (i % 5) * 0.3).toFixed(1)}s" repeatCount="indefinite"/></circle>`
@@ -1968,9 +2001,55 @@ try {
       <radialGradient id="ctLaser"><stop offset="0" stop-color="#ff3a3a" stop-opacity=".9"/><stop offset="1" stop-color="#ff3a3a" stop-opacity="0"/></radialGradient>
       <linearGradient id="ctShade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a2236"/><stop offset="1" stop-color="#22142a"/></linearGradient>
       <linearGradient id="ctFloorShade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#14112a" stop-opacity=".45"/><stop offset="1" stop-color="#14112a" stop-opacity="0"/></linearGradient></defs>`;
+    // HW: мёртвый вид - те же градиенты, но тёмные: свет окон, огня, луны и лазера погашен
+    const DEFS_DEAD = `<defs><radialGradient id="ctGlow"><stop offset="0" stop-color="#2a2e38" stop-opacity="0"/><stop offset="1" stop-color="#2a2e38" stop-opacity="0"/></radialGradient>
+      <radialGradient id="ctFire"><stop offset="0" stop-color="#2a2e38" stop-opacity="0"/><stop offset="1" stop-color="#2a2e38" stop-opacity="0"/></radialGradient>
+      <radialGradient id="ctForgeIn" cx=".5" cy=".8" r=".9"><stop offset="0" stop-color="#2c2e36"/><stop offset=".5" stop-color="#191b22"/><stop offset="1" stop-color="#0b0c10"/></radialGradient>
+      <radialGradient id="ctWarm" cx=".5" cy=".7" r=".8"><stop offset="0" stop-color="#22252e"/><stop offset=".6" stop-color="#14161c"/><stop offset="1" stop-color="#0a0b0e"/></radialGradient>
+      <radialGradient id="ctMoon"><stop offset="0" stop-color="#2a2e38" stop-opacity="0"/><stop offset="1" stop-color="#2a2e38" stop-opacity="0"/></radialGradient>
+      <radialGradient id="ctLaser"><stop offset="0" stop-color="#2a2e38" stop-opacity="0"/><stop offset="1" stop-color="#2a2e38" stop-opacity="0"/></radialGradient>
+      <radialGradient id="ctRedGlow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#d01a2a" stop-opacity=".42"/><stop offset="1" stop-color="#d01a2a" stop-opacity="0"/></radialGradient>
+      <linearGradient id="ctShade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1c1e26"/><stop offset="1" stop-color="#101218"/></linearGradient>
+      <linearGradient id="ctFloorShade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0a0b10" stop-opacity=".55"/><stop offset="1" stop-color="#0a0b10" stop-opacity="0"/></linearGradient>
+      <linearGradient id="ctFog" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6a7088" stop-opacity="0"/><stop offset=".6" stop-color="#6a7088" stop-opacity=".22"/><stop offset="1" stop-color="#6a7088" stop-opacity=".1"/></linearGradient></defs>`;
     // стили человечков внутри рисунка (как в «Легионе»: стиль котиков задаёт свои цвета атрибутами, поэтому это им не мешает)
     const CSS = `<style>.jl-doodle .ln{fill:none;stroke:#f5f2ff;stroke-width:4.5;stroke-linecap:round;stroke-linejoin:round}.jl-doodle .body{stroke:#f5f2ff;stroke-width:4.5;stroke-linejoin:round}.jl-doodle .face:not([fill]){fill:none}.jl-doodle .face{stroke:#15122e;stroke-width:3.5;stroke-linecap:round}.jl-doodle .eye{fill:#15122e}</style>`;
 
+    /* ---------- HW: детали мёртвого вида (рисуются только при DEAD) ---------- */
+    // тёмная лоза вверх по стене: волнистый стебель с отростками, одним путём
+    function deadVine(x0, y0, x1, y1, w = 6) {
+      const n = 5; let d = `M${f1(x0)} ${f1(y0)}`, tw = '';
+      for (let i = 1; i <= n; i++) { const t = i / n, x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t, k = i % 2 ? 1 : -1; d += ` Q${f1(x - (x1 - x0) / n / 2 + k * 16)} ${f1(y - (y1 - y0) / n / 2)} ${f1(x)} ${f1(y)}`; if (i < n) tw += `M${f1(x)} ${f1(y)} q${f1(k * 18)} ${f1(-6)} ${f1(k * 26)} ${f1(12)} `; }
+      return `<path d="${d} ${tw}" stroke="#0a0b10" stroke-width="${w}" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="${d}" stroke="#1c2028" stroke-width="${f1(w * 0.4)}" fill="none" stroke-linecap="round"/>`;
+    }
+    // размокший и порванный картон коробки: тёмные потёки сверху вниз, рваные дыры, отогнутый лоскут
+    function deadCard(x0, x1, y0, y1) {
+      let drip = ''; for (let x = x0 + 30; x < x1 - 20; x += 46 + (x % 3) * 10) drip += `M${x} ${y0 + 20} q-4 ${f1(40 + (x % 5) * 14)} 2 ${f1(80 + (x % 7) * 16)} q6 10 -2 18 `;
+      return `<path d="${drip}" stroke="#2a241c" stroke-width="14" fill="none" stroke-linecap="round" opacity=".45"/>`
+        + `<path d="M${x0 + 150} ${y0 + 60} l22 -8 l14 18 l-6 22 l-24 4 l-12 -16 Z M${x1 - 70} ${y0 + 190} l18 -6 l10 14 l-12 12 l-18 -4 Z" fill="#0b0c10" ${O(3)}/>`
+        + `<path d="M${x1 - 4} ${y1 - 120} l40 20 l-14 30 l-26 -6 Z" fill="${CARD_L}" ${O(3)}/>`;
+    }
+    // лохмотья по низу купола шатра: рваные полосы ткани свисают ниже кромки, дыры в куполе
+    function deadRags(cx, B, R) {
+      let rag = ''; for (let i = 0; i < 9; i++) { const x = cx - R + 30 + i * (2 * R - 60) / 8, l = 30 + (i * 37) % 40; rag += `M${f1(x - 12)} ${B - 20} l4 ${l} l6 -12 l5 ${f1(l * 0.6)} l6 -18 l3 ${f1(-l * 0.5)} Z `; }
+      return `<path d="${rag}" fill="#4e4254" ${O(3)}/><path d="M${cx - 150} ${B - 300} l26 -10 l10 24 l-20 14 Z M${cx + 120} ${B - 200} l22 -4 l4 22 l-24 6 Z" fill="#0b0c10" ${O(3)}/>`;
+    }
+    // паутина в углу: лучи и дуги (sx, sy - куда растёт)
+    function web(x, y, rad, sx, sy) {
+      let d = ''; const A = [0, 0.5, 1, 1.5].map((k) => (k * Math.PI) / 3);
+      for (const a of A) d += `M${f1(x)} ${f1(y)} L${f1(x + sx * Math.cos(a) * rad)} ${f1(y + sy * Math.sin(a) * rad)} `;
+      for (const k of [0.4, 0.7, 1]) A.forEach((a, i) => { const px = x + sx * Math.cos(a) * rad * k, py = y + sy * Math.sin(a) * rad * k; d += (i ? 'L' : 'M') + `${f1(px)} ${f1(py)} `; });
+      return `<path d="${d}" stroke="#8a8e9a" stroke-width="1.6" fill="none" opacity=".6"/>`;
+    }
+    // ворон на жёрдочке (вместо голубя)
+    const crowD = (dx, dy, flip = 1) => `<g transform="translate(${dx} ${dy}) scale(${flip} 1)"><path d="M-14 0 Q-16 -18 0 -18 Q10 -18 12 -8 L20 -6 L12 -2 Q8 6 -6 6 Z" fill="#14161c" ${O(2.4)}/><circle cx="6" cy="-12" r="2" fill="#d01a2a"/><path d="M-14 0 l-10 6" stroke="${INK}" stroke-width="3"/></g>`;
+    // мёртвое дерево вместо стриженого куста: голый ствол с ветками-рогатками, одним путём
+    function deadTree(x, base, s = 1) {
+      const T = (d) => d.replace(/(-?\d+\.?\d*) (-?\d+\.?\d*)/g, (m, a, b) => `${f1(x + a * s)} ${f1(base + b * s)}`);
+      const trunk = T('M-14 0 Q-10 -80 -6 -150 L6 -150 Q12 -80 16 0 Z');
+      const br = T('M-4 -110 Q-40 -150 -70 -170 M-6 -150 Q-20 -200 -4 -240 M4 -140 Q40 -180 78 -186 M30 -170 Q40 -200 30 -220 M-40 -150 Q-60 -150 -78 -140 M-2 -200 Q20 -220 34 -246');
+      return `<ellipse cx="${x}" cy="${base + 4}" rx="${f1(50 * s)}" ry="${f1(10 * s)}" fill="#000" opacity=".3"/><path d="${trunk}" fill="#2e2822" ${O(4)}/><path d="${br}" stroke="${INK}" stroke-width="${f1(11 * s)}" fill="none" stroke-linecap="round"/><path d="${br}" stroke="#2e2822" stroke-width="${f1(5 * s)}" fill="none" stroke-linecap="round"/>`;
+    }
     // 23.10 (баг от зрителя: кирпичи выпирали за края стен и колодца): кладка — ровные ряды вперевязку, обрезанные по форме (clipPath);
     // id — свой у каждой кладки. d — форма (path), x0…x1 × y0…y1 — где класть, bw × bh — кирпич, op — заметность швов
     function masonry(id, d, x0, x1, y0, y1, bw, bh, op = 0.3, fill = '') {
@@ -1991,7 +2070,7 @@ try {
       const top = base - h, rh = Math.min(70, w * 0.38);
       let s = `<rect x="${f1(x)}" y="${f1(top)}" width="${f1(w)}" height="${f1(h + 40)}" fill="${col}"/><path d="M${f1(x - 10)} ${f1(top + 2)} L${f1(x + w / 2)} ${f1(top - rh)} L${f1(x + w + 10)} ${f1(top + 2)} Z" fill="${roof}"/>`;
       const cols = Math.max(1, Math.floor(w / 46)), rows = Math.max(1, Math.floor(h / 56));
-      for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) { const on = rnd() < winOn; s += `<rect x="${f1(x + (c + 0.5) * w / cols - 9)}" y="${f1(top + 18 + r * 56)}" width="18" height="24" rx="2" fill="${on ? '#ffd76a' : '#1b1938'}" opacity="${on ? 0.9 : 0.7}"/>`; }
+      for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) { const on = rnd() < winOn; s += `<rect x="${f1(x + (c + 0.5) * w / cols - 9)}" y="${f1(top + 18 + r * 56)}" width="18" height="24" rx="2" fill="${DEAD ? '#07080b' : on ? '#ffd76a' : '#1b1938'}" opacity="${on ? 0.9 : 0.7}"/>`; }   // HW: мёртвые окна - чёрные
       if (rnd() < 0.6) s += `<rect x="${f1(x + w * 0.7)}" y="${f1(top - rh * 0.8)}" width="16" height="${f1(rh * 0.6)}" fill="${roof}"/>`;
       if (rnd() < 0.45) s += antenna(f1(x + w * 0.3), f1(top - rh * 0.4), 46, roof);
       return s;
@@ -1999,12 +2078,13 @@ try {
     // 23.10 (баг от зрителя): в «Городе» Ярмарка обрезана слева по x 8 (стык с кварталом) — дальние дома, начатые за краем, были
     // разрезаны по вертикали. В городе (o.city) ряды крыш начинаются правее стыка — край дома целый, за ним крыши квартала
     function cityBg(o) {
-      let s = DEFS;
+      let s = DEAD ? DEFS_DEAD : DEFS;
       const X0 = o && o.city ? 22 : -40;
-      // луна и кот на трубе на её фоне
-      s += `<circle cx="1730" cy="160" r="190" fill="url(#ctMoon)"/><circle cx="1730" cy="160" r="88" fill="#fff3c8" ${O(4)}/><circle cx="1700" cy="132" r="13" fill="#efdca4"/><circle cx="1758" cy="196" r="9" fill="#efdca4"/><circle cx="1768" cy="128" r="6" fill="#efdca4"/>`;
+      // луна и кот на трубе на её фоне (HW: в мёртвом городе луны нет - красное зарево за крышами)
+      if (DEAD) s += `<ellipse cx="900" cy="470" rx="760" ry="260" fill="url(#ctRedGlow)"/><ellipse cx="2700" cy="460" rx="820" ry="250" fill="url(#ctRedGlow)"/>`;
+      else s += `<circle cx="1730" cy="160" r="190" fill="url(#ctMoon)"/><circle cx="1730" cy="160" r="88" fill="#fff3c8" ${O(4)}/><circle cx="1700" cy="132" r="13" fill="#efdca4"/><circle cx="1758" cy="196" r="9" fill="#efdca4"/><circle cx="1768" cy="128" r="6" fill="#efdca4"/>`;
       // облачка
-      const cloud = (x, y, k) => `<g transform="translate(${x} ${y}) scale(${k})" opacity=".55"><path d="M-90 20 Q-100 -10 -60 -12 Q-50 -44 -10 -34 Q14 -56 44 -30 Q86 -34 84 0 Q104 6 94 20 Z" fill="#4a4688"/></g>`;
+      const cloud = (x, y, k) => `<g transform="translate(${x} ${y}) scale(${k})" opacity="${DEAD ? '.8' : '.55'}"><path d="M-90 20 Q-100 -10 -60 -12 Q-50 -44 -10 -34 Q14 -56 44 -30 Q86 -34 84 0 Q104 6 94 20 Z" fill="${DEAD ? '#0b0d13' : '#4a4688'}"/></g>`;
       s += cloud(520, 210, 0.9) + cloud(2400, 140, 1.1) + cloud(3420, 230, 0.7);
       // дальний ярус крыш
       for (let x = X0; x < WIDE + 60;) { const w = 110 + rnd() * 120; s += farHouse(x, f1(470 + rnd() * 50), w, 120 + rnd() * 90, ROOF_FAR, '#1e1c40', 0.35); x += w + 6 + rnd() * 20; }
@@ -2016,7 +2096,7 @@ try {
         s += `<rect x="${f1(x)}" y="${f1(top)}" width="${f1(w)}" height="${f1(h + 120)}" fill="${ROOF_MID}"/>`;
         // 25.10: черепица рядами (символы набора), без контура — дальний план
         s += K.roof([[x - 14, top + 4], [x + w / 2, top - rh], [x + w + 14, top + 4]], { pal: 'plum', step: 16, scale: 0.8, w: 0, id: 'ctMid' + Math.round(x) });
-        if (rnd() < 0.7) { const wx = x + w / 2 - 20, wy = top - rh * 0.45; s += `<rect x="${f1(wx)}" y="${f1(wy)}" width="40" height="38" fill="${rnd() < 0.6 ? '#ffd76a' : '#22203e'}" stroke="#3e2a46" stroke-width="4"/><path d="M${f1(wx - 6)} ${f1(wy + 2)} L${f1(wx + 20)} ${f1(wy - 18)} L${f1(wx + 46)} ${f1(wy + 2)} Z" fill="#5a3a5a" stroke="#3e2a46" stroke-width="3"/>`; }
+        if (rnd() < 0.7) { const wx = x + w / 2 - 20, wy = top - rh * 0.45, lit = rnd() < 0.6; s += `<rect x="${f1(wx)}" y="${f1(wy)}" width="40" height="38" fill="${DEAD ? '#07080b' : lit ? '#ffd76a' : '#22203e'}" stroke="#3e2a46" stroke-width="4"/>${DEAD && lit ? `<path d="M${f1(wx - 4)} ${f1(wy + 8)} l48 20 M${f1(wx - 4)} ${f1(wy + 28)} l48 -16" stroke="#2e2822" stroke-width="6"/>` : ''}<path d="M${f1(wx - 6)} ${f1(wy + 2)} L${f1(wx + 20)} ${f1(wy - 18)} L${f1(wx + 46)} ${f1(wy + 2)} Z" fill="#5a3a5a" stroke="#3e2a46" stroke-width="3"/>`; }
         if (rnd() < 0.55) s += chimney(f1(x + w * (0.2 + rnd() * 0.6)), f1(top - rh * 0.35), 30, 64, '#6a3a46', rnd() < 0.6);
         if (rnd() < 0.35) s += antenna(f1(x + w * 0.75), f1(top - rh * 0.5), 60, '#2e2650');
         x += w + rnd() * 40;
@@ -2056,7 +2136,8 @@ try {
       // водосток спереди
       s += `<rect x="-20" y="1062" width="${WIDE + 40}" height="22" fill="#9aa0ae" ${O(4)}/><path d="M0 1068 H${WIDE}" stroke="#d8dce6" stroke-width="3" opacity=".7"/>`;
       // лужица с отражением луны и следы лапок
-      s += `<ellipse cx="1660" cy="1020" rx="70" ry="14" fill="#5a6aa8" opacity=".55"/><ellipse cx="1676" cy="1018" rx="14" ry="4" fill="#fff3c8" opacity=".7"/>`;
+      s += DEAD ? `<ellipse cx="1660" cy="1020" rx="70" ry="14" fill="#0e1218" opacity=".8"/><ellipse cx="1650" cy="1016" rx="22" ry="3" fill="#d01a2a" opacity=".25"/>`   // HW: чёрная лужа, в ней - отсвет зарева
+        : `<ellipse cx="1660" cy="1020" rx="70" ry="14" fill="#5a6aa8" opacity=".55"/><ellipse cx="1676" cy="1018" rx="14" ry="4" fill="#fff3c8" opacity=".7"/>`;
       for (let i = 0; i < 9; i++) s += paw(f1(700 + i * 44), f1(1040 - i * 6 - (i % 2) * 10), 0.8, INK, 0.18) + paw(f1(2440 + i * 46), f1(1030 + (i % 2) * 10), 0.8, INK, 0.16);
       return s;
     }
@@ -2072,14 +2153,17 @@ try {
       s += `<path d="M900 ${B} V600 A60 50 0 0 1 1020 600 V${B} Z" fill="url(#ctWarm)" ${O(5)}/>`;
       for (let i = 0; i < 6; i++) s += `<path d="M${912 + i * 4} ${B - 16 - i * 22} H${1008 - i * 4}" stroke="${WOOD_D}" stroke-width="6" opacity=".75"/>`;
       // открытая дверь
-      s += `<path d="M1020 ${B} V596 L1062 584 V${B + 6} Z" fill="${WOOD}" ${O(4)}/><circle cx="1054" cy="664" r="4" fill="${GOLD}"/><path d="M1026 620 L1056 612 M1026 700 L1056 696" stroke="${WOOD_D}" stroke-width="4"/>`;
+      s += DEAD ? `<path d="M1020 ${B - 40} V600 L1060 610 L1074 ${B + 4} Z" fill="${WOOD}" ${O(4)}/><path d="M1028 640 L1060 648 M1030 700 L1066 708 M1040 616 l6 30 l-4 20" stroke="${WOOD_D}" stroke-width="4" fill="none"/><path d="M1020 606 l-8 -6" stroke="#22252e" stroke-width="5"/>`   // HW: дверь сорвана с верхней петли, висит косо
+        : `<path d="M1020 ${B} V596 L1062 584 V${B + 6} Z" fill="${WOOD}" ${O(4)}/><circle cx="1054" cy="664" r="4" fill="${GOLD}"/><path d="M1026 620 L1056 612 M1026 700 L1056 696" stroke="${WOOD_D}" stroke-width="4"/>`;
       // мышиная норка у основания и мышка
       s += `<path d="M862 ${B} V${B - 18} A12 12 0 0 1 886 ${B - 18} V${B} Z" fill="#14112a" ${O(3)}/>`
-        + `<g><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;.55;.6;.8;.85;1" dur="9s" repeatCount="indefinite"/><circle cx="874" cy="${B - 12}" r="8" fill="#a8a4b8" ${O(2)}/><circle cx="868" cy="${B - 19}" r="4" fill="#d8b0c0" ${O(1.6)}/><circle cx="880" cy="${B - 19}" r="4" fill="#d8b0c0" ${O(1.6)}/><circle cx="871" cy="${B - 12}" r="1.4" fill="${INK}"/><circle cx="877" cy="${B - 12}" r="1.4" fill="${INK}"/><circle cx="874" cy="${B - 8}" r="1.6" fill="${PINK}"/></g>`;
+        + (DEAD ? '' : `<g><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;.55;.6;.8;.85;1" dur="9s" repeatCount="indefinite"/><circle cx="874" cy="${B - 12}" r="8" fill="#a8a4b8" ${O(2)}/><circle cx="868" cy="${B - 19}" r="4" fill="#d8b0c0" ${O(1.6)}/><circle cx="880" cy="${B - 19}" r="4" fill="#d8b0c0" ${O(1.6)}/><circle cx="871" cy="${B - 12}" r="1.4" fill="${INK}"/><circle cx="877" cy="${B - 12}" r="1.4" fill="${INK}"/><circle cx="874" cy="${B - 8}" r="1.6" fill="${PINK}"/></g>`);
       s += K.gutter(X0 - 22, X1 + 22, top + 10, X1 - 5, B) + `<rect x="${X0}" y="${top}" width="${X1 - X0}" height="20" fill="${INK}" opacity=".16"/>`;   // 26.10: водосток, тень под свесом
+      if (DEAD) s += deadVine(X0 + 4, B, X0 + 30, top + 30, 7) + deadVine(X1 - 4, B, X1 - 40, top + 50, 6) + `<path d="M${X0 + 60} ${top + 30} l14 40 l-10 24 l16 40 M${X1 - 26} ${top + 120} l-12 30 l8 22" stroke="#0a0b10" stroke-width="3" fill="none"/>`;   // HW: лозы и трещины по стене
       // табличка и фонарик над дверью
       s += plank(888, 488, 144, 54, [['ВЫХОД', 18, GOLD], ['НА КРЫШУ', 15, CREAM]], WOOD_D);
-      s += `<circle cx="960" cy="562" r="40" fill="url(#ctGlow)" opacity=".8"/><path d="M948 552 h24 l-4 18 h-16 Z" fill="#ffd76a" ${O(3)}/>`;
+      s += DEAD ? `<path d="M948 552 h24 l-4 18 h-16 Z" fill="#191b22" ${O(3)}/><path d="M954 556 l8 10" stroke="#4a4e5a" stroke-width="2"/>`   // HW: фонарик над дверью разбит
+        : `<circle cx="960" cy="562" r="40" fill="url(#ctGlow)" opacity=".8"/><path d="M948 552 h24 l-4 18 h-16 Z" fill="#ffd76a" ${O(3)}/>`;
       s += '</g>';
       // фонари по бокам будки
       s += lamp(780, 700, 290) + lamp(1140, 700, 290);
@@ -2117,8 +2201,9 @@ try {
       s += `<clipPath id="ctShedW"><path d="M20 560 L${X0} 500 V${B + 10} H20 Z"/></clipPath><g clip-path="url(#ctShedW)" opacity=".35">${K.planks([20, 500, X0, B + 10], CARD, 16)}</g>`;
       s += `<rect x="50" y="660" width="120" height="${B + 10 - 660}" fill="${BRICK}" ${O(4)}/>` + [0, 1, 2, 3].map((r) => `<path d="M52 ${672 + r * 26} H168" stroke="${INK}" stroke-width="1.6" opacity=".35"/>`).join('');
       s += `<path d="M70 ${B + 10} V720 A40 30 0 0 1 150 720 V${B + 10} Z" fill="url(#ctForgeIn)" ${O(3)}/>`;
-      s += `<ellipse cx="110" cy="735" rx="90" ry="70" fill="url(#ctFire)"><animate attributeName="opacity" values=".6;1;.75;.95;.6" dur="1.2s" repeatCount="indefinite"/></ellipse>`;
-      s += `<path d="M110 ${B + 8} C86 ${B - 4} 92 ${B - 30} 104 ${B - 44} C104 ${B - 30} 114 ${B - 28} 116 ${B - 40} C130 ${B - 24} 134 ${B - 4} 110 ${B + 8} Z" fill="#ffb13d" stroke="#c94a3a" stroke-width="3" stroke-linejoin="round"/><path d="M110 ${B + 4} C100 ${B - 2} 102 ${B - 16} 108 ${B - 24} C112 ${B - 14} 120 ${B - 10} 110 ${B + 4} Z" fill="#fff0a0"/>`;   // 23.10: огонёк в горне — без мигания
+      if (DEAD) s += `<path d="M80 ${B + 8} q14 -16 30 -6 q14 -12 30 4 Z" fill="#3a3e48" ${O(2.4)}/><path d="M92 ${B + 2} l6 -4 M116 ${B} l8 -5" stroke="#5a5e6a" stroke-width="2"/>`;   // HW: горн остыл - серая зола
+      else s += `<ellipse cx="110" cy="735" rx="90" ry="70" fill="url(#ctFire)"><animate attributeName="opacity" values=".6;1;.75;.95;.6" dur="1.2s" repeatCount="indefinite"/></ellipse>`;
+      if (!DEAD) s += `<path d="M110 ${B + 8} C86 ${B - 4} 92 ${B - 30} 104 ${B - 44} C104 ${B - 30} 114 ${B - 28} 116 ${B - 40} C130 ${B - 24} 134 ${B - 4} 110 ${B + 8} Z" fill="#ffb13d" stroke="#c94a3a" stroke-width="3" stroke-linejoin="round"/><path d="M110 ${B + 4} C100 ${B - 2} 102 ${B - 16} 108 ${B - 24} C112 ${B - 14} 120 ${B - 10} 110 ${B + 4} Z" fill="#fff0a0"/>`;   // 23.10: огонёк в горне — без мигания
       s += `<path d="M60 660 L80 600 H140 L160 660 Z" fill="${BRICK_D}" ${O(4)}/><rect x="95" y="548" width="30" height="54" fill="${BRICK_D}" ${O(3)}/>`;
       s += `<path d="M186 600 h44" stroke="${WOOD_D}" stroke-width="6"/>` + fish(198, 628, 0.5, '#8fb6c8', 90) + fishbone(220, 630, 0.5, 90);
       // навес — откинутая створка картона
@@ -2130,7 +2215,7 @@ try {
         // 23.10 (просьба зрителя): узнаваемая наковальня — основание, «талия», рабочая плита и рог (была плоская плита)
         + `<path d="M-28 -22 H28 L20 -32 H-20 Z" fill="#5f6374" ${O(4)}/><rect x="-11" y="-44" width="22" height="13" fill="#6f7384" ${O(4)}/>`
         + `<path d="M-30 -44 H36 V-58 H-30 Q-56 -58 -70 -50 Q-54 -44 -30 -44 Z" fill="#8a8e9e" ${O(4)}/><path d="M-26 -54 H30" stroke="#c9ccd6" stroke-width="3" stroke-linecap="round"/></g>` + '</g>';
-      for (let i = 0; i < 7; i++) { const a = -150 + i * 20, dx = Math.cos(a * Math.PI / 180) * 60, dy = Math.sin(a * Math.PI / 180) * 60; s += `<circle cx="150" cy="${B - 12}" r="3" fill="#ffd76a"><animate attributeName="cx" values="150;${f1(150 + dx)}" dur=".9s" begin="${(i % 3) * 0.3}s" repeatCount="indefinite"/><animate attributeName="cy" values="${B - 12};${f1(B - 12 + dy)}" dur=".9s" begin="${(i % 3) * 0.3}s" repeatCount="indefinite"/><animate attributeName="opacity" values="1;0" dur=".9s" begin="${(i % 3) * 0.3}s" repeatCount="indefinite"/></circle>`; }
+      for (let i = 0; i < (DEAD ? 0 : 7); i++) { const a = -150 + i * 20, dx = Math.cos(a * Math.PI / 180) * 60, dy = Math.sin(a * Math.PI / 180) * 60; s += `<circle cx="150" cy="${B - 12}" r="3" fill="#ffd76a"><animate attributeName="cx" values="150;${f1(150 + dx)}" dur=".9s" begin="${(i % 3) * 0.3}s" repeatCount="indefinite"/><animate attributeName="cy" values="${B - 12};${f1(B - 12 + dy)}" dur=".9s" begin="${(i % 3) * 0.3}s" repeatCount="indefinite"/><animate attributeName="opacity" values="1;0" dur=".9s" begin="${(i % 3) * 0.3}s" repeatCount="indefinite"/></circle>`; }
       s += '</g><g data-ol="forge">';
       // ---- коробка ----
       // труба из консервных банок с дымом
@@ -2151,15 +2236,17 @@ try {
       s += `<g transform="rotate(-6 340 488)"><rect x="262" y="468" width="160" height="42" fill="none" stroke="#c94a3a" stroke-width="4"/>${txt(342, 500, 'ХРУПКОЕ', 26, '#c94a3a', 'middle', 'stroke-width="0"')}</g>`;
       s += `<path d="M590 520 V470 M576 484 L590 466 L604 484 M630 520 V470 M616 484 L630 466 L644 484" fill="none" stroke="#3a2a1a" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><path d="M574 530 H646" stroke="#3a2a1a" stroke-width="4"/>`;
       s += `<path d="M470 470 h28 l-4 18 q-10 10 -20 0 Z M484 488 V506 M474 506 H494" fill="none" stroke="#3a2a1a" stroke-width="3.5"/>` + paw(520, 492, 1.2, '#3a2a1a', 0.75);
+      if (DEAD) s += deadCard(X0, X1, top, B) + deadVine(X0 + 6, B, X0 + 70, top + 40, 8) + deadVine(X1 - 6, B, X1 - 60, top + 90, 7);   // HW: картон размок и порван, лозы
       // эмблема: когтеточка с рыбой
       s += `<g transform="translate(${cx} 372)"><circle r="34" fill="#c94a3a" ${O(4)}/>${fishbone(0, 0, 0.9, -30)}</g>`;
       // горнило-витрина с оружием (вырезанное в картоне окно)
       s += `<path d="M268 ${B} V690 A80 70 0 0 1 428 690 V${B} Z" fill="url(#ctForgeIn)" ${O(5)}/>`;
-      s += `<ellipse cx="348" cy="720" rx="150" ry="110" fill="url(#ctFire)"><animate attributeName="opacity" values=".5;.9;.65;.85;.5" dur="1.4s" repeatCount="indefinite"/></ellipse>`;
+      if (DEAD) s += web(268, 690, 70, 1, -1) + web(428, 690, 60, -1, -1);   // HW: в остывшем горниле - паутина
+      else s += `<ellipse cx="348" cy="720" rx="150" ry="110" fill="url(#ctFire)"><animate attributeName="opacity" values=".5;.9;.65;.85;.5" dur="1.4s" repeatCount="indefinite"/></ellipse>`;
       s += goods.weapon(300, 742, 'sword', 'common', 0, 1.15) + goods.shield(350, 722, 'round', 'common', 1.1) + goods.weapon(398, 742, 'axe', 'rare', 0, 1.1);
       s += `<path d="M262 ${B} V690 A86 76 0 0 1 434 690 V${B}" fill="none" stroke="${CARD_D}" stroke-width="10"/>`;
       // дверь — вырезанный клапан, отогнутый наружу
-      s += `<path d="M540 ${B} V672 A42 42 0 0 1 624 672 V${B} Z" fill="#3a2230" ${O(4)}/><path d="M546 ${B} V673 A36 36 0 0 1 618 673" fill="none" stroke="#ffd76a" stroke-width="3" opacity=".35"/><path d="M624 ${B} V672 Q624 640 600 632 L660 640 Q680 660 680 690 V${B + 4} Z" fill="${CARD_L}" ${O(4)}/><circle cx="664" cy="712" r="5" fill="${GOLD}" ${O(2)}/>`
+      s += `<path d="M540 ${B} V672 A42 42 0 0 1 624 672 V${B} Z" fill="#3a2230" ${O(4)}/><path d="M546 ${B} V673 A36 36 0 0 1 618 673" fill="none" stroke="${DEAD ? '#2a2e38' : '#ffd76a'}" stroke-width="3" opacity=".35"/><path d="M624 ${B} V672 Q624 640 600 632 L660 640 Q680 660 680 690 V${B + 4} Z" fill="${CARD_L}" ${O(4)}/><circle cx="664" cy="712" r="5" fill="${GOLD}" ${O(2)}/>`
         + `<path d="M532 ${B} V672 A50 50 0 0 1 632 672" fill="none" stroke="${CARD_D}" stroke-width="2.5" stroke-dasharray="4 5"/><path d="M630 700 L676 706" stroke="#c9b28a" stroke-width="10" opacity=".8"/><path d="M640 660 L668 668" stroke="${CARD_D}" stroke-width="2" opacity=".6"/>`;   // 26.10: линия надреза, полоска скотча, сгиб
       // вывеска «КОГТЕКУЗНЯ»
       s += `<rect x="${cx - 170}" y="574" width="340" height="62" rx="10" fill="#5a2a3a" ${O(5)}/><rect x="${cx - 160}" y="582" width="320" height="46" rx="6" fill="none" stroke="${GOLD}" stroke-width="2.5"/>`;
@@ -2178,7 +2265,7 @@ try {
     /* ---------- БУДУАР КОТОФЕЯ: круглый полосатый домик-лежанка ---------- */
     function tent() {
       const cx = 1530, B = 736, R = 262, topY = 330, n = 12;
-      const C1 = '#c06aa8', C2 = '#ffe0ec';
+      const C1 = DEAD ? '#3a3242' : '#c06aa8', C2 = DEAD ? '#58525e' : '#ffe0ec';   // HW: ткань выцвела
       // купол — полуэллипс с чуть сжатыми боками
       const dome = `M${cx - R} ${B} C${cx - R - 6} ${B - 260} ${cx - 160} ${topY} ${cx} ${topY} C${cx + 160} ${topY} ${cx + R + 6} ${B - 260} ${cx + R} ${B} Z`;
       let s = `<ellipse cx="${cx}" cy="${B + 22}" rx="310" ry="34" fill="${INK}" opacity=".3"/>`;
@@ -2205,6 +2292,7 @@ try {
       s += `<g><animateTransform attributeName="transform" type="rotate" values="-14 ${cx - 130} ${topY - 116};14 ${cx - 130} ${topY - 116};-14 ${cx - 130} ${topY - 116}" dur="2.2s" repeatCount="indefinite"/><path d="M${cx - 130} ${topY - 116} V${topY - 46}" stroke="#d8cbb0" stroke-width="2"/><path d="M${cx - 130} ${topY - 46} q-14 18 -4 42 q14 -18 4 -42 Z" fill="#7fd6e6" ${O(2.4)}/><path d="M${cx - 128} ${topY - 42} q10 16 4 36 q-10 -16 -4 -36 Z" fill="${PINK}" ${O(2.4)}/></g>`;
       // гирлянда огоньков по куполу
       s += lights(cx - 236, B - 150, cx + 236, B - 150, -200, 34);
+      if (DEAD) s += deadRags(cx, B, R) + deadVine(cx - R + 10, B, cx - 150, B - 260, 8) + deadVine(cx + R - 10, B, cx + 170, B - 230, 7);   // HW: лохмотья по низу купола, прорехи, лозы
       // коврик-подушка у входа
       s += `<path d="M${cx - 110} ${B + 30} H${cx + 110} Q${cx + 150} ${B + 52} ${cx + 120} ${B + 72} H${cx - 120} Q${cx - 150} ${B + 52} ${cx - 110} ${B + 30} Z" fill="#a3122a" ${O(4)}/>` + [cx - 60, cx, cx + 60].map((x) => paw(x, B + 52, 0.8, GOLD, 0.7)).join('');
       // мольберт-вывеска
@@ -2223,7 +2311,8 @@ try {
       sausages: (x, y) => `<path d="M${x} ${y} v8" stroke="#d8cbb0" stroke-width="2.5"/>` + [0, 1, 2].map((i) => `<ellipse cx="${x}" cy="${y + 20 + i * 24}" rx="9" ry="12" fill="#c4574a" ${O(2.4)}/>`).join(''),
       valer: (x, y, c) => `<path d="M${x} ${y} v8" stroke="#d8cbb0" stroke-width="2.5"/>${valer(x, y + 52, c)}`,
       milk: (x, y) => `<path d="M${x} ${y} v6" stroke="#d8cbb0" stroke-width="2.5"/>${milk(x, y + 62, MILK)}`,
-      lamp: (x, y) => `<path d="M${x} ${y} v10" stroke="#2a2440" stroke-width="3"/><circle cx="${x}" cy="${y + 26}" r="40" fill="url(#ctGlow)" opacity=".7"><animate attributeName="opacity" values=".55;.85;.6" dur="2.2s" repeatCount="indefinite"/></circle><path d="M${x - 9} ${y + 10} h18 l-3 26 h-12 z" fill="#ffd76a" ${O(3)}/>`,
+      lamp: (x, y) => DEAD ? `<path d="M${x} ${y} v10" stroke="#2a2440" stroke-width="3"/><g transform="rotate(14 ${x} ${y + 10})"><path d="M${x - 9} ${y + 10} h18 l-3 26 h-12 z" fill="#191b22" ${O(3)}/></g>`   // HW: фонарик погас, висит косо
+        : `<path d="M${x} ${y} v10" stroke="#2a2440" stroke-width="3"/><circle cx="${x}" cy="${y + 26}" r="40" fill="url(#ctGlow)" opacity=".7"><animate attributeName="opacity" values=".55;.85;.6" dur="2.2s" repeatCount="indefinite"/></circle><path d="M${x - 9} ${y + 10} h18 l-3 26 h-12 z" fill="#ffd76a" ${O(3)}/>`,
       yarn: (x, y, c) => `<path d="M${x} ${y} v14" stroke="${c}" stroke-width="2.5"/>${yarn(x, y + 30, 13, c, false)}`,
     };
     function stall({ x, base, w = 290, c1, c2 = CREAM, label, counter = '', hang = '', front = '', who }) {
@@ -2232,7 +2321,7 @@ try {
       let s = `<ellipse cx="${x + w / 2}" cy="${base + 8}" rx="${f1(w * 0.5)}" ry="16" fill="${INK}" opacity=".28"/>`;
       s += `<rect x="${x + 14}" y="${top + 20}" width="${w - 28}" height="${ctop - top - 20}" fill="url(#ctShade)"/>`;
       s += `<rect x="${x + 8}" y="${top + 6}" width="14" height="${base - top - 6}" fill="${WOOD}" ${O(3)}/><rect x="${x + w - 22}" y="${top + 6}" width="14" height="${base - top - 6}" fill="${WOOD}" ${O(3)}/>`;
-      s += `<ellipse cx="${x + w / 2}" cy="${ctop - 50}" rx="${w * 0.5}" ry="90" fill="url(#ctGlow)" opacity=".4"/>`;
+      if (!DEAD) s += `<ellipse cx="${x + w / 2}" cy="${ctop - 50}" rx="${w * 0.5}" ry="90" fill="url(#ctGlow)" opacity=".4"/>`;
       s += guy(who[0], ctop + 14, x + w / 2, 1.05, 'happy', {}, who[1]);
       // прилавок — ящик из картона с наклейками-лапками
       s += `<rect x="${x + 4}" y="${ctop}" width="${w - 8}" height="${base - ctop}" fill="${CARD}" ${O()}/>` + Array.from({ length: Math.floor((w - 16) / 14) }, (_, i) => `<path d="M${x + 12 + i * 14} ${ctop + 4} V${base - 4}" stroke="${CARD_D}" stroke-width="1.4" opacity=".35"/>`).join('');
@@ -2265,7 +2354,7 @@ try {
       s += catSil(L, beamY - 14, 0.5, '#2a2440') + `<g transform="translate(${R} ${beamY - 14}) scale(-1 1)">${catSil(0, 0, 0.5, '#2a2440')}</g>`;
       s += `<path d="M${cx - 300} ${beamY} v26 M${cx + 300} ${beamY} v26" stroke="#2a2440" stroke-width="4"/>`;
       s += `<g><animateTransform attributeName="transform" type="rotate" values="-1 ${cx} ${beamY};1 ${cx} ${beamY};-1 ${cx} ${beamY}" dur="4s" repeatCount="indefinite"/>
-        <path d="M${cx - 340} ${beamY + 24} H${cx + 340} Q${cx + 360} ${beamY + 70} ${cx + 340} ${beamY + 118} H${cx - 340} Q${cx - 360} ${beamY + 70} ${cx - 340} ${beamY + 24} Z" fill="#2a4a7a" ${O(6)}/>
+        <path d="M${cx - 340} ${beamY + 24} H${cx + 340} Q${cx + 360} ${beamY + 70} ${cx + 340} ${beamY + 118} H${cx - 340} Q${cx - 360} ${beamY + 70} ${cx - 340} ${beamY + 24} Z" fill="${DEAD ? '#252c38' : '#2a4a7a'}" ${O(6)}/>
         <path d="M${cx - 322} ${beamY + 36} H${cx + 322} Q${cx + 338} ${beamY + 70} ${cx + 322} ${beamY + 106} H${cx - 322} Q${cx - 338} ${beamY + 70} ${cx - 322} ${beamY + 36} Z" fill="none" stroke="${GOLD}" stroke-width="3"/>
         ${txt(cx, beamY + 90, 'РЫБНЫЕ РЯДЫ', 54, GOLD, 'middle', 'letter-spacing="5"')}
         ${fish(cx - 292, beamY + 72, 0.8, '#8fb6c8')}${fishbone(cx + 292, beamY + 72, 0.85, 180)}</g>`;
@@ -2302,8 +2391,9 @@ try {
       s += [x - 50, x, x + 50].map((wx) => `<path d="M${wx - 16} 300 V270 A16 16 0 0 1 ${wx + 16} 270 V300 Z" fill="#14112a" ${O(3)}/>`).join('') + `<path d="M${x - 96} 304 H${x + 96}" stroke="${WOOD_D}" stroke-width="8"/>`;
       // голуби: сидят, иногда один взлетает и возвращается
       const dove = (dx, dy, flip = 1) => `<g transform="translate(${dx} ${dy}) scale(${flip} 1)"><path d="M-14 0 Q-16 -18 0 -18 Q10 -18 12 -8 L20 -6 L12 -2 Q8 6 -6 6 Z" fill="#c9ccd6" ${O(2.4)}/><circle cx="6" cy="-12" r="1.8" fill="${INK}"/><path d="M-14 0 l-8 4" stroke="${INK}" stroke-width="3"/></g>`;
-      s += dove(x - 70, 296) + dove(x + 74, 296, -1) + dove(x - 20, 206);
-      s += `<g><animateTransform attributeName="transform" type="translate" values="0 0;0 0;-160 -140;-320 -40;0 0;0 0" keyTimes="0;.5;.62;.74;.86;1" dur="14s" repeatCount="indefinite"/>${dove(x + 30, 206, -1)}</g>`;
+      if (DEAD) s += crowD(x - 70, 296) + crowD(x + 74, 296, -1) + web(x - 90, 214, 50, 1, 1);   // HW: голубей нет - на жёрдочке вороны
+      else s += dove(x - 70, 296) + dove(x + 74, 296, -1) + dove(x - 20, 206);
+      if (!DEAD) s += `<g><animateTransform attributeName="transform" type="translate" values="0 0;0 0;-160 -140;-320 -40;0 0;0 0" keyTimes="0;.5;.62;.74;.86;1" dur="14s" repeatCount="indefinite"/>${dove(x + 30, 206, -1)}</g>`;
       // тележка с рыбой
       s += `<g transform="translate(3570 840)"><path d="M-90 -44 H90 L76 0 H-76 Z" fill="${CARD}" ${O(4)}/><path d="M-86 -24 H86" stroke="${CARD_D}" stroke-width="3"/>`
         + fish(-46, -58, 0.8, '#8fb6c8', -14) + fish(10, -64, 0.85, '#ff9a6a', 8) + fish(54, -54, 0.75, '#c9ccd6', -6) + fish(-14, -76, 0.7, GOLD, 4)
@@ -2316,12 +2406,12 @@ try {
       let s = '';
       // лазерная точка бегает по парапету, за ней — котик
       const PATH = 'M1180 742 C1220 726 1250 760 1210 770 C1170 780 1150 740 1196 734 C1240 728 1262 752 1232 760 Z';
-      s += `<g><animateMotion path="${PATH}" dur="5s" repeatCount="indefinite" rotate="0"/><circle r="16" fill="url(#ctLaser)"/><circle r="4" fill="#ff2a2a"/></g>`;
-      s += `<g><animateMotion path="${PATH}" dur="5s" begin="-0.45s" repeatCount="indefinite"/>${guy('лазерный охотник', 6, 0, 0.36, 'happy', {}, { shape: 'ball', color: '#f2a65a' }, 'none')}</g>`;
+      if (!DEAD) s += `<g><animateMotion path="${PATH}" dur="5s" repeatCount="indefinite" rotate="0"/><circle r="16" fill="url(#ctLaser)"/><circle r="4" fill="#ff2a2a"/></g>`
+        + `<g><animateMotion path="${PATH}" dur="5s" begin="-0.45s" repeatCount="indefinite"/>${guy('лазерный охотник', 6, 0, 0.36, 'happy', {}, { shape: 'ball', color: '#f2a65a' }, 'none')}</g>`;   // HW: в мёртвом городе лазера и охотника нет
       // коробка со спящим котом и «Zzz»
       s += `<g transform="translate(1240 744)"><path d="M-50 0 V-40 H50 V0 Z" fill="${CARD}" ${O(4)}/><path d="M-50 -40 L-70 -58 M50 -40 L74 -54" stroke="${INK}" stroke-width="4"/><path d="M-50 -40 L-70 -58 L-54 -62 L-36 -40 Z" fill="${CARD_L}" ${O(3)}/><path d="M50 -40 L74 -54 L58 -60 L38 -40 Z" fill="${CARD_L}" ${O(3)}/>`
-        + `<path d="M-34 -40 Q-34 -66 -6 -66 Q20 -66 24 -40 Z" fill="#9aa3ad" ${O(3)}/><path d="M-28 -60 l2 -14 l10 10 Z M10 -62 l6 -12 l6 12 Z" fill="#9aa3ad" ${O(2.6)}/><path d="M-20 -50 q4 3 8 0 M0 -50 q4 3 8 0" fill="none" stroke="${INK}" stroke-width="2.4" stroke-linecap="round"/>`
-        + ['Z', 'z', 'z'].map((z, i) => `<text x="${30 + i * 14}" y="${-70 - i * 16}" font-family="Russo One" font-size="${20 - i * 4}" fill="${CREAM}" opacity="0"><animate attributeName="opacity" values="0;1;0" dur="3s" begin="${i * 0.8}s" repeatCount="indefinite"/>${z}</text>`).join('') + '</g>';
+        + (DEAD ? fishbone(-6, -46, 0.8, 10, '#a8a294') + `<path d="M-50 -20 l20 6 l-6 14 M40 -36 l-10 18" stroke="${CARD_D}" stroke-width="3" fill="none"/></g>` : `<path d="M-34 -40 Q-34 -66 -6 -66 Q20 -66 24 -40 Z" fill="#9aa3ad" ${O(3)}/><path d="M-28 -60 l2 -14 l10 10 Z M10 -62 l6 -12 l6 12 Z" fill="#9aa3ad" ${O(2.6)}/><path d="M-20 -50 q4 3 8 0 M0 -50 q4 3 8 0" fill="none" stroke="${INK}" stroke-width="2.4" stroke-linecap="round"/>`
+        + ['Z', 'z', 'z'].map((z, i) => `<text x="${30 + i * 14}" y="${-70 - i * 16}" font-family="Russo One" font-size="${20 - i * 4}" fill="${CREAM}" opacity="0"><animate attributeName="opacity" values="0;1;0" dur="3s" begin="${i * 0.8}s" repeatCount="indefinite"/>${z}</text>`).join('') + '</g>');   // HW: в мёртвом - пустая размокшая коробка с рыбьим скелетом
       // клубки и рыбьи косточки на террасе
       s += yarn(1880, 1036, 14, '#7fd6e6') + fishbone(3180, 1046, 0.8, 12) + fishbone(520, 1044, 0.7, -20);
       // гирлянды огоньков над площадью
@@ -2335,6 +2425,10 @@ try {
     }
     // баннер над площадью — на верёвках от труб
     function banner(x, y, w, text) {
+      if (DEAD) return `<g transform="rotate(4 ${x + 40} ${y})">${banner0(x, y, w, text)}<path d="M${x + w - 60} ${y + 66} l20 -14 l16 14 l18 -10 v10 z" fill="#0b0c10"/></g>`;   // HW: баннер провис на одной верёвке, край оборван
+      return banner0(x, y, w, text);
+    }
+    function banner0(x, y, w, text) {
       return `<path d="M${x + 40} ${y} V-10 M${x + w - 40} ${y} V-10" stroke="#2a2440" stroke-width="4"/>`
         + `<path d="M${x - 40} ${y + 8} l40 -8 v66 l-40 -8 l18 -25 Z" fill="#7a1a4a" ${O(4)}/><path d="M${x + w + 40} ${y + 8} l-40 -8 v66 l40 -8 l-18 -25 Z" fill="#7a1a4a" ${O(4)}/>`
         + `<rect x="${x}" y="${y}" width="${w}" height="66" rx="8" fill="#a3245a" ${O(6)}/><rect x="${x + 10}" y="${y + 9}" width="${w - 20}" height="48" rx="6" fill="none" stroke="${GOLD}" stroke-width="3"/>`
@@ -2349,9 +2443,9 @@ try {
       s += K.roof([[x - 104, base - 206], [x, base - 280], [x + 104, base - 206]], { pal: 'plum', step: 12, scale: 0.55, w: 4, id: 'ctWellRoof' }) + `<path d="M${x - 64} ${base - 236} l-8 -46 l38 24 Z M${x + 64} ${base - 236} l8 -46 l-38 24 Z" fill="#5a3a5a" ${O(4)}/><path d="M${x - 62} ${base - 242} l-4 -26 l20 14 Z M${x + 62} ${base - 242} l4 -26 l-20 14 Z" fill="${PINK}"/>`;
       s += `<path d="M${x - 64} ${base - 160} H${x + 64}" stroke="${WOOD_D}" stroke-width="8"/>`;
       s += `<g><animateTransform attributeName="transform" type="translate" values="0 0;0 12;0 0" dur="5s" repeatCount="indefinite" calcMode="spline" keySplines=".4 0 .6 1;.4 0 .6 1"/><path d="M${x} ${base - 160} v40" stroke="#d8cbb0" stroke-width="3"/><path d="M${x - 14} ${base - 120} h28 l-4 24 h-20 z" fill="${WOOD}" ${O(3)}/>${fish(x + 6, base - 124, 0.42, '#8fb6c8', -60)}</g>`;
-      s += `<path d="M${x - 90} ${base} V${base - 70} Q${x} ${base - 90} ${x + 90} ${base - 70} V${base} Q${x} ${base + 20} ${x - 90} ${base} Z" fill="#8a8494" ${O(5)}/>`;
+      s += `<path d="M${x - 90} ${base} V${base - 70} Q${x} ${base - 90} ${x + 90} ${base - 70} V${base} Q${x} ${base + 20} ${x - 90} ${base} Z" fill="${DEAD ? '#4a4652' : '#8a8494'}" ${O(5)}/>`;   // HW: мёртвый - тёмный сруб
       // 23.10 (баг от зрителя): камни выпирали за край колодца — кладка рядами по форме сруба (обрезана его контуром)
-      s += masonry('ctWellBr', `M${x - 88} ${base} V${base - 70} Q${x} ${base - 88} ${x + 88} ${base - 70} V${base} Q${x} ${base + 18} ${x - 88} ${base} Z`, x - 88, x + 88, base - 74, base + 14, 36, 22, 0.32, '#9a94a6');
+      s += masonry('ctWellBr', `M${x - 88} ${base} V${base - 70} Q${x} ${base - 88} ${x + 88} ${base - 70} V${base} Q${x} ${base + 18} ${x - 88} ${base} Z`, x - 88, x + 88, base - 74, base + 14, 36, 22, 0.32, DEAD ? '#3a3742' : '#9a94a6');
       s += `<ellipse cx="${x}" cy="${base - 76}" rx="84" ry="14" fill="#1a1630" ${O(4)}/>`;
       return s;
     }
@@ -2366,8 +2460,28 @@ try {
     const CHIMNEY_SQ = () => chimney(1960, 1000, 96, 560, BRICK, true) + `<path d="M1912 1000 h96" stroke="${INK}" stroke-width="6"/>` + plank(1918, 560, 84, 44, [['🐟 →', 18, GOLD]], WOOD_D) + catSil(1960, 428, 0.7, '#2a2440');
     // фонарь у входа
     function scene(o) { return CSS + K.doc(() => scene0(o)); }   // 25.10: <defs> символов набора — в самой сцене
+    // HW: мёртвый вид - та же сцена при DEAD; анимации снимаются (запекается), оставшиеся яркие цвета (общие рисунки: магическая лавка,
+    // наборы) - тускнеют и холодеют; красное зарево - как есть
+    function deadHex(h) {
+      let x = h.slice(1); if (x.length === 3) x = x.split('').map((c) => c + c).join('');
+      const R = parseInt(x.slice(0, 2), 16) / 255, G = parseInt(x.slice(2, 4), 16) / 255, B = parseInt(x.slice(4, 6), 16) / 255;
+      const mx = Math.max(R, G, B), mn = Math.min(R, G, B), l = (mx + mn) / 2, d = mx - mn, sat = d ? d / (1 - Math.abs(2 * l - 1)) : 0;
+      if ((sat < 0.3 && l < 0.6) || h.toLowerCase() === '#d01a2a') return h;
+      let hu = 0; if (d) { hu = mx === R ? ((G - B) / d) % 6 : mx === G ? (B - R) / d + 2 : (R - G) / d + 4; hu *= 60; if (hu < 0) hu += 360; }
+      const s2 = sat * 0.14, l2 = Math.min(0.46, l * 0.56), hh = hu < 70 ? hu + 360 : hu, h2 = (250 + (hh - 250) * 0.3) % 360, c = (1 - Math.abs(2 * l2 - 1)) * s2, xx = c * (1 - Math.abs(((h2 / 60) % 2) - 1)), m = l2 - c / 2;
+      const [r1, g1, b1] = h2 < 60 ? [c, xx, 0] : h2 < 120 ? [xx, c, 0] : h2 < 180 ? [0, c, xx] : h2 < 240 ? [0, xx, c] : h2 < 300 ? [xx, 0, c] : [c, 0, xx];
+      return '#' + [r1, g1, b1].map((v) => Math.round((v + m) * 255).toString(16).padStart(2, '0')).join('');
+    }
+    const deadFix = (svg) => String(svg).replace(/<animateMotion\b[^>]*>[\s\S]*?<\/animateMotion>|<animate(Transform|Motion)?\b[^>]*\/>/g, '').replace(/#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b/g, deadHex);
+    function deadScene(o) { return withDead(() => CSS + deadFix(K.doc(() => scene0(o) + deadGround()))); }
+    // трещины по террасе и низкий туман у парапета (поверх площади, под предметами)
+    function deadGround() {
+      let d = ''; for (let i = 0; i < 26; i++) { let x = 80 + ((i * 1499) % (WIDE - 160)), y = 740 + ((i * 677) % 300); d += `M${x} ${y}`; for (let k = 0; k < 4; k++) { x += 26 + ((i + k) * 13) % 30; y += ((i * 7 + k * 11) % 24) - 12; d += ` L${x} ${y}`; } }
+      return `<path d="${d}" stroke="#0a0b10" stroke-width="4" fill="none" stroke-linecap="round" opacity=".8"/><path d="${d.split('M').filter((_, i) => i % 3 === 1).map((q) => 'M' + q).join('')}" stroke="#d01a2a" stroke-width="1.4" fill="none" opacity=".6"/>`
+        + `<rect y="560" width="${WIDE}" height="240" fill="url(#ctFog)"/>`;
+    }
     function scene0(o) {
-      return cityBg(o) + terrace() + K.tree('topiary', 2226, 700, 0.9) + gateHut() + extras() + `<g transform="translate(${END_DX} 0)">${dovecote(o)}</g>` + '<g data-ol="tent">' + tent() + '</g>' + forge() + `<g data-ol="shop"><g transform="translate(${ROWS_DX} 0)">${rowsWide()}</g></g>` + banner(700, 40, 520, 'МУРЛЫКИНА ЯРМАРКА');
+      return cityBg(o) + terrace() + (DEAD ? deadTree(2226, 700, 0.9) : K.tree('topiary', 2226, 700, 0.9)) + gateHut() + extras() + `<g transform="translate(${END_DX} 0)">${dovecote(o)}</g>` + '<g data-ol="tent">' + tent() + '</g>' + forge() + `<g data-ol="shop"><g transform="translate(${ROWS_DX} 0)">${rowsWide()}</g></g>` + banner(700, 40, 520, 'МУРЛЫКИНА ЯРМАРКА');
     }
 
     /* ===== интерьер Когтекузни: внутри огромной коробки. S — товар от сервера ({ shelf1, shelf2, case }),
@@ -2863,6 +2977,12 @@ try {
       // Рисует modules/fair/client/portal.js: frame(state) — поверх воронки, decor() — поверх общего убранства
       hw: {
         portal: { x: 960, y: 742, s: 0.5 },   // 26.10: портал — на месте выхода (дверь будки «Выход на крышу»)
+        // HW: мёртвый город Изнанки (договор - шапка legacy/site/public/cityhw.js): та же геометрия, огней нет - свет только от тыкв, конфет и красных молний
+        dead: {
+          scene: deadScene,
+          props: PROPS.map((p) => ({ ...p, svg: () => withDead(() => deadFix(p.svg())) })),
+          sky: 'linear-gradient(#05060a 0%,#0c0f16 45%,#161b26 80%,#272d3a 100%)',
+        },
         transform: true,   // 26.10: убранство — только после кнопки стримера (hwFair), с анимацией превращения
         moon: { x: 1730, y: 160, r: 88 },
         ribbons: () => [...RIB.values()],

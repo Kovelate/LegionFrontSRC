@@ -221,10 +221,13 @@
     const props = [], cells = [], A = o.art || null, rk = {};
     if (A && A.begin) A.begin(F, o);   // 25.10 (mine/rocks2): тема глубины для рисунков камней (символы mine-art.js)
     const badges = [];   // 26.10: таблички уровня - верхним слоем
+    const heaps = new Set(F.coal || []);   // 27.10: клетки куч угля (угольный этаж: вид шахты fl.coal)
     const baseRes = (F.cells.find((c) => c.t === 'rock' || c.t === 'hard') || {}).r || 'stone';   // порода этажа: под рудой - она же
     for (let i = 0; i < GW * GH; i++) {
       const c = F.cells[i], p = cellXY(i), r = rng(i * 131 + F.n * 977);
       cells.push({ i, ...p });
+      // 27.10: куча угля (угольный этаж) - на клетке-проходе, видна и до, и после того, как до неё докопались
+      if (heaps.has(i)) { props.push({ x: p.x, y: p.y, svg: A && A.coalHeap ? A.coalHeap(p.x, p.y, r) : coalHeap(p.x, p.y, r) }); continue; }
       if (dug[i] || c.t === 'entry' || c.t === 'void') { if (r() < 0.35) props.push({ x: p.x, y: p.y - 30, svg: `<path d="${blob(p.x + (r() - 0.5) * 60, p.y - 30, 12, 7, r, 6, 0.3, true)}" fill="${shade(L)[2]}" ${O(2.5)}/>` }); continue; }
       let svg = '';
       if (fr.has(i)) svg += `<ellipse cx="${p.x}" cy="${f1(p.y)}" rx="62" ry="18" fill="#ffe27a" opacity=".16"/><ellipse cx="${p.x}" cy="${f1(p.y)}" rx="62" ry="18" fill="none" stroke="#ffe27a" stroke-width="4" stroke-dasharray="12 8"/>`;
@@ -275,6 +278,12 @@
     const ex = SIDE + (F.exit % GW) * CW + CW / 2;
     if (A && A.upLift) props.push({ obj: 'up', x: ex, y: TOP - 30, svg: A.upLift(ex, TOP, F.n + 1, !!F.done, rng(F.n * 31 + 7)) });   // 26.10 (mine2): верхняя клеть
     return { W, H, VX0, VW, TOP, Y0, CW, RH, GRID_H, back: (A ? A.defs(props) : '') + backSvg, props, cells, rk, npc: E.npc, lampNpc: E.lampNpc, entry: { x: W / 2, y: H - 90 }, exit: { x: ex, y: TOP - 60 }, cellAt, cellXY };
+  }
+  /** 27.10: куча угля - прежний вид (без рисунков mine-art): горка тёмных глыб. */
+  function coalHeap(x, y, r) {
+    let g = `<ellipse cx="${x + 4}" cy="${y + 2}" rx="56" ry="12" fill="#000" opacity=".3"/><path d="${blob(x, y - 16, 52, 22, r, 9, 0.12, true)}" fill="#18171e" ${O(4)}/>`;
+    for (let q = 0; q < 7; q++) g += `<path d="${blob(x - 36 + (q % 4) * 24 + (q > 3 ? 12 : 0), y - 16 - (q > 3 ? 16 : 0), 13, 9, r, 6, 0.25)}" fill="${q % 2 ? '#2a2a34' : '#3a3c4c'}" ${O(2.5)}/>`;
+    return g;
   }
   /** Каска горняка с фонарём — поверх человечка NPC (x, y — ноги, k — масштаб человечка). */
   const helmet = (x, y, k) => { const hy = y - 112 * k, w = 40 * k; return `<path d="M${f1(x - w)} ${f1(hy)} Q${f1(x)} ${f1(hy - 56 * k)} ${f1(x + w)} ${f1(hy)} Z" fill="#ffcf3a" ${O(3.5)}/><rect x="${f1(x - w * 1.15)}" y="${f1(hy - 6 * k)}" width="${f1(w * 2.3)}" height="${f1(10 * k)}" rx="${f1(5 * k)}" fill="#e8a82a" ${O(3)}/><circle cx="${f1(x)}" cy="${f1(hy - 26 * k)}" r="${f1(10 * k)}" fill="#fff6c0" ${O(3)}/><path d="M${f1(x - 10 * k)} ${f1(hy - 26 * k)} L${f1(x - 70 * k)} ${f1(hy - 70 * k)} L${f1(x + 70 * k)} ${f1(hy - 70 * k)} L${f1(x + 10 * k)} ${f1(hy - 26 * k)} Z" fill="#fff6c0" opacity=".25"/>`; };

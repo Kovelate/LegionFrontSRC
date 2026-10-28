@@ -1575,16 +1575,17 @@ try {
     ].join('\n');
 
     return {
-      hw_pumpkin: { draw: pumpkin, top: 146, topBoss: 212, attacks: { shield: 'css:hwroll', duck: 'throw', scatter: 'burst' }, missile: { svg: M_SEEDS } },
-      hw_pumpkinlet: { draw: pumpkinlet, top: 60, attacks: { shield: 'lunge', duck: 'leap', scatter: 'css:hwtumble' } },
-      hw_ghost: { draw: ghost, top: 160, attacks: { shield: 'css:hwpass', duck: 'swoop', scatter: 'wave' } },
-      hw_bat: { draw: bat, top: 150, attacks: { shield: 'swoop', duck: 'css:hwflock', scatter: 'css:hwscreech' } },
-      hw_witch: { draw: witch, top: 214, attacks: { shield: 'css:hwbroom', duck: 'swoop', scatter: 'burst' }, missile: { svg: M_POTION } },
-      hw_zombie: { draw: zombie, top: 158, attacks: { shield: 'lunge', duck: 'throw', scatter: 'css:hwdig' }, missile: { svg: M_HAND } },
-      hw_spider: { draw: spider, top: 100, attacks: { shield: 'lunge', duck: 'leap', scatter: 'spit' }, missile: { svg: M_WEB, blob: C.lilacL } },
-      hw_cat: { draw: cat, top: 112, attacks: { shield: 'lunge', duck: 'leap', scatter: 'css:hwhiss' } },
+      // 28.10: top / topBoss - по замеру рисунка (getBBox): полоска здоровья и имя - над головой рядового и вожака
+      hw_pumpkin: { draw: pumpkin, top: 157, topBoss: 212, attacks: { shield: 'css:hwroll', duck: 'throw', scatter: 'burst' }, missile: { svg: M_SEEDS } },
+      hw_pumpkinlet: { draw: pumpkinlet, top: 70, attacks: { shield: 'lunge', duck: 'leap', scatter: 'css:hwtumble' } },
+      hw_ghost: { draw: ghost, top: 160, topBoss: 190, attacks: { shield: 'css:hwpass', duck: 'swoop', scatter: 'wave' } },
+      hw_bat: { draw: bat, top: 150, topBoss: 202, attacks: { shield: 'swoop', duck: 'css:hwflock', scatter: 'css:hwscreech' } },
+      hw_witch: { draw: witch, top: 216, topBoss: 246, attacks: { shield: 'css:hwbroom', duck: 'swoop', scatter: 'burst' }, missile: { svg: M_POTION } },
+      hw_zombie: { draw: zombie, top: 168, topBoss: 176, attacks: { shield: 'lunge', duck: 'throw', scatter: 'css:hwdig' }, missile: { svg: M_HAND } },
+      hw_spider: { draw: spider, top: 100, topBoss: 118, attacks: { shield: 'lunge', duck: 'leap', scatter: 'spit' }, missile: { svg: M_WEB, blob: C.lilacL } },
+      hw_cat: { draw: cat, top: 130, attacks: { shield: 'lunge', duck: 'leap', scatter: 'css:hwhiss' } },
       hw_scarecrow: { draw: scarecrow, top: 196, attacks: { shield: 'css:hwscythe', duck: 'throw', scatter: 'burst' }, missile: { svg: M_CROW } },
-      hw_skeleton: { draw: skeleton, top: 160, scale: 1.15, attacks: { shield: 'lunge', duck: 'throw', scatter: 'css:hwcollapse' }, missile: { svg: M_SKULL } },
+      hw_skeleton: { draw: skeleton, top: 162, topBoss: 182, scale: 1.15, attacks: { shield: 'lunge', duck: 'throw', scatter: 'css:hwcollapse' }, missile: { svg: M_SKULL } },
       hw_crow: { draw: crow, top: 104, attacks: { shield: 'css:hwpeck', duck: 'swoop', scatter: 'css:hwflock' } },
       hw_jack: { draw: jack, top: 256, scale: 1.15, attacks: { shield: 'lunge', duck: 'throw', scatter: 'burst' }, missile: { svg: M_ROTPUMP } },
       css,

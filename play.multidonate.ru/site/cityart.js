@@ -31,6 +31,10 @@
     if (KITS[style]) return KITS[style];
     const F = window.MDDoodle && window.MDDoodle.fairKit;
     if (!F) return STUB;
+    // HW: мёртвый квартал котиков - свой набор: тёмная мостовая и кладка, стекло без света
+    if (style === 'cats-dead') return (KITS[style] = F({ id: 'cyctd', line: K.line, ink: K.ink, glass: K.glass, wood: K.wood, woodD: K.woodD, woodL: '#5a4e42', metal: '#1a1c22',
+      bark: '#2e2822', leaf: '#2a2e2a', leafD: '#1c201c', leafL: '#363a34', pave: { mortar: '#252a34', stone: '#3a404e', alt: '#363c4a', light: '#4a5060', dark: '#252a34' },
+      paves: { low: { mortar: '#20242e', stone: '#333845', alt: '#30353f', light: '#424856', dark: '#20242e' } }, walls: { brick: { base: '#4a3e46', light: '#52464e', dark: '#40363e', joint: '#2e2830' } } }));
     const T = { id: 'cy' + style.slice(0, 2), line: K.line, ink: K.ink, glass: K.glass, wood: K.wood, woodD: K.woodD, woodL: K.woodL || '#c58a45', metal: style === 'monkeys' ? '#4a3424' : '#2a2440' };
     if (style === 'cats') Object.assign(T, { bark: '#6e4a2f', leaf: '#5a9a4a', leafD: '#3e7436', leafL: '#8cc46a', pave: { mortar: '#8f3f2c', stone: '#c8664a', alt: '#d87a5c', light: '#f0a07e', dark: '#8f3f2c' },
       paves: { low: { mortar: '#7a3426', stone: '#b45a40', alt: '#c46a4c', light: '#e08a68', dark: '#7a3426' } }, walls: { brick: { base: '#a9503c', light: '#b85e48', dark: '#984634', joint: '#7a3426' } } });
@@ -45,17 +49,41 @@
   const RHX = (c) => { const n = parseInt(c.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
   const shade = (c, k) => '#' + RHX(c).map((v) => Math.max(0, Math.min(255, Math.round(k > 0 ? v + (255 - v) * k : v * (1 + k)))).toString(16).padStart(2, '0')).join('');
   const roofPal = (c, ink) => ({ a: c, b: shade(c, 0.12), c: shade(c, -0.15), edge: shade(c, -0.45) });
+  /* 28.10 (art/hw-dead-city) HW: «мёртвый» квартал гильдий котиков для Ночи Тыквенной Луны (договор - шапка cityhw.js):
+     quarter('cats', QW, { dead: true }) → та же раскладка (здания, предметы, data-ol), но огней нет: окна чёрные или заколочены, факелы и
+     фонарь сломаны, гирлянда погасла, фонтан застоялся, деревья голые; картон и кладка тёмные. Свет - только красное зарево за крышами.
+     Другие стили мёртвого квартала не умеют - вернут обычный без флага (тогда перекраска citygl). */
+  const DEAD_CATS = { ...PAL.cats, line: '#0d0e14', ink: '#0d0e14', wall: '#1a1d26', wallD: '#14161e', tower: '#3e3440', roof: '#2e2834', roof2: '#3a3040', plaster: '#6a665e', stone: '#4a3e46', timber: '#2e2822',
+    ground: '#3a404e', ground2: '#252a34', groundL: '#4a5060', glass: '#0b0c10', sign: '#2a2430', signTx: '#8a7a52', wood: '#4a4038', woodD: '#2e2822', water: '#1e2a26', waterD: '#0b120e', flag: '#3e3440',
+    sky: 'linear-gradient(#05060a 0%,#0c0f16 45%,#161b26 80%,#272d3a 100%)' };
+  // оставшиеся яркие цвета (общие рисунки набора, мишени, листки) - тускнеют и холодеют; тёмные и серые - как есть; красное зарево - как есть
+  function deadHex(h) {
+    let x = h.slice(1); if (x.length === 3) x = x.split('').map((c) => c + c).join('');
+    const R = parseInt(x.slice(0, 2), 16) / 255, G = parseInt(x.slice(2, 4), 16) / 255, B = parseInt(x.slice(4, 6), 16) / 255;
+    const mx = Math.max(R, G, B), mn = Math.min(R, G, B), l = (mx + mn) / 2, d = mx - mn, sat = d ? d / (1 - Math.abs(2 * l - 1)) : 0;
+    if ((sat < 0.3 && l < 0.6) || h.toLowerCase() === '#d01a2a') return h;
+    let hu = 0; if (d) { hu = mx === R ? ((G - B) / d) % 6 : mx === G ? (B - R) / d + 2 : (R - G) / d + 4; hu *= 60; if (hu < 0) hu += 360; }
+    const s2 = sat * 0.14, l2 = Math.min(0.46, l * 0.56), hh = hu < 70 ? hu + 360 : hu, h2 = (250 + (hh - 250) * 0.3) % 360, c = (1 - Math.abs(2 * l2 - 1)) * s2, xx = c * (1 - Math.abs(((h2 / 60) % 2) - 1)), m = l2 - c / 2;
+    const [r1, g1, b1] = h2 < 60 ? [c, xx, 0] : h2 < 120 ? [xx, c, 0] : h2 < 180 ? [0, c, xx] : h2 < 240 ? [0, xx, c] : h2 < 300 ? [xx, 0, c] : [c, 0, xx];
+    return '#' + [r1, g1, b1].map((v) => Math.round((v + m) * 255).toString(16).padStart(2, '0')).join('');
+  }
+  const deadFix = (svg) => String(svg).replace(/<animateMotion\b[^>]*>[\s\S]*?<\/animateMotion>|<animate(Transform|Motion)?\b[^>]*\/>/g, '').replace(/#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b/g, deadHex);
   function quarter(style, QW, opt = {}) {   // opt.auction — Аукцион открыт (тестерам): без таблички «СКОРО» и досок на двери
-    const K = PAL[style] || PAL.legion, Kt = kitOf(style, K);
+    const DEAD = !!opt.dead && style === 'cats';   // HW: мёртвый квартал - только котики
+    const K = DEAD ? DEAD_CATS : (PAL[style] || PAL.legion), Kt = kitOf(DEAD ? 'cats-dead' : style, K);
     let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
     const O = (w = 5) => `stroke="${K.line}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"`;
     const txt = (x, y, t, size, fill = K.signTx, ls = 3) => `<text x="${x}" y="${y}" text-anchor="middle" font-family="Russo One, Arial Black, sans-serif" font-size="${size}" fill="${fill}" stroke="${K.ink}" stroke-width="${Math.max(3, size / 7)}" paint-order="stroke" letter-spacing="${ls}">${t}</text>`;
     const win = (x, y, w, h, lit = true, round = false) => {
+      if (DEAD) lit = false;   // HW
       const top = round ? `M${x} ${y + w / 2} A${w / 2} ${w / 2} 0 0 1 ${x + w} ${y + w / 2} V${y + h} H${x} Z` : `M${x} ${y} H${x + w} V${y + h} H${x} Z`;
       return `${lit ? `<ellipse cx="${x + w / 2}" cy="${y + h / 2}" rx="${w}" ry="${h * 0.8}" fill="url(#cqGlow)" opacity=".5"/>` : ''}<path d="${top}" fill="${lit ? K.glass : '#3a3a55'}" ${O(4)}/><path d="M${x + w / 2} ${y + (round ? w * 0.15 : 0)} V${y + h} M${x} ${y + h * 0.55} H${x + w}" stroke="${K.ink}" stroke-width="3" opacity=".5"/>`;
     };
     // 26.10 (art/buildings): окна с рамой и подоконником, двери из досок с петлями, обшивка, штукатурка — из набора (без набора — как было)
-    const kw = (x, y, w, h, o = {}) => (Kt.win ? Kt.win(x, y, w, h, { sill: K.stone === '#8b8796' ? '#a8a4b6' : shade(K.stone, 0.2), ...o }) : win(x, y, w, h, o.lit !== false, o.round));
+    const kw0 = (x, y, w, h, o = {}) => (Kt.win ? Kt.win(x, y, w, h, { sill: K.stone === '#8b8796' ? '#a8a4b6' : shade(K.stone, 0.2), ...o }) : win(x, y, w, h, o.lit !== false, o.round));
+    // HW: мёртвый - окно чёрное, через одно заколочено досками крест-накрест
+    const boards = (x, y, w, h) => `<path d="M${x - 6} ${y + h * 0.2} L${x + w + 6} ${y + h * 0.75} M${x - 6} ${y + h * 0.78} L${x + w + 6} ${y + h * 0.28}" stroke="${K.line}" stroke-width="13" stroke-linecap="round"/><path d="M${x - 6} ${y + h * 0.2} L${x + w + 6} ${y + h * 0.75} M${x - 6} ${y + h * 0.78} L${x + w + 6} ${y + h * 0.28}" stroke="${K.wood}" stroke-width="8" stroke-linecap="round"/>`;
+    const kw = (x, y, w, h, o = {}) => (DEAD ? kw0(x, y, w, h, { ...o, lit: false, glow: false }) + ((x + y) % 3 ? boards(x, y, w, h) : '') : kw0(x, y, w, h, o));
     const kd = (x, base, w, h, o = {}) => (Kt.door ? Kt.door(x, base, w, h, { stepC: K.stone, ...o }) : '');
     const kpl = (box, c) => (Kt.plaster ? Kt.plaster(box, c) : '');
     // табличка «СКОРО» — доска на двух гвоздях, чуть наискось
@@ -72,17 +100,21 @@
       return s;
     };
     const flag = (x, y, c = K.flag) => `<path d="M${x} ${y} V${y - 50} l40 12 l-40 12" fill="${c}" ${O(3)}/>`;
-    const torch = (x, y) => `<circle cx="${x}" cy="${y - 18}" r="44" fill="url(#cqGlow)" opacity=".6"/><path d="M${x} ${y} v30" stroke="${K.ink}" stroke-width="6"/><path d="M${x - 8} ${y} h16 l-4 -8 h-8 Z" fill="${K.woodD}" ${O(2.5)}/><path d="M${x} ${y - 34} q12 14 6 24 q-6 6 -12 0 q-6 -10 6 -24" fill="#ffb34d" ${O(2.5)}/>`;
+    const torch = (x, y) => DEAD ? `<path d="M${x} ${y} v30" stroke="${K.ink}" stroke-width="6"/><path d="M${x - 8} ${y} h16 l-4 -8 h-8 Z" fill="${K.woodD}" ${O(2.5)}/><path d="M${x - 2} ${y - 8} l-6 -16 l4 -6" stroke="${K.ink}" stroke-width="4" fill="none" stroke-linecap="round"/>`   // HW: факел погас и обломан
+      : `<circle cx="${x}" cy="${y - 18}" r="44" fill="url(#cqGlow)" opacity=".6"/><path d="M${x} ${y} v30" stroke="${K.ink}" stroke-width="6"/><path d="M${x - 8} ${y} h16 l-4 -8 h-8 Z" fill="${K.woodD}" ${O(2.5)}/><path d="M${x} ${y - 34} q12 14 6 24 q-6 6 -12 0 q-6 -10 6 -24" fill="#ffb34d" ${O(2.5)}/>`;
     // стена или фон (то, что за зданиями)
     // фон (стена, крыши, листва, земля) — чуть шире квартала: заходит под край Ярмарки, шва нет
     const QB = QW + 40;
     // парапет крыш (котики): поверх мостовой; 23.10 — кирпичи двумя рядами вперевязку, как у террасы Ярмарки (от стыка x = QW − 20)
     const parapet = () => {
-      let g = `<rect x="0" y="672" width="${QB}" height="26" fill="#a9503c" ${O(4)}/><rect x="0" y="664" width="${QB}" height="12" fill="#7a3426" ${O(3)}/>`;
+      let g = `<rect x="0" y="672" width="${QB}" height="26" fill="${DEAD ? '#3e343c' : '#a9503c'}" ${O(4)}/><rect x="0" y="664" width="${QB}" height="12" fill="${DEAD ? '#2a242c' : '#7a3426'}" ${O(3)}/>`;   // HW: тёмный
       for (let r = 0; r < 2; r++) for (let x = QW - 20 - (r ? 26 : 0) - Math.ceil(QW / 52 + 1) * 52; x < QB; x += 52) if (x > -60) g += `<rect x="${f1(x + 2)}" y="${674 + r * 12}" width="48" height="10" rx="2.5" fill="none" stroke="${K.ink}" stroke-width="1.6" opacity=".35"/>`;
       return g;
     };
-    let s = `<defs><radialGradient id="cqGlow"><stop offset="0" stop-color="#ffe59a" stop-opacity=".9"/><stop offset="1" stop-color="#ffbe5a" stop-opacity="0"/></radialGradient>
+    let s = DEAD ? `<defs><radialGradient id="cqGlow"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
+      <linearGradient id="cqShade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#05060a" stop-opacity=".6"/><stop offset="1" stop-color="#05060a" stop-opacity="0"/></linearGradient>
+      <radialGradient id="cqWater" cx=".5" cy=".4" r=".7"><stop offset="0" stop-color="#2e3a32"/><stop offset=".5" stop-color="#1a2420"/><stop offset="1" stop-color="#0b120e"/></radialGradient>
+      <radialGradient id="cqRed"><stop offset="0" stop-color="#d01a2a" stop-opacity=".42"/><stop offset="1" stop-color="#d01a2a" stop-opacity="0"/></radialGradient></defs>` : `<defs><radialGradient id="cqGlow"><stop offset="0" stop-color="#ffe59a" stop-opacity=".9"/><stop offset="1" stop-color="#ffbe5a" stop-opacity="0"/></radialGradient>
       <linearGradient id="cqShade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#14112a" stop-opacity=".45"/><stop offset="1" stop-color="#14112a" stop-opacity="0"/></linearGradient>
       <radialGradient id="cqWater" cx=".5" cy=".4" r=".7"><stop offset="0" stop-color="#e8fbff"/><stop offset=".35" stop-color="${K.water}"/><stop offset="1" stop-color="${K.waterD}"/></radialGradient></defs>`;
     if (K.back === 'wall') {
@@ -91,8 +123,9 @@
       s += `<rect x="0" y="330" width="${QB}" height="380" fill="${K.wall}"/>` + Kt.wall([0, 333, QB, 708], { moss: true, seed: 5 }) + `<rect x="0" y="330" width="${QB}" height="380" fill="none" ${O()}/>`;
       for (let i = 0; i < QB / 82 + 1; i++) s += `<rect x="${i * 82}" y="300" width="52" height="40" fill="${K.wall}" ${O(4)}/><path d="M${i * 82 + 8} 310 H${i * 82 + 44}" stroke="#6e6a84" stroke-width="3" stroke-linecap="round"/>`;
     } else if (K.back === 'roofs') {
-      for (let x = -40; x < QB + 60;) { const w = 110 + rnd() * 120, b = f1(470 + rnd() * 50), h = 120 + rnd() * 90; s += `<rect x="${f1(x)}" y="${f1(b - h)}" width="${f1(w)}" height="${f1(h + 300)}" fill="#1e1c40"/><path d="M${f1(x - 8)} ${f1(b - h + 2)} L${f1(x + w / 2)} ${f1(b - h - 50)} L${f1(x + w + 8)} ${f1(b - h + 2)} Z" fill="#1e1c40"/>`; if (rnd() < 0.5) s += `<rect x="${f1(x + w * 0.4)}" y="${f1(b - h + 30)}" width="16" height="20" fill="#ffd76a" opacity=".7"/>`; x += w + 6 + rnd() * 20; }
-      for (let x = -60; x < QB + 80;) { const w = 180 + rnd() * 160, b = f1(600 + rnd() * 40), h = 90 + rnd() * 60, top = b - h, rh = 80 + rnd() * 30; s += `<rect x="${f1(x)}" y="${f1(top)}" width="${f1(w)}" height="${f1(h + 120)}" fill="#3a2f5e"/>` + Kt.roof([[x - 14, top + 4], [x + w / 2, top - rh], [x + w + 14, top + 4]], { pal: { a: '#5a3a5a', b: '#664266', c: '#4e3250', edge: '#3e2a46' }, step: 16, scale: 0.8, w: 0, id: 'cqMid' + Math.round(x) }) + (rnd() < 0.6 ? `<rect x="${f1(x + w * 0.5 - 18)}" y="${f1(top + 24)}" width="36" height="30" rx="3" fill="#ffd76a" opacity=".85"/><path d="M${f1(x + w * 0.5)} ${f1(top + 24)} v30 M${f1(x + w * 0.5 - 18)} ${f1(top + 39)} h36" stroke="#3a2f5e" stroke-width="3"/>` : ''); x += w + rnd() * 40; }
+      if (DEAD) s += `<ellipse cx="${f1(QW * 0.3)}" cy="470" rx="520" ry="200" fill="url(#cqRed)"/><ellipse cx="${f1(QW * 0.82)}" cy="500" rx="420" ry="170" fill="url(#cqRed)"/>`;   // HW: красное зарево за крышами
+      for (let x = -40; x < QB + 60;) { const w = 110 + rnd() * 120, b = f1(470 + rnd() * 50), h = 120 + rnd() * 90; s += `<rect x="${f1(x)}" y="${f1(b - h)}" width="${f1(w)}" height="${f1(h + 300)}" fill="${DEAD ? '#121520' : '#1e1c40'}"/><path d="M${f1(x - 8)} ${f1(b - h + 2)} L${f1(x + w / 2)} ${f1(b - h - 50)} L${f1(x + w + 8)} ${f1(b - h + 2)} Z" fill="${DEAD ? '#121520' : '#1e1c40'}"/>`; if (rnd() < 0.5) s += `<rect x="${f1(x + w * 0.4)}" y="${f1(b - h + 30)}" width="16" height="20" fill="${DEAD ? '#05060a' : '#ffd76a'}" opacity=".7"/>`; x += w + 6 + rnd() * 20; }
+      for (let x = -60; x < QB + 80;) { const w = 180 + rnd() * 160, b = f1(600 + rnd() * 40), h = 90 + rnd() * 60, top = b - h, rh = 80 + rnd() * 30; s += `<rect x="${f1(x)}" y="${f1(top)}" width="${f1(w)}" height="${f1(h + 120)}" fill="${DEAD ? '#1a1d26' : '#3a2f5e'}"/>` + Kt.roof([[x - 14, top + 4], [x + w / 2, top - rh], [x + w + 14, top + 4]], { pal: DEAD ? { a: '#2a2630', b: '#302b36', c: '#24202a', edge: '#1a171e' } : { a: '#5a3a5a', b: '#664266', c: '#4e3250', edge: '#3e2a46' }, step: 16, scale: 0.8, w: 0, id: 'cqMid' + Math.round(x) }) + (rnd() < 0.6 ? `<rect x="${f1(x + w * 0.5 - 18)}" y="${f1(top + 24)}" width="36" height="30" rx="3" fill="${DEAD ? '#05060a' : '#ffd76a'}" opacity=".85"/><path d="M${f1(x + w * 0.5)} ${f1(top + 24)} v30 M${f1(x + w * 0.5 - 18)} ${f1(top + 39)} h36" stroke="#3a2f5e" stroke-width="3"/>` : ''); x += w + rnd() * 40; }
       s += parapet();
     } else {
       for (let x = -60; x < QB + 120; x += 130) s += `<circle cx="${x}" cy="${f1(330 + rnd() * 50)}" r="${f1(105 + rnd() * 50)}" fill="#6b4f8a"/>`;
@@ -141,6 +174,7 @@
       let g = `<path d="M${x1} ${y1} Q${mx} ${my} ${x2} ${y2}" fill="none" stroke="${K.ink}" stroke-width="3.5"/>`;
       for (let i = 1; i < n; i++) {   // лампочки-колбочки с цоколем, у соседних — разные цвета (как гирлянды Ярмарки котиков), без мигания — сайт не должен нагружать ПК
         const t = i / n, x = (1 - t) ** 2 * x1 + 2 * (1 - t) * t * mx + t * t * x2, y = (1 - t) ** 2 * y1 + 2 * (1 - t) * t * my + t * t * y2, c = BULB[(i * 3) % BULB.length], bx = f1(x);
+        if (DEAD) { if (i % 4) g += `<rect x="${f1(x - 3.5)}" y="${f1(y - 1)}" width="7" height="6" rx="1.5" fill="#1a1c22"/><ellipse cx="${bx}" cy="${f1(y + 12)}" rx="5.5" ry="7.5" fill="#22262e" stroke="${K.ink}" stroke-width="1.8"/>`; continue; }   // HW: погасшие колбы, части нет
         g += `<circle cx="${bx}" cy="${f1(y + 12)}" r="13" fill="${c}" opacity=".2"/><rect x="${f1(x - 3.5)}" y="${f1(y - 1)}" width="7" height="6" rx="1.5" fill="#3a3550" stroke="${K.ink}" stroke-width="1.5"/><path d="M${bx} ${f1(y + 5)} C${f1(x + 7)} ${f1(y + 7)} ${f1(x + 7)} ${f1(y + 18)} ${bx} ${f1(y + 20)} C${f1(x - 7)} ${f1(y + 18)} ${f1(x - 7)} ${f1(y + 7)} ${bx} ${f1(y + 5)} Z" fill="${c}" stroke="${K.ink}" stroke-width="1.8"/><path d="M${f1(x - 2.5)} ${f1(y + 9)} q-1 4 0 7" stroke="#fff" stroke-width="1.8" stroke-linecap="round" fill="none" opacity=".7"/>`;
       }
       return g;
@@ -154,8 +188,16 @@
     s += `<g transform="translate(${QW / 2} 120)"><path d="M-300 -38 H300 L276 0 L300 38 H-300 L-276 0 Z" fill="${K.sign}" ${O(6)}/>${txt(0, 15, K.banner, 40)}</g>`;
 
     // 25.10: деревья между зданиями (за ними — стена или крыши; герои ходят ниже, y ≥ 800 — деревья всегда позади)
+    // HW: мёртвый - голые деревья с ветками-рогатками и сухие кусты
+    const deadTree = (x, base, sc = 1) => {
+      const T = (d) => d.replace(/(-?\d+\.?\d*) (-?\d+\.?\d*)/g, (m, a, b) => `${f1(x + a * sc)} ${f1(base + b * sc)}`);
+      const br = T('M-4 -110 Q-40 -150 -70 -170 M-6 -150 Q-20 -200 -4 -240 M4 -140 Q40 -180 78 -186 M30 -170 Q40 -200 30 -220 M-40 -150 Q-60 -150 -78 -140 M-2 -200 Q20 -220 34 -246');
+      return `<path d="${T('M-14 0 Q-10 -80 -6 -150 L6 -150 Q12 -80 16 0 Z')}" fill="#2e2822" ${O(4)}/><path d="${br}" stroke="${K.ink}" stroke-width="${f1(11 * sc)}" fill="none" stroke-linecap="round"/><path d="${br}" stroke="#2e2822" stroke-width="${f1(5 * sc)}" fill="none" stroke-linecap="round"/>`;
+    };
+    const dryBush = (x, base, sc = 1) => { let d = ''; for (let i = 0; i < 7; i++) { const a = -Math.PI * (0.12 + i * 0.126); d += `M${x} ${base} l${f1(Math.cos(a) * 70 * sc)} ${f1(Math.sin(a) * 60 * sc)} `; } return `<path d="${d}" stroke="${K.ink}" stroke-width="${f1(7 * sc)}" stroke-linecap="round"/><path d="${d}" stroke="#3a3228" stroke-width="${f1(3 * sc)}" stroke-linecap="round"/>`; };
+    const ktree = (kind, x, base, sc, flip) => (DEAD ? (kind === 'bush' ? dryBush(x, base, sc) : deadTree(x, base, sc)) : Kt.tree(kind, x, base, sc, flip));
     { const TK = K.leaves ? 'palm' : K.ears ? 'topiary' : 'cypress';
-      s += Kt.tree(K.ears ? 'topiary' : 'tree', 452, 792, 0.82) + Kt.tree(TK, 900, 792, K.ears ? 0.95 : 0.9) + Kt.tree(TK, 1330, 796, 0.85) + Kt.tree(K.ears ? 'topiary' : 'tree', 1735, 790, 0.8, true) + Kt.tree('bush', 1205, 798, 0.6) + Kt.tree('bush', 560, 798, 0.55); }
+      s += ktree(K.ears ? 'topiary' : 'tree', 452, 792, 0.82) + ktree(TK, 900, 792, K.ears ? 0.95 : 0.9) + ktree(TK, 1330, 796, 0.85) + ktree(K.ears ? 'topiary' : 'tree', 1735, 790, 0.8, true) + ktree('bush', 1205, 798, 0.6) + ktree('bush', 560, 798, 0.55); }
     /* ----- Ратуша (строится): башня с часами, леса, табличка «СКОРО» ----- */
     {
       const x0 = 90, x1 = 400, B = 795, top = 470;
@@ -206,7 +248,7 @@
       s += `<g transform="translate(1000 ${B})"><path d="M-22 0 V-66 M22 0 V-66 M-26 -50 H26 M-26 -14 H26" stroke="${K.line}" stroke-width="9" stroke-linecap="round"/><path d="M-22 0 V-66 M22 0 V-66 M-26 -50 H26 M-26 -14 H26" stroke="${K.wood}" stroke-width="4.5" stroke-linecap="round"/>`
         + `<path d="M-12 -6 V-86 M0 -6 V-82 M12 -6 V-78" stroke="${K.line}" stroke-width="7" stroke-linecap="round"/><path d="M-12 -6 V-86 M0 -6 V-82 M12 -6 V-78" stroke="${K.woodD}" stroke-width="3" stroke-linecap="round"/><path d="M-12 -100 l-5 14 h10 Z M0 -96 l-5 14 h10 Z M12 -92 l-5 14 h10 Z" fill="#c9ccd6" stroke="${K.ink}" stroke-width="2"/></g>`
         + [1068, 1182].map((sx) => `<g transform="translate(${sx} ${top + 40}) scale(.8)"><path d="M-22 -24 H22 V2 Q22 24 0 32 Q-22 24 -22 2 Z" fill="${K.sign}" ${O(4)}/><path d="M0 -20 V26 M-16 -2 H16" stroke="${K.signTx}" stroke-width="5"/></g>`).join('');   // 26.10: стойка с копьями, щиты на стене
-      s += `<path d="M1065 ${B} V700 A60 60 0 0 1 1185 700 V${B} Z" fill="#ffb34d" ${O(5)}/><path d="M1080 ${B} V706 A45 45 0 0 1 1170 706 V${B} Z" fill="#c56a2a" opacity=".55"/>`;
+      s += `<path d="M1065 ${B} V700 A60 60 0 0 1 1185 700 V${B} Z" fill="${DEAD ? '#0b0c10' : '#ffb34d'}" ${O(5)}/><path d="M1080 ${B} V706 A45 45 0 0 1 1170 706 V${B} Z" fill="${DEAD ? '#1a1c22' : '#c56a2a'}" opacity=".55"/>`;   // HW: в дверях темно
       // мишени на стене
       const target = (x, y, r) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#f3efd8" ${O(4)}/><circle cx="${x}" cy="${y}" r="${r * 0.66}" fill="#e8455c"/><circle cx="${x}" cy="${y}" r="${r * 0.33}" fill="#f3efd8"/><path d="M${x + r * 0.2} ${y - r * 0.1} l${r * 0.9} ${-r * 0.5}" stroke="${K.woodD}" stroke-width="4"/>`;
       s += target(1010, 610, 30) + target(1240, 610, 30);
@@ -224,9 +266,10 @@
     // фонтан — вода: по ней не ходят (citymap.js QUARTER_OBST)
     props.push({ x: 760, y: 780, w: 240, h: 200, z: 952, svg: () => {
       let g = `<ellipse cx="880" cy="934" rx="112" ry="38" fill="${K.stone}" ${O(5)}/><ellipse cx="880" cy="926" rx="96" ry="28" fill="url(#cqWater)" ${O(3)}/>`;
-      g += `<path d="M846 922 q20 -10 46 -2 M900 934 q14 -6 30 0" stroke="#e8fbff" stroke-width="3" fill="none" opacity=".8"/>`;
+      if (!DEAD) g += `<path d="M846 922 q20 -10 46 -2 M900 934 q14 -6 30 0" stroke="#e8fbff" stroke-width="3" fill="none" opacity=".8"/>`;
       g += `<rect x="868" y="840" width="24" height="86" fill="${K.stone}" ${O(4)}/><ellipse cx="880" cy="842" rx="40" ry="12" fill="${K.stone}" ${O(4)}/><ellipse cx="880" cy="838" rx="30" ry="7" fill="url(#cqWater)"/>`;
-      g += `<path d="M880 830 q-34 -40 -46 4 M880 830 q34 -40 46 4 M880 830 v-26" stroke="${K.water}" stroke-width="5" fill="none" stroke-linecap="round" opacity=".9"/>`;
+      if (DEAD) g += `<path d="M836 928 q14 -6 30 -2 q10 6 26 0 M890 920 q12 -4 24 2" stroke="#3e4a36" stroke-width="5" fill="none" stroke-linecap="round" opacity=".8"/><path d="M880 860 l-5 30 l8 22" stroke="${K.ink}" stroke-width="2.5" fill="none"/>`;   // HW: вода встала, ряска, трещина
+      else g += `<path d="M880 830 q-34 -40 -46 4 M880 830 q34 -40 46 4 M880 830 v-26" stroke="${K.water}" stroke-width="5" fill="none" stroke-linecap="round" opacity=".9"/>`;
       if (K.ears) g += `<g transform="translate(880 802)"><path d="M-14 -6 l4 -16 l9 10 Z M14 -6 l-4 -16 l-9 10 Z" fill="${K.stone}" ${O(3)}/><circle r="16" fill="${K.stone}" ${O(3)}/></g>`;
       return g;
     } });
@@ -250,7 +293,8 @@
     } });
     // фонарь на улице
     // 25.10: кованый фонарь набора (свет — в рамке предмета: Pixi печёт предмет по его рамке)
-    props.push({ x: 400, y: 600, w: 80, h: 410, z: 1000, svg: () => Kt === STUB ? `<path d="M440 1000 V640" stroke="${K.ink}" stroke-width="7"/>` : `<circle cx="440" cy="655" r="40" fill="url(#cqGlow)" opacity=".8"/>` + Kt.lamp(440, 998, 380, { glow: false, pool: false }) + `<ellipse cx="440" cy="1000" rx="20" ry="6" fill="${K.ink}" opacity=".4"/>` });
+    props.push({ x: 400, y: 600, w: 80, h: 410, z: 1000, svg: () => DEAD ? `<g transform="rotate(5 440 1000)"><path d="M440 1000 V650" stroke="${K.ink}" stroke-width="10"/><path d="M440 1000 V650" stroke="#2a2c34" stroke-width="5"/><path d="M424 650 h32 l-6 -26 h-20 Z" fill="#1a1c22" ${O(3)}/><path d="M428 636 l10 -8 l6 12" stroke="#4a4e58" stroke-width="2" fill="none"/></g><ellipse cx="440" cy="1000" rx="20" ry="6" fill="${K.ink}" opacity=".4"/>`   // HW: фонарь погнут, стекло выбито
+      : Kt === STUB ? `<path d="M440 1000 V640" stroke="${K.ink}" stroke-width="7"/>` : `<circle cx="440" cy="655" r="40" fill="url(#cqGlow)" opacity=".8"/>` + Kt.lamp(440, 998, 380, { glow: false, pool: false }) + `<ellipse cx="440" cy="1000" rx="20" ry="6" fill="${K.ink}" opacity=".4"/>` });
     // 20.10: табличка «Заточка» у наковальни под навесом Кузни Ярмарки (наковальня — x QW+150): деревянная, с молотом; только в городе
     // висит под навесом над наковальней (навес у всех стилей — x 0…240 Ярмарки, низ ~575): не закрывает наковальню и кузнеца
     props.push({ x: QW + 6, y: 470, w: 250, h: 200, z: 800, svg: () => {
@@ -275,8 +319,25 @@
         + `<text x="${bx + 106}" y="${by + 36}" text-anchor="middle" font-family="Russo One, Arial Black, sans-serif" font-size="23" fill="${K.ink}">ЗАТОЧКА</text></g>`;
       return g;
     } });
+    if (DEAD) s += deadOver();
     for (const p of props) { const f = p.svg; p.svg = () => (Kt.wrap ? Kt.wrap(f()) : f()); }   // 25.10: у каждого предмета — свои <defs> набора
+    if (DEAD) { for (const p of props) { const f = p.svg; p.svg = () => deadFix(f()); } return { svg: deadFix(Kt.wrap ? Kt.wrap(s) : s), props, sky: K.sky, seam, dead: true }; }   // HW
     return { svg: Kt.wrap ? Kt.wrap(s) : s, props, sky: K.sky, seam };
+    // HW: лозы по стенам Ратуши, Аукциона и Тренера, паутина между колоннами, трещины по мостовой и низкий туман
+    function deadOver() {
+      const vine = (x0, y0, x1, y1, w = 6) => { const n = 5; let d = `M${x0} ${y0}`, tw = '';
+        for (let i = 1; i <= n; i++) { const t = i / n, x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t, k = i % 2 ? 1 : -1; d += ` Q${f1(x - (x1 - x0) / n / 2 + k * 16)} ${f1(y - (y1 - y0) / n / 2)} ${f1(x)} ${f1(y)}`; if (i < n) tw += `M${f1(x)} ${f1(y)} q${k * 18} -6 ${k * 26} 12 `; }
+        return `<path d="${d} ${tw}" stroke="#0a0b10" stroke-width="${w}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`; };
+      const web = (x, y, r, sx, sy) => { let d = ''; const A = [0, 0.5, 1, 1.5].map((k) => (k * Math.PI) / 3);
+        for (const a of A) d += `M${x} ${y} L${f1(x + sx * Math.cos(a) * r)} ${f1(y + sy * Math.sin(a) * r)} `;
+        for (const k of [0.4, 0.7, 1]) A.forEach((a, i) => { d += (i ? 'L' : 'M') + `${f1(x + sx * Math.cos(a) * r * k)} ${f1(y + sy * Math.sin(a) * r * k)} `; });
+        return `<path d="${d}" stroke="#8a8e9a" stroke-width="1.6" fill="none" opacity=".6"/>`; };
+      let g = vine(96, 795, 120, 500) + vine(392, 795, 370, 540, 5) + vine(498, 795, 520, 560) + vine(964, 795, 990, 540) + vine(1286, 795, 1262, 580, 5);
+      g += web(506, 534, 70, 1, 1) + web(794, 534, 70, -1, 1) + web(976, 528, 60, 1, 1) + web(1274, 528, 60, -1, 1) + web(106, 478, 54, 1, 1);
+      let cr = ''; for (let i = 0; i < 14; i++) { let x = 40 + ((i * 677) % (QW - 80)), y = 820 + ((i * 331) % 220); cr += `M${x} ${y}`; for (let k = 0; k < 4; k++) { x += 24 + ((i + k) * 13) % 28; y += ((i * 7 + k * 11) % 22) - 11; cr += ` L${x} ${y}`; } }
+      g += `<path d="${cr}" stroke="#0a0b10" stroke-width="4" fill="none" stroke-linecap="round" opacity=".8"/><path d="${cr.split('M').filter((_, i) => i % 3 === 1).map((q) => 'M' + q).join('')}" stroke="#d01a2a" stroke-width="1.4" fill="none" opacity=".6"/>`;
+      return g;
+    }
   }
   /* ----- 20.10: нижняя улица под Ярмаркой (на всю ширину города): уступ с лестницами, канал с мостиками, лавочки, клумбы, фонари.
      Где что стоит — из citymap.js (LOW): рисунок и проходимость совпадают. Координаты — города (y от LOW.top до H). ----- */

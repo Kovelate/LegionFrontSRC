@@ -1147,6 +1147,26 @@
     META.set(id, { C, a: [0, -70] });
   }
   /** Окаменевший сундук (mine2): <use>; стадии - при копании (digging/cracks меняют символ целиком). */
+  /* 27.10 (угольный этаж): куча угля - неподвижный предмет этажа на клетке-проходе (ходят мимо и сквозь); низкая горка тёмных
+     глыб с бликами, лопата воткнута сбоку. x, y - низ клетки (как у камня), r - случайность клетки. Без анимаций */
+  function coalHeap(x, y, r) {
+    const C = ORE.coal;
+    let g = `<ellipse cx="${f1(x + 4)}" cy="${f1(y + 2)}" rx="58" ry="13" fill="#000" fill-opacity=".38"/>`;
+    // горка: силуэт - пологий холм
+    const hill = []; for (let q = 0; q <= 10; q++) { const t = q / 10, a = Math.PI * t; hill.push([x - 54 + 108 * t, y - Math.sin(a) * (34 + r() * 6) - 2]); }
+    hill.push([x + 54, y + 2], [x - 54, y + 2]);
+    g += `<path d="${P(hill)}" fill="${C[2]}" ${O(3.5)}/>`;
+    // глыбы угля рядами: снизу шире, сверху - пара
+    const rows = [[-40, -6, 5, 17], [-28, -22, 4, 15], [-14, -36, 2, 14]];
+    for (const [x0, dy, n, k] of rows) for (let q = 0; q < n; q++) g += nugget(x + x0 + q * (k * 1.25) + (r() - 0.5) * 5, y + dy + (r() - 0.5) * 4, k * (0.8 + r() * 0.3), C, r, r() < 0.5);
+    // россыпь у подножия
+    for (let q = 0; q < 4; q++) g += nugget(x + (q < 2 ? -62 + q * 10 : 48 + (q - 2) * 10), y + 2 - r() * 4, 6 + r() * 2, C, r, false);
+    // лопата: черенок и штык, воткнута справа
+    g += `<path d="M${f1(x + 30)} ${f1(y - 30)} L${f1(x + 50)} ${f1(y - 84)}" stroke="${INK}" stroke-width="8" stroke-linecap="round"/><path d="M${f1(x + 30)} ${f1(y - 30)} L${f1(x + 50)} ${f1(y - 84)}" stroke="#a8743a" stroke-width="4.5" stroke-linecap="round"/>`;
+    g += `<path d="M${f1(x + 44)} ${f1(y - 88)} h14" stroke="${INK}" stroke-width="7" stroke-linecap="round"/><path d="M${f1(x + 44)} ${f1(y - 88)} h14" stroke="#c89048" stroke-width="3.5" stroke-linecap="round"/>`;
+    g += `<path d="M${f1(x + 20)} ${f1(y - 30)} l18 4 l-4 18 q-12 4 -20 -6 Z" fill="#9aa0b4" ${O(2.6)}/><path d="M${f1(x + 22)} ${f1(y - 27)} l12 3" stroke="#e4e8f2" stroke-width="2" stroke-linecap="round"/>`;
+    return g;
+  }
   function chest2(x, y, s, pal, r) {
     const id = `mrc-${CUR.theme}-${hs(pal.join(',')).toString(36)}`;
     if (!SYM.has(id)) chestSyms(id, pal);
@@ -1820,7 +1840,7 @@
     return { props: out, npc: { x: 664, y: 2426, name: 'Скупщик Гром' }, lampNpc };
   }
 
-  window.LGMineArt = { v: 3, upLift: F(upLift), begin, rock: rock2, ore: ore2, wall: wall2, chest: chest2, badge: badge2, crack: F(crack), stageOf: stageOf2, entry: entry2, defs: defs2, digging: digging2, cracks: cracks2, ORE, lantern: F(lantern), mix,
+  window.LGMineArt = { v: 3, upLift: F(upLift), begin, rock: rock2, ore: ore2, wall: wall2, chest: chest2, coalHeap: F(coalHeap), badge: badge2, crack: F(crack), stageOf: stageOf2, entry: entry2, defs: defs2, digging: digging2, cracks: cracks2, ORE, lantern: F(lantern), mix,
     theme: () => CUR.theme, themeOfN, bbox, fit, DMG, digFig, traderArt, TRADER_LOOK, digSync, digCss, DIG_DEFS, pickIcon, PICK_NAMES, SEQS, SEQ_UP, MOVES, MOVES_UP, setGrass: (v) => { GRASS = !!v; }, grass: () => GRASS, SYM, dmgDefs, bodyId, tones2,
     v1: { entry: entryFo, rock: F(rock), ore: F(ore), wall: F(wall), chest: F(chest), badge, crack: F(crack), stageOf, defs, digging, cracks } };
 })();

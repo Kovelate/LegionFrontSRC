@@ -50,7 +50,7 @@
   function floorOf(st) {
     if (!st || !st.fl) return null;
     const cells = st.fl.c.map(([t, lv, r, a]) => ({ t, lv, r: r || null, a, k: t === 'entry' || t === 'wall' || t === 'void' ? 0 : 1 }));
-    return { n: st.n, craft: 'mine', biome: st.biome || 'mount', danger: st.danger || 1, gem: st.gem || null, special: st.fl.special, exit: st.fl.exit, entry: st.fl.entry, cells, done: false };
+    return { n: st.n, craft: 'mine', biome: st.biome || 'mount', danger: st.danger || 1, gem: st.gem || null, special: st.fl.special, coal: st.fl.coal || null, exit: st.fl.exit, entry: st.fl.entry, cells, done: false };
   }
   const dugArr = (st) => (st && st.dug ? st.dug.split('').map((c) => (c === '1' ? 1 : 0)) : []);
 
@@ -229,10 +229,14 @@
        не «мой», стоп - ещё раз раз в 30 с. Раньше защита кончалась через 60 с, и запоздавший вид возвращал «Копаешь».
        Подтвердила (камня нет у меня) или копаю другой - защиту снимаем */
     if (S.left) {
-      if (S.myI >= 0 && S.myI === S.left.i) {
+      if (S.myI >= 0 && S.myI === S.left.i && !(S.left.ok && mine)) {
         S.myI = -1;
         if (Date.now() - (S.left.sent || S.left.at) > 30000 && Date.now() - S.left.at < 30 * 60000) { S.left.sent = Date.now(); X.api('/api/mineStop', { c: C, sid: S.sid }); }
-      } else if (S.myI >= 0 || Date.now() - S.left.at > 3000) S.left = null;
+      } else if (S.myI >= 0 || Date.now() - S.left.at > 30 * 60000) S.left = null;
+      // 28.10: игра подтвердила (3 с не копаю) - дальше защита только от запоздавшего снимка героя: у людного камня (больше 4
+      // копающих) «мой» берётся из снимка героя, и старый снимок после подтверждения возвращал «Копаешь». Вид шахты (я в списке
+      // копающих этого камня) защиту снимает - копаю снова; клик по камню - тоже (S.want)
+      else if (Date.now() - S.left.at > 3000) S.left.ok = true;
     }
     // 25.10: что выбрал сам — главнее вида, пока комната не взяла действие из очереди (до 15 с): раньше цель сбрасывалась, и кот
     // «сам переключал камень» на прежний из запоздавшего снимка героя
@@ -763,6 +767,10 @@
     const st = S.st, me = S.me || { day: 0, cap: 480, bag: { c: 0, r: {} }, mx: { lv: 1, xp: 0, need: 60 }, wk: 0 };
     S.el.querySelector('[data-mn="name"]').textContent = st.name && st.id !== 'home' ? `Шахта · ${st.name}` : 'Шахта';
     S.el.querySelector('[data-mn="floor"]').textContent = `${stars(st.danger)} ${BIO_RU[st.biome] || ''} · этаж ${st.n}${st.rec > st.n ? ` · рекорд ${st.rec}` : ''}`;
+    // 27.10: угольный этаж - табличка в шапке (рядом с номером этажа)
+    { const fe = S.el.querySelector('[data-mn="floor"]'), cb = fe.parentNode.querySelector('.mn-coal'), on = !!(S.F && S.F.coal && S.F.coal.length);
+      if (on && !cb) fe.insertAdjacentHTML('afterend', '<span class="mn-coal" title="На этом этаже - кучи угля, вокруг каждой жила угольных камней (5-9). Такой этаж - один из каждых десяти">Угольный этаж</span>');
+      else if (!on && cb) cb.remove(); }
     const left = st.reset - Date.now(), dd = Math.floor(left / 864e5), hh = Math.floor((left % 864e5) / 36e5);
     S.el.querySelector('[data-mn="reset"]').textContent = left > 0 ? `новая шахта через ${dd ? dd + ' д ' : ''}${hh} ч` : '';
     panelStatus(S.el.querySelector('[data-mn="status"]'));
@@ -1299,6 +1307,7 @@
       ['Этажи', [
         'Расчистили этаж - клеть наверху зала горит зелёным, шахта спускается на следующий этаж.',
         'Чем глубже, тем выше уровень камней (копать дольше); в глубоких пластах - другая руда.',
+        'В каждом десятке этажей один - угольный (какой - заранее не узнать): на нём кучи угля, а вокруг каждой - жила угольных камней.',
       ]],
       ['Добыча', [
         'Руда приходит осколками по вкладу: 100 осколков = 1 штука.',

@@ -773,7 +773,7 @@
           art: (it) => art(it), only: (it) => fitsCls(it, cls),
           figure: (hh) => { const st = hh.stats || {}, mx = st.hp || 0, nw = hh.hpNow ?? mx; return doodle(hh.login, heroLook(hh), mx && nw / mx < 0.3 ? 'hurt' : 'stern', hh.ghost ? undefined : kit); },
           cardTip: (c, it) => cardTip(c, it, ME.hero), tipHide: () => tipHide(),
-          canUse: (it) => (eatCd(it, ME.hero) ? 'Еда и зелья ещё не готовы' : true),
+          canUse: (it) => (eatCd(it, ME.hero) && !(it && it.effect && it.effect.hw) ? 'Еда и зелья ещё не готовы' : true),
           extra: (c) => (c.it.no ? `<span class="no" title="Номер в сумке - для команд в чате">${c.it.no}</span>` : ''),
           // выбор - карточка вещи сайта справа (на телефоне - шторка) с её кнопками: починить, заточить, съесть…
           // 25.10 (решение стримера): правая кнопка - прежнее меню вещи (надеть / заменить / снять, съесть / выпить, подробнее); Shift + правая - быстро надеть / снять
@@ -1272,7 +1272,7 @@
   function ctxClose() { const m = document.querySelector('.ctxm'); if (m) m.remove(); document.removeEventListener('pointerdown', ctxOut, true); window.removeEventListener('scroll', ctxClose, true); document.removeEventListener('keydown', ctxKey, true); }
   function ctxOut(e) { if (!e.target.closest('.ctxm')) ctxClose(); }
   function ctxKey(e) { if (e.key === 'Escape') ctxClose(); }
-  function ctxMenu(x, y, it, h) {
+  function ctxMenu(x, y, it, h, more) {   // 28.10: more.discard - пункт «Выбросить» (сумка вкладки «Поход»)
     ctxClose();
     const uid = it.uids ? it.uids[0] : it.uid, rows = [], cur = it.slot ? equipped(h, it.slot) : null;
     if (h.ghost) rows.push({ t: 'Призрак — ничего нельзя', off: true });
@@ -1285,6 +1285,7 @@
     else if (it.relic || it.slot === 'relic') rows.push({ t: 'Пока недоступно', off: true });
     if (canEnch(it) && !h.ghost && h.ef) rows.push({ t: 'Заточка', fn: () => forgeOpen(uid) });
     if (it.wearable && it.dur != null) rows.push(h.busy ? { t: 'Починить — в бою нельзя', off: true } : { t: `Починить (${repPrice(it)} бронзы)`, fn: () => act('/api/repair', { uid }, 'Кузнец починил') });   // 22.10
+    if (more && more.discard && !it.on) { const why = GD.discardWhy ? GD.discardWhy(it) : ''; rows.push(why ? { t: 'Выбросить - ' + why, off: true } : { t: '🗑 Выбросить…', fn: () => more.discard(uid) }); }
     rows.push({ t: 'Подробнее', fn: () => { sel = uid; sheet = !mqWide.matches; renderHero(); } });
     const m = document.createElement('div'); m.className = 'ctxm'; m.setAttribute('role', 'menu');
     m.innerHTML = `<div class="ctxh">${esc(it.name)}</div>` + rows.map((r, i) => `<button type="button" role="menuitem" data-i="${i}"${r.off ? ' disabled' : ''} class="${r.main ? 'main' : ''}">${esc(r.t)}</button>`).join('');
@@ -2015,23 +2016,28 @@
     invData: () => { const h = ME && ME.hero; return h ? { hero: h, items: (h.items || []).slice().sort((a, b) => (a.no || 1e9) - (b.no || 1e9)), stack: (h.sg && h.sg.bs) || 20, bagCap: h.sg ? h.sg.cap : null, ...(+h.ob > 0 ? { obCap: +h.ob } : {}) } : null; },
     invMount: (host, dollEl, root) => {
       const d = QX.invData(); if (!d || !window.LGInventory) return null;
-      return window.LGInventory.mount(host, { variant: 'compact', mode: 'equip', data: d,
+      // 28.10 (bag-trash, стример): слот «Выбросить» под сумкой - только во вкладке «Поход» (у «Персонажа» нет); меню вещи - и там «Выбросить…»
+      const trash = (uid) => { if (inv) inv.discard(uid); };
+      const inv = window.LGInventory.mount(host, { variant: 'compact', mode: 'equip', data: d,
         actions: {
           equip: (uid) => (inv2Busy() ? null : act('/api/equip', { uid }, word('on', 'Надето'))),
           unequip: (slot) => (inv2Busy() ? null : act('/api/unequip', { slot }, word('off', 'Снято'))),
           use: (uid) => { const it = ME.hero.items.find((x) => x.uid === uid); return act('/api/use', { uid }, it && eatVerb(it) === 'Выпить' ? 'Выпито' : 'Съедено'); },
           reorder: (from, to) => (ordOk(ME && ME.hero) ? ordSave(ordMove(ME.hero, from, to), from) : null),
+          discard: async (uids, it, n) => { await act('/api/discard', { uids }, `Выброшено: ${it.name}${n > 1 ? ` ×${n}` : ''}`); const d2 = QX.invData(); if (inv && d2) inv.update(d2); },
         },
         options: {
+          trashWhy: (it) => (GD.discardWhy ? GD.discardWhy(it) : ''),
           header: false, vitals: false, storeKey: 'lgQInv', label: word('bag', 'Сумка'), dollEl, dragRoot: root,
           filters: ['all', 'weapon', 'armor', 'helmet', 'shield', 'trinket', 'use', 'other'], art: (it) => art(it),
           figure: (hh) => { const st = hh.stats || {}, mx = st.hp || 0, nw = hh.hpNow ?? mx; return doodle(hh.login, heroLook(hh), mx && nw / mx < 0.3 ? 'hurt' : 'stern', hh.ghost ? undefined : 'battle'); },
           cardTip: (c, it) => cardTip(c, it, ME.hero), tipHide: () => tipHide(),
-          canUse: (it) => (eatCd(it, ME.hero) ? 'Еда и зелья ещё не готовы' : true),
+          canUse: (it) => (eatCd(it, ME.hero) && !(it && it.effect && it.effect.hw) ? 'Еда и зелья ещё не готовы' : true),
           extra: (c) => (c.it.no ? `<span class="no" title="Номер в сумке - для команд в чате">${c.it.no}</span>` : ''),
-          menu: (c, it, e) => { const t = TIPS[it.uid] || Object.values(TIPS).find((x) => x.uids && x.uids.includes(it.uid)) || { ...it, n: 1, uids: [it.uid] }; ctxMenu(e.clientX, e.clientY, t, ME.hero); },
+          menu: (c, it, e) => { const t = TIPS[it.uid] || Object.values(TIPS).find((x) => x.uids && x.uids.includes(it.uid)) || { ...it, n: 1, uids: [it.uid] }; ctxMenu(e.clientX, e.clientY, t, ME.hero, { discard: trash }); },
           say: (t) => toast(t, true),
         } });
+      return inv;
     },
     login: () => (ME && ME.user ? String(ME.user.login).toLowerCase() : ''), hero: () => (ME && ME.hero) || null, now: () => now(),
     doodle: (l, h, mood, k) => doodle(l, h, mood, k), esc: (s) => esc(s), tab: (id) => tab(id), money: (n, r) => money(n, r), moneyText: (n, r) => moneyText(n, r), lack: (p, hv, c) => lackHtml(p, hv, c), bal: (p, hv, c) => balHtml(p, hv, c),

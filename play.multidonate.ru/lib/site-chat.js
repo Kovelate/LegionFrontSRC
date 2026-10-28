@@ -158,7 +158,9 @@
         }
       };
       St().nickM = { el, out, key, from };
-      setTimeout(() => { document.addEventListener('pointerdown', out, true); }, 0);
+      // 28.10: только если это меню ещё открыто - иначе (ПКМ, Esc, ПКМ быстрее одного такта) «щелчок мимо» закрытого меню
+      // оставался висеть и закрывал следующее меню на первом же нажатии по его пункту («Ответить» не срабатывал)
+      setTimeout(() => { if (St() && St().nickM && St().nickM.el === el) document.addEventListener('pointerdown', out, true); }, 0);
       document.addEventListener('keydown', key, true);
       el.addEventListener('click', (e) => {
         const b = e.target.closest('[data-nm]'); if (!b) return;

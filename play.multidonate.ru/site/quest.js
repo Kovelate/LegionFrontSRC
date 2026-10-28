@@ -13,7 +13,10 @@
   let adj = 0; try { adj = Math.max(-10, Math.min(30, +localStorage.getItem(ADJ) || 0)); } catch (e) { adj = 0; }
   const esc = (s) => (X ? X.esc(s) : String(s ?? ''));
   const now = () => (X ? X.now() : Date.now());
-  const delayS = (q) => Math.max(0, ((q && q.dl) || 0) + adj);
+  // 28.10 (стример: «слово ПРИГНИСЬ на вкладке появляется, когда на оверлее время уже вышло»): задержка стрима нужна зрителю - он видит
+  // эфир с опозданием. Сам стример видит оверлей вживую: на его канале задержки нет (только своя подстройка)
+  const isOwner = () => { try { const me = X && X.login ? X.login() : '', ch = String((window.LG_CH && window.LG_CH.login) || '').toLowerCase(); return !!me && me === ch; } catch (e) { return false; } };
+  const delayS = (q) => Math.max(0, (isOwner() ? 0 : ((q && q.dl) || 0)) + adj);
   const sec = (until, q) => Math.max(0, Math.ceil(((+until || 0) + delayS(q) * 1000 - now()) / 1000));
   const plural = window.LGSiteUi.plural;   // 25.10: packages/site-ui (ui-kit), была своя копия
   const SKN = () => (window.QBattleCrowd && window.QBattleCrowd.SK) || {};
@@ -21,7 +24,7 @@
   const SIDE_RU = { L: 'левое крыло', R: 'правое крыло', F: 'дальнее крыло' }, SIDE_CMD = { L: 'лево', R: 'право', F: 'вдали' };
   // 25.10: обычная команда класса (удар / выстрел / магия / лечить) - из данных игры (packages/game-data), как в комнате (quest/siteact.js)
   const GD = window.LGGameData, BASE_CMD = Object.fromEntries([...GD.classIds(), 'recruit'].map((r) => [r, GD.baseCmd(r)]));
-  const KIND_RU = { battle: 'Бой', trap: 'Ловушка', treasure: 'Сокровищница', lair: 'Логово', rest: 'Привал', shop: 'Лавка', event: 'Событие', map: 'Карта', travel: 'В пути', town: 'Город', gather: 'Сбор отряда', boss: 'Босс', dungeon: 'Данж', bossgen: 'Главный враг' };   // 22.10: генерированный босс округа
+  const KIND_RU = { battle: 'Бой', trap: 'Ловушка', treasure: 'Сокровищница', lair: 'Логово', rest: 'Привал', shop: 'Лавка', event: 'Событие', map: 'Карта', travel: 'В пути', town: 'Город', gather: 'Сбор отряда', boss: 'Босс', dungeon: 'Данж', bossgen: 'Главный враг', puzzle: 'Головоломка' };   // 22.10: генерированный босс округа
   const ico = (k) => ({
     sword: '<path d="M14.5 17.5 3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M16 16l4 4"/><path d="M19 21l2-2"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', check: '<path d="M20 6L9 17l-5-5"/>', warn: '<path d="M12 3l9 16H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/>',
@@ -69,10 +72,33 @@
     if (c.vote && n.vote && c.vote.id === n.vote.id) v.vote = { ...c.vote, my: n.vote.my };
     if (c.dgn && n.dgn && c.dgn.vote && n.dgn.vote && c.dgn.vote.id === n.dgn.vote.id) v.dgn = { ...c.dgn, vote: { ...c.dgn.vote, my: n.dgn.vote.my } };
     if (c.loot && n.loot && c.loot.name === n.loot.name) v.loot = { ...c.loot, my: n.loot.my };
-    if (c.ev && n.ev && c.ev.look === n.ev.look) v.ev = { ...c.ev, my: n.ev.my, used: n.ev.used, said: n.ev.said };   // 25.10: свой выбор в событии — сразу
+    if (c.pz && n && n.pz && n.pz.id === c.pz.id && n.pz.st === c.pz.st) v.pz = { ...c.pz, my: n.pz.my };   // 28.10 (map-puzzles): свой ответ - сразу (итог - со стримом)
+    if (c.ev && c.ev.gob) v.ev = gobView(c.ev, n);   // 28.10: ярмарка гоблинов - своя ставка, ответ и голос сразу, итог - с задержкой стрима
+    else if (c.ev && c.ev.hw) v.ev = hwView(c.ev, n);   // 28.10: событие Изнанки - свой ответ сразу, па пляски - по мере показа (с задержкой стрима)
+    else if (c.ev && n.ev && c.ev.look === n.ev.look) v.ev = { ...c.ev, my: n.ev.my, used: n.ev.used, said: n.ev.said };   // 25.10: свой выбор в событии — сразу
     // 23.10: свой голос кликом — сразу (пока игра не подтвердила)
     if (PV && Date.now() - PV.t < 15000) for (const k of ['vote', 'dgn']) { const V = k === 'dgn' ? v.dgn && v.dgn.vote : v.vote; if (V && V.id === PV.vid && !V.done && V.my !== PV.n) { if (k === 'dgn') v.dgn = { ...v.dgn, vote: { ...V, my: PV.n } }; else v.vote = { ...V, my: PV.n }; } }
     return v;
+  }
+  // 28.10 (hw-site-events): свой ответ - из самого нового вида (его уже видно в чате); па пляски - из снимков, что уже пришли: каждое па -
+  // когда его показал оверлей + задержка стрима (снимки идут раз в несколько секунд, па - чаще: иначе па выскакивали бы пачкой)
+  function hwView(e, n) {
+    const o = { ...e }, ne = n && n.ev && n.ev.hw && n.ev.id === e.id ? n.ev : null;
+    if (ne) o.my = ne.my;
+    if (e.look === 'skeldance' && e.st === 'show') {
+      const t = now(), d = delayS(n || e) * 1000; let best = e.sq || [];
+      for (let i = RAW.length - 1; i >= 0; i--) { const x = RAW[i].ev; if (x && x.hw && x.id === e.id && x.sq && x.sq.length > best.length) best = x.sq; }
+      const sq = best.filter((p, i) => i < (e.sq || []).length || (p[1] && p[1] + d <= t));
+      if (sq.length >= (e.sq || []).length) o.sq = sq;
+    }
+    return o;
+  }
+  // 28.10: ярмарка гоблинов - голос, ставка и ответ (это уже видно в чате) - из самого нового вида той же игры; итог розыгрыша - из показанного
+  function gobView(e, n) {
+    const ne = n && n.ev && n.ev.gob && n.ev.id === e.id ? n.ev : null; if (!ne || !ne.me) return e;
+    const me = (e.me || ['', 0, '', '', 0, 0, 0]).slice(); me[0] = ne.me[0];
+    if (ne.g === e.g) { me[1] = ne.me[1]; me[2] = ne.me[2]; }
+    return { ...e, me };
   }
   // «опоздал»: команда пришла, когда окно уже закрылось — сразу сообщение
   function lates(q) {
@@ -177,6 +203,17 @@
       const line = T.res ? trapMine(T) : act && T.gas ? (T.acted ? '<b class="dn">ты написал — вдохнул газ</b>' : '<b class="urge">Не пиши в чат!</b>') : act && T.word ? (T.acted ? `${svgI('check', 'ok')} слово принято` : `<b class="urge">Пиши:</b> ${wd(T.word, 'sm')}`) : act ? (T.acted ? `${svgI('check', 'ok')} принято` : esc(T.how)) : esc(T.intro);
       return head('trap', `${esc(T.icon || '')} ${esc(T.name)}`, act && T.until ? `<span data-until="${T.until}"></span> с` : '') + `<div class="qb-b">${heroThumb()}<div class="qb-m"><div class="qb-l">${line}</div></div>${svgI('right', 'go')}</div>`;
     }
+    if (v.pz) { const P = v.pz, done = P.st === 'done', M = pzMy(P);   // 28.10 (map-puzzles): головоломка - что писать сейчас
+      const line = done ? esc(P.res ? P.res.text : 'итог') : P.st === 'show' ? '<b class="urge">Смотри на стрим!</b>' : M.ans ? `${svgI('check', 'ok')} твой ответ: ${esc(pzAnsText(P, M.ans))}` : `<b class="urge">${esc(P.how || '')}</b>`;
+      const u = P.st === 'show' ? P.showUntil : P.until;
+      return head('map', `${esc(P.icon || '')} ${esc(P.name)}`, !done && u ? `<span data-until="${u}"></span> с` : '') + `<div class="qb-b"><div class="qb-m"><div class="qb-l">${line}</div></div>${svgI('right', 'go')}</div>`; }
+    if (v.ev && v.ev.gob) { const E = v.ev, me = E.me || [], done = E.st === 'done';   // 28.10: ярмарка гоблинов - что писать сейчас
+      const line = done ? esc(E.res ? E.res.text : 'итог') : E.st === 'ask' ? (me[0] ? `${svgI('check', 'ok')} твой голос: ${me[0] === 'yes' ? 'да' : 'нет'}` : '<b class="urge">Пиши «да» или «нет»</b>')
+        : E.st === 'bet' ? (me[1] ? `${svgI('check', 'ok')} твоя ставка ${X.money(me[1])}` : `<b class="urge">${esc(E.how || '')}</b>`) : E.st === 'guess' && me[1] ? (me[2] ? `${svgI('check', 'ok')} твой ответ: ${esc(gobAns(E.gk, me[2]))}` : `<b class="urge">${esc(E.how || '')}</b>`) : esc(E.how || (E.rv ? E.rv.text : ''));
+      return head('map', `${esc(E.icon || '')} ${esc(E.name)}`, !done && E.until ? `<span data-until="${E.until}"></span> с` : '') + `<div class="qb-b"><div class="qb-m"><div class="qb-l">${line}</div></div>${svgI('right', 'go')}</div>`; }
+    if (v.ev && v.ev.hw) { const E = v.ev, done = E.st === 'done' || !!E.res;   // 28.10: событие Изнанки - что писать сейчас
+      const line = done ? esc(E.res ? E.res.text : 'итог') : E.my ? `${svgI('check', 'ok')} ${E.look === 'trick' ? `твой голос: ${E.my === 'trick' ? 'гадость' : 'сладость'}` : E.my === 'bad' ? 'твоя цепочка - мимо' : 'принято'}` : `<b class="urge">${esc(E.how || '')}</b>`;
+      return head('map', `${esc(E.icon || '')} ${esc(E.name)}`, !done && E.until ? `<span data-until="${E.until}"></span> с` : '') + `<div class="qb-b"><div class="qb-m"><div class="qb-l">${line}</div></div>${svgI('right', 'go')}</div>`; }
     if (v.ev) { const E = v.ev, vote = E.look === 'traveler' && E.st === 'vote';
       const line = E.res && E.st === 'done' ? esc(E.res.text) : vote ? (E.my ? `${svgI('check', 'ok')} твой выбор: ${E.my === 'rob' ? 'обобрать' : 'помочь'}` : '<b class="urge">Пиши «помочь» или «обобрать»</b>') : E.cmds && E.cmds[0] ? `пиши «${esc(E.cmds[0][0])}»` : '';
       return head('map', `${esc(E.icon || '')} ${esc(E.name)}`, vote && E.until ? `<span data-until="${E.until}"></span> с` : '') + `<div class="qb-b"><div class="qb-m"><div class="qb-l">${line}</div></div>${svgI('right', 'go')}</div>`; }
@@ -225,6 +262,9 @@
     if (v.lair && v.lair.is) return top + islesHtml(v);
     if (v.lair && qaOn()) return top + lairHtml(v) + qaHero(v);   // 26.10: логово Закхуэля (бой) - ход, слова без копирования; кнопки - кнопки мест
     if (v.tr) return top + trapHtml(v);
+    if (v.pz) return top + pzHtml(v) + (qaOn() ? qaHero(v) : '');   // 28.10 (map-puzzles): головоломка
+    if (v.ev && v.ev.gob) return top + gobHtml(v) + (qaOn() ? qaHero(v) : '');   // 28.10: ярмарка гоблинов
+    if (v.ev && v.ev.hw) return top + hwEvHtml(v) + (qaOn() ? qaHero(v) : '');   // 28.10: событие Изнанки
     if (v.ev && qaOn()) return top + qaEvent(v) + qaHero(v);   // 25.10: событие — выбор кнопками (тестерам)
     if (v.ev) return top + evHtml(v);   // 25.10: событие - что писать в чат и свой выбор
     if (v.vote && !v.vote.done) return top + voteHtml(v) + (qaOn() ? qaSquad(v) : '');
@@ -482,8 +522,32 @@
     let h = `<div class="q-stage"><b>${act ? (T.until ? `${nm} · <span data-until="${T.until}"></span> с` : nm) : T.res ? 'Итог' : 'Приготовься'}</b><span>${T.actedN ? `ответили ${T.actedN}${T.total ? ' из ' + T.total : ''}` : ''}</span></div>`;
     if (!T.res) h += `<section class="q-card q-urge"><p class="q-big">${esc(act && !T.word && !T.gas ? T.how || T.name : T.intro || T.name)}</p>${act && T.gas ? `<p>${T.acted ? '<b class="dn">Ты написал — вдохнул газ</b>' : 'Не пиши в чат, пока газ не рассеется'}</p>` : act && T.word ? `<p>${T.acted ? `${svgI('check', 'ok')} ты уже написал — принято` : `${qaOn() ? 'Напечатай в строке внизу' : 'Пиши в чат'} ${wd(T.word)}`}</p>` : act && T.acted ? `<p>${svgI('check', 'ok')} принято</p>` : ''}</section>`;
     else h += `<section class="q-card q-hero"><div class="q-hi">${heroBig(T.res.me && T.res.me.dmg ? 'sad' : 'stern')}</div><div class="q-hm"><p class="muted">Итог для тебя</p><p class="q-big">${trapMine(T)}</p>${T.res.text ? `<p class="muted">${esc(T.res.text)}</p>` : ''}</div></section>`;
+    if (T.cx && !T.res) h += cxHtml(T, v);   // 28.10: переправа - шаги, кто прыгает, своё
+    if (T.bog && !T.res) h += bogHtml(T, v);   // 28.10: трясина - шкалы, тварь, своё «тянем»
     if (qaOn() && !T.res) h += qaTrap(v);   // 25.10: тестерам — кнопки ответа
     return h;
+  }
+  // 28.10 «Переправа по кочкам»: дорожка шагов (пройденные - верная кочка, утонувшие), текущий шаг, кто прыгает, своё. Кнопки «1 / 2 / 3», «обойти» - кнопки мест (строкой)
+  function cxHtml(T, v) {
+    const C = T.cx, it = C.it || 'кочка', k = C.rows[Math.min(C.step, C.n - 1)] || 2, me = C.me || {}, J = C.jump;
+    const cell = (i) => { const hs = C.hist[i]; if (hs) return `<li class="ok" title="шаг ${i + 1}: верная ${hs[0]}${hs[1].length ? ', утонула ' + hs[1].join(', ') : ''}"><b>${hs[0]}</b>${hs[1].length ? `<s>${hs[1].join(' ')}</s>` : ''}</li>`;
+      return `<li class="${i === C.step && C.ph !== 'end' ? 'cur' : ''}"><b>${i === C.step ? '?' : ''}</b><small>${C.rows[i] === 3 ? '3' : ''}</small></li>`; };
+    const now = C.ph === 'pick' ? `Шаг ${C.step + 1} из ${C.n}: ${[1, 2, 3].slice(0, k).map((d) => (C.bad.includes(d) ? `<s>${d}</s>` : `<b>${d}</b>`)).join(' · ')} - первый, кто напишет номер, прыгает`
+      : C.ph === 'jump' && J ? `${esc(J.name)}${J.auto ? ' (никто не вызвался)' : ''} прыгает ${it === 'кочка' ? 'на кочку' : 'на ' + esc(it)} ${J.row}…`
+      : C.ph === 'res' && J ? (J.ok ? `✓ ${esc(it)} ${J.row} держит - отряд прыгает за ${esc(J.name)}` : `✗ ${esc(it)} ${J.row} ушла под ${it === 'камень' ? 'лаву' : 'воду'}${J.show ? ` - верная была ${J.show}` : ''}. ${esc(J.name)} в топи`)
+      : C.by === 'detour' ? 'Отряд уходит в обход' : 'Отряд на том берегу!';
+    const my = me.fell ? '<b class="dn">Ты упал в топь - больше не прыгаешь</b>' : me.vol ? `${svgI('check', 'ok')} ты вызывался - сундук на том берегу твой` : v.party === 'in' ? 'Напиши номер - иначе сундук мимо тебя' : '';
+    return `<section class="q-card q-cx"><ol class="q-steps" aria-label="Шаги переправы">${Array.from({ length: C.n }, (_, i) => cell(i)).join('')}</ol><p class="q-big">${now}</p>${my ? `<p>${my}</p>` : ''}`
+      + `<p class="muted">Подсказок нет · упали: ${C.fellN || 0} · «обойти»: ${C.bv || 0} из ${C.need || 1}${me.bv ? ' (и ты)' : ''}</p></section>`;
+  }
+  // 28.10 «Трясина»: путь и «увязли» (0–100), тварь, когда снова можно «тянем»
+  function bogHtml(T, v) {
+    const G = T.bog, X = G.beast, cd = G.next ? Math.ceil((G.next - Date.now()) / 1000) : 0;
+    const bar = (cls, val, lab) => `<div class="q-gauge ${cls}" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${val}" aria-label="${lab}"><i style="transform:scaleX(${(val / 100).toFixed(2)})"></i><span>${lab}: ${val}%</span></div>`;
+    const beast = X ? (X.res === 'cut' ? `<p class="q-big">🗡 ${esc(X.name)} отрублен!</p>` : X.res === 'took' ? `<p class="q-big dn">🫧 ${esc(X.name)} утащил ${esc(X.who || 'героя')}</p>`
+      : `<p class="q-big q-urge">🫧 ${esc(X.name)} хватает! Пиши «руби» или «${esc(X.w)}» · <span data-until="${X.until}"></span> с</p><p>Рубят: <b>${X.got}</b> из ${X.need}${X.me ? ` · ${svgI('check', 'ok')} ты рубишь` : ''}</p>`) : '';
+    return `<section class="q-card q-bog">${bar('pos', G.pos, 'Путь')}${bar('sink', G.sink, 'Увязли')}${beast}`
+      + `<p>${v.party === 'in' ? (cd > 0 ? `«тянем» засчитано - следующее через ${cd} с` : 'Пиши «тянем» - не чаще раза в 2 секунды') : 'Тянет отряд'}</p><p class="muted">Каждое слово не по делу топит отряд · тянут: ${G.puN} · лишних слов: ${G.noise}</p></section>`;
   }
   // 23.10: в отряде — вариант можно выбрать кликом (тот же голос, что цифра в чате; сменить — кликнуть другой)
   function voteHtml(v) {
@@ -709,7 +773,8 @@
       const jt = e.target.closest && e.target.closest('[data-qjt]'); if (jt) { QA.jt = jt.dataset.qjt; paint(); return; }   // 26.10: журнал - «Бой» / «Мой»
       const lv = e.target.closest && e.target.closest('[data-qleave]');   // 26.10 (стример): «покинуть отряд?» - вторым нажатием за 4 с
       if (lv) { if (lv.disabled) return; if (QA.leave && Date.now() - QA.leave < 4000) { QA.leave = 0; qaSend({ k: 'leave' }, 'покинуть отряд', 'leave'); return; } QA.leave = Date.now(); paint(); setTimeout(() => { if (QA.leave && Date.now() - QA.leave >= 3900) { QA.leave = 0; paint(); } }, 4050); return; }
-      const b = e.target.closest && e.target.closest('[data-qa], [data-qsel], [data-qdig], [data-qpb]'); if (!b || b.disabled || !el.contains(b)) return;
+      const b = e.target.closest && e.target.closest('[data-qa], [data-qsel], [data-qdig], [data-qpb], [data-qhw]'); if (!b || b.disabled || !el.contains(b)) return;
+      if (b.dataset.qhw) { const k = b.dataset.qhw; if (k === '<') HWC.ch.pop(); else if (HW_STEP[k] && HWC.ch.length < 12) HWC.ch.push(k); keyTab = ''; paint(); return; }   // 28.10: пляска Изнанки - цепочка па
       if (b.dataset.qpb) { pbClick(b); return; }   // 26.10: кнопка места - строкой
       if (b.dataset.qsel) { const [k, v0] = b.dataset.qsel.split('|'); if (k === 'lead') QA.sel.lead = !QA.sel.lead; else if (k === 't') QA.sel.t = QA.sel.t === v0 ? '' : v0; else if (k === 's') QA.sel.s = QA.sel.s === v0 ? '' : v0; else if (k === 'bet') QA.n.bet = +v0; else if (k === 'don') QA.n.don = +v0; keyTab = ''; paint(); return; }
       if (b.dataset.qdig) { const d = b.dataset.qdig; if (d === 'x') QA.dig = ''; else if (d === '<') QA.dig = QA.dig.slice(0, -1); else if (QA.dig.length < 14) QA.dig += d; keyTab = ''; paint(); return; }
@@ -854,11 +919,192 @@
     if (E.look === 'dice' && E.last) rows += `<p class="muted">Последний бросок: ${esc(E.last.name)} 🎲${E.last.me} против 🎲${E.last.him}</p>`;
     return h + `<section class="q-card qa">${said}${qaPendLine()}${qaOkLine('ev')}${rows}</section>`;
   }
+  /* ---------- 28.10 (hw-site-events, баг стримера): события Изнанки (сладость или гадость, гадалка, котёл, загадка призрака, пляска
+     скелетов) - вид с комнаты quest/halloween/site.js. Что происходит, что писать сейчас (как табло оверлея), стадия и таймер (с задержкой
+     стрима), счёт, свой ответ, итог и свои конфеты. Кнопки (тестерам кнопок, qa) - готовые строки команд чата: уходят строкой «Команда
+     в поход» (sayLine - тот же разбор, что сообщение чата). Пляска: па - по мере показа на оверлее (sq: когда показано + задержка стрима),
+     ответ - цепочкой из кнопок па и «Отправить». Загадка - ответ печатают сами в строке команд (или в чат). ---------- */
+  // па: название и буква (как STEPS в quest/client/hollow-data.js: words[0] и words[2]); рисунок - свой (не эмодзи: 👏 на части устройств
+  // не рисовался - пустая клетка, стример 00:51), линиями currentColor - одинаково видно в любой теме
+  const HW_STEP = { l: ['влево', 'л'], r: ['вправо', 'п'], j: ['прыг', 'в'], c: ['хлоп', 'х'] };
+  const HW_SVG = { l: '<path d="M20 12H5M11 5l-7 7 7 7"/>', r: '<path d="M4 12h15M13 5l7 7-7 7"/>', j: '<path d="M12 19V4M5 11l7-7 7 7"/><path d="M7 21h10"/>',
+    c: '<rect x="5.5" y="9" width="5" height="12" rx="2.5" transform="rotate(-16 8 15)"/><rect x="13.5" y="9" width="5" height="12" rx="2.5" transform="rotate(16 16 15)"/><path d="M12 2v4M6.5 4l1.8 2.6M17.5 4l-1.8 2.6"/>' };
+  const hwIco = (k) => (HW_SVG[k] ? `<svg viewBox="0 0 24 24" aria-hidden="true">${HW_SVG[k]}</svg>` : '?');
+  // как INGR в quest/client/hollow-data.js (28.10, hw-events2: ингредиентов 11)
+  const HW_ING = { mushroom: ['🍄', 'мухомор'], eye: ['👁', 'глаз'], wing: ['🦇', 'крыло'], pumpkin: ['🎃', 'тыква'], tooth: ['🦷', 'зуб'], web: ['🕸', 'паутина'], bone: ['🦴', 'кость'], frog: ['🐸', 'лягушка'], candle: ['🕯', 'свеча'], herb: ['🌿', 'полынь'], tail: ['🐀', 'хвост'] };
+  const HW_ST = { vote: 'чат решает', on: 'шатёр открыт', pay: 'сбор монет', ingr: 'пишите ингредиенты', brew: 'ведьма варит', riddle: 'загадка', pause: 'отгадали!', show: 'смотри па', input: 'повтори цепочку', done: 'итог' };
+  const HWC = { id: '', ch: [] };   // своя цепочка па (пляска), пока не отправлена
+  // кнопка-строка (как кнопки мест: data-qpb → pbClick → sayLine); состояние - по ответу игры на эту строку
+  const hwBtn = (label, line, cls, dis) => `<button type="button" class="qa-b ${cls || ''}${lineSt(line)}" data-qpb="${esc(line)}" data-qpbc=""${dis ? ' disabled' : ''}>${label}</button>`;
+  // клетка па и подпись словом под ней
+  const hwCell = (k, cls) => { const s = k && HW_STEP[k]; return `<span class="q-hwx"><i class="q-hws ${cls || ''}" role="img" aria-label="${esc(s ? s[0] : 'неизвестно')}">${s ? hwIco(k) : '?'}</i><small>${s ? esc(s[0]) : '…'}</small></span>`; };
+  const hwWords = (ks) => ks.map((k) => (HW_STEP[k] ? HW_STEP[k][0] : '?')).join(' ');
+  function hwEvHtml(v) {
+    const E = v.ev, qa = qaOn() && !!X.say, can = v.party === 'in' || v.party === 'ghost', done = E.st === 'done' || !!E.res, my = E.my || '';
+    if (HWC.id !== `${E.id}:${E.st}`) { HWC.id = `${E.id}:${E.st}`; HWC.ch = []; }
+    const tm = !done && E.until ? ` · <span data-until="${E.until}"></span> с` : '';
+    let h = `<div class="q-stage"><b>${esc(E.icon)} ${esc(E.name)}${tm}</b><span>${esc(HW_ST[E.st] || '')}</span></div>`;
+    let body = '';
+    // что писать сейчас - главное (сверху, под ним - кнопки; что происходит и реплика - ниже)
+    const how = E.how ? `<p class="q-big q-hwh">${esc(E.how)}${E.look === 'fortune' && E.price ? ` · ${X.money(E.price)}` : ''}</p>` : '';
+    const where = E.look === 'skeldance' && E.st === 'show' ? 'Ответ - когда скелеты закончат: цепочкой из кнопок па или в чат' : E.look === 'lostghost' ? (qa ? 'Напечатай ответ в строке команд внизу - или в чат' : 'Пиши ответ в чат') : qa ? 'Кнопки ниже = команды чата, чат тоже работает' : 'Пиши в чат';
+    if (!done && how) body += how + `<p class="muted">${can ? where : 'Участвует только отряд Изнанки'}</p>`;
+    let rows = '';
+    if (E.look === 'trick') {
+      const V = E.vt || { sweet: 0, trick: 0 }, n = Math.max(1, V.sweet + V.trick);
+      rows += `<div class="q-hwv"><div class="s"><i style="width:${Math.round(V.sweet / n * 100)}%"></i><span>🍬 сладость · ${V.sweet}</span></div><div class="t"><i style="width:${Math.round(V.trick / n * 100)}%"></i><span>👻 гадость · ${V.trick}</span></div></div>`;
+      if (!done) rows += `<p class="muted">Сладость - немного, но наверняка. Гадость - ведьма бросит d20: 11+ - голосовавшим за гадость втрое больше конфет, иначе проклятие</p>`;   // 28.10 (hw-events2)
+      if (my) rows += `<p class="qa-st ok">${svgI('check', 'ok')} твой голос: ${my === 'trick' ? 'гадость' : 'сладость'}</p>`;
+      else if (qa && can && E.st === 'vote') rows += `<div class="qa-row q-hwt">${(E.bt || []).map((b) => hwBtn(esc(b[0]), b[1], b[2] === 'warn' ? 'warn big' : 'main big')).join('')}</div>`;
+    } else if (E.look === 'fortune') {
+      rows += `<p>Благословлено: <b>${+E.bn || 0}</b>${E.pr ? '' : ' · первому - пророчество о Джеке'}</p>` + (E.pr ? `<p class="q-hwp">🔮 «${esc(E.pr.text)}» <small class="muted">- пророчество для ${esc(E.pr.by)}</small></p>` : '') + (E.hint ? `<p class="muted">Шёпот гадалки: «${esc(E.hint)}»</p>` : '');
+      if (my === 'done') rows += `<p class="qa-st ok">${svgI('check', 'ok')} гадалка тебе уже гадала - благословение на час</p>`;
+      else if (qa && can) rows += `<div class="qa-row">${(E.bt || []).map((b) => hwBtn(`${esc(b[0])}<small>${X.money(E.price || 0)}</small>`, b[1], 'main big')).join('')}</div>`;
+    } else if (E.look === 'cauldron') {   // 28.10 (hw-events2): сбор 25 серебра → ингредиенты → ведьма варит → зелье в сумку
+      const mine = my ? my.split(',') : [], price = +E.price || 2500, pool = +E.pool || 0;
+      if (E.st === 'pay' || (done && E.res && E.res.kind === 'gone')) {
+        rows += `<div class="q-hwv"><div class="s"><i style="width:${Math.min(100, Math.round(pool / price * 100))}%"></i><span>🪙 ${X.money(pool)} из ${X.money(price)} · скинулись ${+E.payN || 0}</span></div></div>`;
+        if (+E.mp > 0) rows += `<p class="qa-st ok">${svgI('check', 'ok')} ты скинул ${X.money(+E.mp)}${E.st === 'pay' ? ' - не соберут, вернутся' : ''}</p>`;
+        if (qa && can && E.st === 'pay') rows += `<div class="qa-row">${(E.bt || []).map((b) => hwBtn(esc(b[0]), b[1], b[2] === 'main' ? 'main big' : 'big')).join('')}</div><p class="muted">Своё число - строкой: <b>скинуться 3</b> (серебро)</p>`;
+      } else {
+        const picked = E.picked || [];
+        if (picked.length) rows += `<div class="q-hwk" aria-label="В котле: ${picked.length}">${picked.map((k) => `<i title="${esc((HW_ING[k] || [])[1] || k)}">${HW_ING[k] ? HW_ING[k][0] : '?'}</i>`).join('')}</div>`;
+        if (E.st === 'ingr') rows += `<ul class="q-hwg">${Object.entries(HW_ING).map(([k, [ic, nm]]) => { const n = (E.ing || {})[k] || 0, me = mine.includes(k), line = ((E.bt || []).find((b) => b[1] === nm) || [])[1];
+          const lab = `${ic} ${esc(nm)}<small>${n ? `пишут: ${n}` : ''}${me ? ' · твой' : ''}</small>`;
+          return `<li class="${me ? 'me' : ''}">${qa && can && line ? hwBtn(lab, line, me ? 'on' : '', me) : `<span class="qa-b${me ? ' on' : ''}" aria-disabled="true">${lab}</span>`}</li>`; }).join('')}</ul>`;
+        if (mine.includes('pot')) rows += `<p class="qa-st ok">${svgI('check', 'ok')} «Загадочное зелье» - в твоей сумке. Выпить: <b>выпить зелье</b> или кнопкой в сумке. Сгорит на выходе из Изнанки</p>`;
+        else if (!done && (mine.includes('paid') || mine.length)) rows += `<p class="muted">Ты в деле - зелье будет и у тебя</p>`;
+      }
+    } else if (E.look === 'lostghost') {   // 28.10 (hw-events2): цепочка загадок; ответ виден, только когда загадку отгадали
+      const qi = +E.qi || 0, qn = +E.qn || 0, sv = E.solved || [];
+      if (qn && done) rows += `<p class="q-hwn">Загадок в цепочке: <b>${qn}</b></p>`;   // идёт - номер в «что писать»
+      if (E.q) rows += `<p class="q-big q-hwq">«${esc(E.q)}»</p>`;
+      if (sv.length) rows += `<ol class="q-hwo">${sv.map((r) => `<li>${+r[0]}. <b>${esc(r[1])}</b>: «${esc(r[2])}»</li>`).join('')}</ol>`;
+      if (my === 'ok' && E.st === 'riddle') rows += `<p class="qa-st ok">${svgI('check', 'ok')} твой ответ верный - засчитывается первый по времени отправки</p>`;
+    } else if (E.look === 'skeldance') {
+      const L = +E.len || 0, sq = E.sq || [], seq = E.seq || [];
+      if (E.st === 'show') rows += `<div class="q-hwd" aria-live="polite">${Array.from({ length: L }, (_, i) => hwCell(sq[i] && sq[i][0], sq[i] ? (i === sq.length - 1 ? 'on now' : 'on') : '')).join('')}</div>${sq.length ? `<p class="q-big q-hwl">Запомни: <b>${esc(hwWords(sq.map((x) => x[0])))}</b>${sq.length < L ? ' …' : ''}</p>` : ''}`;
+      else if (E.st === 'input') {
+        const build = !my && qa && can;   // своя цепочка - вместо пустого табло («?» на оверлее)
+        // стример 00:51: «зрители не знают, что писать» - формат словами и буквами (сама цепочка не подсказывается: на табло тоже «?»)
+        if (!my) rows += `<p class="q-hwl">Все ${L} па по порядку - одним сообщением, через пробел. Буквами можно: <b>л</b> - влево, <b>п</b> - вправо, <b>в</b> - прыг, <b>х</b> - хлоп</p>`;
+        rows += `${build ? '' : `<div class="q-hwd">${Array.from({ length: L }, () => hwCell('', '')).join('')}</div>`}<p class="muted">Верно: <b>${+E.okN || 0}</b> · мимо: <b>${+E.badN || 0}</b></p>`;
+        if (my) rows += my === 'ok' ? `<p class="qa-st ok">${svgI('check', 'ok')} ты повторил верно!</p>` : '<p class="qa-st q-dg">Твоя цепочка - мимо. Ответ один, ждём итог</p>';
+        else if (qa && can) {
+          const ch = HWC.ch, line = ch.map((k) => HW_STEP[k][0]).join(' ');
+          rows += `<div class="q-hwc" aria-live="polite"><span class="muted">Твоя цепочка · ${ch.length} из ${L}</span><div class="q-hwd">${Array.from({ length: L }, (_, i) => hwCell(ch[i] || '', ch[i] ? 'on' : '')).join('')}</div></div>`
+            + `<div class="qa-row q-hwb">${Object.entries(HW_STEP).map(([k, [nm, ab]]) => `<button type="button" class="qa-b big" data-qhw="${k}"${ch.length >= L ? ' disabled' : ''} aria-label="Добавить па: ${nm}"><span class="q-hwi2">${hwIco(k)}</span><small>${nm} · ${ab}</small></button>`).join('')}</div>`
+            + `<div class="qa-row"><button type="button" class="qa-b" data-qhw="<"${ch.length ? '' : ' disabled'} aria-label="Стереть последнее па">⌫</button>${line ? hwBtn(`Отправить<small>${esc(line)}</small>`, line, 'main big', ch.length !== L) : hwBtn('Отправить', '-', 'main big', true)}</div>`;
+        }
+      } else if (seq.length) rows += `<div class="q-hwd">${seq.map((k) => hwCell(k, 'on')).join('')}</div><p class="muted">Цепочка: ${esc(hwWords(seq))}</p>${E.fight ? '<p class="qa-st q-dg">Скелеты нападают - сейчас бой!</p>' : ''}`;
+    }
+    if (done && E.res) rows += `<p class="q-big q-hwr">${esc(E.res.text)}</p>`;
+    if (E.said && E.said.text) rows += `<p class="qa-said">${esc(E.npc || E.name)}: «${esc(E.said.text)}»</p>`;
+    if (E.intro && !done) rows += `<p class="muted q-hwi">${esc(E.intro)}</p>`;
+    if (+E.got > 0) rows += `<p class="qa-st ok">🍬 Тебе: +${+E.got} ${plural(+E.got, 'конфета', 'конфеты', 'конфет')}</p>`;
+    else if (done && my) rows += '<p class="muted">Ты участвовал - награда по итогу, смотри журнал</p>';
+    return h + `<section class="q-card qa q-hw${!done && can && !my ? ' q-urge' : ''}">${body}${rows}</section>`;
+  }
+  /* ---------- 28.10 (map-puzzles): головоломка на карте похода (quest/mappuzzles.js siteView). Что происходит, что писать сейчас, стадия
+     и таймер (с задержкой стрима), сама задача (загадка, равенства рун - рисунком, надписи кубков, буква и слова, весы), свой ответ;
+     ответ головоломки - только после итога. Кнопки (тестерам кнопок) - там, где ответ - выбор (кубок, номер предмета, плита весов): строка
+     команды чата, как у событий Изнанки (data-qpb → sayLine). Загадку, число и слова - печатают сами (строка «Команда в поход» или чат). ---------- */
+  const PZ_ST = { show: 'смотри на стрим', answer: 'отвечай', done: 'итог' };
+  const PZ_RUNE = { R: '<path d="M9 20V4h5a4 4 0 0 1 0 8H9l7 8"/>', T: '<path d="M9 3v18M9 7l6 4-6 4"/>' };
+  const pzRune = (c) => `<i class="q-pzr q-pzr-${c}" role="img" aria-label="руна ${c === 'R' ? 'Рад' : 'Турс'}"><svg viewBox="0 0 24 24" aria-hidden="true">${PZ_RUNE[c]}</svg></i>`;
+  // свой ответ и итог: «a:X» (ответ), «w:N» (слов на букву); после итога - «ok:монеты:-урон|a:X» / «bad…|a:X»
+  function pzMy(P) {
+    const parts = String(P.my || '').split('|'), done = P.st === 'done', fin = done && /^(ok|bad)/.test(parts[0]) ? parts[0].split(':') : null, raw = (fin ? parts[1] : parts[0]) || '';
+    const c = fin ? +((fin.find((x, i) => i > 0 && /^\d+$/.test(x))) || 0) : 0, hp = fin ? +((fin.find((x) => /^-\d+$/.test(x)) || '0').slice(1)) : 0;
+    return { st: fin ? fin[0] : '', c, hp, ans: raw.startsWith('a:') ? raw.slice(2) : '', words: raw.startsWith('w:') ? +raw.slice(2) || 0 : 0 };
+  }
+  const pzAnsText = (P, a) => (P.kind === 'scales' ? (a === 'l' ? 'левая плита' : a === 'r' ? 'правая плита' : a) : P.kind === 'cups' ? `кубок ${a}` : P.kind === 'changed' ? `предмет ${a}` : `«${a}»`);
+  function pzHtml(v) {
+    const P = v.pz, qa = qaOn() && !!X.say, can = v.party === 'in', done = P.st === 'done', M = pzMy(P), u = P.st === 'show' ? P.showUntil : P.until;
+    const tm = !done && u ? ` · <span data-until="${u}"></span> с` : '';
+    let h = `<div class="q-stage"><b>${esc(P.icon || '')} ${esc(P.name)}${tm}</b><span>${esc(PZ_ST[P.st] || '')}</span></div>`, rows = '';
+    const typed = P.kind === 'riddle' || P.kind === 'count' || P.kind === 'runes' || P.kind === 'letter';
+    if (!done) {
+      rows += `<p class="q-big q-hwh">${P.st === 'show' ? (P.kind === 'count' ? 'Зверьки бегут по поляне на стриме - считай!' : 'Предметы на стриме - запоминай, какой под каким номером!') : esc(P.how || '')}</p>`;
+      rows += `<p class="muted">${!can ? 'Отвечает только отряд' : P.st === 'show' ? 'Ответ - когда покажут' : typed ? (qa ? 'Напечатай ответ в строке команд внизу - или в чат' : 'Пиши ответ в чат') : qa ? 'Кнопки ниже = команды чата, чат тоже работает' : 'Пиши в чат'}</p>`;
+    }
+    if (P.kind === 'riddle') rows += `<p class="q-big q-hwq">«${esc(P.q || '')}»</p>`;
+    else if (P.kind === 'count') rows += `<p class="q-big">${esc(P.q || '')}</p>`;
+    else if (P.kind === 'runes') rows += `<div class="q-pzeq" aria-label="Равенства рун">${(P.rows || []).map((r) => `<p>${r.map((c) => (PZ_RUNE[c] ? pzRune(c) : `<b>${esc(c)}</b>`)).join('')}</p>`).join('')}</div>`;
+    else if (P.kind === 'cups') rows += `${done ? '<p class="muted">Правдива ровно одна надпись, в одном кубке - яд</p>' : ''}<ol class="q-pzc">${(P.signs || []).map((t, i) => { const c = String(i + 1), mine = M.ans === c, pois = done && P.res && P.res.ans === c;
+      return `<li class="${mine ? 'me' : ''}${pois ? ' pois' : ''}"><span class="q-pzs">«${esc(t)}»</span>${qa && can && !done ? hwBtn(`Кубок ${c}`, c, mine ? 'on big' : 'main big') : `<b>Кубок ${c}${pois ? ' - яд' : ''}</b>`}</li>`; }).join('')}</ol>`;
+    else if (P.kind === 'changed') { if (P.st === 'answer' && qa && can) rows += `<div class="qa-row q-pzn">${(P.bt || []).map((b) => hwBtn(esc(b[0]), b[1], M.ans === b[1] ? 'on big' : 'main big')).join('')}</div>`; else if (P.st === 'answer') rows += `<p class="q-big">Номер пропавшего: от 1 до ${+P.items || 0}</p>`; }
+    else if (P.kind === 'letter') rows += `<p class="q-pzl"><b>${esc(String(P.letter || '').toUpperCase())}</b></p><p>Слов: <b>${+P.got || 0}</b> из ${+P.goal || 0}${M.words ? ` · твоих: <b>${M.words}</b>` : ''}</p>${(P.words || []).length ? `<p class="q-pzw">${P.words.map((w) => `<span>${esc(w)}</span>`).join('')}</p>` : ''}`;
+    else if (P.kind === 'scales') { const S = P.sums || [0, 0, 0, 0];
+      rows += `<p class="q-big">Левая плита должна быть ${esc(P.rt || '')}</p><p class="q-pzsc"><span>лево <b>${S[0]}</b><small>${S[2]} чел.</small></span><span>право <b>${S[1]}</b><small>${S[3]} чел.</small></span></p><p class="muted">Вес героя: легионер и паладин - 3, новобранец, лучник, разбойник - 2, маг, жрец, некромант - 1</p>`;
+      if (qa && can && !done) rows += `<div class="qa-row q-pzn">${(P.bt || []).map((b) => hwBtn(esc(b[0]), b[1], (M.ans === 'l' && b[1] === 'лево') || (M.ans === 'r' && b[1] === 'право') ? 'on big' : b[1] === 'сойти' ? 'big' : 'main big')).join('')}</div>`; }
+    if (M.ans && !done) rows += `<p class="qa-st ok">${svgI('check', 'ok')} твой ответ: ${esc(pzAnsText(P, M.ans))}${P.kind === 'riddle' ? ' - верный или нет, узнаешь в итоге' : ''}</p>`;
+    if (!done) rows += `<p class="muted">Ответили: <b>${+P.an || 0}</b> · награда: ${P.prize === 'buff' ? 'враги следующего боя ослаблены' : `${X.money(+P.coins || 0)} каждому, кто ответит верно`}</p>`;
+    if (done && P.res) {
+      rows += `<p class="q-big q-hwr ${P.res.ok ? 'q-pzok' : 'q-dg'}">${esc(P.res.text)}</p>` + (P.res.ok && P.res.prize ? `<p class="qa-st ok">${esc(P.res.prize)}</p>` : '');
+      if (M.st === 'ok') rows += `<p class="qa-st ok">${svgI('check', 'ok')} ты ответил верно${M.c ? ` · +${X.money(M.c)}` : ''}</p>`;
+      else if (M.st === 'bad') rows += `<p class="qa-st q-dg">твой ответ - мимо${M.ans ? ` (${esc(pzAnsText(P, M.ans))})` : ''}${M.hp ? ` · яд: −${M.hp} ❤` : ''}</p>`;
+    }
+    return h + `<section class="q-card qa q-hw q-pz${!done && can && !M.ans && P.st === 'answer' ? ' q-urge' : ''}">${rows}</section>`;
+  }
+  /* ---------- 28.10: «Ярмарка гоблинов» (quest/goblin.js siteView) - три игры на ставки. Что писать сейчас, игра и стадия с таймером (с задержкой
+     стрима), ставка - кнопками сумм, ответ - кнопками (готовые строки команд: уходят строкой «Команда в поход», как hwBtn), свой итог и итоги ярмарки.
+     Перестановки стаканов здесь не рисуем - смотреть на стриме. ---------- */
+  const GOB_GN = { shell: ['🥤', 'Напёрстки'], coin: ['🪙', 'Орёл или решка'], hilo: ['🃏', 'Больше или меньше'] };
+  const GOB_ST = { ask: 'сыграем?', bet: 'ставки', shuffle: 'гоблин крутит стаканы', guess: 'ответы', reveal: 'итог игры', next: 'следующая игра', done: 'ярмарка закрыта' };
+  const gobAns = (gk, a) => (gk === 'shell' ? `стакан ${a}` : gk === 'coin' ? (a === 't' ? 'решка' : 'орёл') : a === 'hi' ? 'больше' : 'меньше');
+  const gobK = (x) => String(x).replace('.', ',');
+  const gobPm = (n) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${X.money(Math.abs(n))}`;
+  function gobHtml(v) {
+    const E = v.ev, qa = qaOn() && !!X.say, can = v.party === 'in', me = E.me || ['', 0, '', '', 0, 0, 0], done = E.st === 'done';
+    const tm = !done && E.until ? ` · <span data-until="${E.until}"></span> с` : '';
+    let h = `<div class="q-stage"><b>${esc(E.icon)} ${esc(E.name)}${tm}</b><span>${E.g ? `игра ${E.g} из 3 · ` : ''}${esc(GOB_ST[E.st] || '')}</span></div>`;
+    let rows = `<div class="q-gfg" role="list" aria-label="Игры ярмарки">${(E.games || []).map(([k, st]) => (GOB_GN[k] ? `<span role="listitem" class="${st}">${GOB_GN[k][0]} ${GOB_GN[k][1]}${st === 'done' ? ' ✓' : st === 'skip' ? ' - пропущена' : ''}</span>` : '')).join('')}</div>`;
+    if (E.how && !done) rows += `<p class="q-big q-hwh">${esc(E.how)}</p><p class="muted">${can ? (qa ? 'Кнопки ниже = команды чата, чат тоже работает' : 'Пиши в чат') : 'Играет только отряд - можно смотреть'}</p>`;
+    const R = E.round;
+    if (E.st === 'ask') {
+      const V = E.votes || { yes: 0, no: 0 }, n = Math.max(1, V.yes + V.no);
+      rows += `<div class="q-hwv"><div class="s"><i style="width:${Math.round(V.yes / n * 100)}%"></i><span>👍 да · ${V.yes}</span></div><div class="t"><i style="width:${Math.round(V.no / n * 100)}%"></i><span>👎 нет · ${V.no}</span></div></div>`;
+      if (me[0]) rows += `<p class="qa-st ok">${svgI('check', 'ok')} твой голос: ${me[0] === 'yes' ? 'да' : 'нет'} - можно передумать</p>`;
+      if (qa && can) rows += `<div class="qa-row q-hwt">${(E.bt || []).map((b) => hwBtn(esc(b[0]), b[1], b[2] === 'warn' ? 'warn big' : 'main big')).join('')}</div>`;
+    } else if (E.st === 'bet') {
+      if (R) rows += `<p>Поставили: <b>${R.n}</b> · на кону ${X.money(R.pot)}${R.pay ? ` · угадал - ×${gobK(R.pay)}` : E.gk === 'hilo' ? ' · выплата - по открытой карте' : ''}</p>`;
+      if (me[1]) rows += `<p class="qa-st ok">${svgI('check', 'ok')} твоя ставка: ${X.money(me[1])} - жди ${E.gk === 'shell' ? 'перестановок' : 'ответа'}</p>`;
+      else if (qa && can) {
+        const hm = X.hero() || {}, have = hm.money != null ? Math.max(0, Math.floor(+hm.money || 0)) : E.cap, mx = Math.min(E.cap, have);
+        const sums = [10, 30, 50, 100].filter((n) => n >= E.min && n < mx).concat(mx >= E.min ? [mx] : []);
+        rows += sums.length ? `<div class="qa-row q-gfb" role="group" aria-label="Ставка">${sums.map((n) => hwBtn(`🪙 ${X.money(n)}${n === mx && ![10, 30, 50, 100].includes(n) ? '<small>максимум</small>' : ''}`, `ставка ${n}`, n === 30 ? 'main' : '')).join('')}</div><p class="muted">Другая сумма - строкой: «ставка N» (от ${X.money(E.min)} до ${X.money(E.cap)})</p>` : `<p class="muted">В кошельке меньше ${X.money(E.min)} - можно только смотреть</p>`;
+      }
+    } else if (E.st === 'shuffle') {
+      rows += `<p class="q-big">👀 Смотри на стрим - где шарик?</p>${me[1] ? `<p class="qa-st ok">${svgI('check', 'ok')} твоя ставка: ${X.money(me[1])}</p>` : '<p class="muted">Ты не ставил - просто смотришь</p>'}`;
+    } else if (E.st === 'guess') {
+      if (E.gk === 'hilo' && E.hl) rows += `<div class="q-gfc"><span class="q-gfcard">${esc(E.hl.c1)}</span><span class="q-gfcard down">?</span><p>⬆ больше <b>×${gobK(E.hl.hp)}</b> · ⬇ меньше <b>×${gobK(E.hl.lp)}</b><br><small class="muted">равная - гоблину</small></p></div>`;
+      else if (R && R.pay) rows += `<p>Угадал - <b>×${gobK(R.pay)}</b> ставки · ответили ${R.ans} из ${R.n}</p>`;
+      if (!me[1]) rows += '<p class="muted">Ты не ставил в этой игре - смотришь</p>';
+      else if (me[2]) rows += `<p class="qa-st ok">${svgI('check', 'ok')} твой ответ: ${esc(gobAns(E.gk, me[2]))} · ставка ${X.money(me[1])} - можно передумать, пока идёт время</p>`;
+      if (me[1] && qa && can) rows += `<div class="qa-row q-hwt">${(E.bt || []).map((b) => hwBtn(esc(b[0]), b[1], (me[2] && gobAns(E.gk, me[2]).endsWith(b[1]) ? 'on ' : '') + 'main big')).join('')}</div>`;
+      else if (me[1] && !me[2]) rows += '<p class="qa-st warn">Не ответишь - ставка останется гоблину</p>';
+    }
+    if (E.rv && (E.st === 'reveal' || E.st === 'next')) {
+      rows += `<p class="q-big q-hwr">${GOB_GN[E.rv.gk] ? GOB_GN[E.rv.gk][0] : ''} ${esc(E.rv.text)}${E.rv.cheat ? ' · ✋ ловкость рук!' : ''}</p><p class="muted">угадали ${E.rv.win} · мимо ${E.rv.lose}</p>`;
+      if (me[3] && me[1]) rows += me[3] === 'win' ? `<p class="qa-st ok">🏆 Ты угадал: ${gobPm(me[4])}</p>` : me[3] === 'skip' ? `<p class="qa-st q-dg">Ты не ответил - ставка ${X.money(me[1])} осталась гоблину</p>` : `<p class="qa-st q-dg">Мимо: ${gobPm(me[4])}</p>`;
+    }
+    if (E.st === 'next' && E.next && GOB_GN[E.next]) rows += `<p>Дальше - ${GOB_GN[E.next][0]} <b>${GOB_GN[E.next][1]}</b>: будут ставки, можно пропустить</p>`;
+    if (done) {
+      if (E.res) rows += `<p class="q-big q-hwr">${esc(E.res.text)}</p>`;
+      if (E.board && E.board.top.length) rows += `<ol class="q-gft" aria-label="Топ ярмарки">${E.board.top.map(([nm, n]) => `<li><span>${esc(nm)}</span><b class="${n >= 0 ? 'ok' : 'q-dg'}">${gobPm(n)}</b></li>`).join('')}</ol>`;
+    }
+    if (me[6] > 0) rows += `<p class="qa-st ${me[5] >= 0 ? 'ok' : 'q-dg'}">Твой итог на ярмарке: ${gobPm(me[5])} · игр ${me[6]}</p>`;
+    if (E.said && E.said.text) rows += `<p class="qa-said">${esc(E.npc || 'Гоблин')}: «${esc(E.said.text)}»</p>`;
+    const urge = !done && can && ((E.st === 'ask' && !me[0]) || (E.st === 'bet' && !me[1]) || (E.st === 'guess' && me[1] && !me[2]));
+    return h + `<section class="q-card qa q-hw q-gf${urge ? ' q-urge' : ''}">${rows}</section>`;
+  }
   // ловушка и сокровищница: слово, верёвка, «держу», «взять», путь и код (цифры), поровну / себе
   function qaTrap(v) {
     const T = v.tr, act = T.st === 'act' || T.st === 'wait'; if (!act || v.party !== 'in') return '';
     let rows = '';
     if (T.gas) return '<section class="q-card q-urge"><p><b>Газ: ничего не пиши и не жми!</b></p></section>';
+    if (T.type === 'crossing' || T.type === 'bog') return '';   // 28.10: кнопки - кнопки мест (строкой «Команда в поход»)
     if (T.type === 'greed') rows = '<p class="muted">Хватай, пока не рухнуло, и беги с добычей - кнопки выше или строкой команд.</p>';   // 26.10: кнопки - кнопки мест (greed)
     else if (T.type === 'react' && T.word) rows = T.acted ? '' : `<div class="q-ncw"><span>Напечатай в строке внизу:</span>${wd(T.word, 'big')}</div>`;   // 26.10: слово-реакция - только строка, без копирования
     else if (T.type === 'ropes') rows = `<div class="qa-row">${Array.from({ length: T.n || 0 }, (_, i) => qaBtn({ k: 'tr', a: 'rope', n: i + 1, _l: `резать ${i + 1}` }, `✂ ${i + 1}`)).join('')}</div>`;
@@ -987,7 +1233,7 @@
         options: {
           title: 'Еда и зелья', sub: 'и что надето', gridLabel: 'Еда и зелья', art: X.art ? (it) => X.art(it) : null,
           only: (it) => !it.wearable && (it.slot === 'food' || it.slot === 'potion') && !!it.effect && !it.effect.revive,
-          canUse: (it) => { const h = X.hero() || {}; return h.ghost ? 'Призрак не ест' : h.eatUntil && h.eatUntil > X.now() ? 'Еда и зелья ещё не готовы' : true; },
+          canUse: (it) => { const h = X.hero() || {}; return h.ghost ? 'Призрак не ест' : h.eatUntil && h.eatUntil > X.now() && !(it && it.effect && it.effect.hw) ? 'Еда и зелья ещё не готовы' : true; },
           cardTip: X.cardTip ? (c, it) => X.cardTip(c, it) : null, tipHide: X.tipHide ? () => X.tipHide() : null,
           say: X.toast ? (t) => X.toast(t, true) : null, labels: { empty: 'Еды и зелий нет - купи в лавке похода или на Ярмарке' },
         },
@@ -1073,13 +1319,19 @@
     if (x.x && x.x.k === 'pay') { const h = X.hero() || {}, have = Math.max(0, Math.floor(+h.money || 0)), pct = +x.x.pct || 10; if (have <= 0) return 'Откупиться нечем - кошелёк пуст'; const cost = Math.max(1, Math.round(have * pct / 100)); return `Точно откуп? Уйдёт ${X.moneyText ? X.moneyText(cost) : cost} (${pct}% кошелька), зато без урона`; }
     return `Точно? ${x.l}`;
   }
+  // 28.10 (стример): подсказка при наведении - чем грозит бегство и сколько стоит откуп (до нажатия)
+  function pbTip(x) {
+    if (x.x && x.x.k === 'flee') return 'Сбежать из боя. Враг может ударить в спину - можно получить урон. Нажми дважды';
+    if (x.x && x.x.k === 'pay') { const h = X.hero() || {}, have = Math.max(0, Math.floor(+h.money || 0)), pct = +x.x.pct || 10; if (have <= 0) return 'Откупиться и уйти из боя без урона. Сейчас нечем - кошелёк пуст'; const cost = Math.max(1, Math.round(have * pct / 100)); return `Откупиться и уйти из боя: спишется ${X.moneyText ? X.moneyText(cost) : cost} (${pct}% кошелька), урона 0. Нажми дважды`; }
+    return '';
+  }
   const GROUPS = [['', ''], ['tg', 'Помочь своим'], ['act', ''], ['esc', 'Уйти из боя']];
   function pbHtml(v) {
     if (!v.pb || !v.pb.b || !v.pb.b.length || !qaOn() || !X.say) return '';
     const arm = (t) => PBA.k === t && Date.now() - PBA.at < 4000, role = (X.hero() && X.hero().role) || '';
     const inB = !v.b || ['on', 'reserve'].includes(meIn(v.b).st);   // бегство, «вытащить», «освободить» - только тем, кто в этом бою
     const list = v.pb.b.filter((x) => !(x.x && x.x.role && !x.x.role.split(',').includes(role)) && (inB || !['esc', 'tg'].includes(x.g || ''))), warnOn = list.find((x) => x.c === 'warn' && arm(x.t));
-    const one = (x) => `<button type="button" class="qa-b ${x.c === 'main' ? 'main' : x.c === 'warn' ? (arm(x.t) ? 'urge' : 'warn') : ''}${lineSt(x.t)}" data-qpb="${esc(x.t)}" data-qpbc="${x.c || ''}">${esc(x.l)}${arm(x.t) ? '<small>ещё раз - точно</small>' : ''}</button>`;
+    const one = (x) => { const tip = pbTip(x); return `<button type="button" class="qa-b ${x.c === 'main' ? 'main' : x.c === 'warn' ? (arm(x.t) ? 'urge' : 'warn') : ''}${lineSt(x.t)}" data-qpb="${esc(x.t)}" data-qpbc="${x.c || ''}"${tip ? ` data-tip="${esc(tip)}" aria-description="${esc(tip)}"` : ''}>${esc(x.l)}${arm(x.t) ? '<small>ещё раз - точно</small>' : ''}</button>`; };
     const rows = GROUPS.map(([g, title]) => { const xs = list.filter((x) => (x.g || '') === g); return xs.length ? `<div class="q-pbg ${g ? 'g-' + g : ''}">${title ? `<span class="muted">${title}</span>` : ''}<div class="qa-row">${xs.map(one).join('')}</div></div>` : ''; }).join('');
     return rows ? `<section class="q-card qa q-pb" aria-label="Действия здесь">${rows}${warnOn ? `<p class="qa-st warn" role="alert">⚠ ${esc(pbWarn(warnOn))}</p>` : ''}</section>` : '';
   }
@@ -1136,7 +1388,7 @@
     const sub = [v.n ? `Всего в отряде: ${v.n}` : '', v.ter, v.roll && v.roll.n ? `бросок ${v.roll.by}: ${v.roll.n}` : ''].filter(Boolean).join(' · ');
     let pbtn = '';
     // там же, где было «Вступить / Покинуть отряд» (qaSquad): карта и голосование за путь; в бою, ловушке, событии, лавке, данже - нет
-    const sq = !v.b && !v.bg && !v.dgn && !v.lair && !v.tr && !v.ev && !v.loot && !(v.sh && v.sh.items && v.sh.items.length) && !(v.town && X.hero() && X.hero().cy && X.hero().tw);
+    const sq = !v.b && !v.bg && !v.dgn && !v.lair && !v.tr && !v.ev && !v.pz && !v.loot && !(v.sh && v.sh.items && v.sh.items.length) && !(v.town && X.hero() && X.hero().cy && X.hero().tw);
     if (sq) {
       if (pp === 'in' && v.cm !== false) { const arm = QA.leave && Date.now() - QA.leave < 4000; pbtn = `<button type="button" class="qa-b ${arm ? 'urge' : 'warn'} ql-pb${qaSt({ k: 'leave' })}" data-qleave${qaBusy() ? ' disabled' : ''}>${arm ? 'точно покинуть?' : 'покинуть отряд?'}</button>`; }
       else if (pp !== 'in' && pp !== 'q' && pp !== 'ghost') pbtn = qaBtn({ k: 'join', _l: 'вступить в поход' }, 'вступить в поход?', 'main ql-pb', false, v.cm === false ? 'Вступить в поход: отряд в пути - вступишь на остановке' : '');
@@ -1155,7 +1407,8 @@
     else if (v.lair && v.lair.is) a = islesHtml(v);
     else if (v.lair) a = lairHtml(v);
     else if (v.tr) a = trapHtml(v);
-    else if (v.ev) a = qaEvent(v);
+    else if (v.pz) a = pzHtml(v);   // 28.10 (map-puzzles): головоломка
+    else if (v.ev) a = v.ev.gob ? gobHtml(v) : v.ev.hw ? hwEvHtml(v) : qaEvent(v);   // 28.10: событие Изнанки, ярмарка гоблинов
     else if (v.vote && !v.vote.done) a = voteHtml(v);
     else if (v.loot) a = lootHtml(v);
     else if (v.sh && v.sh.items && v.sh.items.length) a = shopHtml(v);
@@ -1294,6 +1547,11 @@
     if (ty === 'bait') return skGround() + `<rect class="sk-s" x="160" y="140" width="80" height="56"/><rect class="sk-gold" x="170" y="104" width="60" height="36" rx="6"/><path class="sk-l" d="M170 118h60"/><circle class="sk-gold" cx="252" cy="190" r="6"/><circle class="sk-gold" cx="148" cy="192" r="5"/>` + skParty(v, 30, 130, SKG - 2, 0.8, 6) + skT(200, 80, T.taker ? 'сундук уже открывают' : 'приманка', 'sk-tm');
     if (ty === 'greed') return skGround() + `<path class="sk-s" d="M0 0H400V24L370 40 340 22 300 46 260 20 220 42 180 18 140 44 100 22 60 40 30 20 0 34Z"/><path class="sk-gold" d="M120 196Q200 96 280 196Z"/><circle class="sk-gold" cx="170" cy="170" r="7"/><circle class="sk-gold" cx="226" cy="160" r="6"/>` + skParty(v, 40, 110, SKG - 2, 0.8, 5) + skParty({ n: 3 }, 310, 370, SKG - 2, 0.8, 3);
     if (ty === 'code') { const L = Math.max(3, Math.min(6, +T.len || 4)); return skGround() + `<path class="sk-s" d="M130 196V80Q200 10 270 80V196Z"/><path class="sk-l" d="M200 40V196"/>${Array.from({ length: L }, (_, i) => `<circle class="sk-rune" cx="${200 - (L - 1) * 14 + i * 28}" cy="120" r="11"/>`).join('')}` + skParty(v, 20, 110, SKG - 2, 0.8, 5) + skT(200, 160, 'руны: 1–' + (+T.max || 9), 'sk-tm'); }
+    // 28.10: переправа - берега, кочки по шагам (пройденные - светлые), отряд слева; трясина - топь, отряд по пути, шкала «увязли»
+    if (ty === 'crossing' && T.cx) { const C = T.cx, n = Math.max(2, C.n || 4), dx = 200 / Math.max(1, n - 1); let s = `<rect class="sk-m" x="80" y="120" width="250" height="${SKH - 120}"/><path class="sk-g" d="M0 120H90L70 ${SKH}H0Z"/><path class="sk-g" d="M400 110H320L340 ${SKH}H400Z"/>`;
+      for (let i = 0; i < n; i++) { const x = 105 + dx * i, hs = C.hist[i]; for (let r = 1; r <= (C.rows[i] || 2); r++) { const y = 140 + (r - 1) * 30, on = hs ? hs[0] === r : false, sunk = hs ? hs[1].includes(r) : i === C.step && C.bad.includes(r); s += `<ellipse class="${on ? 'sk-a' : sunk ? 'sk-d' : 'sk-s'}" cx="${x}" cy="${y}" rx="15" ry="7"/>${i === C.step && !hs && !sunk ? skT(x, y + 4, String(r), 'sk-tm') : ''}`; } }
+      return s + skParty(v, 8, 66, 150, 0.6, 5) + skT(360, 100, '💰', 'sk-tm') + skT(200, 60, `шаг ${Math.min(C.step + 1, n)} из ${n}`, 'sk-tm'); }
+    if (ty === 'bog' && T.bog) { const G = T.bog, x0 = 20 + G.pos * 2.6; return `<rect class="sk-m" x="0" y="120" width="${SKW}" height="${SKH - 120}"/><path class="sk-g" d="M360 110H400V${SKH}H350Z"/>` + skParty(v, x0, x0 + 60, 150 + G.sink * 0.3, 0.6, 6) + `<rect class="sk-s" x="20" y="30" width="120" height="10" rx="4"/><rect class="sk-d" x="20" y="30" width="${(1.2 * G.sink).toFixed(0)}" height="10" rx="4"/>` + skT(80, 60, `увязли ${G.sink}%`, 'sk-tm') + (G.beast && !G.beast.res ? skT(260, 60, `${G.beast.name}!`, 'sk-t sk-dn') : ''); }
     if (ty === 'share') return skGround() + `<path class="sk-s" d="M90 196V70Q200 0 310 70V196Z"/><rect class="sk-m" x="150" y="140" width="100" height="40" rx="6"/><rect class="sk-gold" x="176" y="114" width="48" height="28" rx="4"/>` + skParty(v, 30, 80, SKG - 2, 0.8, 4) + skParty({ n: 3 }, 320, 370, SKG - 2, 0.8, 3) + skT(200, 60, 'поровну или себе?', 'sk-tm');
     if (/брев|маятн/i.test(nm)) return skGround() + `<path class="sk-l" d="M120 10H280"/><path class="sk-l" d="M200 10L150 120"/><rect class="sk-s" x="105" y="112" width="96" height="28" rx="14" transform="rotate(-20 150 126)"/><path class="sk-l sk-dash" d="M120 140Q200 180 280 140"/>` + P;
     if (/стрел/i.test(nm)) return skGround() + `<rect class="sk-s" x="0" y="40" width="40" height="156"/><rect class="sk-s" x="360" y="40" width="40" height="156"/>${[80, 120, 160].map((y) => `<path class="sk-arrow" d="M44 ${y}H120M120 ${y}l-10-6M120 ${y}l-10 6"/><path class="sk-arrow" d="M356 ${y + 14}H280M280 ${y + 14}l10-6M280 ${y + 14}l10 6"/>`).join('')}` + P;
@@ -1305,8 +1563,23 @@
     if (lk === 'traveler') return skGround() + `<rect class="sk-s" x="220" y="120" width="110" height="50" rx="6"/><path class="sk-m" d="M216 120Q275 70 334 120Z"/><circle class="sk-s" cx="240" cy="178" r="16"/><circle class="sk-s" cx="310" cy="178" r="16"/>${skFig(195, SKG - 2, 1.1, 'sk-p sk-npc')}` + P + skT(275, 60, E.st === 'vote' ? 'помочь или обобрать?' : 'путник', 'sk-tm');
     if (lk === 'dice') return skGround() + `<rect class="sk-s" x="200" y="150" width="120" height="14" rx="4"/><path class="sk-l" d="M215 164V196M305 164V196"/><rect class="sk-dice" x="230" y="124" width="24" height="24" rx="4"/><rect class="sk-dice" x="264" y="128" width="22" height="22" rx="4" transform="rotate(12 275 139)"/><circle class="sk-pip" cx="242" cy="136" r="3"/><circle class="sk-pip" cx="272" cy="134" r="2.6"/><circle class="sk-pip" cx="279" cy="143" r="2.6"/>${skFig(350, SKG - 2, 1.1, 'sk-p sk-npc')}` + P + skT(260, 60, `у бродяги ${+E.purse || 0}`, 'sk-tm');
     if (lk === 'well') return skGround() + `<rect class="sk-s" x="200" y="130" width="100" height="66" rx="8"/><path class="sk-l" d="M210 130V70M290 130V70"/><path class="sk-m" d="M190 74L250 40 310 74Z"/><path class="sk-l" d="M250 74V110"/><circle class="sk-gold" cx="250" cy="116" r="7"/>` + P + skT(250, 26, `монет ${+E.thrown || 0} из ${+E.need || 0}`, 'sk-tm');
+    // 28.10: события Изнанки
+    if (lk === 'trick') return skGround() + `<rect class="sk-s" x="220" y="96" width="120" height="100"/><path class="sk-m" d="M210 98L280 44 350 98Z"/><rect class="sk-d" x="266" y="140" width="28" height="56"/><circle class="sk-gold" cx="236" cy="188" r="10"/><circle class="sk-gold" cx="326" cy="188" r="10"/>${skFig(190, SKG - 2, 1.1, 'sk-p sk-npc')}` + P + skT(280, 30, E.vt ? `сладость ${E.vt.sweet} · гадость ${E.vt.trick}` : 'сладость или гадость?', 'sk-tm');
+    if (lk === 'fortune') return skGround() + `<path class="sk-m" d="M200 196L270 60 340 196Z"/><circle class="sk-a" cx="270" cy="160" r="20"/><rect class="sk-s" x="246" y="180" width="48" height="10" rx="3"/>${skFig(316, SKG - 2, 1.05, 'sk-p sk-npc')}` + P + skT(270, 40, `благословлено ${+E.bn || 0}`, 'sk-tm');
+    if (lk === 'cauldron') return skGround() + `<path class="sk-flame" d="M240 196c-10-12-6-24 4-30c-2 12 10 14 6 30zM290 196c-10-12-6-24 4-30c-2 12 10 14 6 30z"/><path class="sk-d" d="M220 120h110l-12 56q-43 16-86 0z"/><ellipse class="sk-a" cx="275" cy="120" rx="58" ry="10"/>${(E.picked || []).map((k, i) => `<circle class="sk-gold" cx="${235 + i * 20}" cy="${102 - (i % 2) * 8}" r="6"/>`).join('')}` + P + skT(275, 40, E.st === 'pay' ? `миска ведьмы: ${Math.min(100, Math.round((+E.pool || 0) / Math.max(1, +E.price || 1) * 100))}%` : (E.picked || []).length ? `в котле ${(E.picked || []).length}` : 'пишите ингредиенты', 'sk-tm');   // 28.10 (hw-events2)
+    if (lk === 'lostghost') return skGround() + `<rect class="sk-s" x="300" y="140" width="40" height="56" rx="18"/><path class="sk-a" d="M220 160V96a30 30 0 0 1 60 0v64l-10-10-10 10-10-10-10 10-10-10z"/><circle class="sk-eye" cx="240" cy="98" r="4"/><circle class="sk-eye" cx="260" cy="98" r="4"/>` + P + skT(250, 40, +E.qn ? `загадка ${Math.max(1, +E.qi || 1)} из ${E.qn}` : 'загадка призрака', 'sk-tm');
+    if (lk === 'skeldance') return skGround() + [220, 280, 340].map((x) => `<circle class="sk-a" cx="${x}" cy="110" r="14"/><path class="sk-l" d="M${x} 124v40M${x - 16} 138h32M${x} 164l-12 30M${x} 164l12 30"/>`).join('') + P + skT(280, 40, E.st === 'show' ? 'запоминай па!' : E.st === 'input' ? 'повтори цепочку' : 'пляска скелетов', 'sk-tm');
     if (lk === 'priest') return skGround() + `<rect class="sk-s" x="210" y="140" width="90" height="56" rx="4"/><path class="sk-gold" d="M232 140Q255 118 278 140Z"/><rect class="sk-a" x="296" y="104" width="8" height="36"/><path class="sk-flame" d="M300 104q-6-10 0-18q6 8 0 18z"/>${skFig(350, SKG - 2, 1.15, 'sk-p sk-npc')}` + P + skT(255, 60, 'чаша жреца', 'sk-tm');
     return skGround() + P;
+  }
+  // 28.10 (map-puzzles): головоломка - камень-плита посередине, отряд слева (что на плите - не рисуем: ответ - на стриме и во вкладке)
+  function skPuzzle(P, v) {
+    const k = P.kind, P0 = skParty(v, 30, 150, SKG - 2, 0.85, 7);
+    let x = '';
+    if (k === 'cups') x = [230, 290, 350].map((cx, i) => `<path class="${P.res && P.res.ans === String(i + 1) ? 'sk-gas' : 'sk-gold'}" d="M${cx - 18} 132h36q0 28-18 32q-18-4-18-32z"/><path class="sk-l" d="M${cx} 164v20M${cx - 12} 190h24"/>${skT(cx, 126, String(i + 1), 'sk-tm')}`).join('');
+    else if (k === 'scales') x = `<path class="sk-l" d="M290 190V90M220 ${100 + Math.max(-12, Math.min(12, ((P.sums || [])[1] || 0) - ((P.sums || [])[0] || 0)) * 2)}L360 ${100 - Math.max(-12, Math.min(12, ((P.sums || [])[1] || 0) - ((P.sums || [])[0] || 0)) * 2)}"/><ellipse class="sk-s" cx="220" cy="${130}" rx="36" ry="9"/><ellipse class="sk-s" cx="360" cy="${130}" rx="36" ry="9"/>`;
+    else x = `<path class="sk-s" d="M230 196V70Q290 26 350 70V196Z"/><path class="sk-l" d="M250 100h80M250 124h80M250 148h60"/>`;
+    return skGround() + x + P0 + skT(290, 34, P.st === 'done' ? (P.res && P.res.ok ? 'разгадано!' : 'не вышло') : P.st === 'show' ? 'смотри на стрим' : P.name, 'sk-tm');
   }
   function skRoute(v) {
     const V = v.vote && !v.vote.done ? v.vote : null, S = [70, 150];
@@ -1338,6 +1611,7 @@
     let art = '', what = '';
     if (v.tr) { art = skTrap(v.tr, v); what = v.tr.name; }
     else if (v.ev) { art = skEvent(v.ev, v); what = v.ev.name; }
+    else if (v.pz) { art = skPuzzle(v.pz, v); what = v.pz.name; }   // 28.10 (map-puzzles)
     else if (v.sh && v.sh.items && v.sh.items.length) { art = skShop(v); what = 'лавка'; }
     else if (v.lair) { art = skLair(v); what = 'логово Закхуэля'; }
     else if (v.k === 'rest') { art = skRest(v); what = 'привал'; }
