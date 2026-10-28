@@ -349,9 +349,13 @@
   const ZK_KEY = 'lgCityZoom';
   const zoomGet = () => { try { const v = +localStorage.getItem(ZK_KEY); return v > 0.2 && v < 5 ? v : 1; } catch { return 1; } };
   const zoomSave = () => { try { localStorage.setItem(ZK_KEY, String(+(S.zk || 1).toFixed(3))); } catch {} };
+  // 28.10 (camp-zoom, стример): лагерь ниже Ярмарки (1440 против 1980) - «вся сцена по высоте» наступала почти сразу: на телефоне «−» и
+  // щипок не отдаляли вовсе, на ПК - чуть-чуть. В лагере отдаляем, как на Ярмарке (будто сцена высотой FAIR_H): лишнее - небо над лагерем
+  const FAIR_H = 1980;
+  const zH = () => (isCamp() ? Math.max(WD.H, FAIR_H) : WD.H);
   function zLim() {
     const vh = S.vh || 400, vw = S.vw || 360, zb = S.zb || 0.6;
-    const lo = Math.max(vh / (WD.H - TOP), vw / WD.W, 0.2);   // вся сцена по высоте (меньше — пустые поля за краем сцены)
+    const lo = Math.max(vh / (zH() - TOP), vw / WD.W, 0.2);   // вся сцена по высоте (меньше — пустые поля за краем сцены)
     return [Math.min(lo, zb), zb * 2];
   }
   // где колесо листает своё (списки, окна), а не зумит город
@@ -375,7 +379,8 @@
   function clampCam() {
     S.camX = Math.max(0, Math.min(WD.W - viewW(), S.camX));
     const span = WD.H - TOP - viewH();
-    S.camY = span > 0 ? Math.max(TOP, Math.min(WD.H - viewH(), S.camY)) : TOP + span / 2;
+    // лагерь, отдалённый дальше своей высоты, - земля у нижнего края, сверху небо (а не пустая полоса под частоколом)
+    S.camY = span > 0 ? Math.max(TOP, Math.min(WD.H - viewH(), S.camY)) : isCamp() ? WD.H - viewH() : TOP + span / 2;
   }
   function applyCam() {
     S.camMoved = true;

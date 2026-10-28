@@ -365,10 +365,6 @@
         <p class="wz-h3">Твоя ссылка для зрителей</p>
         <div class="wz-link"><code>${esc(myLink())}</code><button type="button" class="btn ghost sm" data-copy="link">Скопировать</button></div>
         <p class="wz-note">В ссылке нет ключей - её можно показывать на стриме. По ней зрители найдут тебя, героя и город.</p>
-        <p class="wz-h3">Текст для описания канала</p>
-        <div class="wz-link"><span>${esc(descText())}</span><button type="button" class="btn ghost sm" data-copy="desc">Скопировать</button></div>
-        <p class="wz-h3">Текст для команды бота</p>
-        <div class="wz-link"><span>${esc(botText())}</span><button type="button" class="btn ghost sm" data-copy="bot">Скопировать</button></div>
         ${own ? '' : ''}`;
     }
   }
