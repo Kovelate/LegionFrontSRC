@@ -605,7 +605,7 @@
       // 28.10 (bag-trash): слот «Выбросить» под сеткой - только если страница дала actions.discard (вкладка «Поход»)
       const tr = trashOn() ? `<button type="button" class="lgi-trash" data-lgi="trash" data-igdrop="trash" aria-label="${esc(t.trash)}: ${esc(t.trashPick)}" title="${esc(t.trashPick)}"><span class="lgi-tri" aria-hidden="true">🗑</span><b>${esc(t.trash)}</b><small>${esc(t.trashSub)}</small></button>` : '';
       const grids = (mode === 'storage' ? g('bag', t.bag) + obG + g('st', t.storage) : g('bag', O.gridLabel || t.bag) + obG) + tr;
-      S.ob = obOn();
+      S.ob = obOn(); el.classList.toggle('lgi-wob', S.ob && (v === 'compact' || v === 'sheet'));   // 28.10 (mine-orebag-scroll): с рудной сумкой прокручивается вся карточка - иначе блок руды обрезан (телефон) или не доскроллить из сумки (ПК)
       const foot = '<footer class="lgi-a" data-lgi="a"></footer>';
       const hd = O.header === false ? '' : head, det = O.detail === false ? '' : '<aside class="lgi-det" data-lgi="det" aria-live="polite"></aside>';
       el.classList.toggle('lgi-nodet', O.detail === false);
