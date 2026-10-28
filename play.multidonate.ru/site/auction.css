@@ -1,0 +1,128 @@
+/* 20.10: зал «Аукцион» (auction.js). Цвета, шрифты и рамки — из оформления сайта (--surface, --ink, --mute, --accent, --line, --rc-*),
+   поэтому зал выглядит своим в любом оформлении. Панель шире обычной: витрина — список с ценами. */
+.cy-room[data-b="auction"] .cy-rui { width: min(760px, 62vw); display: flex; flex-direction: column; }
+.cy-room[data-b="auction"] .cy-pb { min-height: 0; flex: 1; display: flex; flex-direction: column; }
+.au-root { min-height: 0; flex: 1; display: flex; flex-direction: column; }
+.au { display: flex; flex-direction: column; gap: 10px; min-height: 0; flex: 1; }
+.au .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.au-say { margin: 0; padding: 10px 14px; border-radius: 14px; background: var(--surface2, rgba(0, 0, 0, .06)); font-weight: 600; }
+.au-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.au-tabs small { opacity: .7; font-weight: 600; }
+.au-msg { min-height: 1.3em; margin: 0; font-size: 14px; font-weight: 700; color: var(--up, #3a8a4a); }
+.au-msg:empty { display: none; }
+.au-msg.bad, .au-warn { color: var(--dn, #c0392b); }
+.au-body { min-height: 0; flex: 1; overflow: auto; overscroll-behavior: contain; padding: 2px; }
+.au-ret { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; border: 2px dashed var(--accent, #c9a55c); border-radius: 12px; }
+
+/* поиск и фильтры */
+.au-f { display: grid; gap: 8px; margin-bottom: 10px; }
+.au-q input { width: 100%; }
+.au-more summary { cursor: pointer; font-weight: 700; font-size: 14px; padding: 4px 0; color: var(--mute); }
+.au-more[open] summary { margin-bottom: 6px; }
+.au-hint { margin: 0; font-size: 14px; color: var(--mute); }
+.au-m { display: inline-flex; align-items: center; gap: 3px; font-weight: 800; white-space: nowrap; }
+.au-m .au-c { width: 12px; height: 12px; margin-right: 3px; border-width: 1.5px; }
+.au-fs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 8px; }
+.au-fs label { display: grid; gap: 2px; font-size: 12px; color: var(--mute); }
+.au input, .au select { min-height: 40px; padding: 6px 10px; border: 1px solid var(--line, rgba(0, 0, 0, .25)); border-radius: 10px; background: var(--surface, #fff); color: var(--ink, #222); font: inherit; font-size: 15px; min-width: 0; }
+.au-pr { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.au-fs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.au-fs .au-fp { grid-column: span 2; }
+.au input:focus-visible, .au select:focus-visible { outline: 3px solid var(--focus, #e8c77d); outline-offset: 1px; }
+
+/* список лотов */
+.au-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.au-row { width: 100%; display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 6px 10px 6px 6px; text-align: left; border: 1px solid var(--line, rgba(0, 0, 0, .15)); border-left: 4px solid var(--rc, var(--rc-common, #999)); border-radius: 12px; background: var(--surface, #fff); color: var(--ink); transition: transform .15s ease, border-color .15s ease; }
+.au-row:hover { transform: translateY(-1px); border-color: var(--accent, #c9a55c); }
+.au-row:active { transform: translateY(0); }
+.au-row[data-r], .au-bi[data-r], .au-card[data-r] { --rc: var(--rc-common, #999); }
+[data-r="uncommon"].au-row, [data-r="uncommon"].au-bi, [data-r="uncommon"].au-card { --rc: var(--rc-uncommon, #3fae4f); }
+[data-r="rare"].au-row, [data-r="rare"].au-bi, [data-r="rare"].au-card { --rc: var(--rc-rare, #3a7ee0); }
+[data-r="epic"].au-row, [data-r="epic"].au-bi, [data-r="epic"].au-card { --rc: var(--rc-epic, #9a55e0); }
+[data-r="legendary"].au-row, [data-r="legendary"].au-bi, [data-r="legendary"].au-card { --rc: var(--rc-legendary, #e09a2a); }
+.au-gi { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 10px; background: var(--surface2, rgba(0, 0, 0, .05)); }
+.au-gi .art { width: 40px; height: 40px; }
+.au-ri { display: grid; min-width: 0; }
+.au-ri b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.au-ri em { font-style: normal; font-size: 12px; color: var(--mute); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 22.10: характеристики строкой под названием (значки — как в окне персонажа); выбранная в фильтре — подсвечена */
+.au-rs { display: flex; flex-wrap: wrap; gap: 2px 10px; margin-top: 2px; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink); }
+.au-rs > span { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
+.au-rs .i { width: 14px; height: 14px; flex: none; fill: none; stroke: var(--mute); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.au-rs .on { color: var(--accent, #c9a55c); } .au-rs .on .i { stroke: currentColor; }
+.au-rs.br { opacity: .5; }   /* сломанная: характеристики вернутся после починки */
+.au-rp { display: grid; justify-items: end; font-size: 14px; text-align: right; }
+.au-rp small { font-size: 11px; color: var(--mute); }
+.au-mine { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; align-items: center; }
+.au-empty { padding: 18px 6px; text-align: center; }
+
+/* карточка лота */
+.au-card { margin-top: 8px; padding: 14px; border: 1px solid var(--line, rgba(0, 0, 0, .15)); border-top: 5px solid var(--rc); border-radius: 14px; background: var(--surface, #fff); display: grid; gap: 8px; }
+.au-art { width: 120px; height: 120px; margin: 0 auto; display: grid; place-items: center; border-radius: 16px; background: var(--surface2, rgba(0, 0, 0, .05)); }
+.au-art .art { width: 96px; height: 96px; }
+.au-ch { display: flex; gap: 10px; justify-content: center; font-size: 13px; }
+.au-cn { margin: 0; text-align: center; font-size: 20px; }
+.au-st { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.au-st li { display: grid; grid-template-columns: 1fr auto 48px; gap: 8px; align-items: baseline; }
+.au-st em { font-style: normal; font-size: 13px; text-align: right; font-weight: 800; }
+.au-st em.up, .au-hl b.up { color: var(--up, #3a8a4a); } .au-st em.dn, .au-hl b.dn { color: var(--dn, #c0392b); } .au-st em.eq { color: var(--mute); }
+.au-cmp { margin: 0; font-size: 13px; color: var(--mute); }
+/* 22.10: тело карточки — общее с окном персонажа (app.js itemBody, классы d-*); здесь — только отступы зала */
+.au-art { position: relative; }
+.au-ib { display: grid; gap: 6px; }
+.au-ib > :is(p, div, ul) { margin: 0; }
+.au-ib .d-st { margin-top: 0; }
+.au-ib .d-au { padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, var(--rc-legendary, #e09a2a) 14%, transparent); font-size: 14px; }
+.au-ib .d-au span { display: block; font-size: 12px; color: var(--mute); }
+.au-ib .d-en { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--mute); }
+.au-ib .d-en .i { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; }
+.au-ib .d-dur { margin-top: 0; }
+.au-sd summary { cursor: pointer; font-weight: 700; font-size: 14px; color: var(--mute); }
+.au-sd[open] summary { margin-bottom: 6px; }
+.au-dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 4px 0; font-size: 14px; }
+.au-dl dt { color: var(--mute); } .au-dl dd { margin: 0; text-align: right; }
+.au-big { font-size: 17px; font-weight: 800; }
+.au-sure { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px; border: 2px solid var(--accent, #c9a55c); border-radius: 12px; }
+.au-sure p { grid-column: 1 / -1; margin: 0; font-weight: 700; }
+
+/* выставить */
+.au-bag { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; max-height: 220px; overflow: auto; margin: 6px 0 10px; padding: 2px; }
+.au-bi { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 6px; align-items: center; padding: 4px 6px; text-align: left; font-size: 13px; border: 1px solid var(--line, rgba(0, 0, 0, .15)); border-left: 4px solid var(--rc); border-radius: 10px; background: var(--surface, #fff); color: var(--ink); }
+.au-bi .au-gi { width: 40px; height: 40px; } .au-bi .art { width: 34px; height: 34px; }
+.au-bi.on { outline: 3px solid var(--accent, #c9a55c); outline-offset: -1px; }
+.au-sell { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--line, rgba(0, 0, 0, .15)); border-radius: 14px; background: var(--surface, #fff); }
+.au-sn { margin: 0; }
+.au-l { display: flex; align-items: center; gap: 8px; } .au-l input { width: 90px; }
+.au-price { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; padding: 0; border: 0; }
+.au-price legend { padding: 0; margin-bottom: 4px; font-weight: 700; }
+.au-price label { display: flex; align-items: center; gap: 4px; }
+.au-price input { width: 74px; }
+.au-c { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(0, 0, 0, .45); display: inline-block; }
+.au-c.g { background: #f2c94c; } .au-c.s { background: #d7dde2; } .au-c.b { background: #c47a3a; }
+.au-hrs { display: flex; gap: 6px; }
+.au-sum { padding-top: 6px; border-top: 1px dashed var(--line, rgba(0, 0, 0, .2)); }
+
+/* история */
+.au-hl { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 14px; }
+.au-hl li { display: grid; grid-template-columns: 92px minmax(0, 1fr) auto; gap: 8px; align-items: baseline; padding: 6px 0; border-bottom: 1px dashed var(--line, rgba(0, 0, 0, .15)); }
+.au-hl time { font-size: 12px; color: var(--mute); }
+
+@media (max-width: 719px) {
+  .cy-room[data-b="auction"] .cy-rui { width: auto; max-height: 72vh; padding: 10px 12px; }
+  .au-fs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .au-rs { gap: 2px 8px; }
+  .au-say { display: none; }
+  .au-row { grid-template-columns: 40px minmax(0, 1fr) auto; gap: 8px; }
+  .au-ri em { white-space: normal; }
+  .au-row .au-gi { width: 40px; height: 40px; } .au-row .art { width: 34px; height: 34px; }
+  .au-hl li { grid-template-columns: minmax(0, 1fr) auto; } .au-hl time { grid-column: 1 / -1; }
+}
+@media (prefers-reduced-motion: reduce) { .au-row { transition: none; } .au-row:hover { transform: none; } }
+/* 22.10: прочность лота */
+.au-br { color: var(--dn); }
+.au-dm { color: color-mix(in srgb, var(--dn) 55%, var(--ink)); }
+/* 24.10 (баг тестера): «от» больше «до» - поля подсвечены, под ними подсказка (ищем между ними) */
+.au-pr input[aria-invalid="true"] { border-color: var(--dn, #c0392b); box-shadow: 0 0 0 1px var(--dn, #c0392b); }
+.au-pe { margin: 6px 0 0; font-size: 13px; line-height: 1.4; color: var(--dn, #c0392b); }
+.au-pe[hidden] { display: none; }
+.au-lack { margin-top: 8px; }

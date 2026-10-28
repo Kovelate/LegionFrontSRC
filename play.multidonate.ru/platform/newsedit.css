@@ -1,0 +1,81 @@
+/* 18.10: редактор новостей (newsedit.js) — общий для пульта и сайта. Цвета — переменные пульта (--card, --line, --text, --muted,
+   --accent, --ok, --warn, --err); на сайте их задаёт newssite.css из переменных оформления. Цвета текста (.nc-*) — в /site/news.css.
+   Без :has и сложного color-mix в раскладке — старый Chromium в OBS. */
+.nwa-btns button[data-armed], .nwa-acts button[data-armed] { border-color: var(--err); color: var(--err); background: transparent; }
+.nwa-st, .nwa-st-ed { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--muted); }
+.nwa-st::before { content: ''; width: 8px; height: 8px; border-radius: 50%; border: 2px solid currentColor; box-sizing: border-box; }
+.is-pub .nwa-st, .nwa-st-ed.is-pub { color: var(--ok); }
+.is-pub .nwa-st::before { background: currentColor; }
+.is-off .nwa-st, .nwa-st-ed.is-off { color: var(--warn); }
+.nwa-tag { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--accent); border: 1px solid currentColor; }
+.nwa-tag[data-tag="balance"], .nwa-tags span[data-tag="balance"] { color: var(--nc-purple); }
+.nwa-tag[data-tag="event"], .nwa-tags span[data-tag="event"] { color: var(--ok); }
+.nwa-tag[data-tag="fix"], .nwa-tags span[data-tag="fix"] { color: var(--nc-blue); }
+
+/* форма и предпросмотр рядом (узко — друг под другом) */
+.nwa-ed { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); align-items: start; }
+@media (min-width: 1100px) { .nwa-ed { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .nwa-prev { position: sticky; top: 12px; } }
+.nwa-ed .card { margin-bottom: 0; }
+.nwa-f { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; margin: 0 0 14px; }
+.nwa-f > label, .nwa-f > span { margin-bottom: 6px; font-size: 13px; font-weight: 700; color: var(--text); }
+.nwa-f > small { font-weight: 400; color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; }
+.nwa-f > input, .nwa-f > textarea, .nwa-f > .nwa-tools, .nwa-f > .nwa-tags { grid-column: 1 / -1; }
+.nwa-f input[type=text], .nwa-f textarea { width: 100%; box-sizing: border-box; }
+.nwa-f input[aria-invalid="true"] { border-color: var(--err); }
+.nwa-f textarea { min-height: 240px; font: 14px/1.55 ui-monospace, 'Cascadia Mono', Consolas, monospace; }
+.nwa-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+.nwa-tags label { position: relative; cursor: pointer; }
+.nwa-tags input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.nwa-tags span { display: inline-flex; align-items: center; min-height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); font-size: 13px; font-weight: 700; transition: border-color .2s ease, color .2s ease, background .2s ease; }
+.nwa-tags span[data-tag="update"] { color: var(--accent); }
+.nwa-tags label:hover span { border-color: currentColor; }
+.nwa-tags input:checked + span { border-color: currentColor; background: rgba(255,255,255,.07); box-shadow: inset 0 0 0 1px currentColor; }
+.nwa-tags input:checked + span:not([data-tag]) { color: var(--text); }
+.nwa-tags input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+.nwa-tools { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.nwa-tools button { min-height: 32px; }
+/* цвет выделенного: кнопка и палитра */
+.nwe-cwrap { position: relative; display: inline-flex; }
+.nwe-cdot { display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 50%; vertical-align: -1px;
+  background: conic-gradient(var(--nc-gold) 0 25%, var(--nc-red) 0 50%, var(--nc-blue) 0 75%, var(--nc-green) 0); }
+.nwe-pal { position: absolute; z-index: 5; top: calc(100% + 6px); left: 0; display: flex; flex-wrap: wrap; gap: 8px; width: max-content; max-width: 260px; padding: 10px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 24px rgba(0,0,0,.45); }
+.nwe-pal[hidden] { display: none; }
+html .nwe-pal .nwe-sw { width: 32px; height: 32px; min-height: 32px; padding: 0; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--line); background: transparent; clip-path: none; }
+.nwe-sw i { width: 18px; height: 18px; border-radius: 50%; background: currentColor; }
+html .nwe-pal .nwe-none { width: auto; padding: 0 12px; border-radius: 999px; color: var(--muted); font-size: 12.5px; }
+.nwe-sw:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.nwa-help { margin: 0 0 12px; font-size: 13px; color: var(--muted); }
+.nwa-help summary { cursor: pointer; width: max-content; padding: 4px 0; }
+.nwa-help summary:hover { color: var(--text); }
+.nwa-help ul { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 4px; }
+.nwa-err { margin: 0 0 10px; color: var(--err); font-size: 13px; }
+.nwa-err::before { content: '! '; font-weight: 800; }
+.nwa-err:empty { display: none; }
+.nwa-btns { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.nwa-btns button { min-height: 40px; }
+.nwa-warn { flex-basis: 100%; margin: 4px 0 0; }
+
+/* предпросмотр — как пост на сайте */
+.nwa-post { padding: 4px 2px; }
+.nwa-pmeta { display: flex; gap: 10px; align-items: center; font-size: 13px; color: var(--muted); }
+.nwa-pt { margin: 8px 0 0; font-size: 22px; font-weight: 800; line-height: 1.2; color: var(--text); overflow-wrap: anywhere; }
+.nwa-pt.is-ph, .nwa-ph { color: var(--muted); }
+.nwa-pbody { margin-top: 12px; font-size: 15px; line-height: 1.6; overflow-wrap: anywhere; }
+.nwa-pbody > * { margin: 0; }
+.nwa-pbody > * + * { margin-top: 12px; }
+.nwa-prev .nwa-pbody h3 { margin: 18px 0 0; font-size: 17px; }
+.nwa-pbody ul, .nwa-pbody ol { padding-left: 1.4em; }
+.nwa-pbody li::marker { color: var(--accent); }
+.nwa-pbody a { color: var(--accent); text-underline-offset: 3px; }
+
+/* 20.10: кнопка «Картинка», перетаскивание файла в текст, картинка в предпросмотре — как у зрителей (по ширине колонки) */
+.nwe-imgb { display: inline-flex; align-items: center; gap: 6px; }
+.nwe-ic { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; flex: none; }
+.nwa-f textarea.is-drop { border-color: var(--accent); border-style: dashed; box-shadow: 0 0 0 2px var(--accent); }
+.nwa-pbody .nw-fig { margin: 0; }
+.nwa-pbody .nw-fig img { display: block; max-width: 100%; height: auto; border-radius: 8px; }
+.nwa-pbody .nw-fig figcaption { margin-top: 6px; font-size: 13px; color: var(--muted); text-align: center; }
+
+@media (max-width: 560px) { .nwa-btns button { flex: 1 1 auto; } }
+@media (prefers-reduced-motion: reduce) { .nwa-tags span { transition: none; } }

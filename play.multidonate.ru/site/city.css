@@ -1,0 +1,783 @@
+/* 20.10: вкладка «Город» (city.js). Только transform/opacity в анимациях, без тяжёлых фильтров; сцена — один слой.
+   Грузится, только когда открыли вкладку. Шрифт вывесок — тот же, что на Ярмарке стрима (Russo One). */
+@import url('https://fonts.googleapis.com/css2?family=Russo+One&display=swap');
+
+.cy { display: grid; gap: 10px; position: relative; }
+.cy-err { padding: 24px; }
+.cy-view { position: relative; height: calc(100vh - 160px); overflow: hidden; border-radius: 14px; background: #0d0b22;
+  touch-action: none; cursor: pointer; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; outline-offset: 3px; }
+.cy-view.cy-dragging { cursor: grabbing; }   /* не .dragging: это общий класс перетаскивания вещей (style.css, opacity .35) — карта серела */
+.cy-view:focus-visible { outline: 3px solid var(--focus, #ffc94d); }
+/* 20.10: Pixi (citygl.js) рисует улицу в один canvas под слоем подписей зданий; .cy-cam тогда — только подписи зданий */
+.cy-gl { position: absolute; left: 0; top: 0; display: block; }
+.cy-cam { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
+.cy-cam.glide { transition: transform .4s cubic-bezier(.2, .8, .2, 1); }
+.cy-art { position: absolute; left: 0; top: 0; width: 100%; height: 100%; will-change: transform; contain: strict; }
+.cy-art > svg { position: absolute; top: 0; }
+.cy-art .cy-q { left: 0; }
+.cy-art *, .cy-prop * { animation: none !important; }
+.cy-walk { position: absolute; left: 0; top: 0; width: 100%; height: 100%; z-index: 1; }
+.cy-prop { position: absolute; pointer-events: none; }
+.cy-prop .jl-doodle, .cy-art .jl-doodle { width: auto; height: auto; }
+
+/* человечки: точка (0,0) — где стоят ноги; масштаб по глубине — у .cy-b, ник — над головой */
+.cy-w { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; will-change: transform; }   /* свой слой: шаг — без перерисовки сцены */
+.cy-b { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.cy-b > svg, .cy-b > .jl-doodle { position: absolute; left: -60px; top: -170px; width: 120px !important; height: 170px !important; }
+.cy-w.mv .cy-b > svg { animation: cyBob .42s ease-in-out infinite alternate; will-change: transform; }
+@keyframes cyBob { to { transform: translateY(-7px) rotate(2deg); } }
+.cy-w.gh .cy-b { opacity: .75; }
+.cy-names { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
+.cy-nm { will-change: transform; position: absolute; left: 0; top: 0; white-space: nowrap; font: 700 calc(12px * var(--iz, 1.5))/1 var(--tx, system-ui); color: #fff; padding: calc(3px * var(--iz, 1.5)) calc(7px * var(--iz, 1.5)); border-radius: 999px;
+  background: rgba(15, 12, 34, .62); display: flex; align-items: center; gap: calc(4px * var(--iz, 1.5)); }
+.cy-nm small { font-size: .78em; opacity: .75; }
+.cy-nm .awb { transform: scale(calc(var(--iz, 1.5) * .85)); pointer-events: auto; position: relative; }   /* 23.10: слой ников не ловит мышь, а значок звания — ловит (подсказка) */
+.cy-nm .awb::after { content: ''; position: absolute; inset: -6px; border-radius: 50%; }   /* запас пальцу */
+.cy-nm.me { background: var(--accent, #c81e17); z-index: 1; }
+.cy-rip { position: absolute; width: 60px; height: 22px; margin: -11px 0 0 -30px; border: 4px solid #fff; border-radius: 50%; opacity: .9; animation: cyRip .65s ease-out forwards; pointer-events: none; }
+@keyframes cyRip { from { transform: scale(.3); } to { transform: scale(1.2); opacity: 0; } }
+
+/* подписи зданий (в координатах сцены) */
+/* 20.10: подсветка того, с чем можно что-то сделать: обводка по силуэту (картинка из citygl.js outliner; в Pixi — спрайт под
+   человечками, здесь — только для SVG-версии) + подпись; только пока наведено (city.js hover). Цвет подписи — в цвете стиля */
+.cy { --hov: #ffc94d; } .cy[data-st="cats"] { --hov: #ff9fd0; } .cy[data-st="monkeys"] { --hov: #ffe39a; } .cy[data-st="veggies"] { --hov: #c8f27a; }
+.cy-view.hov { cursor: pointer; }
+.cy-ols { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
+.cy-ols canvas { position: absolute; opacity: 0; transition: opacity .12s ease-out; }
+.cy-ols canvas.on { opacity: 1; transition-duration: .15s; }
+.cy-hov { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; opacity: 0; transition: opacity .15s; }
+.cy-hov.on { opacity: 1; }
+.cy-tip { position: absolute; transform: translate(-50%, -100%); white-space: nowrap; font: 800 calc(13px * var(--iz, 1.5))/1 var(--tx, system-ui); color: #15122e; background: #fff3c8;
+  border: calc(2px * var(--iz, 1.5)) solid var(--hov); padding: calc(5px * var(--iz, 1.5)) calc(10px * var(--iz, 1.5)); border-radius: 999px; box-shadow: 0 calc(2px * var(--iz, 1.5)) 0 rgba(0, 0, 0, .3); }
+@media (prefers-reduced-motion: reduce) { .cy-hov, .cy-ols canvas { transition: none; } }
+.cy-tags { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; }
+.cy-tag { position: absolute; transform: translate(-50%, -100%); pointer-events: auto; display: flex; align-items: center; gap: calc(5px * var(--iz, 1.5)); padding: calc(4px * var(--iz, 1.5)) calc(9px * var(--iz, 1.5)); border-radius: 999px;
+  font: 800 calc(13px * var(--iz, 1.5))/1 var(--tx, system-ui); color: #15122e; background: #fff3c8; border: calc(2px * var(--iz, 1.5)) solid #15122e; cursor: pointer; white-space: nowrap; opacity: .92; }
+.cy-tag small { font: 700 calc(10px * var(--iz, 1.5))/1 var(--tx, system-ui); padding: calc(2px * var(--iz, 1.5)) calc(5px * var(--iz, 1.5)); border-radius: 999px; background: #15122e; color: #fff3c8; }
+.cy-tag.soon { background: #d8d4e6; }
+/* 23.10 (стройка): таймер над зданием в лесах — DOM-ярлык в слое камеры (раз в секунду, только пока город открыт) */
+.cy-bt { position: absolute; transform: translate(-50%, -100%); pointer-events: none; padding: calc(3px * var(--iz, 1.5)) calc(8px * var(--iz, 1.5)); border-radius: 999px; background: #ffd34a; color: #231c2e; border: calc(2px * var(--iz, 1.5)) solid #231c2e; font: 800 calc(12px * var(--iz, 1.5))/1.1 var(--tx, system-ui); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cy-tag:hover, .cy-tag:focus-visible { background: #ffc94d; outline: none; }
+
+.cy-hud { position: absolute; left: 60px; top: 14px; right: 60px;   /* 21.10: слева сверху, рядом с «Скрыть других» */
+   display: flex; flex-wrap: wrap; gap: 6px; pointer-events: none; }
+.cy-hud > span { font: 700 13px/1.2 var(--tx, system-ui); color: #fff; background: rgba(15, 12, 34, .7); padding: 6px 10px; border-radius: 999px; }
+.cy-hud .cy-on:empty { display: none; }
+.cy-hint { transition: opacity .4s; } .cy.went .cy-hint { opacity: 0; }
+/* 21.10: город — во всё окно браузера: пока открыта вкладка, у страницы нет полей и ограничения ширины; карта — без скруглений */
+html.cy-full main { max-width: none; padding: 0; }
+html.cy-full .cy { gap: 0; }
+html.cy-full .cy-view { border-radius: 0; }
+@media (max-width: 520px) { html.cy-full body { padding-bottom: 0; } html.cy-full .style-switch { display: none; } }   /* на телефоне переключатель стиля внизу наезжал бы на полосу зданий */
+html.cy-full .cy-bar { padding: 6px 8px; background: var(--bg, #0d0b22); }
+/* кнопка «На весь экран» — правый верхний угол (стрелки — справа по центру и внизу) */
+.cy-fs { position: absolute; right: 8px; top: 8px; z-index: 2; width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border-radius: 50%; border: 0; background: rgba(15, 12, 34, .7); color: #fff; cursor: pointer; }
+.cy-fs:hover, .cy-fs:focus-visible { background: rgba(15, 12, 34, .92); outline: 2px solid #fff; }
+.cy-fs .cy-fs-off, .cy-fsm .cy-fs .cy-fs-on { display: none; } .cy-fsm .cy-fs .cy-fs-off { display: inline; }
+.cy:fullscreen { background: var(--bg, #0d0b22); overflow: hidden; }
+.cy-arrows { position: absolute; inset: 0; pointer-events: none; }
+.cy-ar { position: absolute; pointer-events: auto; width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(15, 12, 34, .7); color: #fff; padding: 0; display: grid; place-items: center; cursor: pointer; }   /* 23.10: стрелки — SVG, не шрифт (одинаково на всех устройствах; совет зрителя) */
+.cy-ar.l { left: 8px; top: 50%; margin-top: -22px; } .cy-ar.r { right: 8px; top: 50%; margin-top: -22px; }
+.cy-ar.u { right: 8px; bottom: 60px; transform: rotate(90deg); } .cy-ar.d { right: 8px; bottom: 8px; transform: rotate(-90deg); }
+.cy-ar.zi { right: 60px; bottom: 60px; } .cy-ar.zo { right: 60px; bottom: 8px; }   /* 23.10: зум — «+ / −» рядом со стрелками вверх-вниз */
+.cy-ar:hover, .cy-ar:focus-visible { background: rgba(15, 12, 34, .92); outline: 2px solid #fff; }
+/* 20.10: «Скрыть / Показать других игроков» — левый нижний угол (там нет кнопок, зданий-входов — только мостовая); 44 px, как стрелки */
+.cy-others { position: absolute; left: 8px; top: 8px; z-index: 2; width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border-radius: 50%; border: 0; background: rgba(15, 12, 34, .7); color: #fff; cursor: pointer; }
+.cy-others:hover, .cy-others:focus-visible { background: rgba(15, 12, 34, .92); outline: 2px solid #fff; }
+.cy-others .cy-oth-x { display: none; }
+.cy-others.off { color: #ffc94d; }
+.cy-others.off .cy-oth-x { display: inline; }
+.cy-tipb { position: absolute; left: 0; top: calc(100% + 8px); white-space: nowrap; font: 700 13px/1.2 var(--tx, system-ui); color: #fff; background: rgba(15, 12, 34, .92); padding: 6px 10px; border-radius: 8px; pointer-events: none; opacity: 0; transform: translateY(4px); transition: opacity .15s, transform .15s; }
+.cy-others.said .cy-tipb { opacity: 1; transform: none; }
+@media (hover: hover) { .cy-others:hover .cy-tipb, .cy-others:focus-visible .cy-tipb { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .cy-tipb { transition: none; } }
+
+/* быстрый переход к зданиям */
+.cy-bar { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: thin; padding-bottom: 2px; }
+.cy-bar button { flex: none; display: flex; align-items: center; gap: 6px; min-height: 40px; padding: 6px 12px; border-radius: 10px; border: 2px solid var(--ink, #15122e);
+  background: var(--surface, #fff); color: var(--ink, #15122e); font: 700 14px/1 var(--tx, system-ui); cursor: pointer; }
+.cy-bar button.soon { opacity: .7; }
+.cy-bar button:hover, .cy-bar button:focus-visible { background: var(--surface2, #eee); }
+
+/* 20.10: здание — локация на весь экран: сцена интерьера 1920×1080 (.cy-rin, масштаб и сдвиг — city.js fitRoom), поверх — интерфейс */
+.cy-room { position: fixed; inset: 0; z-index: 200; background: #0b0918; overflow: clip; opacity: 0; transition: opacity .25s ease; }
+.cy-room.in { opacity: 1; }
+.cy-rs { position: absolute; inset: 0; overflow: hidden; }
+.cy-rin { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; }
+/* 23.10: сцена зала не влезла в окно — срезанный край досматривается прокруткой внутри зала (city.js panRoom); полос прокрутки не видно */
+.cy-room .cy-rs.cy-pan { overflow: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.cy-room .cy-rs.cy-pan::-webkit-scrollbar { display: none; }
+.cy-rsz { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; }
+/* 21.10: сцена «во всю ширину» (ROOM.fit, Кузня) — над ней стена цвета artBg, стык размыт, чтобы не было шва */
+.cy-room.cy-fit .cy-rs { background: var(--cy-fitbg); }
+.cy-room:not(.in) .cy-rs { transform: scale(1.03); } .cy-rs { transition: transform .3s ease; }
+.cy-rbg { position: absolute; left: 0; top: 0; }
+.cy-rbg *, .cy-rbg { animation: none !important; }
+.cy-rbg .jl-doodle { width: auto; height: auto; }
+.cy-fig2 { position: absolute; pointer-events: none; }
+.cy-fig2 > svg { width: 100% !important; height: auto !important; display: block; overflow: visible; }
+.cy-rsay { position: absolute; transform: translate(-50%, -100%); max-width: 520px; margin: 0; padding: 18px 26px; border-radius: 26px; background: #fff8e8; color: #2a2010; font: 700 30px/1.3 var(--tx, system-ui); border: 5px solid #15122e; }
+.cy-rh { position: absolute; z-index: 3; left: 16px; right: 16px; top: 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; pointer-events: none; }
+.cy-rh h2 { margin: 0; display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 12px; background: rgba(15, 12, 34, .78); color: #fff; font: 800 18px/1.1 var(--hd, var(--tx, system-ui)); }
+.cy-exit { pointer-events: auto; min-height: 44px; padding: 0 20px; font-weight: 800; background: #fff3c8 !important; color: #15122e !important; border: 3px solid #15122e !important; }
+.cy-room .cy-rui { position: absolute; left: 16px; top: 72px; bottom: 16px; width: min(470px, 40vw); overflow: auto; padding: 14px 16px; margin: 0; box-shadow: 0 10px 40px rgba(0, 0, 0, .45); }
+.cy-room[data-ui="r"] .cy-rui { left: auto; right: 16px; }
+.cy-room .sk-top p, .cy-room .sk .foot { display: none; }
+/* Тренер: дерево навыков — на доске в зале; Доска объявлений: листки прямо на доске */
+/* 21.10: доска Тренера — деревянная рама с тёмным контуром (как вывески Ярмарки), мел на грифеле; цвета --tb-* — в skills.css по стилю.
+   Прокручивается .cy-pb внутри рамы, сама рама — без обрезки, чтобы над ней были видны ушки (котики) или цепи */
+.cy-room[data-b="trainer"] .cy-rui { left: 50%; transform: translateX(-50%); top: 92px; bottom: 14px; width: min(1560px, calc(100vw - 40px)); padding: 0; overflow: visible; display: flex; flex-direction: column;
+  background: var(--tb-slate); color: var(--tb-chalk); border: 12px solid var(--tb-wood); border-radius: 18px; box-shadow: 0 0 0 4px var(--tb-ink), inset 0 0 0 4px var(--tb-ink), 0 18px 40px rgba(0, 0, 0, .45); }
+.cy-room[data-b="trainer"] .cy-pb { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 16px 20px 20px; border-radius: 6px; scrollbar-color: var(--tb-woodD) transparent;
+  background: radial-gradient(ellipse 50% 40% at 25% 15%, rgba(255, 255, 255, .05), transparent 70%), radial-gradient(ellipse 40% 30% at 80% 85%, rgba(255, 255, 255, .04), transparent 70%); }
+.cy-room[data-b="trainer"] .cy-rui::before, .cy-room[data-b="trainer"] .cy-rui::after { content: ''; position: absolute; z-index: -1; top: -96px; width: 10px; height: 84px; transform: none; clip-path: none; pointer-events: none;
+  background: repeating-linear-gradient(180deg, var(--tb-ink) 0 12px, transparent 12px 16px); }
+.cy-room[data-b="trainer"] .cy-rui::before { left: 16%; } .cy-room[data-b="trainer"] .cy-rui::after { left: auto; right: 16%; }
+/* котики: доска — с ушками; обезьяны — висит на лианах */
+html[data-style="cats"] .cy-room[data-b="trainer"] .cy-rui::before, html[data-style="cats"] .cy-room[data-b="trainer"] .cy-rui::after { z-index: 0; top: -62px; width: 84px; height: 60px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 84 60'%3E%3Cpath d='M6 58 Q12 22 30 4 Q56 26 78 58 Z' fill='%23a8754f' stroke='%232b1d18' stroke-width='5' stroke-linejoin='round'/%3E%3Cpath d='M22 54 Q26 32 32 20 Q48 36 60 54 Z' fill='%23ff8fa3'/%3E%3C/svg%3E") center / contain no-repeat; }
+html[data-style="cats"] .cy-room[data-b="trainer"] .cy-rui::before { left: 7%; transform: rotate(-8deg); } html[data-style="cats"] .cy-room[data-b="trainer"] .cy-rui::after { right: 7%; transform: scaleX(-1) rotate(-8deg); }
+html[data-style="monkeys"] .cy-room[data-b="trainer"] .cy-rui::before, html[data-style="monkeys"] .cy-room[data-b="trainer"] .cy-rui::after { width: 12px; border-radius: 6px; background: repeating-linear-gradient(160deg, #3f8f3a 0 10px, #2f6f2a 10px 18px); box-shadow: 0 0 0 3px var(--tb-ink); }
+/* шапка зала: название уже на вывеске сцены — заголовок только для экранного диктора; «Выйти» — табличка того же дерева */
+.cy-room[data-b="trainer"] .cy-rh h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.cy-room[data-b="trainer"] .cy-rh { justify-content: flex-end; }
+.cy-room[data-b="trainer"] .cy-exit { min-height: 46px; padding: 0 22px; border-radius: 10px; background: var(--tb-woodD) !important; color: var(--tb-chalk) !important; border: 3px solid var(--tb-ink) !important;
+  box-shadow: 0 4px 0 var(--tb-ink); font: 400 17px/1 'Russo One', var(--hd, system-ui); transition: transform .12s, box-shadow .12s; }
+.cy-room[data-b="trainer"] .cy-exit:hover { transform: translateY(-2px); box-shadow: 0 6px 0 var(--tb-ink); background: var(--tb-wood) !important; color: var(--tb-ink) !important; }
+.cy-room[data-b="trainer"] .cy-exit:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--tb-ink); }
+.cy-room[data-b="trainer"] .cy-exit:focus-visible { outline: 3px solid var(--tb-gold); outline-offset: 3px; }
+.cy-room[data-b="board"] .cy-rui { left: 50%; transform: translateX(-50%); top: 76px; bottom: 150px; width: min(1400px, 84vw); background: transparent; box-shadow: none; border: 0; }
+.cy-room[data-b="board"] .cy-rui { overflow-y: auto; }
+.cy-room[data-b="board"] .cy-notes { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 18px; }
+.cy-room[data-b="board"] .cy-nin { padding: 14px 16px 12px; box-shadow: 0 4px 0 rgba(0, 0, 0, .3); }
+.cy-room[data-b="board"] .cy-note b { font-size: 17px; }
+@media (max-width: 720px) {
+  .cy-rui, .cy-room[data-b] .cy-rui { left: 0; right: 0; transform: none; top: auto; bottom: 0; width: auto; max-height: 56vh; border-radius: 16px 16px 0 0; border-width: 0; }
+  .cy-room[data-b="trainer"] .cy-rui { max-height: 66vh; border-width: 10px 0 0; border-radius: 18px 18px 0 0; box-shadow: 0 -4px 0 var(--tb-ink), inset 0 4px 0 var(--tb-ink); }
+  .cy-room[data-b="trainer"] .cy-pb { padding: 14px 12px calc(16px + env(safe-area-inset-bottom)); }
+  .cy-room[data-b="trainer"] .cy-rui::before, .cy-room[data-b="trainer"] .cy-rui::after { display: none; }
+  html[data-style="cats"] .cy-room[data-b="trainer"] .cy-rui::before, html[data-style="cats"] .cy-room[data-b="trainer"] .cy-rui::after { display: block; top: -44px; width: 56px; height: 40px; }
+  .cy-room[data-b="board"] .cy-rui { background: rgba(196, 154, 98, .96); max-height: 60vh; padding: 14px; }
+  .cy-rh h2 { font-size: 15px; }
+  .cy-room .ska-l { display: none; }
+}
+/* наковальня в интерьере Кузни (координаты 1920×1080): молот — из рук кузнеца у горна */
+.cyf-stage.cyf-r { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: visible; border-radius: 0; background: none; max-height: none; }
+.cyf-r .cyf-anvil { left: 1476px; top: 926px; width: 288px; bottom: auto; } .cyf-r .cyf-anvil svg { width: 288px; height: 144px; }
+.cyf-r .cyf-item { left: 1540px; top: 782px; width: 160px; height: 160px; bottom: auto; }
+.cyf-r .cyf-ham { left: 1585px; top: 779px; width: 272px; height: 102px; transform-origin: 255px 51px; }
+.cyf-r .cyf-ham svg { width: 272px; height: 102px; }
+.cyf-r .cyf-sparks { left: 1620px; top: 870px; }
+.cyf-r .cyf-sparks i { width: 14px; height: 14px; margin: -7px; }
+.cyf-r .cyf-big { left: 1560px; top: 560px; font-size: 140px; -webkit-text-stroke-width: 6px; }
+.cyf-r.bad .cyf-big { font-size: 96px; top: 590px; }
+.cyf-r .cyf-flash { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; background: radial-gradient(circle at 1620px 860px, #fff 0, var(--rc) 220px, transparent 620px); }
+.cyf-r > * { position: absolute; }
+/* 20.10: заточка на улице — та же сцена, сдвинутая на наковальню Ярмарки (city.js forgeStage); своя наковальня не нужна */
+.cyf-out { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; pointer-events: none; }
+.cyf-out .cyf-anvil, .cyf-out .cyf-ham { display: none; }   /* наковальня и молот — свои у Ярмарки (молоток в лапе кузнеца) */
+.cyf-out .cyf-big { top: 434px; }   /* итог — над табличкой «Заточка», не на ней */
+.cy-soon { display: grid; grid-template-columns: 96px 1fr; gap: 14px; align-items: center; }
+.cy-soon > .jl-doodle, .cy-soon > svg { width: 96px; height: auto; }
+.cy-soon.cy-soon { margin: 0; }
+.cy-say { position: relative; margin: 0 0 6px; padding: 10px 14px; border-radius: 14px; background: var(--surface2, #eee); font-weight: 600; }
+.cy-notes { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+/* 22.10: листки доски — коротко (тема, дата, пара строк), по нажатию — новость на весь экран (.cy-read) */
+.cy-note { transform: rotate(var(--r)); transition: transform .15s ease; cursor: pointer; }
+.cy-note:hover, .cy-note:focus-within { transform: rotate(0deg) translateY(-3px); }
+.cy-nin { box-sizing: border-box; display: flex; flex-direction: column; gap: 4px; width: 100%; height: 100%; min-height: 150px; padding: 12px 14px 10px; background: #fff3c8; color: #2a2010; border-radius: 4px; box-shadow: 0 2px 0 rgba(0, 0, 0, .25); }
+.cy-note .cy-ntop { display: flex; gap: 8px; align-items: baseline; font-size: 12px; color: #6b5a3e; }
+.cy-note .cy-ntop em { font-style: normal; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: #8c4a12; }
+.cy-note b { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 15px; line-height: 1.25; }
+.cy-note p { margin: 2px 0 0; font-size: 13px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+/* «Читать полностью» — настоящая кнопка на каждом листке, не меньше 40 px в высоту (палец на телефоне) */
+.cy-note .cy-nr { margin-top: auto; align-self: flex-end; min-height: 40px; padding: 8px 14px; border: 2px solid #8c4a12; border-radius: 20px; background: #8c4a12; color: #fff3c8; font: 800 13px/1.2 var(--tx, sans-serif); cursor: pointer; }
+.cy-note .cy-nr:hover { background: #a65a1a; border-color: #a65a1a; }
+.cy-note .cy-nr:focus-visible { outline: 3px solid #e8a33a; outline-offset: 2px; }
+.cy-nbtn { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+/* новость на весь экран: листок пергамента, свои цвета (у тёмных тем --ink светлый) */
+html.cy-reading { overflow: hidden; }
+.cy-read { position: fixed; inset: 0; z-index: 2147483000; display: flex; flex-direction: column; background: rgba(16, 12, 8, .92); color: #2a2010;
+  --ink: #2a2010; --mute: #6b5a3e; --accent: #8c4a12; --surface: #fbf1d6; --line: rgba(42, 32, 16, .2); }
+.cy-rd-top { display: flex; align-items: center; gap: 12px; padding: 10px 16px; color: #f6e7c8; font-family: var(--tx, sans-serif); }
+.cy-rd-top b { font-family: var(--hd, serif); font-size: 20px; font-weight: 400; }
+.cy-rd-top span { opacity: .7; font-size: 14px; }
+.cy-rd-x { margin-left: auto; width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; border-radius: 22px; border: 1px solid rgba(246, 231, 200, .35); background: rgba(0, 0, 0, .25); color: #f6e7c8; cursor: pointer; }
+.cy-rd-x:hover { background: rgba(0, 0, 0, .45); }
+.cy-rd-in { flex: 1; min-height: 0; display: flex; gap: 20px; justify-content: center; align-items: flex-start; padding: 0 16px 24px; overflow-y: auto; }
+.cy-rd-list { position: sticky; top: 0; flex: 0 1 260px; display: flex; flex-direction: column; gap: 6px; max-height: calc(100vh - 100px); overflow-y: auto; }
+.cy-rd-list button { text-align: left; padding: 10px 12px; border-radius: 6px; border: 0; background: rgba(251, 241, 214, .1); color: #f6e7c8; font: 600 14px/1.3 var(--tx, sans-serif); cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
+.cy-rd-list button time { font-size: 12px; opacity: .65; font-weight: 500; }
+.cy-rd-list button:hover { background: rgba(251, 241, 214, .2); }
+.cy-rd-list button[aria-current] { background: #fbf1d6; color: #2a2010; }
+.cy-rd-paper { flex: 0 1 760px; min-width: 0; padding: 28px 36px 24px; background: #fbf1d6; border-radius: 6px; box-shadow: 0 18px 50px rgba(0, 0, 0, .5), inset 0 0 60px rgba(140, 100, 40, .12); font-family: var(--tx, sans-serif); }
+.cy-rd-paper .nw-t { margin: 6px 0 0; font-family: var(--hd, serif); font-size: 30px; line-height: 1.15; color: #2a2010; }
+.cy-rd-paper .nw-meta { display: flex; gap: 10px; align-items: center; font-size: 14px; color: #6b5a3e; }
+.cy-rd-paper .nw-cover { margin: -28px -36px 18px; }
+.cy-rd-paper .nw-cover img { width: 100%; display: block; border-radius: 6px 6px 0 0; }
+.cy-rd-paper .nw-cover .nw-zoom { width: 100%; border-radius: 6px 6px 0 0; }
+.cy-rd-paper .nw-cover figcaption { margin: 6px 36px 0; color: #6b5a3e; }
+.cy-rd-paper .nw-body { font-size: 17px; line-height: 1.65; color: #2a2010; }
+.cy-rd-nav { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 24px; padding-top: 16px; border-top: 1px solid rgba(42, 32, 16, .2); }
+.cy-rd-nav .btn { color: #2a2010; border-color: rgba(42, 32, 16, .35); }
+@media (max-width: 860px) {
+  .cy-nin { min-height: 0; }
+  .cy-rd-top { padding-top: max(10px, env(safe-area-inset-top)); }
+  .cy-rd-list { display: none; }
+  .cy-rd-in { padding: 0 0 16px; }
+  .cy-rd-paper { padding: 20px 18px; border-radius: 0; }
+  .cy-rd-paper .nw-cover { margin: -20px -18px 14px; }
+  .cy-rd-paper .nw-cover figcaption { margin: 6px 18px 0; }
+  .cy-rd-paper .nw-t { font-size: 24px; }
+}
+.cy-goods { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 6px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.cy-goods li { display: grid; grid-template-columns: 44px 1fr auto; gap: 8px; align-items: center; padding: 6px 8px; border-radius: 10px; background: var(--surface2, #eee); }
+.cy-goods-c li { grid-template-columns: 44px 1fr; }
+.cy-goods em { display: block; font-style: normal; font-size: 12px; color: var(--mute, #666); }
+.cy-gi { width: 44px; height: 44px; display: grid; place-items: center; }
+.cy-gi svg { width: 44px; height: 44px; }
+.cy-mats { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.cy-shop .h3, .cy-tent .h3 { margin: 12px 0 6px; }
+
+/* 22.10: Склад — сумка и склад ячейками */
+.cy-store .h3 { margin: 0; }
+.cy-sth { display: flex; align-items: center; gap: 10px; margin: 12px 0 6px; flex-wrap: wrap; }
+.cy-sth .btn { margin-left: auto; }
+.cy-cnt { font-weight: 800; font-variant-numeric: tabular-nums; padding: 2px 10px; border-radius: 999px; background: var(--surface2, #eee); }
+.cy-cnt.full { background: var(--accent, #c81e17); color: #fff; }
+.cy-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 6px; }
+.cy-sc { position: relative; aspect-ratio: 1; display: grid; place-items: center; padding: 0; border-radius: 10px; border: 2px solid var(--rc, var(--line, rgba(0, 0, 0, .2))); background: var(--surface2, #eee); cursor: pointer; transition: transform .12s ease; }
+.cy-sc[data-r="uncommon"] { --rc: var(--rc-uncommon, #3fae4f); } .cy-sc[data-r="rare"] { --rc: var(--rc-rare, #3a7ee0); } .cy-sc[data-r="epic"] { --rc: var(--rc-epic, #9a55e0); } .cy-sc[data-r="legendary"] { --rc: var(--rc-legendary, #e09a2a); }
+.cy-sc .cy-gi, .cy-sc .cy-gi svg { width: 40px; height: 40px; }
+.cy-sc:hover { transform: translateY(-1px); }
+.cy-sc.on { outline: 3px solid var(--focus, #ffc94d); outline-offset: 1px; }
+.cy-sc:focus-visible { outline: 3px solid var(--focus, #ffc94d); }
+.cy-sc.e { border-style: dashed; cursor: default; opacity: .45; }
+.cy-sc i { position: absolute; font: 800 11px/1 var(--tx, system-ui); font-style: normal; padding: 2px 4px; border-radius: 6px; background: var(--ink, #15122e); color: #fff; }
+.cy-sc i.n { right: 2px; bottom: 2px; } .cy-sc i.en { left: 2px; top: 2px; background: var(--accent, #c81e17); }
+.cy-stsel { margin-top: 10px; min-height: 56px; }
+.cy-stp { display: grid; grid-template-columns: 44px 1fr auto; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 12px; background: var(--surface2, #eee); }
+.cy-stp em { display: block; font-style: normal; font-size: 12px; color: var(--mute, #666); }
+.cy-stb { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.cy-warn { color: var(--accent, #c81e17); font-weight: 700; }
+@media (prefers-reduced-motion: reduce) { .cy-sc { transition: none; } .cy-sc:hover { transform: none; } }
+/* 23.10: Склад — перетаскивание (общий itemgrid.js: ig-ok — сюда можно, ig-hover — над целью, ig-no — нельзя), «всё разом», «Разложить» */
+.cy-store .cy-sc[data-st] { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.cy-store .cy-grid.ig-ok { outline: 2px dashed color-mix(in srgb, var(--focus, #ffc94d) 60%, transparent); outline-offset: 3px; border-radius: 10px; }
+.cy-store .cy-grid.ig-hover { outline: 3px solid var(--focus, #ffc94d); outline-offset: 3px; border-radius: 10px; }
+.cy-store .cy-grid.ig-no { outline: 3px dashed var(--accent, #c81e17); outline-offset: 3px; border-radius: 10px; }
+.cy-sth .cy-sort { margin-left: auto; }
+.cy-sth .cy-sort ~ .btn { margin-left: 0; }
+.cy-stall { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; margin: 10px 0 2px; }
+.cy-stres { flex-basis: 100%; margin: 0; min-height: 1.3em; text-align: center; font-size: 13px; font-weight: 700; color: var(--up, #2f9e44); }
+.cy-stres.bad { color: var(--accent, #c81e17); }
+
+/* Шатёр: зеркало и образцы */
+.cy-tent { display: block; }
+.cy-trytop { display: flex; align-items: center; gap: 12px; }
+.cy-tryfig { display: none; flex: none; width: 76px; }   /* 21.10: примерка крупно — только на телефоне (ниже, @media) */
+.cy-tryfig svg { display: block; width: 100%; height: auto; }
+.cy-mirror { display: grid; justify-items: center; gap: 8px; align-content: start; padding: 10px; border-radius: 14px; background: radial-gradient(ellipse at 50% 70%, #ffe2a0 0%, #8b4fd0 55%, #1c1236 100%); }
+.cy-fig { width: 150px; }
+.cy-opts { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 10px; max-height: 220px; overflow: auto; }
+.cy-opt { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; border: 2px solid var(--ink, #15122e); background: var(--surface, #fff); color: var(--ink, #15122e); font: 600 13px/1 var(--tx, system-ui); cursor: pointer; }
+.cy-opt i { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #15122e; }
+.cy-opt small { font-size: 11px; color: var(--accent, #c81e17); }
+.cy-opt.on { background: var(--accent, #c81e17); color: #fff; } .cy-opt.on small { color: #fff; }
+.cy-opt:focus-visible { outline: 3px solid var(--focus, #ffc94d); }
+
+/* Кузня: сцена с наковальней — рисуется в 640×280 (.cyf-in) и масштабируется под ширину (--k из city.js) */
+.cyf-stage { position: relative; height: calc(280px * var(--k, 1)); max-height: 340px; border-radius: 14px; overflow: hidden; background: #231b2e; --glow: .2; --rc: #c9ccd6; --k: 1; }
+.cyf-stage[data-r="uncommon"] { --rc: #4cc95a; } .cyf-stage[data-r="rare"] { --rc: #4aa3ff; } .cyf-stage[data-r="epic"] { --rc: #b06bff; } .cyf-stage[data-r="legendary"] { --rc: #ffb83d; }
+.cyf-bg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.cyf-in { position: absolute; left: 50%; bottom: 0; width: 640px; height: 280px; transform-origin: 50% 100%; transform: translateX(-50%) scale(var(--k, 1)); }
+.cyf-in > * { position: absolute; }
+.cyf-hero { left: 60px; bottom: 26px; width: 140px; }
+.cyf-smith { left: 420px; bottom: 26px; width: 150px; }
+.cyf-hero > svg, .cyf-smith > svg { width: 100%; height: auto; display: block; }
+.cyf-anvil { left: 230px; bottom: 26px; width: 180px; }
+.cyf-anvil svg { display: block; }
+.cyf-item { left: 265px; bottom: 102px; width: 100px; height: 100px; }
+.cyf-ia { position: absolute; inset: 0; }
+.cyf-ia svg { width: 100%; height: 100%; display: block; }
+.cyf-glow { position: absolute; inset: -40px; border-radius: 50%; background: radial-gradient(var(--rc), transparent 62%); opacity: calc(var(--glow) * .9); transform: scale(calc(.6 + var(--glow) * .5)); transition: opacity .35s, transform .35s; }
+.cyf-ham { left: 305px; top: 120px; width: 160px; height: 60px; transform-origin: 150px 30px; transform: rotate(48deg); }
+.cyf-ham svg { display: block; }
+.cyf-ham.hit { animation: cyHam .6s cubic-bezier(.5, 0, .5, 1); }
+@keyframes cyHam { 0% { transform: rotate(48deg); } 40% { transform: rotate(80deg); } 55% { transform: rotate(-6deg); } 70% { transform: rotate(4deg); } 100% { transform: rotate(48deg); } }
+.cyf-sparks { left: 330px; top: 165px; width: 0; height: 0; }
+.cyf-sparks i { position: absolute; width: 8px; height: 8px; margin: -4px; border-radius: 50%; background: #ffe08a; box-shadow: 0 0 0 2px #ff8a2a; opacity: 0; animation: cySpark .5s ease-out forwards; }
+@keyframes cySpark { 0% { transform: translate(0, 0) scale(1); opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) scale(.3); opacity: 0; } }
+.cyf-flash { position: absolute; inset: 0; background: radial-gradient(circle at 50% 55%, #fff 0%, var(--rc) 22%, transparent 58%); opacity: 0; pointer-events: none; }
+.cyf-big { left: 320px; top: 34px; transform: translate(-50%, 0) scale(.4); font: 400 76px/1 'Russo One', var(--hd, system-ui); color: #fff3c8; opacity: 0; pointer-events: none;
+  -webkit-text-stroke: 4px #15122e; paint-order: stroke fill; white-space: nowrap; }
+.cyf-crack { left: 0; top: 0; width: 100%; height: 100%; opacity: 0; background:
+  linear-gradient(115deg, transparent 47%, #15122e 47% 51%, transparent 51%) 0 0 / 100% 50% no-repeat,
+  linear-gradient(65deg, transparent 47%, #15122e 47% 51%, transparent 51%) 0 100% / 100% 50% no-repeat; }
+.cyf-stage.wait .cyf-glow { animation: cyWait 1.1s ease-in-out 6 alternate; }
+@keyframes cyWait { to { transform: scale(calc(.7 + var(--glow) * .5)); opacity: calc(var(--glow)); } }
+.cyf-stage.ok .cyf-flash { animation: cyFlash .9s ease-out; }
+@keyframes cyFlash { 0% { opacity: 0; } 15% { opacity: 1; } 100% { opacity: 0; } }
+.cyf-stage.ok .cyf-item { animation: cyPop .6s cubic-bezier(.2, 1.6, .4, 1); }
+@keyframes cyPop { 40% { transform: scale(1.25) translateY(-8px); } }
+.cyf-stage.ok .cyf-big, .cyf-stage.bad .cyf-big, .cyf-stage.save .cyf-big { animation: cyBig .7s cubic-bezier(.2, 1.5, .4, 1) forwards; }
+@keyframes cyBig { to { transform: translate(-50%, 0) scale(1); opacity: 1; } }
+.cyf-stage.bad .cyf-big { color: #ff8a8a; font-size: 56px; top: 40px; } .cyf-stage.save .cyf-big { color: #9fd6ff; }
+/* поломка: вещь дрожит, по ней идут трещины, потом она разваливается на две половинки, которые падают */
+.cyf-stage.bad .cyf-ia { animation: cyShake .3s linear 3; }
+.cyf-stage.bad .cyf-crack { opacity: 1; transition: opacity .25s .3s; }
+@keyframes cyShake { 25% { transform: translateX(-4px) rotate(-3deg); } 75% { transform: translateX(4px) rotate(3deg); } }
+.cyf-stage.gone .cyf-ia, .cyf-stage.gone .cyf-crack { animation: cyFall .9s ease-in forwards; }
+.cyf-stage.gone .cyf-ia { clip-path: polygon(0 0, 55% 0, 45% 100%, 0 100%); }
+.cyf-stage.gone .cyf-ia2 { display: block; }
+.cyf-ia2 { display: none; position: absolute; inset: 0; clip-path: polygon(55% 0, 100% 0, 100% 100%, 45% 100%); animation: cyFallR .9s ease-in forwards; }
+.cyf-ia2 svg { width: 100%; height: 100%; display: block; }
+@keyframes cyFall { to { transform: translate(-46px, 70px) rotate(-40deg); opacity: 0; } }
+@keyframes cyFallR { to { transform: translate(50px, 70px) rotate(38deg); opacity: 0; } }
+.cyf-stage.gone .cyf-glow { opacity: 0; }
+.cyf-stage.save .cyf-ia { animation: cyShake .3s linear 2; }
+/* 23.10: окно наковальни — кукла героя, сумка ячейками (как Склад), слот наковальни, материалы; ниже — способ заточки (app.js).
+   Узко (телефон, небольшое окно) — одна колонка, наковальня прилипает к верху панели: тащить на неё можно из любого места */
+.cy-room[data-b="anvil"] .cy-rui { width: min(900px, 62vw); }
+.cyf-wrap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.cyf-anvbox { position: sticky; top: -14px; z-index: 3; margin: -14px -16px 0; padding: 14px 16px 8px; background: var(--surface, #fff); }
+/* 25.10 (баг зрителя: на телефоне в окне заточки «нет цены, шанса и кнопки «наточить»») — они были в самом низу, под куклой, сумкой
+   и материалами (~1000 px прокрутки в панели высотой 470): способ, шанс, цена и кнопка — сразу под наковальней, кукла и сумка — ниже */
+@media (max-width: 1099px) {
+  .fg-wrap.fg-in .fg > .h2, .cyf-toctl { display: none !important; }   /* заголовок окна повторяет панель «Заточка», «К заточке ↓» — она и так под наковальней */
+  .fg-wrap.fg-in .fg > * { order: 3; } .fg-wrap.fg-in .fg > .fg-res { order: 0; } .fg-wrap.fg-in .fg > .fg-ways { order: 1; } .fg-wrap.fg-in .fg > .fg-q { order: 2; }
+  .fg-wrap.fg-in .fg > .fg-go { order: 4; } .fg-wrap.fg-in .fg > .fg-st { order: 5; } .fg-wrap.fg-in .fg > .fg-cmd { order: 6; } .fg-wrap.fg-in .fg > .fg-more { order: 7; }   /* шанс, цена и кнопка — до списка характеристик */
+  .fg-wrap.fg-in .fg-ch { font-size: var(--t-xl, 22px); } .fg-wrap.fg-in .fg-q div { padding-block: 6px; }
+  .fg-wrap.fg-in .fg-q div:last-child { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; } .fg-wrap.fg-in .fg-q div:last-child dd { margin: 0; }
+  .cyf-anvbox { order: 0; } .cyf-ctl { order: 1; scroll-margin-top: 150px; } .cyf-matbox { order: 2; } .cyf-dollbox { order: 3; } .cyf-bagbox { order: 4; }
+}
+@media (min-width: 1100px) {
+  .cyf-wrap { grid-template-columns: minmax(0, 1.08fr) minmax(300px, 1fr); grid-template-areas: "doll anv" "doll mat" "doll ctl" "bag ctl"; grid-template-rows: auto auto auto 1fr; column-gap: 20px; align-items: start; }
+  .cyf-anvbox { grid-area: anv; position: static; margin: 0; padding: 0; background: none; }
+  .cyf-dollbox { grid-area: doll; } .cyf-bagbox { grid-area: bag; } .cyf-matbox { grid-area: mat; } .cyf-ctl { grid-area: ctl; }
+}
+.cyf-ctl:has(.fg-wrap) .cyf-hint { display: none; }
+.cyf-anv { display: grid; grid-template-columns: 112px 1fr; align-items: center; gap: 6px 14px; padding: 12px; border-radius: 14px; border: 2px dashed color-mix(in srgb, var(--ink, #15122e) 25%, transparent);
+  background: radial-gradient(circle at 56px 46%, rgba(255, 150, 50, .22), transparent 90px), var(--surface2, #eee); transition: border-color .15s, transform .15s; }
+.cyf-anv.ig-ok { border-color: var(--accent, #c81e17); }
+.cyf-anv.ig-hover { border-style: solid; transform: scale(1.02); }
+.cyf-anvslot { grid-column: 1; grid-row: 1; justify-self: center; width: 92px; height: 92px; aspect-ratio: auto; cursor: default; background: var(--surface, #fff); }
+.cyf-anvslot:hover { transform: none; }
+.cyf-anvslot .cy-gi, .cyf-anvslot .cy-gi svg { width: 70px; height: 70px; }
+.cyf-anvit { display: grid; place-items: center; width: 100%; height: 100%; padding: 0; border: 0; background: none; color: inherit; cursor: help; border-radius: 8px; }
+.cyf-anvit:focus-visible { outline: 3px solid var(--focus, #ffc94d); }
+.cyf-anvph { font: 800 40px/1 var(--hd, system-ui); opacity: .3; }
+.cyf-anvsvg { grid-column: 1; grid-row: 2; justify-self: center; margin-top: -8px; line-height: 0; }
+.cyf-anvsvg svg { width: 112px; height: 56px; }
+.cyf-anvn { grid-column: 2; grid-row: 1 / 3; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; }
+.cyf-anvn b { flex: 1 1 100%; font-size: 17px; line-height: 1.2; overflow-wrap: anywhere; }
+.cyf-anvn b[data-r="uncommon"] { color: var(--rc-uncommon, #3fae4f); } .cyf-anvn b[data-r="rare"] { color: var(--rc-rare, #3a7ee0); } .cyf-anvn b[data-r="epic"] { color: var(--rc-epic, #9a55e0); } .cyf-anvn b[data-r="legendary"] { color: var(--rc-legendary, #e09a2a); }
+.cyf-anvn small { flex: 1 1 100%; color: var(--mute, #666); font-size: 12px; }
+.cyf-toctl { display: none; }
+.cyf-anvres { font-weight: 800; color: var(--ink, #15122e) !important; } .cyf-anvres.ok { color: var(--up, #3fae4f) !important; } .cyf-anvres.bad { color: var(--dn, #e5484d) !important; } .cyf-anvres.save { color: #6fb6ff !important; }
+/* удары, итог — один раз (только transform/opacity) */
+.cyf-anvslot.work .cy-gi { animation: cyfTap .62s ease-in-out var(--n, 2); }
+@keyframes cyfTap { 30% { transform: translateY(3px) scale(.96); } 45% { transform: translateY(-2px); } }
+.cyf-anvslot.ok .cy-gi { animation: cyPop .6s cubic-bezier(.2, 1.6, .4, 1); }
+.cyf-anvslot.save .cy-gi { animation: cyShake .3s linear 2; }
+.cyf-anvslot.bad .cy-gi { animation: cyShake .3s linear 3; }
+.cyf-anvslot.gone .cy-gi { opacity: .35; transform: rotate(-12deg); transition: opacity .6s .9s, transform .6s .9s; }
+/* кукла героя у наковальни — та же разметка, что во вкладке «Персонаж» (app.js dollHtml) */
+.ig-doll { gap: 6px; }
+.ig-doll .slot { min-height: 96px; }
+.ig-doll .slot.full { cursor: pointer; }
+.ig-doll .slot[data-igdrag] { cursor: grab; }
+.ig-doll .slot.off { opacity: .5; }
+.ig-doll .slot[aria-pressed="true"] { outline: 3px solid var(--focus, #ffc94d); outline-offset: 2px; }
+.ig-doll .slot .en { position: absolute; top: 4px; left: 4px; padding: 2px 5px; border-radius: 6px; background: var(--accent, #c81e17); color: #fff; font: 800 11px/1 var(--tx, system-ui); }
+.cyf-dollbox .doll .fig svg { pointer-events: none; }
+/* сумка ячейками (itemgrid.js): прочность, тусклое — не точится, перетаскивание */
+.cy-sc i.du { left: 2px; bottom: 2px; background: #2f6b46; }
+.cy-sc i.du.br { background: var(--accent, #c81e17); }
+.ig-c.off { opacity: .5; }
+.ig-c[data-igdrag] { cursor: grab; }
+[data-igdrag] { touch-action: manipulation; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.ig-dragging { opacity: .35; }
+.ig-on, .ig-on * { cursor: grabbing !important; }
+.ig-ghost { position: fixed; left: 0; top: 0; z-index: 300; width: 60px; height: 60px; display: grid; place-items: center; border-radius: 12px; pointer-events: none; opacity: .92;
+  border: 2px solid var(--rc, #9a9a9a); background: var(--surface, #fff); box-shadow: 0 10px 24px rgba(0, 0, 0, .4); }
+.ig-ghost[data-r="uncommon"] { --rc: var(--rc-uncommon, #3fae4f); } .ig-ghost[data-r="rare"] { --rc: var(--rc-rare, #3a7ee0); } .ig-ghost[data-r="epic"] { --rc: var(--rc-epic, #9a55e0); } .ig-ghost[data-r="legendary"] { --rc: var(--rc-legendary, #e09a2a); }
+.ig-ghost .cy-gi, .ig-ghost svg { width: 44px; height: 44px; }
+/* 24.10: меню ячейки (.ig-menu) - в библиотеке инвентаря (packages/inventory/inventory.css): им пользуется и вкладка «Поход» без city.css */
+.cy-sthint { margin: 6px 0 0; font-size: 12px; color: var(--mute, #666); }
+/* материалы заточки — с числом */
+.cyf-mats { display: flex; flex-wrap: wrap; gap: 6px; }
+.cyf-mat { display: inline-grid; grid-template-columns: 30px auto; column-gap: 6px; align-items: center; padding: 4px 10px 4px 6px; border-radius: 10px; background: var(--surface2, #eee); }
+.cyf-mat .cy-gi, .cyf-mat .cy-gi svg { grid-row: 1 / 3; width: 30px; height: 30px; }
+.cyf-mat b { font-size: 15px; line-height: 1; font-variant-numeric: tabular-nums; }
+.cyf-mat small { font-size: 11px; line-height: 1.1; color: var(--mute, #666); }
+.cyf-mat.none { opacity: .5; }
+.tip.card { width: 300px; }
+.tip.card .d-st { margin-top: var(--s2, 8px); }
+@media (prefers-reduced-motion: reduce) { .cyf-anvslot .cy-gi { animation: none !important; transition: none !important; } .cyf-anv { transition: none; } }
+/* окно заточки из app.js — внутри панели, без затемнения страницы */
+.fg-wrap.fg-in { position: static; inset: auto; display: block; z-index: auto; }
+.fg-wrap.fg-in .fg-scrim, .fg-wrap.fg-in .fg-x { display: none; }
+.fg-wrap.fg-in .fg { position: static; transform: none; width: auto; max-width: none; max-height: none; margin: 0; box-shadow: none; }
+.fg-wrap.fg-in .fg-item { display: none; }
+
+@media (max-width: 720px) {
+  .cy-hint { display: none; }
+  .cy-view { border-radius: 10px; }
+  .cy-tent { grid-template-columns: 1fr; }
+  .cy-tryfig { display: block; }
+  /* 21.10: высота панели Шатра не зависит от вкладки — иначе сцена над ней перемасштабировалась при каждом переключении */
+  .cy-room[data-b="tent"] .cy-rui { height: 56vh; }
+  .cy-mirror { grid-template-columns: auto auto; justify-content: center; align-items: end; }
+  .cy-fig { width: 110px; }
+  .cy-room[data-b="anvil"] .cy-rui { width: auto; max-height: 70vh; }
+  .cyf-anvbox { top: 0; padding-top: 8px; }   /* 25.10: прилипшая — целиком, название вещи не уезжает под край панели */
+  .cyf-anv { grid-template-columns: 84px 1fr; padding: 8px 10px; }
+  .cyf-anvslot { width: 72px; height: 72px; }
+  .cyf-anvslot .cy-gi, .cyf-anvslot .cy-gi svg { width: 54px; height: 54px; }
+  .cyf-anvsvg svg { width: 84px; height: 42px; }
+  .cyf-anvn b { font-size: 15px; }
+  .cyf-toctl { display: inline-flex; }
+  .cyf-ctl { scroll-margin-top: 98px; }   /* «К заточке ↓» — не под прилипшей наковальней */
+  .cyf-anvsvg { display: none; }   /* 25.10: прилипшая наковальня ниже — шанс, цена и кнопка влезают (рисунок наковальни есть на сцене) */
+  .ig-doll .slot { min-height: 76px; padding: 4px 2px; }
+  .ig-doll .slot .sn { font-size: 11px; }
+  .cy-soon { grid-template-columns: 70px 1fr; } .cy-soon > svg { width: 70px; }
+  .cy-panel { padding: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cy-cam.glide { transition: none; }
+  .cy-w.mv .cy-b > svg, .cy-rip, .cyf-ham.hit, .cyf-sparks i, .cyf-stage.wait .cyf-glow { animation: none; }
+}
+
+/* 21.10: чат «Города» — окно слева снизу поверх карты (над кнопкой «Скрыть других» и строкой «В городе»), сворачивается.
+   Без размытия фона и без анимаций по кадрам: только transform/opacity */
+/* в той же ячейке сетки .cy, что и карта (поверх неё, снизу слева): от высоты полосы зданий не зависит */
+.cy-view { grid-area: 1 / 1; }
+.cy-chat { grid-area: 1 / 1; align-self: end; justify-self: start; position: relative; margin: 0 0 8px 8px; z-index: 3; width: min(360px, calc(100% - 68px));   /* 21.10: в левом нижнем углу; справа — стрелки вверх/вниз */ display: flex; flex-direction: column; align-items: flex-start; gap: 6px; font: 500 14px/1.35 var(--tx, system-ui); color: #fff; }
+.cy-chat[hidden] { display: none; }
+.cy-chat-t { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border: 0; border-radius: 999px; background: rgba(15, 12, 34, .82); color: #fff; font: 700 14px/1 var(--tx, system-ui); cursor: pointer; }
+.cy-chat-t:hover, .cy-chat-t:focus-visible { background: rgba(15, 12, 34, .95); outline: 2px solid #fff; }
+.cy-chat.open > .cy-chat-t { display: none; }   /* открыт — свернуть «×» в заголовке окна */
+.cy:has(.cy-chat.open) .cy-ar.l { top: 30%; }   /* стрелка «влево» — выше открытого окна */
+.cy-chat-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: -2px 0 4px; font: 700 12px/1 var(--tx, system-ui); letter-spacing: .04em; text-transform: uppercase; color: rgba(255, 255, 255, .6); }
+.cy-chat-x { width: 28px; height: 28px; padding: 0; border: 0; border-radius: 8px; background: rgba(255, 255, 255, .1); color: #fff; font: 700 18px/1 system-ui; cursor: pointer; }
+.cy-chat-sh { margin-left: auto; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 8px; background: rgba(255, 255, 255, .1); color: #fff; font: 16px/1 system-ui; cursor: pointer; }   /* 22.10: модерация */
+.cy-chat-sh[aria-pressed="true"], .cy-chat-sh:hover, .cy-chat-sh:focus-visible { background: rgba(255, 255, 255, .25); outline: 2px solid #fff; outline-offset: 0; }
+.cy-chat-sh[hidden] { display: none; }
+/* 26.10: «свернуть» - черта внизу кнопки (как у окон), модерация - «⚙» (было «🛡», стример принял её за «свернуть») */
+.cy-chat-x > i { display: block; width: 12px; height: 2px; margin: 8px auto 0; border-radius: 1px; background: currentColor; }
+.cy-chat-x:hover, .cy-chat-x:focus-visible { background: rgba(255, 255, 255, .22); outline: 2px solid #fff; outline-offset: 0; }
+.cy-chat-n { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--hov, #ffc94d); color: #15122e; font-size: 12px; line-height: 20px; text-align: center; }
+.cy-chat-b { width: 100%; padding: 8px 10px 10px; border-radius: 14px; background: rgba(15, 12, 34, .82); box-shadow: 0 6px 20px rgba(0, 0, 0, .3); }
+.cy-chat-b[hidden] { display: none; }
+.cy-chat-l { list-style: none; margin: 0; padding: 0 2px 0 0; max-height: min(240px, 34vh); overflow-y: auto; overscroll-behavior: contain; }
+/* 26.10 (стример: «скролл не под стиль сайта»): полоса прокрутки чата - тонкая, скруглённая, цвет акцента сайта при наведении.
+   Chrome/Edge/Safari - ::-webkit-scrollbar (scrollbar-color в Chrome 121+ отключил бы его - поэтому он только для Firefox) */
+.cy-chat-l::-webkit-scrollbar, .cy-chat-p::-webkit-scrollbar { width: 8px; }
+.cy-chat-l::-webkit-scrollbar-track, .cy-chat-p::-webkit-scrollbar-track { background: transparent; }
+.cy-chat-l::-webkit-scrollbar-thumb, .cy-chat-p::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .22); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+.cy-chat-l::-webkit-scrollbar-thumb:hover, .cy-chat-p::-webkit-scrollbar-thumb:hover { background: var(--hov, #ffc94d); background-clip: padding-box; }
+.cy-chat-l::-webkit-scrollbar-button, .cy-chat-p::-webkit-scrollbar-button { display: none; height: 0; }
+@supports (-moz-appearance: none) { .cy-chat-l, .cy-chat-p { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, .3) transparent; } }
+.cy-chat-l li { position: relative; padding: 3px 26px 3px 0; overflow-wrap: anywhere; }
+.cy-chat-l li b { color: var(--hov, #ffc94d); font-weight: 800; }
+.cy-chat-l li.me b { color: #9fe0ff; }
+/* 24.10: ник - ответ по нажатию; стример - красная обводка, модераторы - золотая подложка; упоминание тебя - подсветка строки */
+.cy-chat-l li b[data-nick] { cursor: pointer; border-radius: 6px; }
+.cy-chat-l li b[data-nick]:hover { text-decoration: underline; }
+.cy-chat-l li.st b { padding: 0 5px; border: 2px solid #ff3b3b; box-shadow: 0 0 6px rgba(255, 59, 59, .55); }
+.cy-chat-l li.st b::after { content: ' · стример'; font-size: 10px; font-weight: 700; color: #ff8a80; }
+.cy-chat-l li.md b { padding: 0 5px; background: rgba(255, 201, 77, .18); border: 1px solid rgba(255, 201, 77, .55); }
+.cy-chat-l li.ping { background: rgba(255, 201, 77, .14); border-radius: 6px; box-shadow: inset 3px 0 0 #ffc94d; padding-left: 6px; }
+.cy-chat-l .awb { font-size: 10px; margin-left: .2em; }
+.cy-chat-l .cy-chat-0 { padding-right: 0; color: rgba(255, 255, 255, .65); }
+.cy-chat-m { position: absolute; right: 0; top: 2px; width: 24px; height: 22px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: rgba(255, 255, 255, .55); font: 700 16px/1 system-ui; cursor: pointer; }
+.cy-chat-m:hover, .cy-chat-m:focus-visible { color: #fff; background: rgba(255, 255, 255, .12); }
+.cy-chat-mm { display: none; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.cy-chat-l li.mm .cy-chat-mm { display: flex; }
+.cy-chat-mm button { min-height: 30px; padding: 0 10px; border: 1px solid rgba(255, 255, 255, .35); border-radius: 8px; background: transparent; color: #fff; font: 600 12px/1 var(--tx, system-ui); cursor: pointer; }
+.cy-chat-mm button:hover, .cy-chat-mm button:focus-visible { background: rgba(255, 255, 255, .14); }
+.cy-chat-mm [data-cmute] { border-color: #ff8a7a; color: #ffb0a6; }
+/* 24.10: вкладки чата: «Общий», «Торговля», «Личные» */
+.cy-chat-tabs { display: flex; gap: 4px; margin: 0 0 6px; }
+.cy-chat-tabs[hidden] { display: none; }
+.cy-chat-tabs button { display: inline-flex; align-items: center; gap: 4px; min-height: 30px; padding: 0 10px; border: 1px solid rgba(255, 255, 255, .25); border-radius: 999px; background: transparent; color: rgba(255, 255, 255, .8); font: 700 12px/1 var(--tx, system-ui); cursor: pointer; }
+.cy-chat-tabs button[hidden] { display: none; }
+.cy-chat-tabs button[aria-selected="true"] { background: var(--hov, #ffc94d); border-color: transparent; color: #15122e; }
+.cy-chat-tabs button:focus-visible { outline: 2px solid #fff; }
+.cy-chat-tn { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: #ff5a5a; color: #fff; font-size: 11px; line-height: 18px; text-align: center; }
+.cy-chat-tn[hidden] { display: none; }
+.cy-chat-dm { margin-left: 4px; padding: 0 4px; border: 0; border-radius: 6px; background: transparent; color: rgba(255, 255, 255, .6); font: 13px/1 system-ui; cursor: pointer; vertical-align: 1px; }
+.cy-chat-dm:hover, .cy-chat-dm:focus-visible { color: #fff; background: rgba(255, 255, 255, .15); outline: none; }
+.cy-chat-to { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 6px; font-size: 12px; }
+.cy-chat-to[hidden] { display: none; }
+.cy-chat-to button { min-height: 26px; padding: 0 8px; border: 1px solid rgba(255, 255, 255, .25); border-radius: 999px; background: transparent; color: #fff; font: 700 12px/1 var(--tx, system-ui); cursor: pointer; }
+.cy-chat-to button[aria-pressed="true"] { background: rgba(255, 255, 255, .18); border-color: #fff; }
+.cy-chat-to button.bad { border-color: rgba(255, 120, 110, .6); color: #ffb0a6; }
+.cy-chat-tw { color: rgba(255, 255, 255, .7); }
+/* 24.10: меню ника в чате (правая кнопка / долгое нажатие) */
+.cy-nm { position: fixed; z-index: 60; min-width: 170px; padding: 6px; border-radius: 12px; background: rgba(15, 12, 34, .97); box-shadow: 0 8px 24px rgba(0, 0, 0, .45); display: flex; flex-direction: column; gap: 2px; font: 600 13px/1.2 var(--tx, system-ui); color: #fff; }
+.cy-nm-h { padding: 4px 8px 6px; font-weight: 800; color: rgba(255, 255, 255, .65); overflow-wrap: anywhere; }
+.cy-nm button { min-height: 34px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: #fff; font: inherit; text-align: left; cursor: pointer; }
+.cy-nm button:hover, .cy-nm button:focus-visible { background: rgba(255, 255, 255, .14); outline: none; }
+.cy-chat-l li b[data-nick]:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
+.cy-chat-e { margin: 4px 0 0; min-height: 0; color: #ffb0a6; font-size: 12px; }
+.cy-chat-e:empty { display: none; }
+.cy-chat-f { display: flex; gap: 6px; margin-top: 6px; }
+.cy-chat-f input { flex: 1; min-width: 0; height: 38px; padding: 0 10px; border: 1px solid rgba(255, 255, 255, .25); border-radius: 10px; background: rgba(255, 255, 255, .08); color: #fff; font: 500 14px/1 var(--tx, system-ui); }
+.cy-chat-f input::placeholder { color: rgba(255, 255, 255, .5); }
+.cy-chat-f input:focus { outline: 2px solid var(--hov, #ffc94d); outline-offset: 0; border-color: transparent; }
+.cy-chat-f input:disabled { opacity: .6; }
+.cy-chat-f button { flex: none; width: 38px; height: 38px; border: 0; border-radius: 10px; background: var(--hov, #ffc94d); color: #15122e; font: 700 16px/1 system-ui; cursor: pointer; }
+.cy-chat-f button:focus-visible { outline: 2px solid #fff; }
+/* телефон: компактно — мельче шрифт, ниже список и поле (16px в поле — iPhone не приближает страницу при вводе) */
+@media (max-width: 720px) {
+  .cy-chat { width: calc(100% - 64px); font-size: 13px; }
+  .cy-chat-t { min-height: 36px; padding: 0 12px; font-size: 13px; }
+  .cy-chat-b { padding: 6px 8px 8px; border-radius: 12px; }
+  .cy-chat-h { margin-bottom: 2px; }
+  .cy-chat-x { width: 26px; height: 26px; }
+  .cy-chat-l { max-height: min(132px, 22vh); }
+  .cy-chat-l li { padding: 2px 24px 2px 0; }
+  .cy-chat-f { margin-top: 4px; }
+  .cy-chat-f input { height: 34px; font-size: 16px; }
+  .cy-chat-f button { width: 34px; height: 34px; }
+}
+
+/* облачко над героем (слой камеры: размер на экране — постоянный, как у ника, через --iz) */
+.cy-bub { position: absolute; left: 0; top: 0; z-index: 6; pointer-events: none; will-change: transform; }
+.cy-bub > span { position: absolute; left: 0; bottom: 0; width: max-content; max-width: calc(220px * var(--iz, 1.5)); padding: calc(5px * var(--iz, 1.5)) calc(9px * var(--iz, 1.5));
+  transform: translate(-50%, calc(-26px * var(--iz, 1.5))); border: calc(2px * var(--iz, 1.5)) solid #15122e; border-radius: calc(12px * var(--iz, 1.5)); background: #fff8e8; color: #2a2010;
+  font: 600 calc(13px * var(--iz, 1.5))/1.3 var(--tx, system-ui); overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; animation: cy-bub-in .18s ease-out; }
+@keyframes cy-bub-in { from { opacity: 0; transform: translate(-50%, calc(-18px * var(--iz, 1.5))); } }
+@media (prefers-reduced-motion: reduce) { .cy-bub > span { animation: none; } }
+
+/* 22.10: модерация чата — значки ролей, меню у сообщения (мут на время, бан), окно модерации */
+.cy-chat-r { font-style: normal; margin-right: 3px; font-size: 12px; }
+.cy-chat-mt { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; color: rgba(255, 255, 255, .6); font-size: 12px; }
+.cy-chat-mm button.bad { border-color: #ff8a7a; color: #ffb0a6; }
+.cy-chat-e.ok { color: #9fe39a; }
+.cy-chat-p { max-height: min(300px, 44vh); overflow-y: auto; overscroll-behavior: contain; }
+.cy-chat-p[hidden] { display: none; }
+.cy-chat-p h4 { margin: 10px 0 4px; font: 700 12px/1.2 var(--tx, system-ui); letter-spacing: .04em; text-transform: uppercase; color: rgba(255, 255, 255, .6); }
+.cy-chat-pu { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.cy-chat-pu li { display: flex; align-items: center; gap: 6px; min-height: 30px; }
+.cy-chat-pu li span { flex: 1; min-width: 0; color: rgba(255, 255, 255, .7); font-size: 12px; overflow-wrap: anywhere; }
+.cy-chat-pu li b { color: var(--hov, #ffc94d); }
+.cy-chat-pu li button { margin-left: auto; flex: none; min-height: 28px; min-width: 28px; padding: 0 8px; border: 1px solid rgba(255, 255, 255, .35); border-radius: 8px; background: transparent; color: #fff; font: 600 12px/1 var(--tx, system-ui); cursor: pointer; }
+.cy-chat-pu li button:hover, .cy-chat-pu li button:focus-visible { background: rgba(255, 255, 255, .14); }
+.cy-chat-pl { margin: 0; color: rgba(255, 255, 255, .6); font-size: 12px; }
+.cy-chat-pf { display: flex; gap: 6px; margin-top: 6px; }
+.cy-chat-pf input, .cy-chat-pf select { min-width: 0; height: 34px; padding: 0 8px; border: 1px solid rgba(255, 255, 255, .25); border-radius: 8px; background: rgba(255, 255, 255, .08); color: #fff; font: 500 13px/1 var(--tx, system-ui); }
+.cy-chat-pf input { flex: 1; } .cy-chat-pf select { flex: none; } .cy-chat-pf select option { color: #15122e; }
+.cy-chat-pf input:focus, .cy-chat-pf select:focus { outline: 2px solid var(--hov, #ffc94d); outline-offset: 0; }
+.cy-chat-pf button, .cy-chat-pb { flex: none; height: 34px; padding: 0 12px; border: 0; border-radius: 8px; background: var(--hov, #ffc94d); color: #15122e; font: 700 13px/1 var(--tx, system-ui); cursor: pointer; }
+.cy-chat-pb { margin-top: 10px; background: rgba(255, 255, 255, .14); color: #fff; }
+.cy-chat-pf button:focus-visible, .cy-chat-pb:focus-visible { outline: 2px solid #fff; }
+@media (max-width: 720px) { .cy-chat-p { max-height: min(220px, 36vh); } .cy-chat-pf input { font-size: 16px; } }
+.cy-chat-l .cy-chat-sys { padding-right: 0; color: #9fe0ff; font-size: 12px; font-style: italic; }   /* ответ на команду — только себе */
+.cy-chat-f[hidden], .cy-chat-l[hidden] { display: none; }   /* открыто окно модерации — ленты и поля нет */
+
+/* ===================== 23.10: обмен между игроками (trade.js) ===================== */
+/* меню героя — у точки нажатия; приглашения — сверху по центру; окно обмена — поверх улицы (ПК — по центру, телефон — во весь экран).
+   В анимациях — только transform/opacity; подсветка изменений — статичная рамка и короткая вспышка. */
+.tr-menu { position: fixed; left: 0; top: 0; z-index: 230; display: grid; gap: 8px; min-width: 190px; max-width: 260px; padding: 10px 12px; border-radius: 12px;
+  background: var(--surface, #fff); color: var(--ink, #15122e); border: 2px solid var(--ink, #15122e); box-shadow: 0 10px 30px rgba(0, 0, 0, .35); font: 600 14px/1.3 var(--tx, system-ui); }
+.tr-menu .tr-mh { display: flex; align-items: baseline; gap: 8px; } .tr-menu .tr-mh small { color: var(--mute, #666); font-weight: 600; }
+.tr-menu .note { margin: 0; font-size: 12px; color: var(--mute, #666); }
+.tr-inv { position: fixed; left: 50%; top: calc(12px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); z-index: 225; display: grid; gap: 8px; width: min(420px, calc(100vw - 32px)); }
+.tr-ic { display: grid; gap: 8px; padding: 12px 14px; border-radius: 14px; background: var(--surface, #fff); color: var(--ink, #15122e); border: 2px solid var(--accent, #c81e17);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .35); font: 500 15px/1.35 var(--tx, system-ui); animation: tr-in .25s ease both; }
+.tr-ic.out { border-color: var(--line, rgba(0, 0, 0, .25)); }
+.tr-ic p { margin: 0; } .tr-ic small { color: var(--mute, #666); }
+.tr-left { margin-left: 6px; padding: 1px 6px; border-radius: 6px; background: var(--surface2, #eee); font: 700 12px/1.4 var(--tx, system-ui); color: var(--mute, #666); font-variant-numeric: tabular-nums; }
+.tr-ib { display: flex; flex-wrap: wrap; gap: 8px; }
+@keyframes tr-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+.tr-win { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 210; width: min(820px, calc(100vw - 32px)); max-height: calc(100vh - 32px); display: flex; flex-direction: column;
+  border-radius: 16px; background: var(--surface, #fff); color: var(--ink, #15122e); border: 2px solid var(--ink, #15122e); box-shadow: 0 20px 60px rgba(0, 0, 0, .5); font: 500 14px/1.35 var(--tx, system-ui); }
+.tr-h { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line, rgba(0, 0, 0, .15)); }
+.tr-h h2 { margin: 0; font: 700 18px/1.2 var(--hd, system-ui); } .tr-h small { color: var(--mute, #666); font: 600 13px var(--tx, system-ui); }
+.tr-body { overflow: auto; padding: 14px 16px 16px; display: grid; gap: 12px; overscroll-behavior: contain; }
+.tr-halves { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.tr-half { display: grid; gap: 8px; align-content: start; padding: 10px 12px; border-radius: 12px; background: var(--surface2, #eee); border: 2px solid transparent; }
+.tr-half.rdy { border-color: var(--up, #1d7a34); }
+.tr-half h3 { margin: 0; display: flex; justify-content: space-between; gap: 8px; font: 700 14px/1.2 var(--tx, system-ui); text-transform: uppercase; letter-spacing: .03em; }
+.tr-flag { font: 600 12px/1.2 var(--tx, system-ui); text-transform: none; letter-spacing: 0; color: var(--mute, #666); }
+.tr-half.rdy .tr-flag { color: var(--up, #1d7a34); }
+.tr-slots { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; min-height: 52px; border-radius: 10px; }
+.tr-slot { position: relative; } .tr-slot .cy-sc { width: 100%; }
+.tr-win .cy-sc i.n { background: var(--ink, #15122e); color: var(--surface, #fff); }   /* число в стопке — читаемо в любом стиле */
+.tr-slot.e { aspect-ratio: 1; border-radius: 10px; border: 2px dashed var(--line, rgba(0, 0, 0, .25)); opacity: .6; }
+.tr-slots.ig-ok { outline: 3px dashed var(--focus, #ffc94d); outline-offset: 2px; } .tr-slots.ig-hover { outline-style: solid; }
+.tr-rm { position: absolute; right: -6px; top: -6px; width: 22px; height: 22px; padding: 0; border-radius: 50%; border: 2px solid var(--surface, #fff); background: var(--ink, #15122e); color: var(--surface, #fff); font: 800 14px/1 system-ui; cursor: pointer; z-index: 2; }
+.tr-rm:focus-visible { outline: 3px solid var(--focus, #ffc94d); }
+.tr-chg .cy-sc, p.tr-chg { box-shadow: 0 0 0 3px var(--focus, #ffc94d); }
+.tr-slot.tr-chg::after { content: ''; position: absolute; inset: -4px; border-radius: 12px; border: 3px solid var(--focus, #ffc94d); pointer-events: none; animation: tr-flash 1.2s ease-out 2 both; }
+@keyframes tr-flash { from { opacity: 1; transform: scale(1.12); } to { opacity: 0; transform: scale(1); } }
+.tr-new { position: absolute; left: 50%; bottom: -8px; transform: translateX(-50%); padding: 1px 5px; border-radius: 6px; background: var(--focus, #ffc94d); color: #15122e; font: 800 10px/1.3 var(--tx, system-ui); font-style: normal; white-space: nowrap; z-index: 2; }
+.tr-chgn { margin: 0; padding: 6px 10px; border-radius: 8px; background: color-mix(in srgb, var(--focus, #ffc94d) 30%, transparent); font-weight: 600; }
+.tr-coins { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0; padding: 4px 6px; border-radius: 8px; }
+.tr-coins span { font-weight: 700; } .tr-coins em { font-style: normal; color: var(--mute, #666); font-size: 13px; }
+.tr-coins input { width: 110px; min-height: 36px; padding: 4px 8px; border-radius: 8px; border: 2px solid var(--line, rgba(0, 0, 0, .25)); background: var(--surface, #fff); color: var(--ink, #15122e); font: 600 15px var(--tx, system-ui); }
+.tr-coins input:focus-visible { outline: 3px solid var(--focus, #ffc94d); }
+.tr-err { margin: 0; padding: 8px 12px; border-radius: 10px; background: color-mix(in srgb, var(--dn, #c81e17) 18%, transparent); color: var(--ink, #15122e); font-weight: 600; }
+.tr-act { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.tr-act .tr-rdy { min-width: 140px; } .tr-act .tr-go { flex: 1; min-width: 200px; width: auto; }
+.tr-st { margin: 0; font-weight: 600; } .tr-st.cd b { display: inline-block; min-width: 1.2em; font: 800 20px/1 var(--hd, system-ui); color: var(--accent, #c81e17); }
+.tr-warn, .tr-qty { display: grid; gap: 10px; padding: 12px 14px; border-radius: 12px; border: 2px solid var(--accent, #c81e17); background: var(--surface2, #eee); animation: tr-in .2s ease both; }
+.tr-warn p { margin: 0; font-weight: 600; }
+.tr-qty { grid-template-columns: 44px 1fr; align-items: center; } .tr-qty .cy-gi, .tr-qty .cy-gi svg { width: 44px; height: 44px; }
+.tr-qty label, .tr-qty small, .tr-qty .tr-ib { grid-column: 1 / -1; } .tr-qty input { width: 90px; min-height: 36px; margin-left: 6px; border-radius: 8px; border: 2px solid var(--line, rgba(0, 0, 0, .25)); padding: 4px 8px; font: 600 15px var(--tx, system-ui); }
+.tr-bagh { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; } .tr-bagh h3 { margin: 0; font: 700 14px/1.2 var(--tx, system-ui); text-transform: uppercase; }
+.tr-body > .note, .tr-bagh .note { margin: 0; font-size: 12px; color: var(--mute, #666); }
+@media (max-width: 720px) {
+  .tr-win { left: 0; top: 0; transform: none; width: 100vw; height: 100dvh; max-height: none; border-radius: 0; border: 0; }
+  .tr-halves { grid-template-columns: 1fr; }
+  .tr-slots { gap: 4px; }
+  .tr-h { padding: 10px 12px; } .tr-body { padding: 12px; }
+}
+@media (prefers-reduced-motion: reduce) { .tr-ic, .tr-warn, .tr-qty, .tr-slot.tr-chg::after { animation: none; } }
+/* 23.10: товар лавок «Города» — кнопки поверх полок сцены (Кузня, магическая лавка, амулеты Шатра), карточка вещи, «Купить … за …? Да / Нет» */
+.cy-hots { position: absolute; inset: 0; pointer-events: none; }
+.cy-hot { position: absolute; width: 128px; height: 210px; pointer-events: auto; border: 0; border-radius: 18px; background: transparent; cursor: pointer; padding: 0; }
+/* 23.10 (баг от зрителя): без большой рамки вокруг товара — она перекрывала подписи и цены. Вещь на сцене обводится по своему контуру
+   (city.js olHots: фильтр cy-itol на рисунке вещи — группа data-it стиля; кнопка — ровно по рисунку), выбранная — контур ярче (cy-itol2).
+   Стиль без групп data-it — мягкий свет на середине кнопки, без рамки. Карточка на полке (Лавка) — контур рисунка, фон и подпись остаются */
+.cy-hot:hover, .cy-hot.on, .cy-hot:focus-visible { background: radial-gradient(ellipse 46% 40% at 50% 50%, rgba(255, 236, 170, .3), rgba(255, 236, 170, 0) 100%); box-shadow: none; outline: none; }
+.cy-hot.ol:hover, .cy-hot.ol.on, .cy-hot.ol:focus-visible { background: none; }
+.cy-hot:focus-visible { outline: 2px dashed rgba(255, 236, 170, .8); outline-offset: -6px; }
+.cy-rbg [data-it].cy-olh > [data-ia] { filter: url(#cy-itol); }
+.cy-rbg [data-it].cy-olo > [data-ia] { filter: url(#cy-itol2); }
+.cy-tile.cy-hot:hover, .cy-tile.cy-hot.on, .cy-tile.cy-hot:focus-visible { background: #fff8e8; border-color: #f2b632; box-shadow: none; }
+.cy-tile.cy-hot:hover .cy-gi svg, .cy-tile.cy-hot.on .cy-gi svg { filter: var(--item-ol); }   /* общая обводка — style.css --item-ol */
+.cy-tile.cy-hot.on { transform: translateY(-3px); }
+.cy-good { display: grid; grid-template-columns: 44px 1fr; gap: 8px; align-items: center; width: 100%; padding: 0; border: 0; background: none; text-align: left; font: inherit; color: inherit; cursor: pointer; border-radius: 8px; }
+.cy-goods li:has(.cy-good) { padding: 4px 6px; }
+.cy-good:hover, .cy-good.on, .cy-good:focus-visible { box-shadow: 0 0 0 3px var(--accent, #c81e17); outline: none; }
+.cy-icard { position: absolute; z-index: 30; width: min(320px, calc(100vw - 16px)); max-height: calc(100% - 80px); overflow: auto; padding: 12px 14px; margin: 0; opacity: 0; pointer-events: none; transition: opacity .15s ease; box-shadow: 0 10px 34px rgba(0, 0, 0, .5); }
+.cy-icard.on { opacity: 1; } .cy-icard.pin { pointer-events: auto; }
+.cy-icard .cy-icbuy { display: none; margin-top: 8px; } .cy-icard.pin .cy-icbuy { display: block; }
+.cy-ich { display: flex; flex-direction: column; margin-bottom: 6px; } .cy-ich b { font-size: 17px; color: var(--rc, inherit); } .cy-ich small { color: var(--mute, #666); }
+.cy-icp { margin: 8px 0 0; font-weight: 600; } .cy-icp small { display: block; font-weight: 400; color: var(--mute, #666); }
+.cy-ichint { margin: 6px 0 0; font-size: 12px; color: var(--mute, #666); }
+.cy-buyq { position: absolute; inset: 0; z-index: 40; display: grid; place-items: center; background: rgba(8, 6, 20, .45); }
+.cy-buyb { width: min(380px, calc(100vw - 32px)); padding: 18px 20px; margin: 0; text-align: center; box-shadow: 0 14px 44px rgba(0, 0, 0, .55); }
+.cy-buyb .lead { margin: 0 0 8px; font-size: 18px; }
+/* 24.10: «У тебя: … / Не хватает: …» — две строки обычным текстом */
+.cy-lack { margin: 6px 0 0; font-size: 14px; line-height: 1.5; }
+.cy-lack .m b { font-weight: 800; }
+.cy-store .cy-lack { margin: 0 0 8px; }
+.cy-buyr { display: flex; gap: 10px; justify-content: center; margin-top: 12px; } .cy-buyr .btn { min-width: 110px; }
+.cy-forge .cy-goanvil { margin-top: 10px; }
+@media (max-width: 720px) { .cy-hot { width: 140px; height: 220px; } .cy-icard { width: calc(100vw - 16px); max-height: 40vh; } }
+@media (prefers-reduced-motion: reduce) { .cy-icard { transition: none; } }
+
+/* 23.10 (решение стримера): лавки «Города» на весь экран — без панели слева; сверху тонкая полоса (кошелёк, сумка, кнопки места),
+   реплика продавца — снизу справа (вебки на сайте нет); телефон — лавка по высоте окна, вбок — прокрутка внутри лавки */
+.cy-room[data-ui="f"] .cy-rui.cy-rbar { position: absolute; z-index: 4; left: 50%; transform: translateX(-50%); top: 12px; bottom: auto; width: max-content; max-width: calc(100vw - 340px);   /* 24.10: max-content — при left: 50% ширина «auto» упиралась в половину сцены, полоса переносилась и закрывала вывеску Кузни */ max-height: none; overflow: visible; padding: 0; margin: 0; background: none; border: 0; box-shadow: none; pointer-events: none; }
+.cy-room[data-ui="f"] .cy-rbar .cy-bar2, .cy-room[data-ui="f"] .cy-rbar .cy-pantry { pointer-events: auto; }
+.cy-room[data-ui="f"] .cy-rbar .cy-pb { padding: 0; overflow: visible; }
+.cy-bar2 { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 8px; padding: 5px 8px; border-radius: 14px; background: rgba(15, 12, 34, .82); color: #fff; font-size: 14px; box-shadow: 0 6px 20px rgba(0, 0, 0, .35); }
+.cy-bar2 > span { padding: 4px 8px; border-radius: 9px; background: rgba(255, 255, 255, .1); white-space: nowrap; }
+.cy-bar2 .cy-bagc.full { background: #a3122a; } .cy-bar2 .cy-thk { background: #6a3a0a; } .cy-bar2 .cy-bnote { background: none; color: #d8d0ee; }
+.cy-bar2 .btn { min-height: 34px; }
+.cy-room[data-ui="f"] .cy-rs { overflow: hidden; }
+.cy-rsz { pointer-events: none; }
+.cy-room[data-b] .cy-pb { overflow-x: hidden; }   /* 23.10: окно здания вбок не листается (на телефоне Тренер «дрожал» на несколько px) */
+.cy-rsay2 { position: absolute; z-index: 3; right: 16px; bottom: 16px; max-width: min(420px, calc(100vw - 32px)); margin: 0; padding: 10px 16px; border-radius: 16px; background: #fff8e8; color: #2a2010; font: 700 15px/1.35 var(--tx, system-ui); border: 3px solid #15122e; box-shadow: 0 8px 22px rgba(0, 0, 0, .35); cursor: pointer; transition: opacity .4s ease; }
+.cy-rsay2.off { opacity: 0; pointer-events: none; }
+.cy-pantry { position: absolute; z-index: 5; left: 50%; transform: translateX(-50%); top: calc(100% + 6px); width: min(420px, calc(100vw - 24px)); max-height: 50vh; overflow: auto; padding: 10px; margin: 0; }
+.cy-room[data-ui="f"] .cy-pb { position: relative; }
+.cy-hot.sm { width: 68px; height: 88px; border-radius: 12px; }
+.cy-tile { width: 88px; height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px; padding: 4px 3px; border-radius: 12px; background: #fff8e8; border: 3px solid var(--rc, #15122e); color: #2a2010; font: 700 11px/1.1 var(--tx, system-ui); text-align: center; overflow: hidden; }
+.cy-tile .cy-gi, .cy-tile .cy-gi svg { width: 52px; height: 52px; }
+.cy-tile b { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; } .cy-tile i { font-style: normal; color: #7a0f1d; }
+/* 23.10: лавка шире / выше места (телефон, зум щипком) — листается внутри себя в обе стороны; страница не масштабируется щипком */
+.cy-room[data-ui="f"] .cy-rs { touch-action: pan-x pan-y; }
+.cy-room[data-ui="f"] .cy-rs.cy-pan { overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+.cy-room[data-ui="f"] .cy-rs.cy-snap { scroll-snap-type: x proximity; }
+.cy-snaps { position: absolute; left: 0; top: 0; height: 1px; pointer-events: none; } .cy-snaps i { position: absolute; top: 0; height: 1px; scroll-snap-align: center; }
+@media (max-width: 720px), (max-height: 500px) {
+  .cy-room[data-ui="f"] .cy-rs { overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+  .cy-room[data-ui="f"] .cy-rs.cy-pan { overflow: auto; }
+  .cy-room[data-ui="f"] .cy-rui.cy-rbar { left: 8px; right: 8px; top: 62px; transform: none; width: auto; max-width: none; }
+  .cy-bar2 { font-size: 12px; padding: 4px 6px; } .cy-bar2 .btn { min-height: 40px; padding: 0 10px; }
+  .cy-rsay2 { left: 8px; right: 8px; bottom: 8px; max-width: none; font-size: 13px; }
+}
+
+/* 23.10: крестик карточки выбранного товара (лавки) */
+.cy-icard.pin .cy-ich { padding-right: 34px; }
+.cy-icard .cy-icx { position: absolute; right: 10px; top: 8px; width: 32px; height: 32px; border: 0; border-radius: 50%; background: rgba(255,255,255,.08); color: inherit; font: 700 20px/1 sans-serif; cursor: pointer; }
+.cy-icard .cy-icx:hover, .cy-icard .cy-icx:focus-visible { background: rgba(255,255,255,.18); outline: 2px solid currentColor; }
+
+/* 23.10: города округов (towngen.js + townart.js): выбор города, частицы природы, закрытые сделки чужого округа */
+.cy-art .cy-tl { top: 0; }
+.cy-town { position: absolute; left: 8px; top: 60px; z-index: 2; height: 40px; max-width: min(260px, calc(100% - 120px)); display: flex; align-items: center; gap: 6px; padding: 0 12px 0 10px; border-radius: 20px; border: 0; background: rgba(15, 12, 34, .78); color: #fff; font: 700 14px/1 var(--tx, system-ui); cursor: pointer; }
+.cy-town b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cy-town i { font-style: normal; opacity: .7; }
+.cy-town:hover, .cy-town:focus-visible, .cy-town[aria-expanded="true"] { background: rgba(15, 12, 34, .95); outline: 2px solid #ffd76a; }
+.cy-tp { position: absolute; left: 8px; top: 106px; z-index: 6; width: min(360px, calc(100% - 16px)); max-height: calc(100% - 120px); display: flex; flex-direction: column; background: rgba(18, 14, 36, .97); color: #fff; border-radius: 14px; box-shadow: 0 10px 30px rgba(0, 0, 0, .45); padding: 8px; }
+.cy-tp[hidden] { display: none; }
+.cy-tph { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 6px; }
+.cy-tpx { width: 36px; height: 36px; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .1); color: #fff; font-size: 20px; cursor: pointer; }
+.cy-tpl { overflow-y: auto; display: grid; gap: 4px; overscroll-behavior: contain; }
+.cy-tpl button { display: grid; grid-template-columns: 34px 1fr; grid-template-rows: auto auto; column-gap: 8px; align-items: center; text-align: left; min-height: 48px; padding: 6px 8px; border: 0; border-radius: 10px; background: rgba(255, 255, 255, .06); color: #fff; cursor: pointer; font: 700 14px/1.2 var(--tx, system-ui); }
+.cy-tpl button:hover, .cy-tpl button:focus-visible { background: rgba(255, 215, 106, .18); outline: none; }
+.cy-tpl button[aria-current="true"] { box-shadow: inset 0 0 0 2px #ffd76a; }
+.cy-tpi { grid-row: 1 / 3; font-size: 22px; text-align: center; }
+.cy-tpl small { font-weight: 500; font-size: 12px; opacity: .75; }
+.cy-tp .note { font-size: 12px; opacity: .75; margin: 8px 4px 2px; }
+/* частицы природы: несколько точек, только transform/opacity (двигает композитор, кадров города не тратят) */
+.cy-fx { position: absolute; inset: 0; z-index: 1; pointer-events: none; overflow: hidden; }
+/* 26.10 (art/camp): пламя костра лагеря «Перепутье» - одна лёгкая анимация (только transform / opacity) поверх запечённого огня */
+.cy-camp-fl { position: absolute; pointer-events: none; transform-origin: 50% 100%; will-change: transform, opacity; animation: cyCampFl 1.7s ease-in-out infinite; }
+.cy-camp-fl svg { display: block; }
+@keyframes cyCampFl { 0%, 100% { transform: scale(1, 1); opacity: 1; } 30% { transform: scale(.94, 1.07); opacity: .92; } 55% { transform: scale(1.04, .95); opacity: 1; } 80% { transform: scale(.97, 1.04); opacity: .95; } }
+@media (prefers-reduced-motion: reduce) { .cy-camp-fl { animation: none; } }
+.cy-fx i { position: absolute; top: -12px; width: 6px; height: 6px; border-radius: 50%; background: #fff; opacity: 0; will-change: transform, opacity; animation: cyFxFall 8s linear infinite; }
+.cy-fx[data-fx="ember"] i { top: auto; bottom: -10px; width: 4px; height: 4px; background: #ffb04a; animation-name: cyFxRise; }
+.cy-fx[data-fx="firefly"] i { top: 55%; width: 5px; height: 5px; background: #e8ff8a; box-shadow: 0 0 8px #e8ff8a; animation-name: cyFxFly; }
+.cy-fx[data-fx="sand"] i { top: 40%; width: 3px; height: 3px; background: #ffe0a0; animation-name: cyFxBlow; }
+.cy-fx[data-fx="mote"] i { top: 50%; width: 4px; height: 4px; background: #c8b8e0; animation-name: cyFxFly; }
+@keyframes cyFxFall { 0% { transform: translate(0, 0); opacity: 0; } 10% { opacity: .85; } 100% { transform: translate(40px, 110vh); opacity: .6; } }
+@keyframes cyFxRise { 0% { transform: translate(0, 0); opacity: 0; } 15% { opacity: .9; } 100% { transform: translate(-30px, -70vh); opacity: 0; } }
+@keyframes cyFxFly { 0%, 100% { transform: translate(0, 0); opacity: 0; } 30% { opacity: .9; } 50% { transform: translate(30px, -40px); opacity: .4; } 70% { opacity: .9; transform: translate(-20px, -10px); } }
+@keyframes cyFxBlow { 0% { transform: translate(-20vw, 0); opacity: 0; } 20% { opacity: .8; } 100% { transform: translate(110vw, 30px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .cy-fx { display: none; } }
+.cy-hot.lock::after { content: '🔒 Откроется после захвата'; position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); white-space: nowrap; font: 700 13px/1 var(--tx, system-ui); color: #fff; background: rgba(20, 14, 30, .88); padding: 6px 8px; border-radius: 8px; pointer-events: none; z-index: 3; opacity: 0; transition: opacity .15s; }
+/* 23.10: надпись — только при наведении (одна за раз, не налезают); на ценнике и так замок, нажатие — окно с объяснением */
+.cy-hot.lock:hover::after, .cy-hot.lock:focus-visible::after { opacity: 1; }
+.cy-tile.lock { filter: grayscale(.7); opacity: .8; }
+.cy-tile.lock::after { content: '🔒'; bottom: auto; top: 4px; left: auto; right: 4px; transform: none; padding: 2px 4px; }
+/* 24.10: вещь лежит на наковальне - её место на герое / в сумке пустое: блёклая пунктирная рамка и значок наковальни */
+.cyf-wrap .cyf-away { position: relative; outline: 2px dashed color-mix(in srgb, currentColor 45%, transparent); outline-offset: -4px; box-shadow: none; }
+.cyf-wrap .cyf-away > :not(.cyf-awayi):not(.sl) { opacity: .14; filter: grayscale(1); }
+.cyf-wrap .cyf-away .cyf-awayi { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 34px; height: 18px; color: color-mix(in srgb, currentColor 70%, transparent); pointer-events: none; }
+.cyf-wrap .cyf-away .cyf-awayi svg { width: 100%; height: 100%; display: block; }
+/* 24.10: доска объявлений - без кошачьих ушек панели (рама прозрачная, ухо висело посреди доски) */
+.cy-room[data-b="board"] .cy-rui::before, .cy-room[data-b="board"] .cy-rui::after,
+.cy-room[data-b="board"] .panel::before, .cy-room[data-b="board"] .panel::after { content: none !important; }
+.cy-chat-l li i.cy-cls { font-style: normal; margin-right: 3px; cursor: help; font-size: .95em; }
+.cy-chat-l li.cy-chat-ev { color: #ffe08a; font-style: italic; background: rgba(255, 201, 77, .08); border-radius: 6px; padding: 2px 6px; }
+/* 24.10: «Показывать: всех / 50 / 25 / 10 / 5» - сколько других игроков рисовать */
+.cy-hud > label.cy-capl { pointer-events: auto; display: inline-flex; align-items: center; gap: 6px; font: 700 13px/1.2 var(--tx, system-ui); color: #fff; background: rgba(15, 12, 34, .7); padding: 3px 6px 3px 10px; border-radius: 999px; margin-left: 6px; }
+.cy-hud .cy-cap { font: inherit; color: #fff; background: rgba(255, 255, 255, .12); border: 1px solid rgba(255, 255, 255, .3); border-radius: 999px; padding: 2px 6px; cursor: pointer; }
+.cy-hud .cy-cap option { color: #1d1620; }
+/* 24.10: Ратуша — склад города (city.js hallHtml) */
+.cy-hall h3 { margin: 4px 0 6px; }
+.cy-hall h4 { margin: 10px 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; opacity: .8; }
+.cy-hres { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 4px 14px; }
+.cy-hres li { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+.cy-hres li i { flex: none; width: 12px; height: 12px; border-radius: 3px; border: 1.5px solid #15122e; }
+.cy-hres li.gem i { transform: rotate(45deg); border-radius: 2px; }
+.cy-hres li b { margin-left: auto; }
+.cy-hgv { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; font-size: 14px; max-height: 260px; overflow: auto; }
+.cy-hgv li { display: grid; grid-template-columns: 2em 1fr auto; gap: 6px; }
+.cy-hgv li.me b { color: var(--accent, #c8643a); }
+/* 28.10 (hw-npc-ghosts): НПС в хэллоуинском («мёртвом») виде - призраки: в помещениях (рисунок стиля - только призрак, doodle-core.js npcWrap),
+   в «Заточке» (кусок улицы: обычный НПС скрыт, призрак показан); парят - только transform */
+.cy-hwd .cy-npc { display: none; }
+.cy-hwd .cy-npcg { display: inline; }
+.cy-room .cy-npcf, .cy-fig2 > .jd-ghost { animation: cy-npcFloat 3.4s ease-in-out infinite; }
+@keyframes cy-npcFloat { 50% { transform: translateY(-6px); } }
+@media (prefers-reduced-motion: reduce) { .cy-room .cy-npcf, .cy-fig2 > .jd-ghost { animation: none; } }

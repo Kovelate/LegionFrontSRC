@@ -1,0 +1,61 @@
+/* 24.10: «Отправить баг» — окно формы (bugreport.js; грузится только по нажатию на 🐞). Цвета и рамки — от оформления сайта (.panel, .btn). */
+html.bugm-lock, html.bugm-lock body { overflow: hidden; }
+.bugm { position: fixed; inset: 0; z-index: 75; display: grid; place-items: center; padding: var(--s4); }
+.bugm-scrim { position: absolute; inset: 0; background: rgba(10, 8, 20, .62); opacity: 0; transition: opacity .2s var(--ease); }
+.bugm-box { position: relative; width: min(560px, 100%); max-height: calc(100dvh - 2 * var(--s4)); overflow: auto; overscroll-behavior: contain;
+  display: grid; gap: var(--s3); opacity: 0; transform: translateY(12px); transition: opacity .2s var(--ease), transform .2s var(--ease); }
+.bugm.on .bugm-scrim { opacity: 1; }
+.bugm.on .bugm-box { opacity: 1; transform: none; }
+.bugm-h { display: flex; align-items: center; gap: var(--s2); padding-right: 44px; }
+.bugm-lead { font-size: var(--t-sm); margin-top: calc(-1 * var(--s1)); }
+.bugm-x { position: absolute; top: var(--s2); right: var(--s2); width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border: 0; background: none; color: var(--ink); font: 400 28px/1 system-ui, sans-serif; }
+.bugm-f { display: grid; gap: var(--s3); }
+.bugm-l { display: grid; gap: 6px; position: relative; }
+.bugm-lt { font-weight: 700; font-size: var(--t-sm); }
+.bugm-lt b { color: var(--accent); }
+.bugm-lt .muted { font-weight: 500; }
+.bugm input[type=text], .bugm textarea { width: 100%; min-width: 0; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--ink) 22%, transparent); border-radius: 8px;
+  background: var(--surface2, var(--bg)); color: var(--ink); font: inherit; font-size: 16px; }   /* 16 px — телефон не приближает страницу при вводе */
+.bugm textarea { resize: vertical; min-height: 120px; max-height: 45dvh; line-height: 1.4; }
+.bugm input:focus, .bugm textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
+.bugm [aria-invalid="true"] { border-color: #d83a2f; box-shadow: 0 0 0 2px rgba(216, 58, 47, .35); }
+.bugm-n { justify-self: end; font-size: var(--t-xs); color: var(--mute); font-variant-numeric: tabular-nums; }
+.bugm-n.over { color: #d83a2f; font-weight: 700; }
+.bugm-drop { display: grid; place-items: center; min-height: 64px; padding: var(--s3); border: 2px dashed color-mix(in srgb, var(--ink) 28%, transparent); border-radius: 10px;
+  background: transparent; color: var(--mute); font-size: var(--t-sm); text-align: center; transition: border-color .15s, background .15s, color .15s; }
+.bugm-drop:hover, .bugm-drop.over { border-color: var(--accent); color: var(--ink); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.bugm-drop.full { display: none; }
+.bugm-drop u { color: var(--accent); text-underline-offset: 2px; }
+.bugm-dropp { display: none; }
+.bugm-th { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: var(--s2); }
+.bugm-th:empty { display: none; }
+.bugm-th li { position: relative; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: color-mix(in srgb, var(--ink) 10%, transparent); display: grid; place-items: center; }
+.bugm-th img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.bugm-sz { position: absolute; left: 4px; bottom: 4px; padding: 1px 5px; border-radius: 4px; background: rgba(0, 0, 0, .62); color: #fff; font-size: 11px; font-weight: 600; }
+.bugm-rm { position: absolute; top: 2px; right: 2px; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: rgba(0, 0, 0, .66); color: #fff; font: 700 18px/1 system-ui, sans-serif; }
+.bugm-rm:hover, .bugm-rm:focus-visible { background: #b3261e; }
+.bugm-sp { width: 22px; height: 22px; border-radius: 50%; border: 3px solid color-mix(in srgb, var(--ink) 25%, transparent); border-top-color: var(--accent); animation: bugmSp .8s linear infinite; }
+@keyframes bugmSp { to { transform: rotate(360deg); } }
+.bugm-ctx { font-size: var(--t-xs); color: var(--mute); border-top: 1px solid color-mix(in srgb, var(--ink) 14%, transparent); padding-top: var(--s2); }
+.bugm-ctx summary { cursor: pointer; line-height: 1.4; }
+.bugm-ctx summary span { font-weight: 700; color: var(--ink); }
+.bugm-ctx p { margin: 6px 0; }
+.bugm-ctx dl { display: grid; grid-template-columns: auto 1fr; gap: 2px var(--s3); margin: 0; }
+.bugm-ctx dt { font-weight: 700; }
+.bugm-ctx dd { margin: 0; overflow-wrap: anywhere; }
+.bugm-err { margin: 0; color: #d83a2f; font-size: var(--t-sm); font-weight: 600; }
+.bugm-err:empty { display: none; }
+.bugm-err a { color: inherit; }
+.bugm-acts { display: flex; justify-content: flex-end; gap: var(--s2); flex-wrap: wrap; }
+.bugm.busy .bugm-send { opacity: .8; cursor: progress; }
+/* телефон: окно снизу во всю ширину, кнопки — во всю ширину; «перетащи» на телефоне не бывает */
+@media (max-width: 520px) {
+  .bugm { place-items: end stretch; padding: 0; }
+  .bugm-box { width: 100%; max-height: 94dvh; border-bottom-left-radius: 0 !important; border-bottom-right-radius: 0 !important; padding-bottom: calc(var(--s5) + env(safe-area-inset-bottom, 0px)); transform: translateY(24px); }
+  .bugm-dropt { display: none; }
+  .bugm-dropp { display: inline; }
+  .bugm-drop { min-height: 48px; }
+  .bugm-acts .btn { flex: 1 1 0; }
+  .bugm-th { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) { .bugm-scrim, .bugm-box { transition: none; } .bugm-sp { animation-duration: 2s; } }

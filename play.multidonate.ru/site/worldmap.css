@@ -1,0 +1,108 @@
+/* 23.10: вкладка «Карта мира» (worldmap.js). Сама карта — пергамент и чернила, как карта мира на стриме (worldview.js);
+   рамка, шапка и боковая панель — цветами темы сайта (--surface, --ink, --mute, --accent). Без анимаций: в покое ничего не рисуется. */
+#tab-world .wm-wrap { display: flex; flex-direction: column; gap: var(--s3); }
+.wm-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s2) var(--s4); }
+.wm-se { font-size: var(--t-sm); color: var(--mute); font-variant-numeric: tabular-nums; }
+.wm-se b { color: var(--ink); }
+.wm-body { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: var(--s4); align-items: start; }
+.wm-map { position: relative; overflow: hidden; height: clamp(420px, calc(100vh - 210px), 860px); border-radius: 14px; background: #6a8daa;
+  border: 2px solid color-mix(in srgb, var(--ink) 30%, transparent); touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; outline: none; contain: strict; }
+.wm-map:active { cursor: grabbing; }
+.wm-map:focus-visible { outline: 3px solid var(--focus, #ffd76a); outline-offset: 2px; }
+.wm-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; transform-origin: 0 0; --u: 20; --ui: 20; }
+.wm-svg .wm-land path { cursor: pointer; }
+.wm-svg .wm-gl, .wm-svg .wm-riv, .wm-svg .wm-wall, .wm-svg .wm-b, .wm-svg .wm-ov, .wm-svg .wm-sel, .wm-svg .wm-lb, .wm-svg .wm-ic { pointer-events: none; }
+.wm-svg .wm-gl { opacity: .9; }
+.wm-svg .wm-wall { fill: none; stroke: #6d6058; stroke-width: 110; stroke-opacity: .8; stroke-linecap: round; stroke-linejoin: round; }
+.wm-svg .wm-b { fill: none; stroke: #2a2236; stroke-linejoin: round; stroke-linecap: round; }
+.wm-svg .wm-bd { stroke-opacity: .32; stroke-width: calc(.8px * var(--u)); }
+.wm-svg .wm-br { stroke-opacity: .7; stroke-width: calc(1.6px * var(--u)); stroke-dasharray: calc(6px * var(--u)) calc(3px * var(--u)); }
+.wm-svg .wm-bc { stroke-opacity: .9; stroke-width: calc(1.3px * var(--u)); }
+.wm-svg .wm-ov .own { stroke-width: calc(1.6px * var(--u)); stroke-opacity: .9; }
+.wm-svg .wm-ov .mine-o { fill: none; stroke: #ffd76a; stroke-width: calc(3.5px * var(--u)); stroke-linejoin: round; }
+.wm-svg .wm-ov .rs { fill: none; stroke: #8a1a2a; stroke-width: calc(2px * var(--u)); stroke-dasharray: calc(5px * var(--u)) calc(3px * var(--u)); }
+.wm-svg .wm-sel { fill: none; stroke: #fff; stroke-width: calc(3px * var(--u)); stroke-linejoin: round; filter: drop-shadow(0 0 calc(1.5px * var(--u)) #2a2236); }
+.wm-svg .lb { font: 700 calc(12px * var(--u)) 'Golos Text', system-ui, sans-serif; text-anchor: middle; fill: #2a2236; paint-order: stroke; stroke: #f6ecd2; stroke-width: calc(3px * var(--u)); stroke-linejoin: round; }
+.wm-svg .lb-r { font-size: calc(13px * var(--u)); letter-spacing: .14em; text-transform: uppercase; fill: #4a3f52; font-weight: 800; }
+.wm-svg .lb-cap { font-size: calc(13px * var(--u)); font-weight: 800; }
+.wm-svg .lb .st { font-size: calc(10px * var(--u)); fill: #a8761e; letter-spacing: .04em; }
+/* что видно на каком приближении: издалека — регионы, столицы и замки; ближе — округа и ★; совсем близко — без названий регионов */
+.wm-svg.z1 .lb-d:not(.lb-cap), .wm-svg.z1 .lb .st, .wm-svg.z1 .tm:not(.tm-cap) { display: none; }
+/* телефон во весь мир: только регионы, главный город и замки (столицы и «!» — при приближении) */
+.wm-svg.narrow.z1 .lb-cap:not(.lb-grand), .wm-svg.narrow.z1 .tm-cap:not(.tm-grand), .wm-svg.narrow.z1 .tm-x { display: none; }
+.wm-svg.z1 .lb-cap { font-size: calc(11px * var(--u)); }
+.wm-svg.z2 .lb-r { opacity: .55; }
+.wm-svg.z3 .lb-r { display: none; }
+.wm-svg .ic { transform-box: view-box; }
+
+.wm-ui { position: absolute; left: 10px; bottom: 10px; display: flex; flex-direction: column; gap: 6px; z-index: 2; }
+.wm-ui button { width: 44px; height: 44px; border-radius: 10px; border: 2px solid #2a2236; background: #f6ecd2; color: #2a2236; font: 800 22px/1 'Golos Text', system-ui, sans-serif;
+  box-shadow: 0 2px 0 #2a2236; display: grid; place-items: center; padding: 0; transition: background .2s var(--ease), transform .2s var(--ease); }
+.wm-ui button:hover { background: #ffe7a8; }
+.wm-ui button:active { transform: translateY(2px); box-shadow: none; }
+.wm-home.btn { position: absolute; right: 10px; bottom: 10px; z-index: 2; background: #f6ecd2; color: #2a2236; border: 2px solid #2a2236; border-radius: 10px; box-shadow: 0 2px 0 #2a2236; }
+.wm-home.btn:hover { background: #ffe7a8; }
+.wm-home.btn:disabled { opacity: .55; }
+.wm-card { position: absolute; right: 10px; top: 10px; z-index: 3; width: 310px; max-width: calc(100% - 20px); max-height: calc(100% - 20px); overflow: auto; box-sizing: border-box;
+  padding: 14px 16px; border-radius: 12px; background: #f6ecd2; color: #2a2236; border: 3px solid #2a2236; box-shadow: 0 6px 0 rgba(42, 34, 54, .35); cursor: auto;
+  font: 500 14px/1.4 'Golos Text', system-ui, sans-serif; user-select: text; -webkit-user-select: text; }
+.wm-card[hidden] { display: none; }
+.wm-card h3 { margin: 0 34px 2px 0; font: 800 20px/1.15 'Golos Text', system-ui, sans-serif; color: #2a2236; text-transform: none; letter-spacing: 0; }
+.wm-card .wm-rg { margin: 0 0 10px; color: #6a5a48; font-weight: 600; }
+.wm-card dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; }
+.wm-card dt { color: #6a5a48; }
+.wm-card dd { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
+.wm-card .mu { color: #6a5a48; font-weight: 500; }
+.wm-card .wm-x { position: absolute; right: 6px; top: 6px; width: 40px; height: 40px; border: 0; border-radius: 8px; background: transparent; font: 700 24px/1 sans-serif; color: #2a2236; }
+.wm-card .wm-x:hover { background: rgba(42, 34, 54, .1); }
+.wm-card .wm-en { margin: 10px 0 0; padding: 8px 10px; border-radius: 8px; background: rgba(42, 34, 54, .07); font-weight: 600; }
+.wm-card .wm-en.ok { background: #e6edd2; color: #2f4a1e; }
+.wm-card .wm-go { margin-top: 8px; width: 100%; background: #2a2236; color: #f6ecd2; border-radius: 10px; }
+.wm-card .wm-go:hover { background: #3d3350; }
+.wm-card .wm-pt { margin: 0 0 8px; padding: 6px 10px; border-radius: 8px; background: #ffd76a; font-weight: 700; }
+.wm-card .wm-rs { color: #8a1a2a; }
+.wm-tag { display: inline-block; margin-left: 4px; padding: 0 6px; border-radius: 6px; background: #ffd76a; color: #3b2a1a; font-size: 12px; font-weight: 800; }
+.wm-st { color: #a8761e; letter-spacing: .04em; font-weight: 700; }
+.wm-sw { display: inline-block; width: 14px; height: 14px; border-radius: 4px; border: 2px solid #2a2236; margin-right: 8px; vertical-align: -2px; flex: none; box-sizing: border-box; }
+.wm-sw-ab { background: repeating-linear-gradient(45deg, #cfc8bc 0 3px, #8a8496 3px 6px); }
+.wm-sw-fog { background: #e4dfea; }
+.wm-sw-me { box-shadow: 0 0 0 2px #ffd76a; }
+.wm-sw-other { background: linear-gradient(90deg, #2f6fc4 0 33%, #2f9a4a 33% 66%, #d07a12 66%); }
+.wm-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.wm-side { display: flex; flex-direction: column; gap: var(--s3); min-width: 0; }
+.wm-box { padding: var(--s3) var(--s4); border-radius: 12px; background: var(--surface); border: 1px solid color-mix(in srgb, var(--ink) 14%, transparent); }
+.wm-box h3 { font-size: var(--t-md); margin: 0 0 var(--s2); }
+.wm-top { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.wm-top button { display: flex; align-items: center; gap: 6px; width: 100%; min-height: 40px; padding: 4px 6px; border: 0; border-radius: 8px; background: none; color: var(--ink); text-align: left;
+  font: 600 var(--t-sm)/1.25 var(--tx); letter-spacing: 0; text-transform: none; }
+.wm-top button:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); }
+.wm-top li.me button { background: color-mix(in srgb, var(--accent) 16%, transparent); font-weight: 800; }
+.wm-top .wm-pl { width: 1.6em; text-align: right; color: var(--mute); font-variant-numeric: tabular-nums; }
+.wm-top .wm-sw { margin-right: 0; }
+.wm-top .wm-nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wm-top .wm-n { color: var(--mute); white-space: nowrap; }
+.wm-top .wm-inf { min-width: 2.2em; text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; }
+.wm-fine { margin-top: var(--s2); font-size: var(--t-xs); }
+.wm-leg { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: var(--t-sm); }
+.wm-leg li { display: flex; align-items: center; gap: 0; }
+.wm-leg li > span:last-child { min-width: 0; }
+.wm-li { width: 20px; height: 20px; margin-right: 8px; flex: none; }
+.wm-leg .wm-st { margin-right: 8px; }
+
+@media (max-width: 900px) {
+  .wm-body { grid-template-columns: minmax(0, 1fr); }
+  .wm-map { height: clamp(300px, 60vh, 640px); }
+  .wm-side { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+}
+@media (max-width: 520px) {
+  .wm-map { border-radius: 10px; margin: 0 calc(-1 * var(--s2)); height: clamp(300px, 96vw, 540px); }
+  /* карточка на телефоне — лист снизу экрана (на карте ей тесно: кнопка «Войти в город» уходила за край) */
+  .wm-card { position: fixed; left: 8px; right: 8px; top: auto; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); width: auto; max-width: none; max-height: 70vh; z-index: 45; }
+  .wm-map.carded .wm-ui, .wm-map.carded .wm-home { display: none; }
+  .wm-svg .lb-r { font-size: calc(10px * var(--u)); letter-spacing: .08em; }
+  .wm-svg.z1 .lb-cap { font-size: calc(9.5px * var(--u)); }
+  .wm-svg .lb-d { font-size: calc(10.5px * var(--u)); }
+  /* 24.10: весь мир на телефоне — названия земель мельче и плотнее: не наезжают друг на друга и не уходят за край карты */
+  .wm-svg.narrow.z1 .lb-r { font-size: calc(8px * var(--u)); letter-spacing: .02em; stroke-width: calc(2.4px * var(--u)); }
+}

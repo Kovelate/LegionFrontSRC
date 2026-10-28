@@ -1,0 +1,594 @@
+/* 23.10: Шахта (промысел города) — локация на весь экран поверх «Города» (mine.js). Анимации — только transform/opacity. */
+body.mn-on { overflow: hidden; }
+.mn { position: fixed; inset: 0; z-index: 60; background: #1a1420; color: #f3efe6; font-family: inherit; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+.mn-view { position: absolute; inset: 0; overflow: hidden; touch-action: none; cursor: grab; outline: none; }
+.mn-view:active { cursor: grabbing; }
+.mn-world { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
+/* 25.10 (телефон мигал): огромный слой на GPU телефона не помещается в текстуру и мерцает — на сенсорных экранах без will-change */
+@media (pointer: coarse) { .mn-world { will-change: auto; } }
+.mn-bg { position: absolute; top: 0; overflow: visible; }
+.mn-bg [data-i].open, .mn-bg [data-npc] { cursor: pointer; }
+.mn-bg [data-i].open:hover { filter: brightness(1.15); }
+.mn-bg [data-i].far { filter: brightness(.62) saturate(.8); }   /* закрыт другими камнями — копать нельзя */
+.mn-bg .mn-nm, .mn-nm { font-family: Golos Text, Arial, sans-serif; font-weight: 800; fill: #ffe27a; stroke: #15122e; stroke-width: 4px; paint-order: stroke; }
+.mn-bars { position: absolute; inset: 0; pointer-events: none; }
+.mn-bar { position: absolute; width: 88px; height: 12px; border-radius: 6px; background: rgba(21,18,46,.82); padding: 2px; box-sizing: border-box; }
+.mn-bar i { display: block; height: 100%; border-radius: 4px; background: #7ff07a; }
+.mn-bar.me i { background: #ffe27a; }
+.mn-bar em { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); white-space: nowrap; font: 800 17px Golos Text, Arial, sans-serif; font-style: normal; color: #ffe27a; background: #15122e; border: 2px solid #ffe27a; border-radius: 10px; padding: 1px 9px; }
+.mn-bar b { position: absolute; right: -40px; top: -6px; font: 800 14px Golos Text, Arial, sans-serif; color: #fff; background: #15122e; border-radius: 10px; padding: 1px 6px; }
+.mn-heroes { position: absolute; inset: 0; pointer-events: none; }
+.mn-h { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+.mn-fig { position: absolute; left: -38px; bottom: 0; width: 76px; height: 108px; }
+.mn-fig svg { width: 100%; height: 100%; overflow: visible; }
+.mn-h.fl .mn-fig { transform: scaleX(-1); }
+.mn-nm2 { position: absolute; left: 50%; bottom: 110px; transform: translateX(-50%); white-space: nowrap; font: 800 15px Golos Text, Arial, sans-serif; color: #fff; text-shadow: 0 0 3px #15122e, 0 0 3px #15122e, 0 1px 2px #15122e; }
+.mn-h.me .mn-nm2 { color: #ffe27a; }
+.mn-h.walk .mn-nm2 { opacity: .8; font-size: 13px; }
+.mn-h.dig .mn-fig::after { content: ''; position: absolute; right: -14px; top: 22px; width: 40px; height: 40px; transform-origin: 6px 36px; animation: mn-swing 1.1s ease-in-out infinite;
+  background: no-repeat center/contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M6 36 L26 10' stroke='%237a5230' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M12 6 Q26 2 36 16' stroke='%2315122e' stroke-width='8' fill='none' stroke-linecap='round'/%3E%3Cpath d='M12 6 Q26 2 36 16' stroke='%23c8d0da' stroke-width='5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); }
+.mn-h.dig:not(.me) .mn-fig::after { animation-duration: 1.6s; }
+@keyframes mn-swing { 0%, 100% { transform: rotate(-30deg); } 55% { transform: rotate(28deg); } }
+@media (prefers-reduced-motion: reduce) { .mn-h.dig .mn-fig::after { animation: none; } }
+
+.mn-top { position: absolute; left: 0; right: 0; top: 0; z-index: 6; display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: linear-gradient(rgba(10,8,14,.85), rgba(10,8,14,0)); pointer-events: none; }
+.mn-tb { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
+.mn-top > * { pointer-events: auto; }
+.mn-ttl { display: flex; align-items: baseline; gap: 10px; }
+.mn-ttl b { font: 400 26px "Russo One", "Arial Black", sans-serif; color: #ffc94d; letter-spacing: .06em; text-shadow: 0 2px 0 #15122e; }
+.mn-ttl span { color: #e8dcc8; font-weight: 700; }
+.mn-reset { margin-left: auto; color: #cfc4b0; font-size: 14px; }
+.mn-exit { margin-left: 8px; }
+
+.mn-panel { position: absolute; right: 16px; top: 64px; z-index: 2; width: 330px; max-width: calc(100% - 32px); max-height: calc(100% - 84px); overflow: auto; overflow-x: hidden; padding: 0 !important; background: rgba(28,22,34,.94) !important; color: #f3efe6; border-radius: 14px; -webkit-user-select: text; user-select: text; }
+.mn-pb { overflow-wrap: anywhere; }
+.mn-ph { display: flex; align-items: center; gap: 8px; width: 100%; padding: 12px 14px; border: 0; background: none; color: #ffe27a; font: 800 15px Golos Text, Arial, sans-serif; text-align: left; cursor: pointer; }
+.mn-ph i { display: none; }
+.mn-pb { padding: 0 14px 14px; display: grid; gap: 12px; }
+.mn-row { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; }
+.mn-row span { color: #cfc4b0; }
+.mn-mx { height: 8px; }
+.mn-bag { display: grid; gap: 8px; padding: 10px; border-radius: 10px; background: rgba(255,255,255,.05); }
+.mn-bag-c { display: flex; justify-content: space-between; align-items: baseline; font-size: 14px; }
+.mn-bag-c b { color: #ffe27a; }
+.mn-res { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr)); gap: 4px 12px; font-size: 13px; }
+.mn-res li { display: flex; align-items: center; gap: 6px; }
+.mn-res li i { width: 10px; height: 10px; border-radius: 3px; border: 1.5px solid #15122e; }
+.mn-res li span { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.mn-res li b { margin-left: auto; text-align: right; white-space: nowrap; }   /* 25.10: «2 шт. + 37 осколков» - одной строкой */
+.mn-osk { margin: 4px 0 0; font-size: 12px; }   /* 25.10: осколки */
+.mn-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.mn-log h3, .mn-npc-p h3 { margin: 0 0 4px; color: #ffc94d; font-size: 15px; }
+.mn-log ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; font-size: 13px; color: #e8dcc8; }
+.mn .muted { color: #a89c88; font-size: 13px; margin: 0; }
+.mn-npc-p p { margin: 0 0 8px; font-size: 14px; }
+.mn-tip { position: absolute; z-index: 7; left: 50%; bottom: 24px; transform: translateX(-50%); max-width: min(92vw, 520px); padding: 10px 16px; border-radius: 12px; background: #15122e; color: #fff; font-weight: 700; font-size: 14px; text-align: center; box-shadow: 0 6px 20px rgba(0,0,0,.4); }
+
+/* телефон: панель — выдвижная снизу */
+@media (max-width: 720px) {
+  .mn-top { padding: 8px 10px; flex-wrap: wrap; row-gap: 2px; }
+  .mn-ttl b { font-size: 20px; }
+  .mn-reset { order: 3; width: 100%; margin: 0; font-size: 12px; }
+  .mn-panel { left: 0; right: 0; top: auto; bottom: 0; width: auto; max-width: none; max-height: 55vh; max-height: 55dvh; border-radius: 16px 16px 0 0; }
+  .mn-panel[data-open="0"] .mn-pb { display: none; }
+  .mn-ph i { display: block; margin-left: auto; width: 10px; height: 10px; border-right: 2.5px solid currentColor; border-bottom: 2.5px solid currentColor; transform: rotate(-135deg) translate(-2px, -2px); }
+  .mn-panel[data-open="1"] .mn-ph i { transform: rotate(45deg); }
+  .mn-tip { bottom: 70px; }
+  .mn-tb { gap: 6px; }
+  .mn-tb .btn { padding-left: 10px; padding-right: 10px; }
+  .mn-zoom { bottom: 64px; }
+}
+
+/* 23.10: камень выкопан — осколки разлетаются, «+руда» всплывает (один раз, transform/opacity) */
+.mn-burst { position: absolute; width: 0; height: 0; pointer-events: none; }
+.mn-burst i { position: absolute; left: -6px; top: -6px; width: 12px; height: 10px; border-radius: 3px; border: 2px solid #15122e; animation: mn-shard .9s cubic-bezier(.2,.7,.4,1) forwards; }
+@keyframes mn-shard { 0% { transform: translate(0, 0) rotate(0); opacity: 1; } 70% { opacity: 1; } 100% { transform: translate(var(--dx), calc(var(--dy) + 60px)) rotate(var(--r)); opacity: 0; } }
+.mn-burst b { position: absolute; left: 50%; top: -40px; transform: translateX(-50%); white-space: nowrap; font: 900 22px Golos Text, Arial, sans-serif; color: #ffe27a; text-shadow: 0 0 4px #15122e, 0 2px 0 #15122e, 0 0 2px #15122e; animation: mn-up 1.4s ease-out forwards; }
+@keyframes mn-up { 0% { transform: translate(-50%, 10px) scale(.7); opacity: 0; } 15% { transform: translate(-50%, 0) scale(1.1); opacity: 1; } 70% { opacity: 1; } 100% { transform: translate(-50%, -50px) scale(1); opacity: 0; } }
+.mn-burst b.mn-loot { white-space: normal; width: min(260px, 70vw); text-align: center; font-size: 16px; line-height: 1.2; }   /* 25.10: сундук - несколько ресурсов */
+@media (prefers-reduced-motion: reduce) { .mn-burst i { display: none; } .mn-burst b { animation-duration: 2s; } }
+
+/* 26.10 (тестерам - mineShardFxPublic): осколок из камня - внешний span летит вбок (X), внутренний - дугой вверх и вниз (Y), крутится и гаснет.
+   Только transform / opacity; цвет руды - --c, контур и грани - как у значков (тёмный контур, плоский тон, светлая грань) */
+.mn-sfx-p { position: absolute; left: -15px; top: 4px; width: 30px; height: 30px; opacity: 0; animation: mn-sfx-x var(--t, 1s) cubic-bezier(.25,.6,.5,1) var(--dl, 0s) forwards; will-change: transform; }
+.mn-sfx-p > .mn-sfx-s { display: block; width: 100%; height: 100%; animation: mn-sfx-y var(--t, 1s) linear var(--dl, 0s) forwards; will-change: transform, opacity; }
+@keyframes mn-sfx-x { 0% { transform: translateX(0); opacity: 1; } 100% { transform: translateX(var(--dx)); opacity: 1; } }
+@keyframes mn-sfx-y {
+  0% { transform: translateY(0) rotate(0) scale(.45); opacity: 1; animation-timing-function: cubic-bezier(.2,.65,.45,1); }
+  45% { transform: translateY(var(--up)) rotate(calc(var(--rot) * .45)) scale(1.05); opacity: 1; animation-timing-function: cubic-bezier(.55,0,.85,.45); }
+  75% { opacity: 1; }
+  100% { transform: translateY(calc(var(--up) + 40px)) rotate(var(--rot)) scale(.85); opacity: 0; }
+}
+.mn-sfx-s svg, .mn-sfx-ic svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.mn-sfx-s .b, .mn-sfx-ic .b { fill: var(--c); stroke: #15122e; stroke-width: 2.4; stroke-linejoin: round; paint-order: stroke; }
+.mn-sfx-s .l, .mn-sfx-ic .l { fill: #fff; opacity: .5; }
+.mn-sfx-s .d, .mn-sfx-ic .d { fill: #15122e; opacity: .28; }
+.mn-sfx-s .ln, .mn-sfx-ic .ln { fill: none; stroke: #15122e; stroke-width: 1.2; stroke-linejoin: round; opacity: .55; }
+.mn-sfx-s .gl, .mn-sfx-ic .gl { fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; opacity: .9; }
+.mn-sfx-s .sp, .mn-sfx-ic .sp { fill: #fff; stroke: #15122e; stroke-width: .9; paint-order: stroke; }
+.mn-sfx-gem .b { stroke-width: 2.2; }
+.mn-sfx-s .sp { transform-box: fill-box; transform-origin: center; animation: mn-sfx-tw .45s ease-in-out .15s 2 alternate; }   /* искра / блик мигает */
+@keyframes mn-sfx-tw { from { transform: scale(.4); } to { transform: scale(1.35); } }
+.mn-burst b.mn-sfx-t { display: inline-flex; align-items: center; gap: 4px; }
+.mn-burst b.mn-sfx-t.mn-loot { display: block; }   /* сундук: значки - в начале текста, текст переносится */
+.mn-burst b.mn-sfx-t.mn-loot .mn-sfx-ic { vertical-align: -4px; margin-right: 2px; }
+.mn-burst b.mn-sfx-t > span { min-width: 0; }
+.mn-sfx-ic { display: inline-block; flex: none; width: 22px; height: 22px; filter: drop-shadow(0 1px 0 #15122e); }
+.mn-sfx-ic .sp { display: none; }
+@media (max-width: 520px) { .mn-sfx-p { width: 24px; height: 24px; left: -12px; } .mn-sfx-ic { width: 18px; height: 18px; } }
+@media (prefers-reduced-motion: reduce) { .mn-sfx-p { display: none; } .mn-burst b.mn-sfx-t { animation-name: mn-sfx-fade; } }
+@keyframes mn-sfx-fade { 0% { opacity: 0; transform: translateX(-50%); } 12%, 75% { opacity: 1; transform: translateX(-50%); } 100% { opacity: 0; transform: translateX(-50%); } }
+
+/* «пока тебя не было» */
+.mn-news-w { position: absolute; inset: 0; z-index: 4; display: grid; place-items: center; padding: 76px 16px 16px; background: rgba(8,6,12,.45); }
+.mn-news { position: relative; width: min(100%, 420px); max-height: 100%; overflow: auto; padding: 18px 20px !important; background: rgba(28,22,34,.97) !important; color: #f3efe6; border-radius: 16px; box-shadow: 0 12px 40px rgba(0,0,0,.55); box-sizing: border-box; }
+.mn-news .mn-btns { position: sticky; bottom: -18px; padding: 8px 0 0; background: inherit; }
+.mn-news h3 { margin: 0 0 8px; color: #ffc94d; font-size: 20px; }
+.mn-news ul { margin: 0 0 10px; padding-left: 18px; display: grid; gap: 4px; }
+.mn-news b { color: #ffe27a; }
+
+/* поручения у скупщика */
+.mn-q { display: grid; gap: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,.1); }
+.mn-q h4 { margin: 6px 0 0; font-size: 13px; color: #ffc94d; text-transform: uppercase; letter-spacing: .06em; }
+.mn-q ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.mn-q li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: baseline; font-size: 13px; }
+.mn-q li b { font-weight: 800; color: #cfc4b0; white-space: nowrap; }
+.mn-q li em { font-style: normal; color: #ffe27a; white-space: nowrap; }
+.mn-q li.done b { color: #7ff07a; }
+.mn-q li.cl { opacity: .5; }
+
+/* 25.10: своя каска — рисует сам человечек (doodle-core: minerHat), отдельная картинка над головой «левитировала» */
+
+/* 23.10: доска итогов шахты (окно поверх «Города») */
+.mn-board-w { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; background: rgba(8,6,12,.55); padding: 16px; }
+.mn-board { width: min(460px, 100%); max-height: calc(100vh - 32px); overflow: auto; padding: 18px 20px !important; display: grid; gap: 10px; }
+.mn-board h3 { margin: 0; }
+.mn-board h4 { margin: 6px 0 0; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; opacity: .8; }
+.mn-bd-sum { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; }
+.mn-bd-sum b { display: block; font: 400 28px "Russo One", "Arial Black", sans-serif; }
+.mn-bd-sum span { font-size: 12px; opacity: .75; }
+.mn-bd-top { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.mn-bd-top li { display: grid; grid-template-columns: 26px 1fr auto; gap: 8px; align-items: baseline; font-size: 14px; }
+.mn-bd-top li span { opacity: .6; font-variant-numeric: tabular-nums; }
+.mn-bd-top li em { font-style: normal; font-weight: 800; font-variant-numeric: tabular-nums; }
+.mn-bd-top li.me b { text-decoration: underline; text-underline-offset: 3px; }
+
+/* 23.10: сумка в шахте */
+.mn-inv h4 { margin: 8px 0 2px; font-size: 13px; color: #ffc94d; text-transform: uppercase; letter-spacing: .06em; }
+.mn-inv ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.mn-inv li { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 14px; }
+.mn-inv li span { display: grid; }
+.mn-inv li small { font-size: 11px; opacity: .65; }
+.mn-inv li.lamp span { color: #ffe27a; font-weight: 800; }
+
+/* 24.10: доска итогов — вкладки шахт; выбор шахты (шахты городов своих округов); самоцвет этих мест */
+.mn-bd-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
+.mn-go ul { list-style: none; padding: 0; margin: 10px 0 14px; display: grid; gap: 8px; }
+.mn-go [data-go] { width: 100%; display: grid; grid-template-columns: 2em 1fr; column-gap: 8px; text-align: left; align-items: center; padding: 10px 12px; }
+.mn-go [data-go] span { grid-row: 1 / 3; font-size: 1.5em; text-align: center; }
+.mn-go [data-go] small { opacity: .75; font-weight: 500; }
+.mn-gem b { display: inline-flex; align-items: center; gap: 6px; }
+.mn-gem b i { width: 12px; height: 12px; border-radius: 3px; transform: rotate(45deg); box-shadow: 0 0 6px currentColor; display: inline-block; }
+.mn-go [data-go] em { grid-column: 2; font-style: normal; font-size: .85em; opacity: .85; }
+
+/* 25.10: оформление сайта (скины «den», «box», «plank» и др.: [data-skin] .panel { position: relative; margin-top; ушки ::before/::after;
+   clip-path }) — сильнее правил шахты: панель уезжала влево за экран, «Пока тебя не было» и «Понятно» — ниже экрана, на телефоне
+   шапка панели ложилась поверх «В город» (кнопка не нажималась). Здесь — ещё сильнее (html body …) */
+html body .mn .panel, html body .mn-board-w .panel { margin: 0; clip-path: none; outline: 0; }
+html body .mn .panel::before, html body .mn .panel::after, html body .mn-board-w .panel::before, html body .mn-board-w .panel::after { content: none !important; display: none !important; }
+html body .mn .mn-panel { position: absolute; transform: none; }
+html body .mn .mn-news { position: relative; left: auto; top: auto; transform: none; }
+html body .mn-board-w .mn-board { position: relative; }
+@media (max-width: 720px) { html body .mn .mn-panel { left: 0; right: 0; top: auto; bottom: 0; } }
+
+/* 25.10: «Ты» — поверх всех ников; очередь камней; масштаб; шахта в другой вкладке; доли монеты */
+.mn-menm { position: absolute; left: 0; top: 0; z-index: 100000; white-space: nowrap; font: 800 15px Golos Text, Arial, sans-serif; color: #ffe27a; text-shadow: 0 0 3px #15122e, 0 0 3px #15122e, 0 1px 2px #15122e; pointer-events: none; }
+.mn-qn { position: absolute; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: #ffe27a; color: #15122e; border: 3px solid #15122e; font: 900 15px Golos Text, Arial, sans-serif; }
+.mn-zoom { position: absolute; left: 12px; bottom: 16px; z-index: 3; display: flex; gap: 6px; }
+.mn-zoom .btn { min-width: 40px; font-size: 18px; line-height: 1; }
+.mn-other { position: absolute; z-index: 9; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(92vw, 380px); padding: 18px 20px; border-radius: 16px; background: rgba(28,22,34,.97); box-shadow: 0 12px 40px rgba(0,0,0,.55); text-align: center; display: grid; gap: 12px; }
+.mn-other[hidden] { display: none; }
+.mn-other p { margin: 0; font-weight: 700; }
+.mn-frac { opacity: .85; font-weight: 700; }
+.mn-hide[aria-pressed="true"] { opacity: .75; }
+
+/* 25.10 (обновление шахты mine2): копание - замах, удар с отдачей, искры и крошка, камень вздрагивает; у каждого копателя свой темп
+   (--dd, --dl - один раз из mine.js, без кадров JS). Только transform/opacity - анимации идут на видеокарте, не трогая страницу */
+.mn[data-m2="1"] .mn-h.dig .mn-fig > svg { transform-origin: 50% 100%; animation: mna-body var(--dd, 1.2s) var(--dl, 0s) infinite; }
+.mn[data-m2="1"] .mn-h.dig .mn-fig::after { animation: mna-pick var(--dd, 1.2s) var(--dl, 0s) infinite; }
+.mn[data-m2="1"] .mn-h.dig .mn-fig::before { content: ''; position: absolute; left: 86px; top: 50px; width: 6px; height: 6px; border-radius: 50%; background: #fff6c0; pointer-events: none; opacity: 0;
+  box-shadow: 9px -7px 0 0 #ffd23a, -7px -10px 0 -1px #d8c4a0, 11px 6px 0 -1px #8e7f70, -10px 3px 0 0 #fff, 3px -14px 0 -1px #ffb03a, -4px 10px 0 0 #a08a72, 14px -1px 0 -2px #fff;
+  animation: mna-spark var(--dd, 1.2s) var(--dl, 0s) infinite; }
+@keyframes mna-body {
+  0% { transform: rotate(0); animation-timing-function: cubic-bezier(.3, 0, .5, 1); }
+  48% { transform: rotate(-6deg) translateY(-3px); }
+  52% { transform: rotate(-7deg) translateY(-3px); animation-timing-function: cubic-bezier(.7, 0, 1, 1); }
+  57% { transform: rotate(7deg) scale(1.05, .93); animation-timing-function: ease-out; }
+  63% { transform: rotate(3deg) scale(.98, 1.02); }
+  72%, 100% { transform: rotate(0); }
+}
+@keyframes mna-pick {
+  0% { transform: rotate(-25deg); animation-timing-function: cubic-bezier(.3, 0, .5, 1); }
+  48% { transform: rotate(-82deg); }
+  52% { transform: rotate(-84deg); animation-timing-function: cubic-bezier(.7, 0, 1, 1); }
+  57% { transform: rotate(32deg); animation-timing-function: ease-out; }
+  62% { transform: rotate(16deg); }
+  68% { transform: rotate(26deg); }
+  100% { transform: rotate(-25deg); }
+}
+@keyframes mna-spark { 0%, 56% { opacity: 0; transform: scale(.2); } 58% { opacity: 1; transform: scale(.55); } 72% { opacity: .9; transform: translateY(-4px) scale(1.5); } 86% { opacity: 0; transform: translateY(5px) scale(1.9); } 100% { opacity: 0; transform: scale(.2); } }
+/* камень, который копают: копия поверх сцены (mine-art.js digging), оригинал в сцене скрыт; трещины - по прогрессу */
+.mn-rk { position: absolute; overflow: visible; pointer-events: none; }
+.mn[data-m2="1"] .mn-rk.hit { animation: mna-shake var(--sd, 1.1s) var(--sl, 0s) infinite; }
+@keyframes mna-shake { 0%, 56% { transform: translate(0, 0); } 59% { transform: translate(2.5px, -1px); } 63% { transform: translate(-2px, 1px); } 67% { transform: translate(1px, 0); } 71%, 100% { transform: translate(0, 0); } }
+.mn-bg [data-i].dg .rk { opacity: 0; }
+@media (prefers-reduced-motion: reduce) { .mn[data-m2="1"] .mn-h.dig .mn-fig > svg, .mn[data-m2="1"] .mn-h.dig .mn-fig::before, .mn[data-m2="1"] .mn-rk.hit { animation: none; } .mn[data-m2="1"] .mn-h.dig .mn-fig::after { animation: none; } }
+/* сцена (SVG этажа) - свой слой: идущие герои и полоски не перерисовывают тысячи узлов сцены (на телефоне - нет, как .mn-world) */
+@media (pointer: fine) { .mn[data-m2="1"] .mn-bg { will-change: transform; } .mn[data-m2="1"] .mn-heroes { will-change: transform; } }
+/* камень над головой (стоит под ним): кирка из-за головы бьёт вверх, кот приседает и тянется */
+.mn[data-m2="1"] .mn-h.dig.up .mn-fig > svg { animation-name: mna-body-up; }
+.mn[data-m2="1"] .mn-h.dig.up .mn-fig::after { right: auto; left: 28px; top: 16px; animation-name: mna-pick-up; }
+.mn[data-m2="1"] .mn-h.dig.up .mn-fig::before { left: 56px; top: 8px; }
+@keyframes mna-body-up {
+  0% { transform: none; animation-timing-function: cubic-bezier(.3, 0, .5, 1); }
+  48% { transform: translateY(2px) scale(1.04, .95); }
+  52% { transform: translateY(2px) scale(1.04, .95); animation-timing-function: cubic-bezier(.7, 0, 1, 1); }
+  57% { transform: translateY(-4px) scale(.95, 1.07); animation-timing-function: ease-out; }
+  64% { transform: translateY(-1px) scale(1.02, .98); }
+  72%, 100% { transform: none; }
+}
+@keyframes mna-pick-up {
+  0% { transform: rotate(-30deg); animation-timing-function: cubic-bezier(.3, 0, .5, 1); }
+  48% { transform: rotate(-100deg); }
+  52% { transform: rotate(-102deg); animation-timing-function: cubic-bezier(.7, 0, 1, 1); }
+  57% { transform: rotate(4deg); animation-timing-function: ease-out; }
+  62% { transform: rotate(-12deg); }
+  68% { transform: rotate(-4deg); }
+  100% { transform: rotate(-30deg); }
+}
+/* 25.10 (mine/ui): подписи NPC — поверх героев; предметы входа нажимаются; телефон: шапка в одну строку, «−/+» над панелью */
+.mn-labels { position: absolute; inset: 0; pointer-events: none; z-index: 100001; }
+.mn-lbl, .mn-hl { position: absolute; transform: translate(-50%, -100%); white-space: nowrap; font: 800 17px Golos Text, Arial, sans-serif; color: #ffe27a; text-shadow: 0 0 3px #15122e, 0 0 3px #15122e, 0 2px 2px #15122e; }
+.mn-hl { padding: 4px 12px; border-radius: 999px; background: rgba(21,18,46,.92); border: 2px solid #ffe27a; color: #fff; font-size: 16px; text-shadow: none; box-shadow: 0 6px 18px rgba(0,0,0,.45); }
+.mn-hl[hidden] { display: none; }
+.mn-bg [data-obj].act { cursor: pointer; }
+.mn-bg .mn-npc { cursor: pointer; }
+@media (max-width: 720px) {
+  .mn-top { flex-wrap: nowrap; align-items: flex-start; }
+  .mn-ttl { flex-direction: column; align-items: flex-start; gap: 0; min-width: 0; flex: 1 1 auto; }
+  .mn-ttl b { font-size: 18px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mn-ttl span { font-size: 12px; white-space: nowrap; }
+  .mn-reset { display: none; }
+  .mn-tb { flex: 0 0 auto; }
+  .mn-tb .btn { min-height: 36px; padding: 6px 10px; font-size: 13px; }
+  html body .mn .mn-zoom { bottom: 64px; }
+}
+
+/* ===== 25.10: обновление шахты (mine2, тестерам): панель, шапка, подсветка предметов, сумка ячейками. Всё — под .mn[data-m2="1"] ===== */
+.mn[data-m2="1"] { --m2-bg: rgba(29,22,32,.95); --m2-card: rgba(255,255,255,.05); --m2-line: rgba(255,255,255,.08); --m2-gold: var(--accent-2, #ffcf6a); --m2-mute: var(--mute, #bfaab7); }
+/* шапка: название и этаж — плашкой; кнопки — одной группой */
+.mn[data-m2="1"] .mn-top { padding: 12px 16px; background: linear-gradient(rgba(14,10,18,.9), rgba(14,10,18,0)); }
+.mn[data-m2="1"] .mn-ttl { display: grid; gap: 2px; padding: 6px 14px 7px; border-radius: 16px; background: rgba(21,16,26,.78); box-shadow: 0 6px 18px rgba(0,0,0,.3); }
+.mn[data-m2="1"] .mn-ttl b { font: 700 22px/1.1 var(--hd, "Russo One", sans-serif); letter-spacing: .02em; color: var(--m2-gold); text-shadow: none; }
+.mn[data-m2="1"] .mn-ttl span { font-size: 13px; color: var(--m2-mute); font-weight: 700; }
+.mn[data-m2="1"] .mn-reset { align-self: center; padding: 4px 10px; border-radius: 999px; background: rgba(21,16,26,.6); font-size: 12px; color: var(--m2-mute); }
+.mn[data-m2="1"] .mn-tb { padding: 4px; gap: 4px; border-radius: 999px; background: rgba(21,16,26,.78); box-shadow: 0 6px 18px rgba(0,0,0,.3); }
+.mn[data-m2="1"] .mn-tb .btn { min-height: 38px; }
+.mn[data-m2="1"] .mn-exit { margin-left: 0; background: var(--accent, #ff8fa3); color: #2a1b22; }
+/* панель справа: карточки */
+.mn[data-m2="1"] .mn-panel { top: 76px; width: 340px; background: var(--m2-bg) !important; border-radius: 22px; box-shadow: 0 18px 40px rgba(0,0,0,.4); }
+.mn[data-m2="1"] .mn-ph { padding: 14px 16px 10px; font: 700 13px var(--tx, Golos Text, sans-serif); color: var(--m2-mute); text-transform: uppercase; letter-spacing: .08em; cursor: default; }
+.mn[data-m2="1"] .mn-ph span { flex: 1 1 auto; min-width: 0; }
+.mn-ph em { display: none; }
+.mn[data-m2="1"] .mn-pb { padding: 0 12px 12px; gap: 10px; }
+.mn[data-m2="1"] .m2-card { display: grid; gap: 8px; padding: 12px 14px; border-radius: 16px; background: var(--m2-card); box-shadow: inset 0 0 0 1px var(--m2-line); }
+.mn[data-m2="1"] .m2-k { font: 800 12px var(--tx, Golos Text, sans-serif); text-transform: uppercase; letter-spacing: .08em; color: var(--m2-mute); }
+.mn[data-m2="1"] .m2-k small { text-transform: none; letter-spacing: 0; font-weight: 600; opacity: .8; }
+.mn[data-m2="1"] .m2-t { margin: 0; font-size: 15px; font-weight: 700; line-height: 1.35; color: var(--ink, #f7eadf); }
+.mn[data-m2="1"] .m2-now.on { box-shadow: inset 0 0 0 2px rgba(255,207,106,.45); }
+.mn[data-m2="1"] .m2-t b { color: var(--m2-gold); }
+.mn[data-m2="1"] .m2-pr { height: 10px; border-radius: 999px; background: #15101a; overflow: hidden; }
+.mn[data-m2="1"] .m2-pr i { display: block; height: 100%; width: 0; border-radius: 999px; background: linear-gradient(90deg, #ffb84a, var(--m2-gold)); }
+.mn[data-m2="1"] .m2-sub { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--m2-mute); font-weight: 700; }
+.mn[data-m2="1"] .m2-earn .mn-bag { padding: 0; background: none; }
+.mn[data-m2="1"] .m2-earn .mn-bag-c span { display: none; }
+.mn[data-m2="1"] .m2-earn .mn-bag-c b { font: 700 24px/1.1 var(--hd, sans-serif); color: var(--m2-gold); }
+.mn[data-m2="1"] .m2-earn .mn-res { gap: 4px; display: flex; flex-wrap: wrap; }
+.mn[data-m2="1"] .m2-earn .mn-res li { padding: 3px 9px; border-radius: 999px; background: rgba(0,0,0,.25); gap: 6px; }
+.mn[data-m2="1"] .m2-earn .mn-res li b { margin-left: 2px; color: var(--m2-gold); }
+.mn[data-m2="1"] .m2-sell { width: 100%; }
+.mn[data-m2="1"] .m2-dot { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: #7ff07a; color: #15241a; font: 800 11px var(--tx, sans-serif); vertical-align: 1px; }
+.mn[data-m2="1"] .m2-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 0; }
+.mn[data-m2="1"] .m2-stats > div { display: grid; gap: 3px; align-content: start; padding: 9px 11px; border-radius: 14px; background: var(--m2-card); min-width: 0; }
+.mn[data-m2="1"] .m2-stats .m2-gem { grid-column: 1 / -1; grid-template-columns: 1fr auto; align-items: center; }
+.mn[data-m2="1"] .m2-stats dt { font-size: 11px; color: var(--m2-mute); font-weight: 700; }
+.mn[data-m2="1"] .m2-stats dd { margin: 0; font-size: 15px; font-weight: 800; color: var(--ink, #f7eadf); }
+.mn[data-m2="1"] .m2-stats dd small { font-size: 11px; color: var(--m2-mute); font-weight: 700; }
+.mn[data-m2="1"] .m2-stats dd.ok { color: #8fe39a; }
+.mn[data-m2="1"] .m2-gem dd { display: inline-flex; align-items: center; gap: 6px; }
+.mn[data-m2="1"] .m2-gem dd i { width: 11px; height: 11px; border-radius: 3px; transform: rotate(45deg); box-shadow: 0 0 6px currentColor; }
+.mn[data-m2="1"] .m2-mini { display: block; height: 4px; border-radius: 999px; background: #15101a; overflow: hidden; margin-top: 2px; }
+.mn[data-m2="1"] .m2-mini i { display: block; height: 100%; background: #8fe3b0; border-radius: 999px; }
+.mn[data-m2="1"] .m2-mini.xp i { background: var(--m2-gold); }
+.mn[data-m2="1"] .m2-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.mn[data-m2="1"] .m2-log { border-top: 1px solid var(--m2-line); padding-top: 8px; }
+.mn[data-m2="1"] .m2-log summary { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; cursor: pointer; font: 800 12px var(--tx, sans-serif); text-transform: uppercase; letter-spacing: .08em; color: var(--m2-mute); list-style: none; }
+.mn[data-m2="1"] .m2-log summary::-webkit-details-marker { display: none; }
+.mn[data-m2="1"] .m2-log summary::after { content: '▾'; margin-left: 4px; }
+.mn[data-m2="1"] .m2-log[open] summary::after { content: '▴'; }
+.mn[data-m2="1"] .m2-log summary span { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 600; }
+.mn[data-m2="1"] .m2-log ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 2px; font-size: 13px; color: var(--ink, #f7eadf); }
+.mn[data-m2="1"] .m2-log li { padding: 4px 8px; border-radius: 8px; line-height: 1.3; }
+.mn[data-m2="1"] .m2-log li:nth-child(odd) { background: rgba(255,255,255,.03); }
+/* окна NPC и поручения — та же карточка */
+.mn[data-m2="1"] .mn-npc-p { display: grid; gap: 8px; }
+.mn[data-m2="1"] .mn-npc-p h3 { font: 700 18px var(--hd, sans-serif); color: var(--m2-gold); }
+.mn[data-m2="1"] .mn-q li { padding: 5px 0; border-bottom: 1px solid var(--m2-line); }
+/* подсветка предмета под мышью: контур по форме (SVG-фильтр), подпись */
+.mn[data-m2="1"] .mn-bg .hl { filter: url(#mnGlow); }
+.mn[data-m2="1"] .mn-h.walk .mn-nm2 { font-size: 12px; opacity: .7; }
+/* телефон: панель снизу; свёрнута — что делаю и заработок */
+@media (max-width: 720px) {
+  .mn[data-m2="1"] .mn-top { padding: 8px 10px; gap: 8px; }
+  .mn[data-m2="1"] .mn-ttl { padding: 5px 10px; border-radius: 12px; }
+  .mn[data-m2="1"] .mn-ttl b { font-size: 16px; }
+  .mn[data-m2="1"] .mn-ttl span { font-size: 11px; }
+  .mn[data-m2="1"] .mn-tb .btn { min-height: 34px; padding: 4px 10px; font-size: 13px; }
+  .mn[data-m2="1"] .mn-panel { top: auto; width: auto; border-radius: 20px 20px 0 0; max-height: 62vh; max-height: 62dvh; }
+  .mn[data-m2="1"] .mn-ph { padding: 12px 14px; cursor: pointer; color: var(--ink, #f7eadf); text-transform: none; letter-spacing: 0; font-size: 14px; }
+  .mn[data-m2="1"] .mn-ph span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mn[data-m2="1"] .mn-ph em { display: block; font-style: normal; color: var(--m2-gold); font-weight: 800; white-space: nowrap; }
+  .mn[data-m2="1"] .mn-ph i { margin-left: 4px; }
+}
+
+@media (min-width: 721px) { html body .mn[data-m2="1"] .mn-ph { display: none; } html body .mn[data-m2="1"] .mn-pb { padding-top: 12px; } }
+@media (max-width: 720px) {
+  html body .mn .mn-panel[data-open="1"] { z-index: 5; }   /* развёрнутая панель — поверх «−/+» */
+}
+.mn-nm2 { bottom: calc(110px + var(--nmy, 0) * 15px); }
+/* 25.10 (обновление шахты): чат шахты — тот же чат, что в «Городе» (sitechat.js, стили city.css): слева снизу над «−/+» */
+.mn .cy-chat { position: absolute; left: 12px; bottom: 64px; margin: 0; z-index: 4; width: min(360px, calc(100% - 24px)); }
+@media (max-width: 720px) { .mn .cy-chat { left: auto; right: 10px; bottom: 64px; } .mn .cy-chat.open { left: 10px; width: auto; } html body .mn .mn-panel[data-open="1"] ~ .cy-chat { display: none; } }
+@media (max-width: 720px) { .mn .cy-chat:not(.open) { width: auto; } }
+/* 25.10 (mine2): чат не закрывает подъёмник и предметы (mine.js chatFit: data-chat="side" - слева от шахты, ширина --mn-chw;
+   "band" - нижняя полоса, сцена кончается над ней). Свёрнут - язычок «Чат» у левого края (число непрочитанных - в нём) */
+.mn[data-m2="1"] .cy-chat { left: 0; bottom: 64px; width: var(--mn-chw, min(360px, calc(100% - 24px))); }
+.mn[data-m2="1"] .cy-chat.open { left: 12px; }
+.mn[data-m2="1"][data-chat="band"] .cy-chat.open { right: 12px; width: auto; }
+.mn[data-m2="1"] .cy-chat:not(.open) { width: auto; }
+.mn[data-m2="1"] .cy-chat:not(.open) > .cy-chat-t { border-radius: 0 999px 999px 0; padding: 0 12px 0 10px; box-shadow: 0 4px 14px rgba(0,0,0,.35); }
+@media (max-width: 720px) {
+  .mn[data-m2="1"] .cy-chat { left: 0; right: auto; bottom: 64px; }
+  .mn[data-m2="1"] .cy-chat.open, .mn[data-m2="1"][data-chat="band"] .cy-chat.open { left: 10px; right: 10px; width: auto; }
+  html body .mn[data-m2="1"][data-chat] .mn-zoom { left: auto; right: 10px; }   /* язычок чата - слева, «−/+» - справа: не налезают */
+}
+
+/* 25.10 (mine2): сумка — компактная карточка на месте правой панели (вид карточки, ячейки, кукла, полоски, фильтр — библиотека
+   инвентаря: /lib/inventory.css, .lgi--compact). Здесь — только где она стоит: справа сверху; шахта рядом видна и нажимается
+   (у обёртки нет подложки); на телефоне — снизу на ~60% высоты */
+.mn.bag-on .mn-panel { display: none; }
+.mn-inv2-w { position: absolute; z-index: 6; right: 16px; top: 76px; width: 276px; max-height: calc(100% - 92px); display: flex; pointer-events: none; }
+.mn-inv2 { pointer-events: auto; }
+@media (max-width: 720px) {
+  .mn-inv2-w { left: 0; right: 0; top: auto; bottom: 0; width: auto; height: 60vh; height: 60dvh; max-height: none; }
+  .mn.bag-on .cy-chat, .mn.bag-on .mn-zoom { display: none; }
+}
+
+/* 25.10 (mine2, просьба стримера): на широком ПК панель, окна и сумка - вплотную к правой стене зала (mine.js dockFit: --mn-pl - где
+   начинается тёмная полоса за стеной, --mn-pw - ширина: 340, окно - до 600), шапка с кнопками - над ними; чат - у левой стены */
+.mn[data-m2="1"][data-dock="1"] .mn-panel { left: var(--mn-pl); right: auto; width: var(--mn-pw, 340px); max-width: none; }
+.mn[data-m2="1"][data-dock="1"] .mn-inv2-w { left: var(--mn-pl); right: auto; }
+.mn[data-m2="1"][data-dock="1"] .mn-top { right: auto; width: var(--mn-hw); }
+.mn[data-m2="1"][data-chat="side"] .cy-chat.open { left: var(--mn-chx, 12px); }
+/* 26.10 (mine2): чат на ПК перетаскивается за заголовок (mine.js chatDrag): data-chat="free" - стоит, где поставил зритель (--mn-cfx/--mn-cfy
+   от левого верхнего угла шахты), сцену не укорачивает; ленту можно потянуть за нижний правый угол. «⤢» / двойной клик - на место */
+.mn .mn-chat-home { display: none; }
+@media (min-width: 721px) {
+  .mn[data-m2="1"][data-chat="side"] .cy-chat-h, .mn[data-m2="1"][data-chat="free"] .cy-chat-h { cursor: move; user-select: none; -webkit-user-select: none; touch-action: none; }
+  .mn[data-m2="1"][data-chat="side"] .cy-chat-h button, .mn[data-m2="1"][data-chat="free"] .cy-chat-h button { cursor: pointer; }
+  .mn[data-m2="1"][data-chat="free"] .cy-chat.open { left: var(--mn-cfx, 12px); top: var(--mn-cfy, 76px); right: auto; bottom: auto; z-index: 6; }
+  .mn[data-m2="1"][data-chat="free"] .cy-chat-l { resize: vertical; min-height: 60px; max-height: 70vh; }
+  .mn[data-m2="1"][data-chat="free"] .mn-chat-home { display: block; width: 28px; height: 28px; margin-left: auto; padding: 0; border: 0; border-radius: 8px; background: rgba(255, 255, 255, .1); color: #fff; font: 700 15px/1 system-ui; }
+  .mn[data-m2="1"][data-chat="free"] .mn-chat-home:hover, .mn[data-m2="1"][data-chat="free"] .mn-chat-home:focus-visible { background: rgba(255, 255, 255, .22); outline: 2px solid #fff; outline-offset: 0; }
+  .mn[data-m2="1"][data-chat="free"] .mn-chat-home + .cy-chat-sh { margin-left: 0; }
+  .mn .cy-chat.mn-chat-drag .cy-chat-b { box-shadow: 0 12px 32px rgba(0, 0, 0, .5); }
+}
+.mn:not([data-chat="free"]) .cy-chat-l { height: auto !important; }   /* высота ленты, которую потянули, - только у перетащенного чата */
+.mn.board-on .mn-panel { visibility: hidden; }
+html body .mn-board-w.dock { display: block; padding: 0; background: none; pointer-events: none; }
+html body .mn-board-w.dock .mn-board { position: absolute; left: var(--bl); top: var(--bt); width: var(--bw); max-height: calc(100vh - var(--bt) - 16px); pointer-events: auto;
+  background: rgba(29,22,32,.96) !important; color: #f3efe6; border-radius: 22px; box-shadow: 0 18px 40px rgba(0,0,0,.45); }
+
+/* 25.10 (mine2): строки поручений - название целиком, прогресс и награда фишками справа; в узкой панели фишки - строкой ниже */
+.mn[data-m2="1"] .mn-q li.mn-qr { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 8px 0; }
+.mn[data-m2="1"] .mn-qt { flex: 1 1 240px; min-width: 0; font-size: 14px; line-height: 1.3; }
+.mn[data-m2="1"] .mn-qt small { display: block; font-size: 11px; color: var(--m2-mute); }
+.mn[data-m2="1"] .mn-qx { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; margin-left: auto; }
+.mn[data-m2="1"] .mn-qx > * { display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; border-radius: 999px; background: rgba(255,255,255,.07); font-size: 12px; white-space: nowrap; }
+.mn[data-m2="1"] .mn-q li.mn-qr b { color: #cfc4b0; }
+.mn[data-m2="1"] .mn-q li.mn-qr.done b { color: #15122e; background: #7ff07a; }
+.mn[data-m2="1"] .mn-q li.mn-qr em { font-style: normal; color: #ffe27a; }
+.mn[data-m2="1"] .mn-q li.mn-qr.cl { opacity: .5; }
+.mn[data-m2="1"] .mn-q [data-mn-claim] { margin-top: 6px; }
+.mn[data-m2="1"] .mn-q [data-mn-claim][disabled] { opacity: .5; cursor: default; filter: saturate(.4); }
+
+/* 25.10 (mine2): кнопки шахты - в цветах пласта (латунь и дерево с тёмной обводкой), а не розовые сайта: «В город», «Сдать скупщику»,
+   «Забрать награду», «Назад», «Надеть» в сумке. Цвета - по пласту (mine-biome.js ставит .mn[data-mnb]) */
+.mn[data-m2="1"] { --mb-l: #f2c56a; --mb: #d49a3c; --mb-d: #8a5a1e; --mb-ink: #2a1806; --mg: #4a3426; --mg-l: #5e4432; --mg-ink: #f3e3c8; }
+.mn[data-m2="1"][data-mnb="clay"] { --mb-l: #f0b47e; --mb: #cc7c46; --mb-d: #7e3e1c; --mb-ink: #2a1206; --mg: #4e2c20; --mg-l: #64382a; }
+.mn[data-m2="1"][data-mnb="stone"] { --mb-l: #e6d39a; --mb: #b89c56; --mb-d: #6a5628; --mb-ink: #221a08; --mg: #3a3a44; --mg-l: #4c4c58; --mg-ink: #e8e6f0; }
+.mn[data-m2="1"][data-mnb="granite"] { --mb-l: #e8b884; --mb: #b97c48; --mb-d: #6a4022; --mb-ink: #20120a; --mg: #2c2a36; --mg-l: #3c3a48; --mg-ink: #e6e2f2; }
+.mn[data-m2="1"][data-mnb="grotto"] { --mb-l: #9ff0d6; --mb: #4fbf9e; --mb-d: #1e6a56; --mb-ink: #062018; --mg: #1c2c34; --mg-l: #26404a; --mg-ink: #d8f4ee; }
+.mn[data-m2="1"][data-mnb="abyss"] { --mb-l: #ffb070; --mb: #e0602a; --mb-d: #7a2410; --mb-ink: #200604; --mg: #2a1418; --mg-l: #3c1c22; --mg-ink: #ffe4d6; }
+html body .mn[data-m2="1"] .btn.primary { background: linear-gradient(var(--mb-l), var(--mb)); color: var(--mb-ink); border: 2px solid #15122e; box-shadow: inset 0 -3px 0 var(--mb-d), 0 3px 0 rgba(0,0,0,.35); text-shadow: none; }
+html body .mn[data-m2="1"] .btn.primary:hover:not([disabled]) { filter: brightness(1.08); }
+html body .mn[data-m2="1"] .btn.primary:active:not([disabled]) { box-shadow: inset 0 2px 0 var(--mb-d); transform: translateY(1px); }
+html body .mn[data-m2="1"] .btn.ghost { background: linear-gradient(var(--mg-l), var(--mg)); color: var(--mg-ink); border: 2px solid #15122e; box-shadow: inset 0 -2px 0 rgba(0,0,0,.35); }
+html body .mn[data-m2="1"] .btn.ghost:hover:not([disabled]) { filter: brightness(1.15); }
+html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); outline-offset: 2px; }
+/* 26.10: подпись верхней клети длинная - переносится и не шире 320 px */
+.mn .mn-hl.long { white-space: normal; width: max-content; max-width: 320px; text-align: center; line-height: 1.3; border-radius: 14px; }
+.mn .mn-hl.dn { transform: translate(-50%, 0); }
+/* 26.10 (mine2): счётчики в шапке - «👥 В шахте N · ⛏ копают M»; на телефоне - коротко (только значки и числа) */
+.mn-cnt { display: none; }
+.mn[data-m2="1"] .mn-cnt:not([hidden]) { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 3px; }
+.mn[data-m2="1"] .mn-cnt b { display: inline-flex; align-items: center; gap: 3px; padding: 1px 9px; border-radius: 999px; background: rgba(255,255,255,.08); font: 800 12px var(--tx, Golos Text, sans-serif); color: var(--m2-gold); white-space: nowrap; }
+.mn[data-m2="1"] .mn-cnt i { font-style: normal; color: var(--m2-mute); font-weight: 700; }
+/* 26.10 (mine/count-fix): число «В шахте / копают» - свойством --mn-n (mine.js cnt): новое значение докручивается за 1,2 с самим CSS */
+@property --mn-n { syntax: '<integer>'; inherits: false; initial-value: 0; }
+.mn-cnt .mn-num { --mn-n: 0; counter-reset: mnn var(--mn-n); transition: --mn-n 1.2s ease-out; font-variant-numeric: tabular-nums; }
+.mn-cnt .mn-num::after { content: counter(mnn); }
+@media (prefers-reduced-motion: reduce) { .mn-cnt .mn-num { transition: none; } }
+@media (max-width: 720px) {
+  .mn[data-m2="1"] .mn-cnt { margin-top: 2px; gap: 4px; }
+  .mn[data-m2="1"] .mn-cnt b { padding: 0 6px; font-size: 11px; }
+  .mn[data-m2="1"] .mn-cnt i { display: none; }
+  /* шапка на телефоне - уже: «Игроки» и «Итоги» - значками (текст остаётся для экранного диктора), «В город» - словом */
+  .mn[data-m2="1"] .mn-tb [data-mn-hide], .mn[data-m2="1"] .mn-tb [data-mn-board] { font-size: 0 !important; min-width: 38px; padding: 0 8px !important; }
+  .mn[data-m2="1"] .mn-tb [data-mn-hide]::before { content: '👥'; font-size: 17px; }
+  .mn[data-m2="1"] .mn-tb [data-mn-board]::before { content: '📊'; font-size: 17px; }
+  .mn[data-m2="1"] .mn-tb [data-mn-hide][aria-pressed="true"]::before { opacity: .45; }
+}
+/* 26.10 (mine2): телефон боком (низкий экран): шапка в одну строку - короткое название, кнопки значками, без срока недели и имени пласта;
+   панель уже и ниже шапки */
+@media (max-height: 480px) and (pointer: coarse) {
+  .mn[data-m2="1"] .mn-top { padding: 6px 10px; }
+  .mn[data-m2="1"] .mn-ttl { padding: 4px 10px; }
+  .mn[data-m2="1"] .mn-ttl b { font-size: 15px; max-width: 34vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mn[data-m2="1"] .mn-ttl span[data-mn="floor"] { font-size: 11px; white-space: nowrap; }
+  .mn[data-m2="1"] .mnb-nm, .mn[data-m2="1"] .mn-reset { display: none; }
+  .mn[data-m2="1"] .mn-cnt i { display: none; }
+  .mn[data-m2="1"] .mn-tb .btn { min-height: 34px; padding: 4px 10px; font-size: 13px; white-space: nowrap; }
+  .mn[data-m2="1"] .mn-tb [data-mn-hide], .mn[data-m2="1"] .mn-tb [data-mn-board] { font-size: 0 !important; min-width: 38px; padding: 0 8px !important; }
+  .mn[data-m2="1"] .mn-tb [data-mn-hide]::before { content: '👥'; font-size: 17px; }
+  .mn[data-m2="1"] .mn-tb [data-mn-board]::before { content: '📊'; font-size: 17px; }
+  .mn[data-m2="1"] .mn-panel { top: 56px; width: 300px; max-height: calc(100% - 64px); }
+}
+/* 26.10: полоска копания - «здоровье» камня (mine.js hpGo): цвет по остатку, свой камень - светлая рамка */
+@keyframes mnHp { 0% { background-color: #5fd35f; } 50% { background-color: #ffd23f; } 100% { background-color: #ff4d3d; } }
+.mn .mn-bar i { background: none; background-color: #5fd35f; }
+.mn .mn-bar.me { box-shadow: 0 0 0 2px #ffe27a; }
+.mn[data-m2="1"] .m2-pr i { background-image: none; background-color: #5fd35f; }
+
+/* 26.10: шахта не нарисовалась - текст ошибки в панели (mine.js fail) */
+.mn .mn-err { padding: 4px 2px; } .mn .mn-err p { margin: 0 0 8px; } .mn .mn-err code { word-break: break-all; font-size: 12px; color: #ffb4a0; }
+/* 26.10: окно скупщика (флаг mineBuyerPublic / тестеры): прилавок, предложение «Дам за это N», руда из сумки — библиотекой инвентаря */
+.mn[data-m2="1"] .m2-earn .mb-earn .mn-bag-c { display: grid; gap: 2px; }
+.mn[data-m2="1"] .m2-earn .mb-earn .mn-bag-c span { display: block; font-size: 12px; color: var(--m2-mute); font-weight: 600; }
+.mn[data-m2="1"] .mb-earn p { margin: 4px 0 0; font-size: 12.5px; line-height: 1.35; }
+.mn[data-m2="1"] .mb-wait { padding: 6px 9px; border-radius: 10px; background: rgba(255,170,80,.12); color: #ffd19a; }
+.mn[data-m2="1"] .mb-head { grid-template-columns: 1fr; }
+.mn[data-m2="1"] .mb-who h3 { margin: 0; font: 700 18px var(--hd, sans-serif); color: var(--m2-gold); }
+.mn[data-m2="1"] .mb-say { margin: 4px 0 0; font-size: 14px; line-height: 1.4; color: var(--ink, #f7eadf); font-style: italic; }
+.mn[data-m2="1"] .mb-say .m { font-style: normal; }
+.mn[data-m2="1"] .mb-say.thx { color: #c9f5c0; }   /* 26.10: благодарность после обмена */
+.mn[data-m2="1"] .mb-counter { border: 2px dashed rgba(255,207,106,.35); background: linear-gradient(rgba(120,82,40,.22), rgba(70,46,24,.18)); transition: border-color .15s, background-color .15s; }
+.mn[data-m2="1"] .mb-counter.ig-ok { border-color: rgba(143,227,154,.6); }
+.mn[data-m2="1"] .mb-counter.ig-hover { border-color: #8fe39a; background-color: rgba(143,227,154,.08); }
+.mn[data-m2="1"] .mb-empty { margin: 0; padding: 14px 8px; text-align: center; font-size: 13px; color: var(--m2-mute); line-height: 1.4; }
+.mn[data-m2="1"] .mb-lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.mn[data-m2="1"] .mb-ln { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: center; gap: 4px 8px; padding: 6px 8px; border-radius: 12px; background: rgba(0,0,0,.25); }
+.mn[data-m2="1"] .mb-ic { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 10px; background: rgba(255,255,255,.06); }
+.mn[data-m2="1"] .mb-ic svg { width: 34px; height: 34px; }
+.mn[data-m2="1"] .mb-nm { display: grid; min-width: 0; }
+.mn[data-m2="1"] .mb-nm b { font-size: 14px; color: var(--ink, #f7eadf); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mn[data-m2="1"] .mb-nm small { font-size: 12px; color: var(--m2-mute); font-weight: 700; }
+.mn[data-m2="1"] .mb-v { font-style: normal; font-weight: 800; font-size: 13px; color: var(--m2-gold); white-space: nowrap; }
+.mn[data-m2="1"] .mb-lb { grid-column: 2 / -1; display: flex; justify-content: flex-end; gap: 4px; }
+.mn[data-m2="1"] .mb-inv .lgi { min-height: 0; }
+.mn[data-m2="1"] .mb-inv .lgi-empty { margin: 4px 0; font-size: 13px; }
+.mn[data-m2="1"] .mb-lb .btn { min-width: 34px; min-height: 32px; padding: 0 8px; }
+.mn[data-m2="1"] .mb-offer { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 8px 12px; border-radius: 12px; background: rgba(0,0,0,.3); color: var(--m2-mute); font-weight: 700; font-size: 13px; }
+.mn[data-m2="1"] .mb-offer b { font: 700 22px/1.1 var(--hd, sans-serif); color: var(--m2-mute); }
+.mn[data-m2="1"] .mb-offer.on b { color: var(--m2-gold); }
+.mn[data-m2="1"] .mb-counter .mn-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.mn[data-m2="1"] .mb-counter .mn-btns .btn { min-height: 42px; }
+.mn[data-m2="1"] .mb-inv .lgi { background: none; box-shadow: none; padding: 0; }
+.mn[data-m2="1"] .mb-inv .cy-grid { grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); }
+.mn[data-m2="1"] .mb-foot { display: grid; gap: 6px; }
+.mn[data-m2="1"] .mb-foot p { margin: 0; font-size: 12px; }
+.mn[data-m2="1"] .mb-prices summary { cursor: pointer; font: 800 12px var(--tx, sans-serif); text-transform: uppercase; letter-spacing: .08em; color: var(--m2-mute); }
+.mn[data-m2="1"] .mb-prices ul { list-style: none; margin: 6px 0 2px; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; font-size: 13px; }
+.mn[data-m2="1"] .mb-prices li { display: flex; justify-content: space-between; gap: 6px; }
+.mn[data-m2="1"] .mb-prices li b { color: var(--m2-gold); }
+@media (max-width: 720px) {
+  .mn[data-m2="1"] .mb-ic { width: 34px; height: 34px; }
+  .mn[data-m2="1"] .mb-ic svg { width: 28px; height: 28px; }
+  .mn[data-m2="1"] .mb-inv .cy-grid { grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); }
+}
+
+/* 26.10 (mine2): «Как устроена шахта» - значок «i» в шапке (только с обновлением) и окно (mine.js help: вид - как у «Итогов», .mn-board) */
+.mn .mn-info { display: none; }
+.mn[data-m2="1"] .mn-info { display: inline-flex; align-items: center; justify-content: center; min-width: 36px; padding-left: 0; padding-right: 0; font: italic 700 16px/1 Georgia, serif; text-transform: none; }
+.mn-help .mn-board { width: min(560px, 100%); gap: 6px; }
+.mn-help-hd { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.mn-help-x { flex: 0 0 auto; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 10px; background: rgba(127, 127, 127, .18); color: inherit; font: 700 20px/1 system-ui; cursor: pointer; }
+.mn-help-x:hover, .mn-help-x:focus-visible { background: rgba(127, 127, 127, .32); outline: 2px solid currentColor; outline-offset: 0; }
+.mn-help-l { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; line-height: 1.4; }
+.mn-help .btn[data-x] { justify-self: end; margin-top: 6px; }
+@media (max-width: 720px) {
+  html body .mn-board-w.mn-help { padding: 0; place-items: stretch; }
+  html body .mn-help .mn-board { width: 100%; height: 100%; max-height: none; border-radius: 0; overflow-y: auto; overscroll-behavior: contain; padding: 14px 16px calc(16px + env(safe-area-inset-bottom)) !important; }
+}
+
+/* 26.10 (mine/pickaxe): окно Снабженца Кремня (mine.js supHtml) - вкладки «Кирка», «Рудная сумка», «Каска»; вид - как окно скупщика (.mb-*) */
+.mn[data-m2="1"] .sp-tabs { display: flex; gap: 4px; margin-top: 10px; padding: 3px; border-radius: 12px; background: rgba(0,0,0,.28); }
+.mn[data-m2="1"] .sp-tab { flex: 1 1 0; min-height: 36px; padding: 0 8px; border: 0; border-radius: 9px; background: none; color: var(--m2-mute); font: 700 13px var(--tx, sans-serif); cursor: pointer; }
+.mn[data-m2="1"] .sp-tab[aria-selected="true"] { background: rgba(255,207,106,.16); color: var(--m2-gold); box-shadow: inset 0 0 0 1px rgba(255,207,106,.35); }
+.mn[data-m2="1"] .sp-tab:hover { color: var(--ink, #f7eadf); }
+.mn[data-m2="1"] .sp-tab:focus-visible { outline: 2px solid var(--m2-gold); outline-offset: 1px; }
+.mn[data-m2="1"] .sp-body { display: grid; gap: 10px; }
+.mn[data-m2="1"] .sp-now, .mn[data-m2="1"] .sp-up { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; }
+.mn[data-m2="1"] .sp-now p, .mn[data-m2="1"] .sp-up p { margin: 0; }
+.mn[data-m2="1"] .sp-pic { display: grid; place-items: center; border-radius: 14px; background: radial-gradient(circle at 50% 40%, rgba(255,207,106,.16), rgba(0,0,0,.28)); }
+.mn[data-m2="1"] .sp-now .sp-pic { width: 72px; height: 72px; }
+.mn[data-m2="1"] .sp-up .sp-pic { width: 58px; height: 58px; }
+.mn[data-m2="1"] .sp-bagi { font-size: 34px; line-height: 1; }
+.mn[data-m2="1"] .sp-nm { font: 700 18px/1.2 var(--hd, sans-serif); color: var(--ink, #f7eadf); }
+.mn[data-m2="1"] .sp-gain { font-weight: 800; font-size: 15px; color: #8fe39a; }
+.mn[data-m2="1"] .sp-gain small { display: block; font-weight: 600; font-size: 12px; color: var(--m2-mute); }
+.mn[data-m2="1"] .sp-next { display: grid; gap: 10px; border: 1px solid rgba(255,207,106,.28); background: linear-gradient(rgba(120,82,40,.2), rgba(70,46,24,.14)); }
+.mn[data-m2="1"] .sp-reqs { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
+.mn[data-m2="1"] .sp-req { display: grid; grid-template-columns: 36px minmax(0, 1fr); align-items: center; gap: 2px 8px; padding: 5px 8px; border-radius: 11px; background: rgba(0,0,0,.25); }
+/* 26.10 (стример: «не влезает в окно»): «есть … / нужно …» - под названием, переносится; деньги длинные («10 серебряных рыбок 72 чешуйки») */
+.mn[data-m2="1"] .sp-req .sp-ri { grid-row: span 2; }
+.mn[data-m2="1"] .sp-ri { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 9px; background: rgba(255,255,255,.06); }
+.mn[data-m2="1"] .sp-ri svg { width: 30px; height: 30px; }
+.mn[data-m2="1"] .sp-ix { font-size: 18px; color: var(--m2-gold); }
+.mn[data-m2="1"] .sp-rn { display: grid; min-width: 0; font-weight: 700; font-size: 14px; color: var(--ink, #f7eadf); }
+.mn[data-m2="1"] .sp-rn small { font-size: 11.5px; font-weight: 600; color: #ffd19a; }
+.mn[data-m2="1"] .sp-rv { grid-column: 2; min-width: 0; font-size: 13px; font-weight: 700; color: var(--m2-mute); white-space: normal; overflow-wrap: anywhere; line-height: 1.3; }
+.mn[data-m2="1"] .sp-req.ok .sp-rv span { color: #8fe39a; }
+.mn[data-m2="1"] .sp-req.no .sp-rv span { color: #ff9a8a; }
+.mn[data-m2="1"] .sp-req.no { box-shadow: inset 3px 0 0 #ff7a6a; }
+.mn[data-m2="1"] .sp-note { margin: 0; font-size: 12px; }
+.mn[data-m2="1"] .sp-next .mn-btns .btn { min-height: 44px; width: 100%; }
+.mn[data-m2="1"] .sp-max { margin: 0; padding: 8px 10px; border-radius: 10px; background: rgba(143,227,154,.1); color: #c9f5c0; font-weight: 700; }
+.mn[data-m2="1"] .sp-ladder summary { cursor: pointer; font: 800 12px var(--tx, sans-serif); text-transform: uppercase; letter-spacing: .08em; color: var(--m2-mute); }
+.mn[data-m2="1"] .sp-ladder ol { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 3px; }
+.mn[data-m2="1"] .sp-ladder li { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto auto; align-items: center; gap: 8px; font-size: 13px; color: var(--m2-mute); }
+.mn[data-m2="1"] .sp-ladder li .sp-pic { width: 30px; height: 30px; border-radius: 8px; }
+.mn[data-m2="1"] .sp-ladder li.got { color: var(--ink, #f7eadf); }
+.mn[data-m2="1"] .sp-ladder li.nx { color: var(--m2-gold); font-weight: 700; }
+.mn[data-m2="1"] .sp-ladder li b { color: inherit; }
+@media (max-width: 720px) {
+  .mn[data-m2="1"] .sp-req { grid-template-columns: 32px minmax(0, 1fr); }
+  .mn[data-m2="1"] .sp-rv { grid-column: 2; }
+  .mn[data-m2="1"] .sp-ri { width: 32px; height: 32px; }
+}
+/* 26.10: «Можно дешевле» - медь / кристаллы вместо части железа / золота (галочка - отдать) */
+.mn[data-m2="1"] .sp-cheap { display: grid; gap: 5px; padding: 8px; border-radius: 12px; background: rgba(143,227,154,.07); border: 1px dashed rgba(143,227,154,.35); }
+.mn[data-m2="1"] .sp-opt { display: grid; grid-template-columns: auto 36px minmax(0, 1fr); align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--ink, #f7eadf); cursor: pointer; }
+.mn[data-m2="1"] .sp-opt input { width: 20px; height: 20px; accent-color: #8fe39a; }
+.mn[data-m2="1"] .sp-opt small { display: block; font-weight: 600; color: var(--m2-mute); }
+/* 28.10 (новые поручения): общее поручение шахты - строка с общим прогрессом и своим вкладом */
+.mn-qc { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 13px; padding: 6px 0; }
+.mn-qc .mn-qt { flex: 1 1 200px; min-width: 0; }
+.mn-qc .mn-qt small { display: block; font-size: 11px; opacity: .75; }
+.mn-qc b { font-weight: 800; color: #cfc4b0; white-space: nowrap; }
+.mn-qc.done b { color: #7ff07a; }
+.mn-qc .m2-mini { flex: 1 1 100%; display: block; height: 4px; border-radius: 2px; background: rgba(255,255,255,.12); overflow: hidden; }
+.mn-qc .m2-mini i { display: block; height: 100%; background: #ffc94d; }
+/* 27.10: угольный этаж - табличка в шапке рядом с номером этажа */
+.mn .mn-ttl span.mn-coal, .mn[data-m2="1"] .mn-ttl span.mn-coal { display: inline-flex; align-items: center; justify-self: start; width: max-content; padding: 1px 10px; border-radius: 999px; background: #2a2a34; border: 2px solid #5a5c72; color: #f2e6c8; font: 800 12px var(--tx, Golos Text, sans-serif); letter-spacing: .02em; white-space: nowrap; }
+.mn .mn-ttl span.mn-coal::before { content: ""; width: 9px; height: 9px; margin-right: 6px; border-radius: 3px; background: #121218; box-shadow: inset 2px 2px 0 #5a5c72; transform: rotate(18deg); }

@@ -1,0 +1,108 @@
+/* 18.10: правка новостей на сайте (newssite.js) — только админу игры, грузится только у него.
+   Редактор общий с пультом (newsedit.css на переменных пульта) — здесь эти переменные берутся из оформления сайта (forge / den / rage). */
+
+/* «Удалённые» и «+» над лентой */
+.nw-h { position: relative; }
+.nw .nw-hb { position: absolute; top: 0; right: 0; display: flex; gap: var(--s2); }
+.nw .nw-plus, .nw .nw-binb { min-height: 40px; padding: 0 var(--s4); gap: 6px; }
+.nw .nw-plus .i { width: 20px; height: 20px; stroke-width: 2.6; }
+.nw .nw-binb .i { width: 18px; height: 18px; stroke-width: 2; }
+.nw .nw-binb[aria-pressed="true"] { border-color: var(--accent); color: var(--ink); }
+.nw-binn { min-width: 1.4em; padding: 0 6px; border-radius: 999px; font-size: var(--t-xs); font-variant-numeric: tabular-nums; color: var(--mute); background: color-mix(in srgb, var(--ink) 10%, transparent); }
+.nw-h:has(.nw-plus) { padding-right: 330px; }
+@media (max-width: 640px) {
+  /* 21.10: на телефоне кнопки — своей строкой над заголовком: отступ под них справа (150px) вместе с длинным словом
+     подзаголовка был шире экрана, и сетка .nw раздвигала всю ленту — текст новостей уходил за край */
+  .nw-h:has(.nw-plus) { padding-right: 0; }
+  .nw .nw-hb { position: static; order: -1; justify-content: flex-end; }
+  .nw .nw-plus { width: 44px; min-height: 44px; padding: 0; }
+  .nw .nw-binb { min-height: 44px; padding: 0 var(--s3); }
+  .nw .nw-plus span, .nw .nw-binb span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}
+[data-skin="rage"] .nw .nw-plus { padding-inline: var(--s5); }
+/* 19.10: «Удалённые» вместо ленты */
+.nw-trash-h { margin: 0 0 var(--s4); }
+.nw-trash-h .nw-link { margin-left: var(--s2); }
+.nw-del .nw-t { opacity: .8; }
+.nw-del-i { margin: var(--s2) 0 0; font-size: var(--t-sm); }
+
+/* черновики сверху ленты — видны только админу */
+.nw-draft { margin: 0 calc(-1 * var(--s3)); padding-inline: var(--s3); border: 1px dashed color-mix(in srgb, var(--mute) 55%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--surface2) 70%, transparent); }
+.nw-list > .nw-draft { border-top: 1px dashed color-mix(in srgb, var(--mute) 55%, transparent); }   /* у первой записи ленты верхней линии нет — у черновика рамка целиком */
+.nw-draft + .nw-draft, .nw-draft + .nw-post { margin-top: var(--s3); }
+.nw-list > .nw-draft:first-child { padding-top: var(--s4); }
+.nw-draft-l { padding: 2px 10px; border-radius: 999px; font-size: var(--t-xs); font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--bg); background: var(--mute); }
+[data-skin="rage"] .nw-draft, [data-skin="rage"] .nw-draft-l { border-radius: 0; }
+
+/* «Изменить / Снять / Удалить» под записью — 20.10: отдельная компактная панель «Админ» (тонкая пунктирная рамка, свой фон, мелкий шрифт),
+   чтобы с первого взгляда не путалась с «Нравится» и «Комментарии» зрителей; «Удалить» — красным, отдельно справа */
+.nw-adm { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin-top: var(--s3); padding: 6px var(--s2) 6px var(--s3);
+  border: 1px dashed color-mix(in srgb, var(--mute) 55%, transparent); border-radius: 8px; background: color-mix(in srgb, var(--ink) 5%, transparent); font-size: var(--t-xs); }
+.nw-adm-l { display: inline-flex; align-items: center; gap: 5px; margin-right: var(--s1); color: var(--mute); font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.nw-adm-l .i { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.nw-adm-b { display: flex; flex-wrap: wrap; gap: var(--s2); min-width: 0; }
+.nw-adm-d { display: flex; margin-left: auto; padding-left: var(--s2); border-left: 1px solid color-mix(in srgb, var(--mute) 35%, transparent); }
+.nw-act { min-height: 30px; padding: 0 10px; border: 1px solid color-mix(in srgb, var(--ink) 16%, transparent); border-radius: 6px; background: var(--surface2, transparent); color: var(--ink);
+  font-size: var(--t-xs); font-weight: 700; line-height: 1; touch-action: manipulation; transition: color .2s var(--ease), border-color .2s var(--ease), background .2s var(--ease); }
+.nw-act:hover:not(:disabled) { border-color: var(--accent); }
+.nw-act:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.nw-act.is-del { color: var(--dn); border-color: color-mix(in srgb, var(--dn) 50%, transparent); background: color-mix(in srgb, var(--dn) 8%, transparent); }
+.nw-act.is-del:hover:not(:disabled) { color: var(--dn); border-color: var(--dn); background: color-mix(in srgb, var(--dn) 16%, transparent); }
+.nw-act[data-armed] { color: var(--dn); border-color: var(--dn); }
+.nw-act:disabled { opacity: .5; }
+[data-skin="den"] .nw-adm { border-radius: 14px; }
+[data-skin="den"] .nw-act { border-radius: 999px; }
+[data-skin="rage"] .nw-adm, [data-skin="rage"] .nw-act { border-radius: 0; }
+/* телефон: подпись и кнопки в одну строку, «Удалить» переносится вниз — тоже отдельно, по правому краю */
+@media (max-width: 420px) { .nw-adm-d { flex-basis: 100%; justify-content: flex-end; margin-left: 0; padding: var(--s2) 0 0; border-left: 0; border-top: 1px solid color-mix(in srgb, var(--mute) 30%, transparent); } }
+
+/* окно редактора */
+html.nwm-open { overflow: hidden; }
+html.nwm-open .style-switch { display: none; }
+.nwm { position: fixed; inset: 0; z-index: 55; display: grid; place-items: start center; padding: var(--s6) var(--s4); overflow-y: auto; overscroll-behavior: contain;
+  /* переменные редактора (newsedit.css) — из оформления сайта */
+  --card: var(--surface); --panel: var(--surface2); --line: color-mix(in srgb, var(--ink) 16%, transparent); --text: var(--ink); --muted: var(--mute);
+  --ok: var(--up); --warn: var(--accent-2, var(--accent)); --err: var(--dn); --accent-ink: var(--bg); }
+.nwm-scrim { position: fixed; inset: 0; background: rgba(0,0,0,.66); }
+.nwm-box { position: relative; width: min(1180px, 100%); padding: 60px var(--s5) var(--s5); background: var(--bg); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 24px 60px rgba(0,0,0,.55); animation: nwm-in .22s var(--ease); }
+@keyframes nwm-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+.nwm-cap { position: absolute; top: 18px; left: var(--s5); right: 64px; margin: 0; color: var(--mute); font-size: var(--t-sm); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 640px) { .nwm-cap { left: var(--s3); } }
+.nwm-x { position: absolute; top: 8px; right: 8px; z-index: 1; display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 50%; background: transparent; color: var(--mute); }
+.nwm-x:hover { color: var(--ink); background: color-mix(in srgb, var(--ink) 10%, transparent); }
+.nwm-x .i { width: 22px; height: 22px; }
+.nwm .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: var(--s4); }
+.nwm .card-head { display: flex; justify-content: space-between; align-items: center; gap: var(--s3); flex-wrap: wrap; margin-bottom: var(--s3); }
+.nwm .card-head h2, .nwm .card-head h3 { font-size: var(--t-lg); color: var(--ink); }
+.nwm .hint { margin: 0; color: var(--mute); font-size: var(--t-sm); }
+.nwm code { padding: 0 4px; border-radius: 4px; background: var(--surface2); color: var(--accent); }
+.nwm input[type=text], .nwm textarea { padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface2); color: var(--ink); font: inherit; }
+.nwm textarea { resize: vertical; }
+.nwm input:focus, .nwm textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
+.nwm button:not(.nwm-x):not(.nwe-sw) { min-height: 40px; padding: 0 var(--s4); border: 1px solid var(--line); border-radius: 8px; background: var(--surface2); color: var(--ink); font-weight: 700;
+  touch-action: manipulation; transition: background .2s var(--ease), border-color .2s var(--ease), color .2s var(--ease); }
+.nwm button.small:not(.nwe-sw) { min-height: 34px; padding: 0 var(--s3); font-size: var(--t-sm); }
+.nwm button:not(.nwm-x):not(.nwe-sw):hover:not(:disabled) { border-color: var(--accent); }
+.nwm button.primary:not(.nwm-x) { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.nwm button.primary:not(.nwm-x):hover:not(:disabled) { filter: brightness(1.08); }
+.nwm button.ghost:not(.nwm-x) { background: transparent; }
+.nwm button:disabled { opacity: .55; }
+.nwm .nwa-btns button[data-armed] { background: transparent; color: var(--dn); border-color: var(--dn); }
+[data-skin="forge"] .nwm button.primary:not(.nwm-x) { background: linear-gradient(#d8b46b, #b8913f); color: #1a140b; }
+[data-skin="den"] .nwm .card, [data-skin="den"] .nwm-box { border-radius: 22px; }
+[data-skin="den"] .nwm button:not(.nwm-x):not(.nwe-sw) { border-radius: 999px; }
+[data-skin="rage"] .nwm .card, [data-skin="rage"] .nwm-box, [data-skin="rage"] .nwm button:not(.nwm-x):not(.nwe-sw), [data-skin="rage"] .nwm input, [data-skin="rage"] .nwm textarea { border-radius: 0; }
+[data-skin="rage"] .nwm .card { box-shadow: inset 0 3px 0 var(--accent); }
+[data-skin="rage"] .nwm button.primary:not(.nwm-x) { color: #fff; }
+.nwm .nwa-pt { font-family: var(--hd); }
+[data-skin="forge"] .nwm .nwa-pt { font-weight: 400; }
+[data-skin="rage"] .nwm .nwa-pt { font-weight: 400; text-transform: uppercase; }
+
+/* телефон: окно — на весь экран, кнопки действий — внизу, крупно */
+@media (max-width: 640px) {
+  .nwm { padding: 0; place-items: stretch; }
+  .nwm-box { width: 100%; min-height: 100dvh; padding: 56px var(--s3) calc(var(--s5) + env(safe-area-inset-bottom)); border: 0; border-radius: 0; }
+  .nwm .card { padding: var(--s3); }
+  .nwm .nwa-btns { position: sticky; bottom: 0; z-index: 2; margin: 0 calc(-1 * var(--s3)) calc(-1 * var(--s3)); padding: var(--s3); background: var(--card); border-top: 1px solid var(--line); }
+}
+@media (prefers-reduced-motion: reduce) { .nwm-box { animation: none; } .nw-act { transition: none; } }
