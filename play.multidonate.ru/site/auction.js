@@ -83,7 +83,7 @@
     let r = null;
     try { const res = await fetch((window.LG_BASE || '') + '/api/auction', { cache: 'no-cache', credentials: 'same-origin' }); r = await res.json(); } catch { r = null; }
     if (!box || !box.isConnected) return;
-    if (r && r.ok) { const was = D && D.v; D = r; if (was !== r.v || !draw.done) draw(); }
+    if (r && r.ok) { const was = D && D.v; D = r; if (!draw.done) draw(); else if (was !== r.v) safeDraw(); }   // 29.10: чужая сделка - не во время прокрутки
     else if (!D) { box.innerHTML = `<p class="note">${esc((r && r.error) || 'Нет связи с аукционом — попробуй позже.')}</p>`; box.removeAttribute('aria-busy'); }
   }
   function poll(on) {
@@ -94,10 +94,27 @@
   const refreshSoon = () => { soon.forEach(clearTimeout); soon = [1500, 4000, 9000].map((ms) => setTimeout(load, ms)); };
 
   /* ---------- отрисовка ---------- */
+  // 29.10 (зритель, телефон): витрина дёргалась, когда кто-то покупал или продавал - перерисовка всего зала посреди прокрутки обрывала
+  // инерцию, а исчезнувший лот выше сдвигал список; из карточки лота - в начало списка. Теперь: пока листают (и 0,6 с после) -
+  // обновление ждёт; после перерисовки список держится за видимый лот; из карточки - туда же, откуда открыли
+  let busyUntil = 0, laterT = 0, back = null;
+  const markBusy = () => { busyUntil = Date.now() + 600; };
+  function safeDraw() { clearTimeout(laterT); if (Date.now() < busyUntil) { laterT = setTimeout(safeDraw, 250); return; } draw(); }
+  // первый видимый лот списка и его сдвиг от верха прокрутки
+  function anchorOf(sc) {
+    if (!sc) return null; const t0 = sc.getBoundingClientRect().top;
+    for (const r of sc.querySelectorAll('.au-row[data-lot]')) { const t = r.getBoundingClientRect().top - t0; if (t + r.offsetHeight / 2 >= 0) return { id: r.dataset.lot, off: t }; }
+    return null;
+  }
+  function keepAt(sc, a, top) {
+    const el = a && sc.querySelector(`.au-row[data-lot="${String(a.id).replace(/["\\]/g, '')}"]`);
+    if (el) sc.scrollTop += el.getBoundingClientRect().top - sc.getBoundingClientRect().top - a.off; else sc.scrollTop = top;
+  }
   function draw() {
     if (!box || !box.isConnected) return;
     draw.done = true;
-    const h = hero(), c = cfg(), sc = box.querySelector('.au-body'), top = sc ? sc.scrollTop : 0;
+    clearTimeout(laterT);
+    const h = hero(), c = cfg(), sc = box.querySelector('.au-body'), top = sc ? sc.scrollTop : 0, anc = sc && !sel ? anchorOf(sc) : null;
     box.removeAttribute('aria-busy');
     const mine = D ? D.lots.filter((x) => x.s === me()).length : 0;
     box.innerHTML = `<div class="au">
@@ -113,7 +130,9 @@
       <div class="au-body">${!D ? '<p class="note">Аукционист раскладывает лоты…</p>' : sel ? lotCard(sel) : tab === 'mine' ? (sellUid != null ? sellForm() : mineTab()) : tab === 'hist' ? histTab() : shopTab()}</div>
     </div>`;
     bind();
-    const sc2 = box.querySelector('.au-body'); if (sc2) sc2.scrollTop = top;
+    const sc2 = box.querySelector('.au-body');
+    if (sc2) { if (!sel && back) { keepAt(sc2, back.a, back.top); back = null; } else if (anc) keepAt(sc2, anc, top); else sc2.scrollTop = top; }
+    if (sc2 && !sc2.__auBusy) { sc2.__auBusy = 1; for (const ev of ['scroll', 'touchstart', 'touchmove', 'wheel']) sc2.addEventListener(ev, markBusy, { passive: true }); }
     try { opt.fit && opt.fit(); } catch {}
   }
   const say = (t, bad) => { msg = { t, bad: !!bad }; const el = box && box.querySelector('.au-msg'); if (el) { el.textContent = t; el.classList.toggle('bad', !!bad); } clearTimeout(say.t); say.t = setTimeout(() => { msg = null; const e2 = box && box.querySelector('.au-msg'); if (e2) e2.textContent = ''; }, 7000); };
@@ -197,12 +216,16 @@
     const num = (k, v) => (X.stNum ? X.stNum(k, v) : (v > 0 ? '+' : '') + v);
     return `<span class="au-rs" aria-label="${esc(ks.map((k) => stLabel(k) + ' ' + plain(num(k, st[k]))).join(', '))}">${ks.slice(0, 5).map((k) => `<span${k === F.st ? ' class="on"' : ''} title="${esc(stLabel(k))}">${X.ico(k)}${esc(num(k, st[k]))}</span>`).join('')}</span>`;
   }
+  // 29.10: розыгрыш лота - первые минуты «Хочу» вместо «Купить» (h.aR - зрителю открыто); WANT - на что я подал заявку
+  const WANT = new Set();
+  const rafOn = (x) => { const h = hero(); return !!(h && h.aR && x.ru && x.ru > Date.now()); };
+  const mmss = (ms) => { const t = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
   function row(x) {
     const d = def(x.i), own = x.s === me(), kind = kindOf(d);
     return `<li><button type="button" class="au-row" data-lot="${esc(x.id)}" data-r="${esc(d.rarity || 'common')}">
       <span class="au-gi">${art(x.i, x.en)}</span>
       <span class="au-ri"><b>${esc(nameOf(x))}${x.n > 1 ? ` <small>×${x.n}</small>` : ''}</b><em><span class="rar" data-r="${esc(d.rarity || 'common')}">${esc(RAR[d.rarity] || '')}</span> · ${esc(SLOT[d.slot] || '')}${kind ? ` · ${esc(kind)}` : ''}${durTag(x)} · ${own ? 'твой лот' : esc(x.sn || x.s)}</em>${rowStats(x)}</span>
-      <span class="au-rp">${cm(x.p)}<small>${esc(left(x.u))}</small></span></button></li>`;
+      <span class="au-rp">${cm(x.p)}<small>${rafOn(x) ? `🎲 розыгрыш ${mmss(x.ru - Date.now())}` : esc(left(x.u))}</small></span></button></li>`;
   }
   // карточка лота: характеристики с заточкой, сравнение с надетым, продавец, срок, «Купить за …» с подтверждением
   function lotCard(id) {
@@ -224,6 +247,8 @@
           : cant === 'lack' ? (X.lack ? X.lack(x.p, h.money, 'au-lack') : '<p class="note">Не хватает монет</p>')
           : cant ? `<p class="note">${esc(cant)}</p>`
           : ok ? `<div class="au-sure" role="group" aria-label="Подтверждение"><p>Купить «${esc(nameOf(x))}»${x.n > 1 ? ' ×' + x.n : ''} за ${money(x.p)}?</p>${X.bal ? X.bal(x.p, h.money, 'au-lack') : ''}<button type="button" class="btn primary" data-buy="${esc(x.id)}" data-p="${x.p}">Да, купить</button><button type="button" class="btn ghost" data-unsure>Отмена</button></div>`
+          : rafOn(x) ? (WANT.has(x.id) ? `<p class="note au-raf">🎲 Ты в розыгрыше: итог через ${mmss(x.ru - Date.now())}. Победитель - случайный из желающих${x.wn ? ` (сейчас ${x.wn})` : ''}; монеты спишутся, только если выпадет тебе.</p>`
+            : `<p class="note au-raf">🎲 Новый лот: первые минуты - розыгрыш среди желающих, кто быстрее - неважно. Итог через ${mmss(x.ru - Date.now())}${x.wn ? `, желающих: ${x.wn}` : ''}.</p>${X.bal ? X.bal(x.p, h.money, 'au-lack') : ''}<button type="button" class="btn primary wide" data-buy="${esc(x.id)}" data-p="${x.p}" data-want>Хочу за ${money(x.p)}</button>`)
           : `${X.bal ? X.bal(x.p, h.money, 'au-lack') : ''}<button type="button" class="btn primary wide" data-ask="${esc(x.id)}">Купить за ${money(x.p)}</button>`}
       </article>`;
   }
@@ -312,7 +337,7 @@
   }
   function bind() {
     const B = box;
-    B.querySelectorAll('[data-tab]').forEach((b) => b.onclick = () => { tab = b.dataset.tab; sel = null; sure = null; sellUid = null; if (tab === 'hist') hist = null; draw(); if (tab === 'hist') histFill(); });
+    B.querySelectorAll('[data-tab]').forEach((b) => b.onclick = () => { tab = b.dataset.tab; sel = null; sure = null; sellUid = null; back = null; if (tab === 'hist') hist = null; draw(); if (tab === 'hist') histFill(); });
     if (tab === 'hist' && !sel) { const el = B.querySelector('.au-body'); if (el && !el.querySelector('.au-hist')) el.innerHTML = '<div class="au-hist" aria-busy="true"><p class="note">Листаем книгу сделок…</p></div>'; histFill(); }
     B.querySelectorAll('[data-f]').forEach((el) => {
       const k = el.dataset.f, apply = () => {
@@ -329,10 +354,12 @@
     bindRows();
     const det = B.querySelector('.au-more'); if (det) det.addEventListener('toggle', () => { F.open = det.open; });
     const sd = B.querySelector('.au-sd'); if (sd) sd.addEventListener('toggle', () => { S.sd = sd.open; try { if (opt.fit) opt.fit(); } catch {} });
-    const back = B.querySelector('[data-back]'); if (back) back.onclick = () => { if (sel) sel = null; else sellUid = null; sure = null; draw(); };
+    const bk = B.querySelector('[data-back]'); if (bk) bk.onclick = () => { if (sel) sel = null; else sellUid = null; sure = null; draw(); };
     const ask = B.querySelector('[data-ask]'); if (ask) ask.onclick = () => { sure = ask.dataset.ask; draw(); const y = box.querySelector('[data-buy]'); if (y) y.focus(); };
     const un = B.querySelector('[data-unsure]'); if (un) un.onclick = () => { sure = null; draw(); };
-    const buy = B.querySelector('[data-buy]'); if (buy) buy.onclick = () => send('/api/aucBuy', { lot: buy.dataset.buy, price: +buy.dataset.p }, buy, 'Покупка отправлена — аукционист заворачивает вещь…', () => { sure = null; sel = null; });
+    const buy = B.querySelector('[data-buy]'); if (buy) buy.onclick = () => (buy.dataset.want != null
+      ? send('/api/aucBuy', { lot: buy.dataset.buy, price: +buy.dataset.p }, buy, 'Заявка принята - ты в розыгрыше; монеты спишутся, только если лот выпадет тебе', () => { WANT.add(buy.dataset.buy); sure = null; })   // 29.10: розыгрыш - остаёмся в карточке
+      : send('/api/aucBuy', { lot: buy.dataset.buy, price: +buy.dataset.p }, buy, 'Покупка отправлена — аукционист заворачивает вещь…', () => { sure = null; sel = null; }));
     B.querySelectorAll('[data-cancel]').forEach((b) => b.onclick = () => {
       if (!window.LGSiteUi.confirmTwice(b, { text: 'Точно снять?', mark: 'sure' })) return;   // 25.10: packages/site-ui
       send('/api/aucCancel', { lot: b.dataset.cancel }, b, 'Лот снят — вещь вернётся в сумку (сбор не возвращается)', () => { sel = null; });
@@ -350,7 +377,7 @@
     };
     const cl = B.querySelector('[data-claim]'); if (cl) cl.onclick = () => send('/api/aucClaim', {}, cl, 'Вещи несут со склада в сумку…');
   }
-  function bindRows() { box.querySelectorAll('.au-row[data-lot]').forEach((b) => b.onclick = () => { sel = b.dataset.lot; sure = null; draw(); const sb = box.querySelector('.au-body'); if (sb) sb.scrollTop = 0; const bk = box.querySelector('[data-back]'); if (bk) bk.focus(); }); }
+  function bindRows() { box.querySelectorAll('.au-row[data-lot]').forEach((b) => b.onclick = () => { const sb0 = box.querySelector('.au-body'); back = sb0 ? { top: sb0.scrollTop, a: anchorOf(sb0) } : null; sel = b.dataset.lot; sure = null; draw(); const sb = box.querySelector('.au-body'); if (sb) sb.scrollTop = 0; const bk = box.querySelector('[data-back]'); if (bk) bk.focus({ preventScroll: true }); }); }
   const setPrice = (p) => { p = Math.max(0, Math.round(+p || 0)); S.g = Math.floor(p / 10000); S.s = Math.floor(p / 100) % 100; S.b = p % 100; };
   // в игру — через очередь сайта (как надеть/заточить); ответ игры придёт с героем, ошибку покажет сайт
   async function send(path, body, btn, ok, after) {
@@ -365,7 +392,7 @@
   window.LGAuction = {
     render(el, ctx, o = {}) { X = ctx; box = el; opt = o; try { if (X.tips) X.tips(el); } catch {} draw.done = false; sel = null; sure = null; sellUid = null; msg = null; if (D) draw(); load(); poll(true); },
     // герой поменялся (игра ответила): своя сумка, монеты и склад — перерисовать, витрину — свежую
-    update() { if (!box || !box.isConnected) return; if (document.activeElement && box.contains(document.activeElement) && document.activeElement.matches('input')) return; draw(); load(); },
+    update() { if (!box || !box.isConnected) return; if (document.activeElement && box.contains(document.activeElement) && document.activeElement.matches('input')) return; safeDraw(); load(); },
     close() { poll(false); box = null; if (AUI) { try { AUI.destroy(); } catch {} AUI = null; } },   // 25.10: и новая сумка (inv2)
   };
 })();

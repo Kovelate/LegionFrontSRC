@@ -220,6 +220,7 @@
     questTab(id === 'quest');   // 22.10: вкладка «Поход» (quest.js)
     if (id === 'world') openWorld(); else if (window.LGWorld) window.LGWorld.close();   // 23.10: «Карта мира» (worldmap.js)
     bfSoon();   // 24.10: «Отправить баг» — в другом разделе другие панели внизу
+    if (window.LGDm) setTimeout(() => window.LGDm.place(), 0);   // 29.10: ушли из «Города» - личка окном слева внизу, вернулись - в чат
     if (window.LGStart) window.LGStart.tabChanged(id);   // 26.10: переключатель «Зритель / Стример» (start.js)
   }
   $$('.tabs button').forEach((b) => b.addEventListener('click', () => tab(b.dataset.tab)));
@@ -580,6 +581,25 @@
     if (POP.el && POP.kind) popRender();   // меню открыто, а данные обновились
     if (window.LGNews && window.LGNews.me) window.LGNews.me(ME);   // 18.10: админу игры — правка новостей прямо на сайте (news.js)
     startSync();   // 26.10: переключатель «Зритель / Стример», поиск стримера (start.js)
+    if (ME && ME.user && ME.friends) friendsLoad().catch(() => null);   // 29.10: кнопка «Друзья» (friends.js, новинка «friends»)
+  }
+
+  /* ---------- 29.10: личка страницы (packages/site-ui/dm.js → window.LGDm): вкладки собеседников не закрываются при переходах,
+     вне «Города» и шахты - окно слева внизу; новые личные - событие SSE «dm» на любой вкладке сайта ---------- */
+  let DML = null;
+  function dmLoad() {
+    if (!DML) DML = (window.LGDm ? Promise.resolve() : loadJs('/lib/site-dm.js' + (window.LG_DMV ? '?v=' + window.LG_DMV : ''))).catch((e) => { DML = null; throw e; });
+    return DML.then(() => { if (window.LGDm && ME && ME.user) window.LGDm.init({ api, toast, me: () => (ME && ME.user ? String(ME.user.login).toLowerCase() : ''), ch: CH ? CH.login : '' }); });
+  }
+  /* ---------- 29.10: друзья (friends.js, src/site/friends.ts) - грузятся, только когда сервер открыл их этому входу (ME.friends) ---------- */
+  let FRL = null;
+  function friendsLoad() {
+    if (!FRL) {
+      const v = window.LG_FRV || {};
+      const add = (tag, attrs) => new Promise((ok, bad) => { const x = document.createElement(tag); Object.assign(x, attrs); x.onload = () => ok(); x.onerror = bad; document.head.appendChild(x); });
+      FRL = Promise.all([add('link', { rel: 'stylesheet', href: '/site/friends.css' + (v.css ? '?v=' + v.css : '') }), add('script', { src: '/site/friends.js' + (v.js ? '?v=' + v.js : '') })]).catch((e) => { FRL = null; throw e; });
+    }
+    return FRL.then(() => { if (window.LGFriends && ME && ME.friends) window.LGFriends.init({ api, toast, me: () => ME }); });
   }
 
   /* ---------- 26.10: старт для стримера и зрителя (start.js, docs/reports/streamer-start.md) ----------
@@ -865,6 +885,8 @@
     const ids = classIds(h), myCls = ids.includes(h.role) ? h.role : null;
     const clsBtns = bag.some((x) => x.wearable && clsOf(x)) ? [['all', 'Все классы'], ...ids.map((k) => { const l = roleOf(k, ((ME && ME.roles) || {})[k]); return [k, k === myCls ? `${l} (ты)` : l]; })] : [];
     if (cls !== 'all' && !ids.includes(cls)) cls = 'all';   // 25.10: запомненный класс герою не виден (beta) — «все классы»
+    // 29.10: фильтр по классу - одна компактная строка «Класс: <список>» вместо 8 больших кнопок (на телефоне они занимали 4 строки)
+    const clsBar = clsBtns.length ? `<label class="clsf${cls === 'all' ? '' : ' on'}"><span>Класс</span><select data-cls aria-label="Для какого класса">${clsBtns.map(([k, l]) => `<option value="${esc(k)}"${cls === k ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></label>` : '';
     const shown = bag.filter((x) => (filter === 'all' || catOf(x) === filter) && fitsCls(x, cls));
     const nOn = h.items.filter((x) => x.on).length;
     // выбранная вещь: по uid (из сумки или со слота)
@@ -914,9 +936,9 @@
       <section class="panel bag" aria-label="${word('bag', 'Сумка')}">
         <div class="bag-h"><h2 class="h2">${word('bag', 'Сумка')}</h2>${ordOk(h) && bag.length > 1 ? '<button type="button" class="btn ghost sm bag-sort" data-bagsort aria-label="Разложить сумку: оружие, доспехи, шлемы, щиты, амулеты, расходники, материалы; свой порядок сбросится">⇅ Разложить</button>' : ''}${h.ghost || h.busy || i2 ? '' : `<span class="dnd-hint muted">${dragHint(h)}</span>`}<span class="muted">${h.sg ? `<b class="bag-cnt${h.sg.used >= h.sg.cap ? ' full' : h.sg.used >= h.sg.cap - 2 ? ' near' : ''}" title="Ячеек занято: одинаковые еда, зелья и материалы лежат стопкой (до ${h.sg.bs || 20}), надетое не в счёт">${h.sg.used} / ${h.sg.cap}</b> · ` : ''}${bag.length ? `${h.items.length - nOn} ${plural(h.items.length - nOn, 'вещь', 'вещи', 'вещей')}` : 'пусто'}${nOn ? ` · ${nOn} надето` : ''}</span></div>
         ${h.sg && h.sg.used >= h.sg.cap ? `<p class="note bag-full" role="status">Сумка полна (${h.sg.used} / ${h.sg.cap}): купить в лавке и на Ярмарке не выйдет, добыча в походе достанется другому из отряда, а если у всех полно — останется лежать на месте 30 минут (подобрать — «подобрать»). Лишнее — на Склад${h.cy ? ' в «Городе»' : ''}.</p>` : ''}
-        ${i2 ? `${clsBtns.length ? `<div class="filters cls" role="group" aria-label="Для какого класса">${clsBtns.map(([k, l]) => `<button type="button" data-cls="${k}" aria-pressed="${cls === k}">${l}</button>`).join('')}</div>` : ''}<div data-inv2></div>`
+        ${i2 ? `${clsBtns.length ? `${clsBar}` : ''}<div data-inv2></div>`
           : bag.length ? `<div class="filters" role="group" aria-label="Что показать">${cats.map(([k, l]) => `<button type="button" data-f="${k}" aria-pressed="${filter === k}">${l}</button>`).join('')}</div>
-          ${clsBtns.length ? `<div class="filters cls" role="group" aria-label="Для какого класса">${clsBtns.map(([k, l]) => `<button type="button" data-cls="${k}" aria-pressed="${cls === k}">${l}</button>`).join('')}</div>` : ''}
+          ${clsBtns.length ? `${clsBar}` : ''}
           <div class="grid">${shown.map(cell).join('') || '<p class="empty">В этом разделе пусто</p>'}${freeCells(h, filter === 'all' && cls === 'all')}</div>`
           : `<p class="empty">${word('empty', 'Сумка пуста. Вещи добываются в Походе и покупаются на Ярмарке.')}</p>`}
       </section>
@@ -927,7 +949,7 @@
 
     if (i2) { const ph = el.querySelector('[data-inv2]'); if (ph) ph.replaceWith(inv2Host(h, selUid)); const pd = el.querySelector('[data-inv2-doll]'); if (pd && INV2) pd.replaceWith(INV2.dollEl); } else inv2Drop();   // 26.10: и кукла - в карточку героя   // 25.10: новая сумка - тот же элемент
     el.querySelectorAll('[data-f]').forEach((b) => b.onclick = () => { filter = b.dataset.f; renderHero(); });
-    el.querySelectorAll('[data-cls]').forEach((b) => b.onclick = () => { cls = b.dataset.cls; try { localStorage.setItem('lgCls', cls); } catch {} renderHero(); });
+    el.querySelectorAll('select[data-cls]').forEach((b) => b.onchange = () => { cls = /^[a-z]{2,20}$/.test(b.value) ? b.value : 'all'; try { localStorage.setItem('lgCls', cls); } catch {} renderHero(); });
     el.querySelectorAll('[data-empty]').forEach((b) => b.onclick = () => { filter = b.dataset.empty; sel = null; sheet = false; renderHero(); const g = $('.bag', el); if (g && !mqWide.matches) g.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
     // 21.10: повторный клик по уже выбранной вещи — снять выбор (на ПК карточка справа исчезает; на телефоне карточка — шторка, там клик её открывает)
     el.querySelectorAll('[data-sel]').forEach((b) => b.onclick = () => { if (mqWide.matches && cur && cur.uids.includes(b.dataset.sel)) { sel = null; renderHero(); return; } sel = b.dataset.sel; sheet = !mqWide.matches; renderHero(); if (sheet) { const c = $('.detail [data-close]', el); if (c) c.focus(); } });
@@ -1257,7 +1279,8 @@
       gear: gearLine(it, h),
       role: (roleChange ? `<p class="d-role">С этим оружием станешь: <b>${esc(roleChange)}</b></p>` : o.cls && it.slot === 'weapon' && it.role ? `<p class="d-role">Оружие класса: <b>${esc(roleOf(it.role, roles[it.role]))}</b></p>` : '')
         + (it.slot !== 'weapon' && it.role ? `<p class="d-role">Вещь класса <b>${esc(roleOf(it.role, roles[it.role]))}</b>: бонус к навыкам — только герою этого класса${it.role === h.role ? ' (твой класс)' : ''}</p>` : ''),
-      en: it.en > 0 ? `<p class="d-en">${ico('hammer')}Заточка +${it.en}: характеристики +${b}%${dv.rows.some((r) => XST[r.k] && r.v > 0) ? `, боевые (крит, уклонение…) +${String(bx).replace('.', ',')}%` : ''}</p>` : '',
+      // 29.10: заточка растит только характеристики самой вещи (боевые - на четверть); «боевые (крит, уклонение…)» читалось как прибавка ко всем статам героя
+      en: it.en > 0 ? (() => { const xs = dv.rows.filter((r) => XST[r.k] && r.v > 0).map((r) => stLabel(r.k).toLowerCase()); return `<p class="d-en">${ico('hammer')}Заточка +${it.en}: характеристики вещи +${b}%${xs.length ? `, ${esc(xs.join(', '))} +${String(bx).replace('.', ',')}%` : ''}</p>`; })() : '',
       pts: it.pts ? '<p class="d-pts">Куплено за баллы канала — лавка Ярмарки такую вещь не берёт</p>' : '',
       dur: `${durLine(it)}` + (it.dur == null && o.dur && (it.wearable || SLOTS.includes(it.slot)) ? '<p class="d-dur ok">Прочность 100% — целая</p>' : ''),
     };
@@ -1536,6 +1559,8 @@
   function forgeDone(r) {
     const mine = r.id === FG.wait; if (mine) FG.wait = null;
     const x = r.x || {};
+    // 29.10: покупка в лавках «Города» (cityBuy) - «Куплено» уже сказал city.js; без этой ветки успех шёл в итог заточки: «Кузня: id - Не вышло - вещь цела»
+    if (r.ok && x.op === 'cityBuy') return;
     if (!r.ok) { if (mine && FG.el) FG.res = { cls: 'err', t: r.error || 'Не вышло' }; else toast('Кузня: ' + (r.error || 'не вышло'), true); return; }
     if (x.op === 'craft') { toast(`Скована Печать Ауруса ${x.lvl}`); return; }
     if (x.op === 'buymat') { toast(x.mat === 'star' ? 'Куплена Счастливая звезда' : 'Куплена Сфера сохранения'); return; }
@@ -1905,7 +1930,7 @@
   const JK = [['all', 'Всё'], ['fight', 'Бой'], ['boss', 'Закхуэль'], ['dice', 'Кости'], ['event', 'Событие'], ['trap', 'Ловушка'], ['shop', 'Покупка'], ['ench', 'Заточка'], ['auc', 'Аукцион'], ['look', 'Облик'], ['loot', 'Вещь'], ['find', 'Находка'], ['coins', 'Монеты'], ['hero', 'Герой'], ['award', 'Награда'], ['store', 'Склад'], ['ach', 'Достижение'], ['trade', 'Обмен'], ['bug', 'Репорт']];   // 24.10: репорт зрителя одобрен (src/site/bugreports.ts)   // 23.10: + склад, достижения, обмен между игроками
   const JKN = Object.fromEntries(JK);
   // 18.10: вкладки журнала (виды записей — как JTABS на сервере)
-  const JT = [['all', 'Все', null], ['fight', 'Бой', ['fight', 'boss', 'trap', 'hero']], ['shop', 'Покупки', ['shop', 'look', 'ench', 'auc', 'store', 'trade']], ['find', 'Находки', ['loot', 'find']], ['coins', 'Монеты', ['coins', 'dice', 'event']], ['ach', 'Достижения', ['ach']]];   // 23.10: + склад, вкладка «Достижения»
+  const JT = [['all', 'Все', null], ['fight', 'Бой', ['fight', 'boss', 'trap', 'hero']], ['shop', 'Покупки', ['shop', 'look', 'ench', 'auc', 'store', 'trade']], ['find', 'Находки', ['loot', 'find']], ['coins', 'Монеты', ['coins', 'dice', 'event', 'auc', 'trade']], ['ach', 'Достижения', ['ach']]];   // 23.10: + склад, вкладка «Достижения»
   const JTK = Object.fromEntries(JT.map(([k, , ks]) => [k, ks]));
   const JR = { win: 'Победа', lose: 'Неудача', tie: 'Ничья' };
   const JRK = { dice: { win: 'Выиграл', lose: 'Проиграл', tie: 'Ничья' }, fight: { win: 'Победа', lose: 'Поражение' }, boss: { win: 'Победа', lose: 'Поражение' }, trap: { win: 'Справился', lose: 'Пострадал' }, shop: { win: 'Готово', lose: 'Не вышло' }, hero: { win: '', lose: '' }, ach: { win: 'Открыто' }, store: { win: '', lose: '' } };   // 23.10
@@ -2292,6 +2317,8 @@
   // Обычные кнопки страницы прокручиваются вместе с ней — их не считаем (внизу страницы под кнопку оставлен запас)
   function bfBlock(e) {
     if (!e || e === document.documentElement || e === document.body) return null;
+    // строка «Команда в поход» вкладки «Поход» - sticky, а не fixed: жук поднимается над ней
+    const sy = e.closest('.q-say:not([hidden])'); if (sy) return sy;
     for (let n = e; n && n !== document.body; n = n.parentElement) if (getComputedStyle(n).position === 'fixed') return n;
     const ia = e.closest(BF_IA); if (!ia) return null;
     const ir = ia.getBoundingClientRect();
@@ -2365,6 +2392,7 @@
       if (x.x && x.x.op === 'qact') { shownRes.add(x.id); if (window.LGQuest && window.LGQuest.result) window.LGQuest.result(x); else if (!x.ok) toast(x.error || 'Не вышло', true); continue; }   // 25.10: ответ игры на кнопку похода
       if (x.x && x.x.op === 'hwSwap') { shownRes.add(x.id); try { window.LGHwNpc && window.LGHwNpc.result && window.LGHwNpc.result(x); } catch (e) { /* окно уже закрыто */ } toast(x.ok ? (x.x.coins != null ? `Обменяно ${x.x.n} конфет на монеты: +${x.x.coins}` : 'Конфеты обменяны на монеты') : 'Обмен не вышел: ' + (x.error || 'попробуй ещё раз'), !x.ok); continue; }   // 29.10: «Ступа сладостей» - обмен конфет на монеты
       if (x.x && x.x.op === 'hwBuy') { shownRes.add(x.id); try { window.LGHwNpc && window.LGHwNpc.result && window.LGHwNpc.result(x); } catch (e) { /* окно уже закрыто */ } toast(x.ok ? (x.x.test ? `Тест: «${x.x.got || 'вещь'}» - ничего не списано` : `Обмен готов: «${x.x.got || 'вещь'}» - за ${x.x.price} конфет`) : 'Обмен не вышел: ' + (x.error || 'попробуй ещё раз'), !x.ok); continue; }   // 29.10: покупка в «Ступе сладостей» кнопкой
+      if (x.x && x.x.op === 'fcoin') { shownRes.add(x.id); if (window.LGFriends && window.LGFriends.coinDone) window.LGFriends.coinDone(x); else toast(x.ok ? 'Монета дня подарена' : 'Монета дня: ' + (x.error || 'не вышло'), !x.ok); continue; }   // 29.10: монета дня друзьям
       if (x.x && x.x.op === 'seal') { shownRes.add(x.id); toast('Печать применена: у героя теперь свой стиль'); continue; }   // 26.10: Печать Метаморфозы
       if (x.x && /^(st|auc|note)/.test(x.x.op || '')) { shownRes.add(x.id); storeNote(x); continue; }
       if (x.x && /^mine/.test(x.x.op || '')) { shownRes.add(x.id); if (window.LGMine && window.LGMine.result) window.LGMine.result(x); else if (!x.ok) toast(x.error || 'Не вышло', true); continue; }   // 26.10: шахта (окно скупщика) — не в окно Кузни   // 22.10: склад, аукцион (вещь ушла на склад), сообщение без действия
@@ -2381,6 +2409,7 @@
     if (window.LGMine && window.LGMine.on && window.LGMine.hero) window.LGMine.hero();   // 27.10: сумка в шахте - сразу новые кучки и осколки (раньше рисовалась только при открытии)
     if (ME && ME.user) bfInit(); bfSoon();   // 24.10: «Отправить баг»
     if (window.LGCity && $('#tab-city').classList.contains('on')) window.LGCity.heroChanged();
+    if (ME && ME.user && ME.hero && ME.hero.cd) dmLoad().catch(() => null);   // 29.10: личка страницы (LGDm) - живёт вне «Города» и шахты
     if (!wasUser && ME.user) { if (logOn()) loadLog(); live(); }
   }
 
@@ -2399,6 +2428,8 @@
       ES.addEventListener('j', (e) => { try { logAdd(JSON.parse(e.data)); } catch {} });
       ES.addEventListener('city', (e) => { try { if (window.LGCity) window.LGCity.onEvent(JSON.parse(e.data)); } catch {} });
       ES.addEventListener('mine', (e) => { try { if (window.LGMine && window.LGMine.on) window.LGMine.onEvent(JSON.parse(e.data)); } catch {} });   // 23.10: шахта   // 20.10: «Город»
+      ES.addEventListener('dm', (e) => { let d = null; try { d = JSON.parse(e.data); } catch {} if (!d) return; if (window.LGDm) window.LGDm.onEvent(d); else if (d.m) dmLoad().then(() => window.LGDm && window.LGDm.onEvent(d)).catch(() => null); });   // 29.10: личные
+      ES.addEventListener('fr', (e) => { try { if (window.LGFriends) window.LGFriends.onEvent(JSON.parse(e.data)); } catch {} });   // 29.10: заявка в друзья, «принял»
       ES.addEventListener('q', (e) => { try { const d = JSON.parse(e.data); questData(d, d.now); } catch {} });   // 22.10: вкладка «Поход»
     }
     ES.addEventListener('style', (e) => { let d = {}; try { d = JSON.parse(e.data) || {}; } catch {} styleEvent(String(d.style || '')); });   // 28.10 (fix/style-live)

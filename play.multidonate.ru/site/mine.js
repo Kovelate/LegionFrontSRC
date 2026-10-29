@@ -14,6 +14,8 @@
   const esc = window.LGSiteUi.esc;   // 25.10: общая (packages/site-ui → ui-kit), была своя копия
   const GW = 7, GH = 12, SPEED = 260;   // px мира в секунду
   let S = null, X = null, C = 'mine';
+  // 29.10: метка этой вкладки (одна на страницу): сервер по ней узнаёт «ту же вкладку» после возврата из фона (src/site/site.ts mineEnter)
+  const TAB = (() => { try { const a = new Uint8Array(8); crypto.getRandomValues(a); return [...a].map((b) => b.toString(16).padStart(2, '0')).join(''); } catch (e) { return (Date.now().toString(36) + Math.random().toString(36).slice(2, 12)).replace(/[^a-z0-9]/g, '').slice(0, 24); } })();
   // 23.10: слова промыслов (место, этаж, мастерство, скупщик, действия, блоки, особые этажи, подсказки)
   const CT = {
     mine: { to: 'К скупщику', place: 'Шахта', fl: 'этаж', mast: 'Горное дело', seller: 'Скупщик Гром', hello: 'Сдавай руду — заплачу за работу, а руду отправлю в казну Ратуши на развитие города.', pick: 'Выбери камень, чтобы копать', doing: 'Копаешь', stop: 'Перестать копать', stopTip: 'Герой отложил кирку', bagEmpty: 'Рудная сумка пуста — накопай руды.', done: 'Камень выкопан — выбери следующий', broke: 'Камень разбит!', rare: 'Ты вскрыл редкую жилу', wall: 'Скалу не разбить — обойди', far: 'К этому камню пока не подойти — сначала расчисти путь', fresh: 'новая шахта', here: 'В шахте', today: 'Сегодня в шахте', work: 'копают', unitN: 'Выкопано камней', idle: 'Герой выкопал свой камень и ждёт — выбери ему новый.', busy: 'Герой всё ещё копает свой камень.', board: 'Итоги шахты', best: 'Лучшие копатели недели', sold: 'Скупщик принял руду', b: { rock: 'камень', hard: 'твёрдая порода', ore: 'руда', rare: 'редкая жила', chest: 'окаменевший сундук' }, sp: { vein: 'богатая жила', flood: 'затопленная штольня', den: 'логово крота' } },
@@ -36,10 +38,20 @@
   const BIO_JS = (window.LG_CITYV && window.LG_CITYV.mb) ? '/site/mine-biome.js?v=' + window.LG_CITYV.mb : ((document.currentScript && document.currentScript.src) || '/site/mine.js').replace(/mine\.js(\?.*)?$/, 'mine-biome.js');
   let bioLd = 0;
   const biome = () => { if (window.LGMineBiome) return window.LGMineBiome; if (!bioLd) { bioLd = 1; const sc = document.createElement('script'); sc.src = BIO_JS; sc.onload = () => { if (S && S.st && !S.failed) { S.svgKey = ''; try { draw(); } catch (e) { recover(e, draw); } } }; document.head.appendChild(sc); } return null; };
+  // 29.10 (Шахта 3.0, флаг mine3): большой этаж (вид шахты st.fl.v3) рисует mine3.js - грузится при первом таком этаже
+  const M3_JS = (window.LG_CITYV && window.LG_CITYV.m3) ? '/site/mine3.js?v=' + window.LG_CITYV.m3 : ((document.currentScript && document.currentScript.src) || '/site/mine.js').replace(/mine\.js(\?.*)?$/, 'mine3.js');
+  let m3Ld = 0;
+  const m3lib = () => { if (window.LGMine3) return window.LGMine3; if (!m3Ld) { m3Ld = 1; const sc = document.createElement('script'); sc.src = M3_JS; sc.onload = () => { if (S && S.st) { S.F = floorOf(S.st); S.svgKey = ''; try { pos3(); draw(); fit(true); } catch (e) { recover(e, draw); } } }; document.head.appendChild(sc); } return null; };
+  const V3 = () => !!(S && S.F && S.F.v3);
+  // геометрия этажа: большой - библиотека мира mine3 (по этажу), прежний - craftworld / mine
+  const GX = () => (V3() ? window.LGWorldLib.mine3(S.F) : CW());
+  // 29.10: точку входа считали до того, как узнали, что этаж большой (старые координаты) - ставим в зал лифта
+  const pos3 = () => { if (!V3() || !S.pos) return; const g = GX(), c = g.cellAt(S.pos.x, S.pos.y); if (c < 0 || !(g.inHall(c) || (S.dug && S.dug[c]))) { S.pos = spawnPt(); S.path = null; S.want = null; } };
   // 24.10: природа шахты и её самоцвет
   const BIO_RU = { mount: 'горы', ash: 'пепел', forest: 'лес', taiga: 'тайга', ice: 'лёд', meadow: 'луга', swamp: 'болото', blight: 'порча', coast: 'побережье', desert: 'пустыня', ruin: 'руины' };
   const stars = (d) => '★'.repeat(Math.max(1, Math.min(5, +d || 1)));
   const q = () => `?c=${encodeURIComponent(C)}`;
+  const CB = () => C.split('.')[0];   // 29.10: шахта без этажа (чат, «моё», действия кроме копания - общие для этажей)
   // 24.10: «Город» во весь экран (city.js: requestFullscreen у .cy) — показывается только он сам: окно в body не видно, а клики уходят
   // в кнопки «Города» под ним («В город» и доска «не работали»). Шахту и доску кладём в элемент во весь экран, сменился режим — переносим
   const host = () => document.fullscreenElement || document.body;
@@ -49,6 +61,7 @@
   /* ---------- этаж из вида шахты ---------- */
   function floorOf(st) {
     if (!st || !st.fl) return null;
+    if (st.fl.v3) { const L3 = m3lib(); biome(); return L3 ? L3.floorOf(st) : null; }   // 29.10: большой этаж
     const cells = st.fl.c.map(([t, lv, r, a]) => ({ t, lv, r: r || null, a, k: t === 'entry' || t === 'wall' || t === 'void' ? 0 : 1 }));
     return { n: st.n, craft: 'mine', biome: st.biome || 'mount', danger: st.danger || 1, gem: st.gem || null, special: st.fl.special, coal: st.fl.coal || null, exit: st.fl.exit, entry: st.fl.entry, cells, done: false };
   }
@@ -56,7 +69,7 @@
 
   /* ---------- проходимость: расчищенные клетки + площадка входа (ряд 12). 26.10 (lib/world): правила - в библиотеке мира
      (/lib/world.js, packages/world mine: walkable, cellOfPt, centerOf, pathTo, digSpot, walkPt - те же у сервера); здесь - по S.dug ---------- */
-  const MW = () => window.LGWorldLib.mine;
+  const MW = () => (V3() ? window.LGWorldLib.mine3(S.F) : window.LGWorldLib.mine);
   const walkable = (i) => MW().walkable(S.dug, i);
   const cellOfPt = (x, y) => MW().cellOfPt(x, y);
   const centerOf = (i) => MW().centerOf(i);
@@ -65,12 +78,19 @@
   const digSpot = (i) => MW().digSpot(S.dug, i);
   /* ---------- 25.10 (mine/walk): предметы входа и NPC - препятствия (таблица craftworld FOOT, её же берёт сервер): не стоять в них, ходить
      в обход, рисовать за / перед ними по линии ног. Только площадка входа; в зале - клетки, как раньше ---------- */
-  const ft = () => (S && S.ft) || CW().feet({ lamp: true });
-  const freePt = (p, stop = true) => CW().free(p.x, p.y, ft(), stop);
-  const zoneY = () => CW().Y0 + GH * CW().RH;
-  const spawnPt = () => { const h = hashL(X.login()); return freePt({ x: 290 + (h % 110), y: 2372 + ((h >>> 7) % 60) }); };   // перед вагонеткой, у подъёмника
+  const ft = () => (S && S.ft) || GX().feet({ lamp: true });
+  const freePt = (p, stop = true) => GX().free(p.x, p.y, ft(), stop);
+  const zoneY = () => (V3() ? Infinity : CW().Y0 + GH * CW().RH);
+  // 29.10: на большом этаже - в зале лифта (геометрия mine3.spawn)
+  const spawnPt = () => { const h = hashL(X.login()); return V3() ? GX().spawn(h % 21) : freePt({ x: 290 + (h % 110), y: 2372 + ((h >>> 7) % 60) }); };
+  const inZone = (c) => (V3() ? GX().inHall(c) : c >= GW * GH);   // площадка входа / зал лифта: там ходят в обход предметов   // перед вагонеткой, у подъёмника
   // точки пути: центры клеток площадки входа между двумя точками площадки не нужны (по ней идут прямо); каждый отрезок - в обход предметов
   function way(pts) {
+    if (V3()) {   // 29.10: в зале лифта - в обход предметов, в рукавах - по центрам клеток
+      const g = GX(), inH = (p) => g.inHall(g.cellAt(p.x, p.y)), out = [pts[0]];
+      for (let k = 1; k < pts.length; k++) { const a = out[out.length - 1], b = pts[k]; if (inH(a) && inH(b)) out.push(...g.route(a, b, ft())); else out.push(b); }
+      return out;
+    }
     const yb = zoneY(), q = pts.filter((p, k) => !(k > 0 && k < pts.length - 1 && p.y >= yb && pts[k - 1].y >= yb && pts[k + 1].y >= yb)), out = [q[0]];
     for (let k = 1; k < q.length; k++) out.push(...CW().route(out[out.length - 1], q[k], ft()));
     return out;
@@ -78,12 +98,12 @@
 
   /* ---------- открыть / закрыть ---------- */
   function open(x, c) {
-    X = x; if (S) close(); B.lines.clear(); B.wait = null; B.said = null; C = /^[a-z0-9_-]{1,24}$/.test(String(c || '')) ? String(c) : 'home';
+    X = x; if (S) close(); B.lines.clear(); B.wait = null; B.said = null; C = /^[a-z0-9_-]{1,24}(\.[1-9][0-9]{0,2})?$/.test(String(c || '')) ? String(c) : 'home';   // 29.10: «home.3» - этаж Шахты 3.0
     const el = document.createElement('div'); el.className = 'mn'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Шахта');
     el.innerHTML = `<div class="mn-view" tabindex="0"><div class="mn-world"><svg class="mn-bg" aria-hidden="true"></svg><div class="mn-bars"></div><div class="mn-heroes"></div><div class="mn-labels" aria-hidden="true"></div></div></div>
       <header class="mn-top"><div class="mn-ttl"><b data-mn="name">Шахта</b><span data-mn="floor"></span><span class="mn-cnt" data-mn="cnt" hidden></span></div><span class="mn-reset" data-mn="reset"></span><div class="mn-tb"><button type="button" class="btn ghost sm mn-info" data-mn-info title="Как устроена шахта" aria-label="Как устроена шахта" aria-haspopup="dialog">i</button><button type="button" class="btn ghost sm mn-hide" data-mn-hide aria-pressed="false" title="Показывать других игроков" aria-label="Игроки">Игроки</button><button type="button" class="btn ghost sm" data-mn-board aria-label="Итоги">Итоги</button><button type="button" class="btn ghost mn-exit" data-mn-exit>В город</button></div></header>
       <div class="mn-zoom" role="group" aria-label="Масштаб"><button type="button" class="btn ghost sm" data-mn-z="-1" aria-label="Отдалить">−</button><button type="button" class="btn ghost sm" data-mn-z="1" aria-label="Приблизить">+</button></div>
-      <div class="mn-other" hidden><p>Шахта открыта в другой вкладке — копать можно только в одной.</p><button type="button" class="btn primary" data-mn-here>Копать здесь</button></div>
+      <div class="mn-other" hidden><p>Шахта открыта в другой вкладке или окне - копать можно только в одной. Работой управляет та вкладка.</p><button type="button" class="btn primary" data-mn-here>Копать здесь</button></div>
       <aside class="mn-panel panel" data-open="0"><button type="button" class="mn-ph" data-mn-ph aria-expanded="false"><span data-mn="status">Шахта</span><em data-mn="earn"></em><i aria-hidden="true"></i></button><div class="mn-pb" data-mn="body"></div></aside>
       <div class="mn-tip" role="status" hidden></div>${window.LGChat ? window.LGChat.html({ name: 'Чат шахты', ph: 'Написать в чат шахты…' }) : ''}`;
     host().appendChild(el); document.body.classList.add('mn-on');
@@ -104,7 +124,7 @@
     window.addEventListener('resize', fit);
     chatWatch();   // 25.10: чат шахты - не на предметах (chatFit)
     chatDrag();    // 26.10: чат шахты на ПК можно перетащить за заголовок
-    document.addEventListener('visibilitychange', vis);
+    document.addEventListener('visibilitychange', vis); tlOn();   // 29.10: телеметрия «Боты в шахте» (счётчик нажатий)
     document.addEventListener('keydown', key);
     enter().catch(fail);
   }
@@ -124,9 +144,9 @@
   /* ---------- 25.10 (обновление шахты): чат шахты — общий модуль чата сайта (packages/site-ui/chat.js, тот же код, что у «Города»), своя лента
      на канал (/api/mine/chat…, src/site/site.ts room 'mine'): новое — событием «mine» (chatRoom: 'mine') или опросом state?mc=<номер> ---------- */
   let CHM = null;
-  const chatX = () => { if (!X || !S) return X; if (!S.chatX) S.chatX = { ...X, api: (p, b) => X.api(/^\/api\/mine\/chat/.test(p) ? p + q() : p, b) }; return S.chatX; };
+  const chatX = () => { if (!X || !S) return X; if (!S.chatX) S.chatX = { ...X, api: (p, b) => X.api(/^\/api\/mine\/chat/.test(p) ? p + `?c=${encodeURIComponent(CB())}` : p, b) }; return S.chatX; };
   const mchat = () => CHM || (CHM = window.LGChat ? window.LGChat.make({ state: () => S, X: chatX, base: '/api/mine/chat', say: '/api/mine/chat/say', key: 'lgMineChat', name: 'Чат шахты', ph: 'Написать в чат шахты…', where: 'в чате шахты',
-    flags: () => ({ on: !!(S && S.mchatOn && mine2On()), tr: false, dm: false }), trade: false, here: () => !!(S && S.st), joining: 'подключаемся к шахте…', rejoin: () => enter(true),
+    flags: (h) => ({ on: !!(S && S.mchatOn && mine2On()), tr: false, dm: !!(window.LGDm && h && h.cd) }),   // 29.10: «Личные» и в шахте (личка страницы - LGDm, пишется из любого места) trade: false, here: () => !!(S && S.st), joining: 'подключаемся к шахте…', rejoin: () => enter(true),
     onError: (er) => { if (/не в шахте/.test(er) && S) enter(true); } }) : null);
   function mchatIn(r) { if (!S || !r || !r.mchat) return; const c = mchat(); if (!c) return; S.mchatOn = true; c.init(); c.enter(r.mchat); }
   function exit() { try { close(); } finally { try { if (X && X.close) X.close(); } catch (e) {} } }
@@ -135,18 +155,33 @@
     try { X.api('/api/mine/leave' + q(), {}); } catch (e) {}
     cancelAnimationFrame(S.raf); clearInterval(S.pollT); clearInterval(S.pingT); if (S.chatMo) S.chatMo.disconnect(); clearTimeout(S.chatFitT); clearTimeout(S.chatT);
     if (S.chatRo) S.chatRo.disconnect(); clearTimeout(S.chatHT);
-    window.removeEventListener('resize', fit); document.removeEventListener('visibilitychange', vis); document.removeEventListener('keydown', key);
+    window.removeEventListener('resize', fit); document.removeEventListener('visibilitychange', vis); document.removeEventListener('keydown', key); tlOff();
     try { if (CHM) CHM.menuClose(); } catch (e) {}
+    if (BD && BD.mine && BD.d.isConnected) try { BD.shut(); } catch (e) { BD.d.remove(); }   // 29.10: итоги, открытые из шахты, - закрыть вместе с ней
+    for (const h of document.querySelectorAll('.mn-help')) h.remove();
     S.el.remove(); document.body.classList.remove('mn-on'); S = null;
   }
   // 25.10: Esc в поле чата — свернуть чат, а не уйти из шахты
   const key = (e) => { if (e.key === 'Escape' && S && !(e.target && e.target.closest && e.target.closest('input, textarea, select, .cy-nm'))) { if (document.querySelector('.mn-board-w')) return; if (S.el.querySelector('.mn-inv2-w')) bagClose(); else if (S.npcOpen) { S.npcOpen = false; panel(); } else { close(); if (X.close) X.close(); } } };
-  function vis() { if (!S) return; if (document.hidden) cancelAnimationFrame(S.raf); else { S.last = 0; step(); poll(); } }
+  /* 29.10 (стример: «оставляю шахту в фоне - при возврате пишет "только в одном окне", не знаю, идёт ли работа»): герой копает на
+     сервере и без страницы (камень докапывается, сайт не нужен). Вернулся в ту же вкладку - сразу спрашиваем вид (не ждём 10-го опроса
+     живого канала) и, если уходил, когда герой копал, коротко говорим, что с работой */
+  function vis() {
+    if (!S) return;
+    if (document.hidden) { cancelAnimationFrame(S.raf); S.hidAt = Date.now(); S.hidDig = S.myI >= 0; return; }
+    S.last = 0; step();
+    const away = S.hidAt ? Date.now() - S.hidAt : 0, dug = S.hidDig; S.hidAt = 0;
+    poll(false, true).then(() => { if (S && dug && away > 60000) backTip(); }).catch((e) => console.error('[шахта] возврат', e));
+  }
+  function backTip() {
+    if (!S || !S.el.querySelector('.mn-other').hidden) return;
+    tip(S.myI >= 0 ? 'Пока вкладка была в фоне, герой копал - работа идёт' : 'Пока вкладка была в фоне, герой докопал камень - выбери следующий');
+  }
 
   async function enter(again) {
     const start = again && S.pos ? { x: S.pos.x, y: S.pos.y } : spawnPt();   // 25.10 (mine/walk): было W/2, H-150 - внутри доски «Поручения»
     const me0 = S;
-    const r = await X.api('/api/mine/enter' + q(), start);
+    const r = await X.api('/api/mine/enter' + q(), { ...start, tab: TAB });
     if (!S || S !== me0) return;   // 25.10: шахту закрыли (или открыли заново) пока ждали ответа — это уже не наш вход
     if (!r || !r.ok) { S.el.querySelector('[data-mn="body"]').innerHTML = `<p class="empty">${esc((r && r.error) || 'Шахта не открылась — попробуй ещё раз.')}</p>`; return; }
     S.sid = r.sid || '';
@@ -156,6 +191,7 @@
     take(r.st, r.me, r.lk);
     if (!S || S !== me0) return;
     try { mchatIn(r); } catch (e) { console.error('[шахта] чат', e); }   // после take: флаг обновления (mine2) — в «моём в шахте»; чат упал - шахта работает
+    pos3();
     if (!again) fit(true);
     clearInterval(S.pollT); clearInterval(S.pingT);
     S.pollT = setInterval(poll, 3000);
@@ -166,16 +202,22 @@
   // без живого канала — спрашиваем сами раз в 3 с; с ним — раз в 30 с (на случай пропуска).
   // 24.10 (нагрузка): v — какой вид у нас уже есть (не изменился — сервер его не шлёт), f — какой этаж (раскладку этажа не шлёт)
   let pollN = 0;
-  async function poll(full) {
+  async function poll(full, force) {
     if (!S || (document.hidden && !full)) return;
-    pollN++; if (!full && X.live && X.live() && pollN % 10 && !S.lkWant.size) return;   // 25.10: облики копающих - не ждать 10-го опроса (минуты рисовались «чужие» коты)
+    pollN++; if (!full && !force && X.live && X.live() && pollN % 10 && !S.lkWant.size) return;   // 25.10: облики копающих - не ждать 10-го опроса (минуты рисовались «чужие» коты)
+    // 29.10: ключ вкладки, с которым ушёл опрос
+    const sid0 = S.sid;
     const st0 = S.st, have = !full && st0 ? `&v=${encodeURIComponent(st0.v)}&f=${encodeURIComponent(st0.seed + '.' + st0.n)}` : '';
     // 25.10: облик тех, кто копает, но не гуляет здесь (сайт у них закрыт) — спрашиваем только незнакомых
     const lk = [...S.lkWant].slice(0, 60); S.lkWant.clear(); if (lk.length) S.lkAt = Date.now();
     const mc = S.chat && S.chat.on && !(X.live && X.live()) ? `&mc=${S.chat.c || 0}` : '';   // 25.10: чат шахты без живого канала
-    const r = await X.api('/api/mine/state' + q() + have + (S.sid ? `&sid=${S.sid}` : '') + (lk.length ? `&lk=${encodeURIComponent(lk.join(','))}` : '') + mc); if (!S || !r || !r.ok) return;
+    const r = await X.api('/api/mine/state' + q() + have + (S.sid ? `&sid=${S.sid}` : '') + (lk.length ? `&lk=${encodeURIComponent(lk.join(','))}` : '') + mc);
+    // 29.10: шахту закрыли (округ потерян / доступ кончился) - не висеть в мёртвом окне: сказать и вернуть в город
+    if (S && r && !r.ok && r.error === 'mine_closed') { try { if (X.toast) X.toast('Шахта закрыта: доступа сюда больше нет - возвращаю в город', true); } catch (e) { /* без тоста */ } exit(); return; }
+    if (!S || !r || !r.ok) return;
     if (r.mchat && S.chat && S.chat.on) mchat().apply(r.mchat);
-    otherTab(!!r.other);
+    // 29.10: ответ на опрос со старым ключом вкладки (пока шёл, страница вошла заново) про «другую вкладку» не говорит
+    if (S.sid === sid0) otherTab(!!r.other);
     // 25.10 (баг «котики стоят»): вкладка была скрыта дольше 3 мин — сервер забыл нас (присутствия в ответе нет: n нет), шаги и уходы
     // других больше не приходили, а старые коты стояли до перезагрузки. Заходим снова — сервер пришлёт всех заново
     if (r.n == null && !r.other && Date.now() - (S.rejoinAt || 0) > 15000) { S.rejoinAt = Date.now(); enter(true); }
@@ -216,13 +258,14 @@
     const prevDug = S.dug, prevDg = (S.st && S.st.dg) || {}, prevMy = S.myI;
     S.st = st; S.F = floorOf(st); S.dug = dugArr(st); S.stAt = Date.now();
     // 25.10: «+руда» — только тому, кому она досталась (st.dl: кто сколько получил с этого камня); остальным копавшим — «Камень разбит»
+    // 29.10 (антибот): в dl сервер шлёт только свою долю, d[6] - сколько всего получили (для «досталась другим копавшим»)
     // 25.10: добыча осколками (1 шт. = 100): d[4] — осколки; старый вид (без d[4]) — штуки d[3]
-    const gotOf = (i) => { const d = (st.dl || []).find((x) => x[0] === i && x[1] === st.n); if (!d) return null; const m = d[4] || d[3] || {}, v = m[X.login()] || 0; return { r: d[2], q: d[4] ? v : Math.round(v * 100), any: Object.keys(m).length, loot: (d[5] || {})[X.login()] || null }; };
+    const gotOf = (i) => { const d = (st.dl || []).find((x) => x[0] === i && x[1] === st.n); if (!d) return null; const m = d[4] || d[3] || {}, v = m[X.login()] || 0; return { r: d[2], q: d[4] ? v : Math.round(v * 100), any: d[6] != null ? +d[6] || 0 : Object.keys(m).length, loot: (d[5] || {})[X.login()] || null }; };
     if (!newFloor && prevDug.length) S.burst = S.dug.map((d, i) => (d && !prevDug[i] ? i : -1)).filter((i) => i >= 0).map((i) => ({ i, mine: i === prevMy || (prevDg[i] || []).includes(X.login()), got: gotOf(i) }));
     // мой камень: из вида шахты (кто где копает) — надёжнее, чем снимок героя
     // 26.10: в виде у камня - только первые 4 копающих (st.dg), всего их - st.bl[i][3]. Снимку героя (me.i) верим, только если у камня
     // копает больше, чем перечислено (меня могло не войти в 4); перечислены все, а меня нет - не копаю (снимок героя запоздал)
-    const mine = Object.entries(st.dg || {}).find(([, ls]) => ls.includes(X.login())), mb = S.me && S.me.i >= 0 ? (st.bl || {})[S.me.i] : null;
+    const mine = Object.entries(st.dg || {}).find(([, ls]) => ls.includes(X.login())), mb = S.me && S.me.i >= 0 && !(st.fl && st.fl.v3 && S.me.f && S.me.f !== st.n) ? (st.bl || {})[S.me.i] : null;   // 29.10: копает на другом этаже - не этот камень
     S.myI = mine ? +mine[0] : (mb && st.dug[S.me.i] !== '1' && (mb[3] || 0) > ((st.dg || {})[S.me.i] || []).length ? S.me.i : -1);   // 24.10: снимок героя запаздывает — после спуска его камень с прошлого этажа не «мой»
     /* 26.10 (стример в эфире: «Сейчас» не пропадала после «Перестать копать» / шага от камня, пока не начнёшь другой камень): сам ушёл
        от камня - пока игра (вид шахты, снимок героя - на эфире запаздывают больше минуты) не подтвердит, что не копаю, этот камень
@@ -250,6 +293,7 @@
     for (const ls of Object.values(st.dg || {})) for (const l of ls.filter((x) => x !== X.login()).slice(0, 4)) if (!S.looks.has(l) && !S.others.has(l)) S.lkWant.add(l);
     if (S.lkWant.size && Date.now() - S.lkAt > 5000) { S.lkAt = Date.now(); setTimeout(() => poll(), 50); }
     if (newFloor && S.pos && S.F) { S.pos = spawnPt(); S.path = null; S.want = null; S.qq = []; }
+    if (follow3(st)) return;
     draw(); panel();
     if (newFloor) fit(true);
     // 25.10: герой копает (так говорит игра), а стоит не у камня - зашёл в шахту, пока он копал без сайта, или очередь дала следующий
@@ -268,7 +312,7 @@
 
   /* ---------- 23.10: камень выкопан — осколки и «+руда» (CSS, один раз) ---------- */
   function burst(b) {
-    const W = CW(), c = W.cellXY(b.i), cell = S.F.cells[b.i], col = (W.RES || {})[cell.r] || '#9a8e80', deb = (S.Wd && S.Wd.debris) || ['#8e7f70', '#8e7f70'];
+    const W = GX(), c = W.cellXY(b.i), cell = S.F.cells[b.i], col = (CW().RES || {})[cell.r] || '#9a8e80', deb = (S.Wd && S.Wd.debris) || ['#8e7f70', '#8e7f70'];
     const el = document.createElement('div'); el.className = 'mn-burst'; el.style.left = c.x + 'px'; el.style.top = (c.y - 40) + 'px'; el.style.zIndex = String(Math.round(c.y) + 5);
     let h = ''; for (let k = 0; k < 9; k++) { const a = (k / 9) * Math.PI * 2 + Math.random() * 0.5, d = 40 + Math.random() * 40; h += `<i style="--dx:${(Math.cos(a) * d).toFixed(0)}px;--dy:${(Math.sin(a) * d - 30).toFixed(0)}px;--r:${(Math.random() * 360).toFixed(0)}deg;background:${k % 3 ? deb[k % 2] : col}"></i>`; }
     const g = b.got, mineGot = !!(g && g.q > 0);
@@ -348,6 +392,8 @@
   }
 
   function draw() {
+    if (!S.F && S.st && S.st.fl && S.st.fl.v3) S.F = floorOf(S.st);   // 29.10: mine3.js догрузился
+    if (V3()) return draw3();
     const W = CW(), F = S.F; if (!F) return;
     const front = new Set(S.st.front || []);
     const lampMan = pickOn() || S.st.n >= (S.st.lampFrom || 4) || (S.st.rec || 0) >= (S.st.lampFrom || 4);   // 26.10: Снабженец - у входа всегда
@@ -386,22 +432,60 @@
     S.barKey = ''; bars(); heroes();   // 25.10: сцена новая - копаемые камни (mine-art) отметить заново
     S.failed = '';
   }
+  /* 29.10 (Шахта 3.0): большой этаж - сцена кусками (mine3.js), туман, зал лифта (клеть, Снабженец, скупщик, доска), мини-карта.
+     Перерисовка - как у прежнего этажа: только когда поменялся вид (выкопали, фронт, этаж, темнота); куски - только изменившиеся и в кадре. */
+  function draw3() {
+    const L3 = window.LGMine3, A = window.LGMineArt, F = S.F; if (!L3 || !A || !F) return;
+    const front = new Set(S.st.front || []);
+    S.dark = S.st.n >= (S.st.darkFrom || 5) && !lampOn();
+    const Lf = S.st.lift || { st: 'dig' }, lch = Lf.st === 'fund' ? `сбор ${Math.floor(Lf.need ? Math.min(100, Lf.c / Lf.need * 100) : 0)}%` : Lf.st === 'up' ? 'лифт улучшается' : 'ищем шахту лифта';   // 29.10: что с лифтом - над клетью
+    const key = ['v3', lch, (S.st.drills || []).map((d) => d[0] + d[3] + d[4]).join(','), S.st.seed, S.st.n, S.st.dug, (S.st.front || []).join('.'), S.dark ? 1 : 0, (S.st.fl.c || []).length, pickOn() ? 1 : 0, window.LGMineBiome ? 1 : 0].join('|');
+    if (key === S.svgKey) { bars(); heroes(); mmap(); return; }
+    S.svgKey = key;
+    if (!S.m3) { S.m3 = L3.scene(S); S.world.insertBefore(S.m3.el, S.world.firstChild); }
+    const Wd = S.m3.update(F, { dug: S.dug, front, dark: S.dark, lampMan: true, lift: { ...(S.st.lift || {}), deep: S.st.deep || S.st.n } });
+    if (Wd.lampNpc) Wd.lampNpc = { ...Wd.lampNpc, name: pickOn() ? SUP : 'Фонарщик', ...(pickOn() && A.TRADER_LOOK ? { look: A.TRADER_LOOK } : {}) };
+    S.Wd = Wd;
+    S.svg.setAttribute('viewBox', `0 0 ${Wd.W} ${Wd.H}`); S.svg.setAttribute('width', Wd.W); S.svg.setAttribute('height', Wd.H); S.svg.style.left = '0px';
+    S.svg.classList.add('v3');   // пустое место слоя предметов не ловит нажатия - камни в кусках сцены под ним
+    S.world.style.width = Wd.W + 'px'; S.world.style.height = Wd.H + 'px';
+    S.view.style.background = Wd.theme.wallD;
+    const lbl = [], occ = [];
+    const npcG = (n, id, seed) => { if (!n) return ''; const nk = 0.8, sv = still(X.doodle(seed, n.look || { look: { hat: 'none' }, minerHat: true }, 'happy', 'peace')); lbl.push(`<span class="mn-lbl" data-for="${id}" style="left:${n.x}px;top:${(n.y - 170 * nk - 2).toFixed(0)}px">${esc(n.name)}</span>`); occ.push({ k: id === 'buy' ? 'npcBuy' : 'npcLamp', svg: figSvg(n.x, n.y, sv, nk), z: Math.round(n.y) }); return `<g data-npc="${id}" class="mn-npc">${figSvg(n.x, n.y, sv, nk)}</g>`; };
+    let npcSvg = npcG(Wd.npc, 'buy', 'npc:skupshik:' + (S.st.biome || '')) + npcG(Wd.lampNpc, 'lamp', 'npc:fonarshik');
+    // темно (с этажа darkFrom без каски): весь этаж, кроме зала лифта
+    if (S.dark) { const [hx, hy, hw, hh] = GX().hall; npcSvg += `<g class="mn-dark"><path d="M0 0H${Wd.W}V${Wd.H}H0Z M${hx} ${hy}V${hy + hh}H${hx + hw}V${hy}Z" fill="#05030a" fill-rule="evenodd" opacity=".93"/><text x="${hx + hw / 2}" y="${hy - 60}" text-anchor="middle" font-family="Golos Text, Arial" font-weight="800" font-size="30" fill="#ffe7a0">Темно - нужна каска с фонарём</text></g>`; }
+    const props = Wd.props.slice().sort((a, b) => a.y - b.y);
+    S.svg.innerHTML = GLOW + props.map((p) => `<g data-obj="${p.obj}" class="mn-obj${OBJ[p.obj] && (p.obj !== 'lamp' || Wd.lampNpc) ? ' act' : ''}">${p.svg}</g>`).join('') + npcSvg;
+    { const [hx, hy] = GX().hall; lbl.push(`<span class="mn-lchip mn-lchip-${esc(Lf.st)}" style="left:${hx + 256}px;top:${hy - 26}px">${esc(lch)}</span>`); }
+    S.labels.innerHTML = lbl.join('') + '<span class="mn-hl" hidden></span>';
+    occlude(Wd, props, occ);
+    S.barKey = ''; bars(); heroes(); mmap();
+    S.failed = '';
+  }
+  // мини-карта (справа сверху): лифт, ты, жилы, открытые залы, шахта лифта
+  function mmap() {
+    if (!V3() || !S.m3) return;
+    let el = S.el.querySelector('.mn-mm'); if (!el) { el = document.createElement('div'); el.className = 'mn-mm'; el.setAttribute('aria-label', 'Карта этажа'); S.el.appendChild(el); }
+    const me = S.pos ? GX().cellAt(S.pos.x, S.pos.y) : null, k = [S.svgKey, me].join('|'); if (el.dataset.k === k) return; el.dataset.k = k;
+    el.innerHTML = '<div class="mn-mm-t">Карта этажа</div>' + S.m3.minimap(me);
+  }
   /* 25.10 (mine/walk): глубина у входа. Сцена (SVG) - под слоем героев, поэтому коты рисовались поверх доски и лавки, даже стоя за ними.
      Копия предметов входа и NPC - в слое героев (в нём же z героев - по линии ног): z копии - линия основания предмета (FOOT z), кто
      стоит выше неё - за предметом. Копии не ловят нажатия (клик и подсветка - у предметов сцены под ними); перерисовка - только с новой сценой */
   function occlude(Wd, props, npcs) {
-    S.ft = CW().feet({ lamp: !!Wd.lampNpc });
+    S.ft = GX().feet({ lamp: !!Wd.lampNpc });
     for (const e of S.heroes.querySelectorAll('.mn-oc')) e.remove();
-    const box = (k) => { const f = CW().FOOT.find((x) => x.k === k); return f ? [f.s[0] - 60, f.z - 340, f.s[2] - f.s[0] + 120, f.s[3] - f.z + 360] : null; };
+    const box = (k) => { const f = GX().FOOT.find((x) => x.k === k); return f ? [f.s[0] - 60, f.z - 340, f.s[2] - f.s[0] + 120, f.s[3] - f.z + 360] : null; };
     let h = '';
     for (const o of [...props.filter((p) => p.obj).map((p) => ({ k: p.obj, svg: p.svg })), ...npcs]) {
-      const b = box(o.k), f = CW().FOOT.find((x) => x.k === o.k); if (!b) continue;
+      const b = box(o.k), f = GX().FOOT.find((x) => x.k === o.k); if (!b) continue;
       h += `<svg class="mn-oc" data-oc="${o.k}" aria-hidden="true" focusable="false" overflow="visible" width="${b[2]}" height="${b[3]}" viewBox="${b.join(' ')}" style="position:absolute;left:${b[0]}px;top:${b[1]}px;z-index:${o.z || f.z};pointer-events:none;overflow:visible">${o.svg}</svg>`;
     }
     S.heroes.insertAdjacentHTML('afterbegin', h);
   }
   // 25.10: предметы входа, на которые можно нажать (вагонетка — просто рисунок), и подпись при наведении
-  const OBJ = { lift: 'В город - подъёмник', buyer: 'Скупщик Гром - сдать руду', board: 'Поручения скупщика', lamp: () => (pickOn() ? SUP + ' - кирки, рудная сумка, каска' : 'Фонарщик - каска шахтёра'), up: () => upText() };
+  const OBJ = { lift: () => (V3() ? 'Лифт - этажи, сбор на следующий' : 'В город - подъёмник'), buyer: 'Скупщик Гром - сдать руду', board: 'Поручения скупщика', lamp: () => (pickOn() ? SUP + ' - кирки, рудная сумка, каска' : 'Фонарщик - каска шахтёра'), up: () => upText() };
   const objText = (k) => (typeof OBJ[k] === 'function' ? OBJ[k]() : OBJ[k] || '');
   // 26.10 (mine2): верхняя клеть - откуда спустились и когда спуск дальше (сам переход этажей не трогаем: он у сервера)
   function upText() {
@@ -450,13 +534,14 @@
     el.style.animation = `mnHp ${D.toFixed(1)}s linear ${(-(D - eta)).toFixed(1)}s 1 both`;
   }
   function bars() {
-    const W = CW(), st = S.st, now = Date.now(); let h = '';
+    const W = GX(), st = S.st, now = Date.now(); let h = '';
     const myQ = (S.me && S.me.qq) || S.qq || [];
-    const key = JSON.stringify([st.bl, S.myI, myQ, S.dark]); if (key === S.barKey) return; S.barKey = key;
+    const m3 = V3() && S.m3 ? S.m3 : null, inV = (i) => !m3 || i === S.myI || m3.cellIn(i);   // 29.10: большой этаж - только камни в кадре
+    const key = JSON.stringify([st.bl, S.myI, myQ, S.dark, m3 ? m3.viewKey() : '']); if (key === S.barKey) return; S.barKey = key;
     // 25.10: очередь камней (новинка) — номера на камнях
     myQ.forEach((i, k) => { const c = W.cellXY(i); h += `<div class="mn-qn" style="left:${c.x - 14}px;top:${c.y - 70}px">${k + 1}</div>`; });
     for (const [k, b] of Object.entries(st.bl || {})) {
-      const i = +k, [left, w, rate, n] = b; if (!w || (S.dark && i !== S.myI)) continue;   // 25.10: в темноте чужие полоски не светятся поверх неё
+      const i = +k, [left, w, rate, n] = b; if (!w || (S.dark && i !== S.myI) || !inV(i)) continue;   // 25.10: в темноте чужие полоски не светятся поверх неё
       const age = (now - (st.at || now)) / 60000, l2 = Math.max(0, left - rate * Math.max(0, age)), p = Math.max(0, Math.min(1, 1 - l2 / w)), eta = rate > 0 ? (l2 / rate) * 60 : 0;
       const c = W.cellXY(i), cell = S.F.cells[i], sc = 1.0 + Math.max(0, (cell.lv || S.F.n) - S.F.n) * 0.1;
       // над своим камнем — сколько ещё копать (обновляется раз в 20 с, без кадров)
@@ -465,11 +550,11 @@
     // 25.10 (mine2): камни, которые копают, - копией поверх сцены: трещины растут с прогрессом, камень вздрагивает от ударов (CSS)
     const A = S.Wd && S.Wd.rk && !S.dark ? window.LGMineArt : null; S.digL = [];
     if (A) {
-      for (const [k, b] of Object.entries(st.bl || {})) { const i = +k, [left, w, rate, n] = b; if (!w || !S.Wd.rk[i]) continue; const l2 = Math.max(0, left - rate * Math.max(0, (now - (st.at || now)) / 60000)), cell = S.F.cells[i], c = W.cellXY(i); S.digL.push({ i, x: c.x, y: c.y, s: 1.0 + Math.max(0, (cell.lv || S.F.n) - S.F.n) * 0.1 + (cell.t === 'hard' ? 0.05 : 0), p: 1 - l2 / w, n: n || ((st.dg || {})[i] || []).length, w, l: left, rate }); }
+      for (const [k, b] of Object.entries(st.bl || {})) { const i = +k, [left, w, rate, n] = b; if (!w || !S.Wd.rk[i] || !inV(i)) continue; const l2 = Math.max(0, left - rate * Math.max(0, (now - (st.at || now)) / 60000)), cell = S.F.cells[i], c = W.cellXY(i); S.digL.push({ i, x: c.x, y: c.y, s: 1.0 + Math.max(0, (cell.lv || S.F.n) - S.F.n) * 0.1 + (cell.t === 'hard' ? 0.05 : 0), p: 1 - l2 / w, n: n || ((st.dg || {})[i] || []).length, w, l: left, rate }); }
       h = A.digging(S.Wd.rk, S.digL) + h;
     }
-    S.svg.querySelectorAll('[data-i].dg').forEach((g) => g.classList.remove('dg'));
-    for (const b of S.digL) { const g = S.svg.querySelector(`[data-i="${b.i}"]`); if (g) g.classList.add('dg'); }
+    S.world.querySelectorAll('[data-i].dg').forEach((g) => g.classList.remove('dg'));
+    for (const b of S.digL) { const g = S.world.querySelector(`[data-i="${b.i}"]`); if (g) g.classList.add('dg'); }
     S.bars.innerHTML = h;
     requestAnimationFrame(() => { if (!S) return; S.bars.querySelectorAll('i[data-eta]').forEach((el) => hpGo(el, +el.dataset.rem, +el.dataset.eta)); });
   }
@@ -492,7 +577,7 @@
     const hs = hashL(login);   // 25.10: 300 котов не бьют в такт — свой темп и сдвиг удара
     d.style.setProperty('--dd', (1.05 + (hs % 41) / 100).toFixed(2) + 's'); d.style.setProperty('--dl', (-((hs >>> 6) % 140) / 100).toFixed(2) + 's');
     d.style.setProperty('--nmy', String(hashL(login) % 3));   // 25.10: ники соседей — на разной высоте (стояли друг на друге)
-    if (dig) d.title = login;
+    if (dig && login[0] !== '~') d.title = login;   // 29.10 (антибот): «~…» - копающий без открытого сайта, ника сервер не даёт
     return d;
   }
   function place(d, x, y) { d.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`; if (!(d._zTo > Date.now())) d.style.zIndex = String(Math.round(y)); }   // z = линия ног (пока идёт - zSteps)
@@ -509,7 +594,7 @@
     // копающие (из вида шахты): у камня, по сторонам места, откуда копают
     if (showOthers) for (const [k, ls] of Object.entries(st.dg || {})) {
       const i = +k, sp = digSpot(i); if (sp == null) continue;
-      const c = centerOf(sp), r = CW().cellXY(i), dx = r.x - c.x;
+      const c = centerOf(sp), r = GX().cellXY(i), dx = r.x - c.x;
       const OFF = [[-24, 0], [24, 4], [-8, 22], [14, -16]];
       const up = Math.abs(dx) < 20 && r.y < c.y;   // 25.10: камень над головой - бьют вверх (mine.css .dig.up)
       ls.forEach((l, j) => { if (l === me) return; const [ox, oy] = OFF[j % 4]; put('d:' + l, l, vOf(l), 'dig' + (dx < 0 ? ' fl' : '') + (up ? ' up' : ''), c.x + ox + (dx ? Math.sign(dx) * 18 : 0), c.y + oy - 10); });
@@ -523,16 +608,17 @@
       // 25.10 (баг «кирка машет после клика в сторону»): копает - только стоя у своего камня (как сервер: MINE_REACH) и не на ходу
       const digI = S.myI >= 0 && !S.path && atRock(S.myI) ? S.myI : -1, nx = S.path && S.path.length ? S.path[0].x : null;
       const d = put('me', me, myView(), 'me' + (digI >= 0 ? ' dig' : ''), S.pos.x, S.pos.y);
-      if (digI >= 0) { const r = CW().cellXY(digI); d.classList.toggle('fl', r.x < S.pos.x - 4); d.classList.toggle('up', Math.abs(r.x - S.pos.x) < 30 && r.y < S.pos.y); } else if (nx != null) d.classList.toggle('fl', nx < S.pos.x - 2);
+      if (digI >= 0) { const r = GX().cellXY(digI); d.classList.toggle('fl', r.x < S.pos.x - 4); d.classList.toggle('up', Math.abs(r.x - S.pos.x) < 30 && r.y < S.pos.y); } else if (nx != null) d.classList.toggle('fl', nx < S.pos.x - 2);
       // «Ты» — поверх всех ников (свой элемент над героями)
       let nm = S.heroes.querySelector('.mn-menm'); if (!nm) { nm = document.createElement('span'); nm.className = 'mn-menm'; nm.textContent = 'Ты'; S.heroes.appendChild(nm); }
       nm.style.transform = `translate(${S.pos.x.toFixed(1)}px, ${(S.pos.y - 112).toFixed(1)}px) translateX(-50%)`;
     }
     for (const [k, d] of have) if (!want.has(k)) d.remove();
     if (art2On() && window.LGMineArt && window.LGMineArt.digSync) window.LGMineArt.digSync(S.heroes, S.bars);   // 26.10: сноп у камня, камень в такт
+    mmap();   // 29.10: «ты» на мини-карте большого этажа
   }
   // стоит у камня i: не дальше REACH (200 px мира) от его центра (библиотека мира - та же у сервера: site.ts MINE_REACH) и камень ещё не выкопан
-  function atRock(i) { if (!S.pos || i < 0 || S.dug[i]) return false; const c = CW().cellXY(i); return Math.hypot(S.pos.x - c.cx, S.pos.y - c.cy) <= MW().REACH; }
+  function atRock(i) { if (!S.pos || i < 0 || S.dug[i]) return false; const c = GX().cellXY(i); return Math.hypot(S.pos.x - c.cx, S.pos.y - c.cy) <= MW().REACH; }
   // свой облик — как в «Городе» (city.js mineView): гардероб, снаряжение, призрак; каска — если надета
   const myView = () => { try { const h = X.hero(); if (!h) return null; const cur = h.wardrobe && h.wardrobe.cur && Object.keys(h.wardrobe.cur).length ? h.wardrobe.cur : h.look; return { lk: cur || null, g: { ...(h.gear || {}), ...(lampOn() ? { h: 'miner' } : {}) }, gh: h.ghost ? 1 : 0, ...(pickOn() && S.me && S.me.pkx ? { pk: S.me.pkx.lv } : {}) }; } catch (e) { return null; } };
   function walkAnim(d, o) {
@@ -603,59 +689,162 @@
   function worldPt(e) { const r = S.view.getBoundingClientRect(); return { x: (e.clientX - r.left - S.tx) / S.z, y: (e.clientY - r.top - S.ty) / S.z }; }
   function click(e) {
     if (!S.st || !S.pos) return;
-    const t = e.target.closest && e.target.closest('[data-i],[data-npc],[data-obj]');
+    const t = e.target.closest && e.target.closest('[data-i],[data-npc],[data-obj],[data-drill]');
     if (t && t.dataset.npc) { goNpc(t.dataset.npc); return; }
+    if (t && t.dataset.drill) { S.drillK = t.dataset.drill; openPanel('drill'); return; }   // 29.10 (шаг 4): буровая - окно
     if (t && t.dataset.obj && useObj(t.dataset.obj)) return;   // 25.10: подъёмник, лавка, доска, столб Фонарщика — нажимаются (раньше только ходили к ним)
-    if (S.dark && CW().cellAt(worldPt(e).x, worldPt(e).y) >= 0) { tip('Темно — без каски с фонарём не видно, куда бить. Фонарщик — у входа'); return; }
+    if (S.dark && GX().cellAt(worldPt(e).x, worldPt(e).y) >= 0) { tip('Темно — без каски с фонарём не видно, куда бить. Фонарщик — у входа'); return; }
     const p = worldPt(e);
-    let i = t && t.dataset.i != null ? +t.dataset.i : CW().cellAt(p.x, p.y);
-    if (i >= 0 && !S.dug[i]) return clickRock(i, e.shiftKey || e.long, p);
-    const c = cellOfPt(p.x, p.y); if (c >= 0 && walkable(c)) { const at = c >= GW * GH ? freePt(p) : null; S.sel = -1; leaveRock(c, at); walkTo(c, null, at); }   // 25.10 (mine/walk): у входа - куда нажал (не в предмет)
+    let i = t && t.dataset.i != null ? +t.dataset.i : GX().cellAt(p.x, p.y);
+    if (i >= 0 && !S.dug[i]) return clickRock(i, e.shiftKey || e.long, p, e.tr);
+    const c = cellOfPt(p.x, p.y); if (c >= 0 && walkable(c)) { const at = inZone(c) ? freePt(p) : null; S.sel = -1; leaveRock(c, at); walkTo(c, null, at); }   // 25.10 (mine/walk): у входа - куда нажал (не в предмет)
   }
   // 25.10: ушёл от своего камня — герой перестаёт копать (раньше копал «на расстоянии»); сервер тоже снимает по шагу (mine/go)
   function leaveRock(c, at) {
     if (S.myI < 0) return;
-    const sp = digSpot(S.myI), rc = CW().cellXY(S.myI); if (c === sp && !(at && Math.hypot(at.x - rc.cx, at.y - rc.cy) > MW().REACH)) return;   // at: точка у входа - далеко от камня (MINE_REACH) - тоже ушёл
+    const sp = digSpot(S.myI), rc = GX().cellXY(S.myI); if (c === sp && !(at && Math.hypot(at.x - rc.cx, at.y - rc.cy) > MW().REACH)) return;   // at: точка у входа - далеко от камня (MINE_REACH) - тоже ушёл
     S.left = { i: S.myI, at: Date.now() }; S.want = { i: -1, at: Date.now() }; S.myI = -1; S.qq = [];
     X.api('/api/mineStop', { c: C, sid: S.sid }); heroes(); panel(); tip('Герой отошёл от камня и отложил кирку');
   }
   // 25.10 (новинка, тестерам): очередь — Shift+клик (на телефоне — долгое нажатие) по камню: следующий после текущего, до 2
-  // 26.10 («Боты в шахте», только данные для стримера): к «Копать» - метка страницы, точка клика и скрыта ли вкладка
-  const bwOf = (pt) => ({ k: 1, vh: document.hidden ? 1 : 0, ...(pt ? { pt: [Math.round(pt.x), Math.round(pt.y)] } : {}) });
-  async function queueRock(i, pt) {
+  // 26.10 («Боты в шахте», только данные для стримера): к «Копать» - точка клика. 29.10: метку страницы (k) и «скрыта ли вкладка» (vh)
+  // не шлём - сервер им не верит (docs/reports/mine-antibot.md)
+  // 29.10: и телеметрия tl - только добавка к оценке у стримера (подделать её можно, поэтому оценка по ней только растёт; наказаний нет).
+  // tr - клик по камню был настоящий (isTrusted); false - программный
+  const bwOf = (pt, tr) => ({ ...(pt ? { pt: [Math.round(pt.x), Math.round(pt.y)] } : {}), tl: tele(tr === false) });
+  /* ---------- 29.10 (решение стримера): телеметрия «Боты в шахте». Без нагрузки: счётчик нажатий (пассивный слушатель), на каждое
+     «Копать» - один rAF и один таймер (видна ли вкладка на деле), свойства вкладки - несколько чтений дескрипторов ---------- */
+  const TL = { ti: 0, rv: 0, on: false };
+  const tlIn = (e) => { if (e.isTrusted) TL.ti++; };
+  function tlOn() { if (TL.on) return; TL.on = true; TL.ti = 0; TL.rv = 0; document.addEventListener('pointerdown', tlIn, { capture: true, passive: true }); document.addEventListener('keydown', tlIn, { capture: true, passive: true }); }
+  function tlOff() { if (!TL.on) return; TL.on = false; document.removeEventListener('pointerdown', tlIn, { capture: true }); document.removeEventListener('keydown', tlIn, { capture: true }); }
+  const natv = (f) => { try { return typeof f === 'function' && /\{\s*\[native code\]\s*\}\s*$/.test(Function.prototype.toString.call(f)); } catch (e) { return true; } };   // не прочитать - не признак
+  // подменены ли hidden / visibilityState / hasFocus (свойство на самом document или не родной getter)
+  function tlHp() {
+    try {
+      for (const k of ['hidden', 'visibilityState']) { if (Object.getOwnPropertyDescriptor(document, k)) return 1; const d = Object.getOwnPropertyDescriptor(Document.prototype, k); if (!d || !natv(d.get)) return 1; }
+      if (Object.prototype.hasOwnProperty.call(document, 'hasFocus') || !natv(Document.prototype.hasFocus)) return 1;
+    } catch (e) { return 0; }   // старый браузер без дескрипторов - не признак
+    return 0;
+  }
+  // вкладка говорит «видна», а кадр не нарисован за 1,5 с - на деле она в фоне (там rAF не идёт); итог - со следующим «Копать»
+  function tlFrame() { if (document.visibilityState !== 'visible') return; let f = 0; const id = requestAnimationFrame(() => { f = 1; }); setTimeout(() => { if (!f) { TL.rv = 1; cancelAnimationFrame(id); } }, 1500); }
+  // шахта спрятана (ghost: страница на вкладке «Город», шахта скрыта стилем) - сам по себе не признак, только вместе с другими
+  const ghostM = () => { try { return !!S && (!S.el.isConnected || !S.el.getClientRects().length || getComputedStyle(S.el).visibility === 'hidden'); } catch (e) { return false; } };
+  function tele(ut) { const o = { ti: TL.ti, ...(ut ? { ut: 1 } : {}), ...(TL.rv ? { rv: 1 } : {}), ...(tlHp() ? { hp: 1 } : {}), ...(ghostM() ? { gm: 1 } : {}) }; TL.ti = 0; TL.rv = 0; tlFrame(); return o; }
+  async function queueRock(i, pt, tr) {
     if (S.myI < 0) return false;
     if (i === S.myI) return true;
     const cur = ((S.me && S.me.qq) || S.qq || []).filter((x) => x !== i);
     const qq = [...cur, i].slice(-2);
     const sp = centerOf(digSpot(S.myI) ?? cellOfPt(S.pos.x, S.pos.y));
-    const r = await X.api('/api/mineDig', { i: S.myI, c: C, sid: S.sid, x: sp.x, y: sp.y, q: qq, ...bwOf(pt) }); if (!S) return true;
+    const r = await X.api('/api/mineDig', { i: S.myI, c: C, sid: S.sid, x: sp.x, y: sp.y, q: qq, ...bwOf(pt, tr) }); if (!S) return true;
     if (!r || !r.ok) { tip((r && r.error) || 'Не получилось'); return true; }
     S.qq = qq; if (S.me) S.me = { ...S.me, qq }; S.barKey = ''; bars();
     tip(`В очереди камней: ${qq.length} — герой возьмёт их сам, когда докопает этот`);
     return true;
   }
-  function clickRock(i, toQueue, pt) {
+  function clickRock(i, toQueue, pt, tr) {
     const cell = S.F.cells[i];
     if (S.dark) return tip('Темно — без каски с фонарём не видно, куда бить. Фонарщик — у входа');
     if (cell.t === 'wall') return tip(tx().wall);
     if (!(S.st.front || []).includes(i)) return tip(tx().far);
     if (S.me && S.me.cap > 0 && S.me.day >= S.me.cap) return tip(`На сегодня хватит: ${mmss(S.me.cap)} работы. Новые сутки - в 05:00`);   // 25.10: лимит суток - только если включён (cap > 0)
-    if (toQueue && S.me && S.me.fx && S.me.fx.q && S.myI >= 0) { queueRock(i, pt); return; }
+    if (toQueue && S.me && S.me.fx && S.me.fx.q && S.myI >= 0) { queueRock(i, pt, tr); return; }
     const sp = digSpot(i); if (sp == null) return tip('Не подойти');
     // 25.10: выбранный камень — сразу «мой» (до ответа комнаты), запоздавший вид его не сбросит
     S.want = { i, at: Date.now() }; S.qq = []; S.left = null;
     walkTo(sp, async () => {
       if (!S || !S.want || S.want.i !== i) return;   // пока шёл, выбрал другое
       const at = centerOf(sp);
-      const r = await X.api('/api/mineDig', { i, c: C, sid: S.sid, x: at.x, y: at.y, ...bwOf(pt) });
+      const r = await X.api('/api/mineDig', { i, c: C, sid: S.sid, x: at.x, y: at.y, ...(V3() && S.st ? { n: S.st.n } : {}), ...bwOf(pt, tr) });   // 29.10: n - этаж, который видит игрок
       if (!S) return;
       if (!r || !r.ok) { if (S.want && S.want.i === i) S.want = null; if (r && r.other) otherTab(true); tip((r && r.error) || 'Не получилось'); S.myI = -1; heroes(); panel(); return; }
       S.want = { i, at: Date.now() }; S.myI = i; S.barKey = ''; bars(); heroes(); panel();
       tip(`${tx().doing}: ${blockTitle(cell)} — герой будет работать, пока не закончит (даже если закроешь сайт)`);
     });
   }
+  /* ---------- 29.10 (Шахта 3.0, шаг 3): лифт - этажи (любой открытый), сбор на следующий этаж, таймер ----------
+     Этаж выше самого глубокого - своя шахта сайта «id.этаж» (свой вид и свои гуляющие); самый глубокий - «id». Поехать: комнате mineRide
+     (герой встаёт с камня на другом этаже), потом шахта открывается заново на выбранном этаже. Игра говорит, что герой на другом этаже
+     (me.at: копал, когда открылся новый этаж) - едем туда сами (раз в минуту, не сразу после своей поездки). */
+  const keyOf = (f, deep) => (f >= deep ? CB() : `${CB()}.${f}`);
+  function follow3(st) {
+    if (!(st.fl && st.fl.v3) || !S.me || !(S.me.at >= 1) || S.me.at === st.n) return false;
+    if (S.rideAt && Date.now() - S.rideAt < 60000) return false;
+    const k = keyOf(S.me.at, st.deep || st.n); if (k === C) return false;
+    S.rideAt = Date.now(); const x = X; setTimeout(() => { if (S && x === X) open(x, k); }, 0); return true;
+  }
+  async function ride(f) {
+    const st = S.st, deep = (st && (st.deep || st.n)) || 1; f = Math.max(1, Math.min(deep, Math.floor(+f) || 1));
+    if (S.busyOp) return; S.busyOp = 1;
+    const r = await X.api('/api/mineRide', { c: CB(), n: f }); if (!S) return; S.busyOp = 0;
+    if (!r || !r.ok) { tip((r && r.error) || 'Лифт не поехал'); return; }
+    S.rideAt = Date.now(); tip(`Лифт едет на этаж ${f}…`);
+    const x = X, k = keyOf(f, deep); setTimeout(() => { if (S && x === X) open(x, k); }, f >= deep ? 300 : 2500);   // этажу выше вид приходит со следующей выгрузкой
+  }
+  async function liftFund(coins, lines) {
+    if (S.busyOp) return; S.busyOp = 1;
+    const r = await X.api('/api/mineLift', { c: CB(), coins, ...(lines ? { lines } : {}) }); if (!S) return; S.busyOp = 0;
+    if (!r || !r.ok) { tip((r && r.error) || 'Вклад не принят'); return; }
+    tip('Вклад принят - спасибо! Полоса сбора обновится через пару секунд');
+  }
+  const hm = (ms) => { const m = Math.max(0, Math.round(ms / 60000)); return m >= 60 ? `${Math.floor(m / 60)} ч ${m % 60} мин` : `${m} мин`; };
+  function liftHtml(st) {
+    const L = st.lift || { st: 'dig' }, deep = st.deep || st.n, money = (n) => (X.money ? X.money(n) : String(n));
+    const fl = []; for (let f = deep; f >= 1; f--) fl.push(`<button type="button" class="btn ${f === st.n ? 'primary' : 'ghost'} sm" data-mn-ride="${f}"${f === st.n ? ' aria-current="true" disabled' : ''}>${f}</button>`);
+    let stage = '';
+    if (L.st === 'dig') stage = `<p>Этаж ${deep + 1}: сначала докопайтесь до <b>шахты лифта</b> на этаже ${deep} - она далеко от лифта, под туманом. Потом - сбор ${money(L.need || 0)} и таймер ${hm(L.ms || 0)}.</p>`;
+    else if (L.st === 'fund') {
+      const p = L.need ? Math.min(100, L.c / L.need * 100) : 0, left = Math.max(0, (L.need || 0) - (L.c || 0));
+      const its = oreItems(), P = st.bp || {};
+      const ore = its.filter((it) => +P[it.res] > 0).slice(0, 8).map((it) => `<li><span>${esc(it.name)} <small>${esc(oskQ(it.q))}</small></span><button type="button" class="btn ghost sm" data-mn-lore="${esc(it.uid)}" data-q="${it.q}">Отдать ≈${money(Math.floor(it.q * P[it.res] / 100))}</button></li>`).join('');
+      stage = `<p>Шахта лифта найдена! Скидываемся на этаж ${deep + 1} - монетами и рудой (руда - по цене скупщика, уходит в казну Ратуши).</p>
+        <div class="mn-lbar" role="progressbar" aria-valuemin="0" aria-valuemax="${L.need}" aria-valuenow="${L.c}"><i style="width:${p.toFixed(1)}%"></i><span>${money(L.c || 0)} из ${money(L.need || 0)}</span></div>
+        <div class="mn-btns">${[100, 500, 1000].filter((v) => v < left).map((v) => `<button type="button" class="btn ghost sm" data-mn-lfund="${v}">${money(v)}</button>`).join('')}${left > 0 ? `<button type="button" class="btn primary sm" data-mn-lfund="${left}">Весь остаток ${money(left)}</button>` : ''}</div>
+        ${ore ? `<h4>Руда из сумки</h4><ul class="mn-lore">${ore}</ul>` : ''}`;
+    } else stage = `<p>Собрали! Лифт улучшается: этаж ${deep + 1} откроется через <b>${hm(L.left != null ? L.left - (Date.now() - (S.stAt || Date.now())) : (L.at || 0) - Date.now())}</b>. Копать можно.</p>`;
+    const by = (L.by || []).length ? `<h4>Скинулись</h4><ol class="mn-lby">${L.by.map(([l, v]) => `<li><span>${esc(l)}</span><b>${money(v)}</b></li>`).join('')}</ol>` : '';
+    return `<div class="mn-npc-p mn-lift"><h3 class="h3">Лифт</h3><p class="muted">Ты на этаже ${st.n}. Открыто этажей: ${deep}.</p><div class="mn-lfl" role="group" aria-label="Этажи">${fl.join('')}</div>${stage}${by}
+      <div class="mn-btns"><button type="button" class="btn ghost" data-mn-lcity>В город</button><button type="button" class="btn ghost" data-mn-back>Назад</button></div></div>`;
+  }
+  /* ---------- 29.10 (шаг 4): окно буровой - стадия, уровень, добыча, сбор на следующий уровень ---------- */
+  async function drillFund(k, coins, lines) {
+    if (S.busyOp) return; S.busyOp = 1;
+    const r = await X.api('/api/mineDrill', { c: CB(), k, coins, ...(lines ? { lines } : {}) }); if (!S) return; S.busyOp = 0;
+    if (!r || !r.ok) { tip((r && r.error) || 'Вклад не принят'); return; }
+    tip('Вклад в буровую принят - спасибо!');
+  }
+  function fundBlock(c, need, attr, oreAttr, st) {
+    const money = (n) => (X.money ? X.money(n) : String(n)), p = need ? Math.min(100, c / need * 100) : 0, left = Math.max(0, need - c), P = st.bp || {};
+    const ore = oreItems().filter((it) => +P[it.res] > 0).slice(0, 8).map((it) => `<li><span>${esc(it.name)} <small>${esc(oskQ(it.q))}</small></span><button type="button" class="btn ghost sm" ${oreAttr}="${esc(it.uid)}" data-q="${it.q}">Отдать ≈${money(Math.floor(it.q * P[it.res] / 100))}</button></li>`).join('');
+    return `<div class="mn-lbar" role="progressbar" aria-valuemin="0" aria-valuemax="${need}" aria-valuenow="${c}"><i style="width:${p.toFixed(1)}%"></i><span>${money(c)} из ${money(need)}</span></div>
+      <div class="mn-btns">${[100, 500, 1000].filter((v) => v < left).map((v) => `<button type="button" class="btn ghost sm" ${attr}="${v}">${money(v)}</button>`).join('')}${left > 0 ? `<button type="button" class="btn primary sm" ${attr}="${left}">Весь остаток ${money(left)}</button>` : ''}</div>
+      ${ore ? `<h4>Руда из сумки</h4><ul class="mn-lore">${ore}</ul>` : ''}`;
+  }
+  function drillHtml(st) {
+    const d = (st.drills || []).find((x) => x[0] === S.drillK);
+    if (!d) return `<div class="mn-npc-p"><h3 class="h3">Буровая</h3><p>Буровой здесь нет.</p><div class="mn-btns"><button type="button" class="btn ghost" data-mn-back>Назад</button></div></div>`;
+    const [k, , , stg, lv, c, need, left, out, cap, rate, res, by] = d, money = (n) => (X.money ? X.money(n) : String(n)), nm = esc(resName(res));
+    const head = stg === 'site' ? `<p>Жила «${nm}» почти выкопана - здесь можно поставить буровую. Она сама добывает руду жилы: 70% - в казну Ратуши, 30% - тем, кто копал в шахте за последний час. Строителям - бонус рудой.</p>`
+      : stg === 'build' ? `<p>Стройка ур. ${lv + 1}: готово через <b>${hm(left - (Date.now() - (S.stAt || Date.now())))}</b>.${lv ? ` Пока строится - добывает как ур. ${lv}.` : ''}</p>`
+      : stg === 'dry' ? `<p>Жила иссякла - буровая добыла всё, что могла (${val(out)} шт.).</p>`
+      : `<p>Буровая ур. ${lv}: ${val(rate)} шт./ч руды «${nm}». Добыто ${val(out)} из ${val(cap)} шт.</p>`;
+    const prog = lv && stg !== 'dry' ? `<div class="mn-lbar mn-dbar"><i style="width:${cap ? Math.min(100, out / cap * 100).toFixed(1) : 0}%"></i><span>добыто ${val(out)} из ${val(cap)} шт.</span></div>` : '';
+    const fund = (stg === 'site' || stg === 'work') && lv < 3 ? `<h4>${lv ? `На ур. ${lv + 1}` : 'На постройку'}</h4>${fundBlock(c, need, 'data-mn-dfund', 'data-mn-dore', st)}` : '';
+    const who = (by || []).length ? `<h4>Скинулись</h4><ol class="mn-lby">${by.map(([l, v]) => `<li><span>${esc(l)}</span><b>${money(v)}</b></li>`).join('')}</ol>` : '';
+    return `<div class="mn-npc-p mn-lift"><h3 class="h3">Буровая · ${nm}</h3>${head}${prog}${fund}${who}<div class="mn-btns"><button type="button" class="btn ghost" data-mn-back>Назад</button></div></div>`;
+  }
+  function liftBind(el) {
+    el.querySelectorAll('[data-mn-dfund]').forEach((b) => { b.onclick = () => drillFund(S.drillK, +b.dataset.mnDfund); });
+    el.querySelectorAll('[data-mn-dore]').forEach((b) => { b.onclick = () => drillFund(S.drillK, 0, [[b.dataset.mnDore, +b.dataset.q]]); });
+    el.querySelectorAll('[data-mn-ride]').forEach((b) => { b.onclick = () => ride(+b.dataset.mnRide); });
+    el.querySelectorAll('[data-mn-lfund]').forEach((b) => { b.onclick = () => liftFund(+b.dataset.mnLfund); });
+    el.querySelectorAll('[data-mn-lore]').forEach((b) => { b.onclick = () => liftFund(0, [[b.dataset.mnLore, +b.dataset.q]]); });
+    const c = el.querySelector('[data-mn-lcity]'); if (c) c.onclick = exit;
+  }
   function useObj(k) {
-    if (k === 'lift') { exit(); return true; }
+    if (k === 'lift') { if (V3()) { openPanel('lift'); return true; } exit(); return true; }
     if (k === 'buyer') { goNpc('buy'); return true; }
     if (k === 'lamp' && S.Wd.lampNpc) { goNpc('lamp'); return true; }
     if (k === 'board') { goBoard(); return true; }
@@ -699,7 +888,7 @@
     const at = frontOf('board'); walkTo(cellOfPt(at.x, at.y), null, at);   // 25.10 (mine/walk): встаёт перед доской, а не между её ножек
   }
   // куда подходить к предмету: перед ним (FOOT at)
-  const frontOf = (k) => { const f = CW().FOOT.find((x) => x.k === k); return f && f.at ? freePt({ x: f.at[0], y: f.at[1] }) : spawnPt(); };
+  const frontOf = (k) => { const f = GX().FOOT.find((x) => x.k === k); return f && f.at ? freePt({ x: f.at[0], y: f.at[1] }) : spawnPt(); };
   // 25.10 (обновление шахты): подсветка контуром и подпись у предмета под мышью; на телефоне наведения нет — только клик
   // 26.10: у верхней клети (у самого верха зала) подпись - под ней (класс dn)
   function bindHover() {
@@ -792,7 +981,9 @@
     const qcHtml = qc ? `<h4>Общее поручение шахты</h4><div class="mn-qc${qc.done ? ' done' : ''}"><span class="mn-qt">${esc(qc.t)}<small>Награда +${X.money ? X.money(qc.c) : qc.c} каждому, кто вложил от ${qc.min}. Твой вклад: ${qc.me}${qc.ok ? ' - хватает' : ` - ещё ${Math.max(0, qc.min - qc.me)}`}. Участников: ${qc.n || 0}</small></span><span class="mn-qx"><b class="mn-qp">${qc.cl ? 'получено' : qc.done ? (qc.ok ? 'готово' : 'выполнено') : `${qc.p} / ${qc.g}`}</b></span><span class="m2-mini"><i style="width:${Math.min(100, qc.p / Math.max(1, qc.g) * 100).toFixed(1)}%"></i></span></div>` : '';
     const quests = `<div class="mn-q"><h4>Поручения на сегодня</h4><ul>${q.d.map(qli).join('')}</ul><h4>Поручения недели</h4><ul>${q.w.map(qli).join('')}</ul>${qcHtml}${canClaim ? '<button type="button" class="btn primary" data-mn-claim>Забрать награду</button>' : mine2On() ? '<button type="button" class="btn primary" data-mn-claim disabled title="Пока нечего забирать - выполни поручение">Забрать награду</button>' : ''}</div>`;
     const have = lampHave();
-    const body = S.npcOpen === 'quests' ? `<div class="mn-npc-p"><h3 class="h3">Поручения скупщика</h3><p class="muted">Награду выдаёт ${esc(tx().seller)} - кнопка «Забрать награду», когда поручение готово.</p>${quests}<div class="mn-btns"><button type="button" class="btn ghost" data-mn-back>Назад</button></div></div>`
+    const body = S.npcOpen === 'lift' && V3() ? liftHtml(st)
+      : S.npcOpen === 'drill' && V3() ? drillHtml(st)
+      : S.npcOpen === 'quests' ? `<div class="mn-npc-p"><h3 class="h3">Поручения скупщика</h3><p class="muted">Награду выдаёт ${esc(tx().seller)} - кнопка «Забрать награду», когда поручение готово.</p>${quests}<div class="mn-btns"><button type="button" class="btn ghost" data-mn-back>Назад</button></div></div>`
       : S.npcOpen === 'bag' ? bagPanel()
       : S.npcOpen === 'buy' && buyerOn() ? buyerHtml(st)
       : S.npcOpen === 'lamp' && pickOn() ? supHtml(st, have)
@@ -834,7 +1025,7 @@
     el.querySelectorAll('[data-mn-wear]').forEach((b) => b.onclick = () => wear(b, b.dataset.mnWear));
     el.querySelectorAll('[data-mn-off]').forEach((b) => b.onclick = () => takeOff(b, b.dataset.mnOff));
     const b6 = el.querySelector('[data-mn-lamp]'); if (b6) b6.onclick = async () => { if (S.busyOp) return; S.busyOp = 1; b6.disabled = true; const r = await X.api('/api/mineLamp', { c: C }); if (!S) return; S.busyOp = 0; if (r && r.ok) { S.lampBought = Date.now(); tip('«Каска шахтёра» в сумке — сейчас появится, тогда надень её'); panel(); } else { b6.disabled = false; tip((r && r.error) || 'Не получилось'); } };
-    buyBind(el); supBind(el);
+    buyBind(el); supBind(el); liftBind(el);
     const b4 = el.querySelector('[data-mn-stop]'); if (b4) b4.onclick = async () => { b4.disabled = true; S.left = { i: S.myI, at: Date.now() }; S.want = { i: -1, at: Date.now() }; S.qq = []; const r = await X.api('/api/mineStop', { c: C, sid: S.sid }); if (!S) return; if (r && r.ok) { S.myI = -1; heroes(); panel(); tip(tx().stopTip); } else { S.want = null; b4.disabled = false; if (r && r.other) otherTab(true); tip((r && r.error) || 'Не получилось'); } };
   }
   /* ---------- 25.10 (обновление шахты): панель — сейчас, заработок, коротко о герое, действия, журнал ---------- */
@@ -995,7 +1186,7 @@
      Вкладки: «Кирка» (нынешняя, следующая ступень, что даёт, что нужно - мастерство, монеты, руда из сумки со значками и «есть N /
      нужно M», «Улучшить»), «Рудная сумка» (купить), «Каска» (как у Фонарщика). Источник правды - игра (mine/server.js minePick,
      mineOreBag): окно только показывает; кнопка не жмётся дважды, пока ждём итог (а игра ещё проверяет ступень: вторая вкладка). ---------- */
-  const PK = { tab: 'pick', wait: null, no: new Set() };   // no - скидки, которые игрок не хочет отдавать (снял галочку)
+  const PK = { tab: 'pick', wait: null, no: new Set(), ladder: false };   // ladder - «Все кирки» раскрыт (29.10: окно перерисовывается опросом - не сворачивать)   // no - скидки, которые игрок не хочет отдавать (снял галочку)
   /** Цена со скидкой - как minecore.pickPay (игра считает так же). */
   function pickPay(s, opt, have, use) {
     const out = { ...(s || {}) }, used = {};
@@ -1045,7 +1236,7 @@
             <p class="muted sp-note">Руда - из сумки героя (и рудной сумки), 100 осколков = 1 шт. Камни копаются быстрее, оплата за время работы не меняется.</p>
             <div class="mn-btns"><button type="button" class="btn primary" data-sp-pick="${nx}"${!ok || wait ? ' disabled' : ''}>${wait ? 'Снабженец работает…' : 'Улучшить'}</button></div></section>`;
         }
-        body += `<details class="sp-ladder"><summary>Все кирки</summary><ol>${T.map((t, k) => `<li class="${k <= lv ? 'got' : ''}${k === nx ? ' nx' : ''}"><span class="sp-pic">${pkIcon(k, 28)}</span><span>${esc(t[0])}</span><b>×${val(+t[1])}</b><small>${k ? `мастерство ${t[2]}` : 'у всех'}</small></li>`).join('')}</ol></details>`;
+        body += `<details class="sp-ladder"${PK.ladder ? ' open' : ''}><summary>Все кирки</summary><ol>${T.map((t, k) => `<li class="${k <= lv ? 'got' : ''}${k === nx ? ' nx' : ''}"><span class="sp-pic">${pkIcon(k, 28)}</span><span>${esc(t[0])}</span><b>×${val(+t[1])}</b><small>${k ? `мастерство ${t[2]}` : 'у всех'}</small></li>`).join('')}</ol></details>`;
       }
     } else if (tab === 'bag') {
       const ob = x && x.ob;
@@ -1065,6 +1256,7 @@
       <section class="mb-foot"><div class="mn-btns"><button type="button" class="btn ghost" data-mn-back>Назад</button></div></section>`;
   }
   function supBind(el) {
+    const ld = el.querySelector('details.sp-ladder'); if (ld) ld.ontoggle = () => { PK.ladder = ld.open; };   // 29.10: как журнал шахты (S.logOpen)
     el.querySelectorAll('[data-sp-tab]').forEach((b) => b.onclick = () => { PK.tab = b.dataset.spTab; S.bodyHtml = ''; panel(); const t = S.el.querySelector(`[data-sp-tab="${PK.tab}"]`); if (t) t.focus(); });
     el.querySelectorAll('[data-sp-use]').forEach((b) => b.onchange = () => { if (b.checked) PK.no.delete(b.dataset.spUse); else PK.no.add(b.dataset.spUse); S.bodyHtml = ''; panel(); });
     const bp = el.querySelector('[data-sp-pick]'); if (bp) bp.onclick = () => supGo('/api/minePick', { c: C, to: +bp.dataset.spPick, use: [...el.querySelectorAll('[data-sp-use]:checked')].map((b) => b.dataset.spUse) });
@@ -1115,6 +1307,7 @@
   /* ---------- камера: этаж по ширине, ~7 рядов по высоте; листать вверх-вниз ---------- */
   function fit(reset) {
     if (!S || !S.Wd) return;
+    if (S.Wd.v3) return fit3(reset);
     const W = S.Wd, vw = S.view.clientWidth, vh = S.view.clientHeight;
     const gridW = W.CW * GW + 24;   // узкий экран: по ширине — сам этаж (стенки шахты за краем)
     // 25.10: «вид сильно приближен» — на ПК видно ~9 рядов и не крупнее 1:1 (было ~7 рядов и до 1,6); «−» / «+» — свой масштаб
@@ -1276,16 +1469,34 @@
   }
   // 25.10: на телефоне снизу — свёрнутая панель: вход (Скупщик, подъёмник) можно поднять над ней, а не прятать под ней
   const padB = () => { if (S.res) return 0; const p = S.el.querySelector('.mn-panel'); return p && window.LGSiteUi.is('phone') ? (p.dataset.open === '1' ? 0 : p.offsetHeight) : 0; };
-  // 26.10 (mine2): верх зала (клеть «ЭТАЖ N ↑») можно опустить под шапку - шапка его не закрывает (S.topPad - низ шапки, dockFit)
-  function clampY() { const vh = S.view.clientHeight, H = S.Wd.H * S.z; S.ty = Math.min(S.topPad || 0, Math.max(vh - H - padB(), S.ty)); }
-  function apply() { S.world.style.transform = `translate(${S.tx.toFixed(1)}px, ${S.ty.toFixed(1)}px) scale(${S.z})`; }
+  // 26.10 (mine2): верх зала (клеть «ЭТАЖ N ↓») можно опустить под шапку - шапка его не закрывает (S.topPad - низ шапки, dockFit)
+  function clampY() { if (S.Wd && S.Wd.v3) return clamp3(); const vh = S.view.clientHeight, H = S.Wd.H * S.z; S.ty = Math.min(S.topPad || 0, Math.max(vh - H - padB(), S.ty)); }
+  /* 29.10 (Шахта 3.0): камера во все стороны. Масштаб: телефон - ~7 клеток по ширине, ПК - до 15 клеток и не крупнее 1:1 («−» / «+» - свой).
+     Начало - на своём герое (зал лифта). Края - не дальше края пещеры (за ней - сплошная порода). */
+  function fit3(reset) {
+    const W = S.Wd, vw = S.view.clientWidth, vh = S.view.clientHeight, phone = vw < 720;
+    const z0 = phone ? vw / (7.2 * W.CW) : Math.min(1, vw / (15 * W.CW), vh / (6.5 * W.RH));
+    S.z = Math.max(0.2, Math.min(1.6, z0 * (S.zk || 1)));
+    if (reset === true || S.tx == null) { const p = S.pos || spawnPt(); S.tx = vw / 2 - p.x * S.z; S.ty = (vh - padB()) / 2 - (p.y - 60) * S.z; }
+    clamp3(); apply();
+    chatFit();
+  }
+  function clamp3() {
+    const W = S.Wd, vw = S.view.clientWidth, vh = S.view.clientHeight - padB(), w = W.W * S.z, h = W.H * S.z;
+    S.tx = w <= vw ? (vw - w) / 2 : Math.min(0, Math.max(vw - w, S.tx));
+    S.ty = h <= vh ? (vh - h) / 2 : Math.min(S.topPad || 0, Math.max(vh - h, S.ty));
+  }
+  // смена камеры на большом этаже: дорисовать куски, вошедшие в кадр (раз за кадр браузера)
+  function camMoved() { if (!V3() || !S.m3 || S.camRaf) return; S.camRaf = requestAnimationFrame(() => { if (!S) return; S.camRaf = 0; S.m3.ensure(); if (S.st && S.F) bars(); }); }
+  function apply() { S.world.style.transform = `translate(${S.tx.toFixed(1)}px, ${S.ty.toFixed(1)}px) scale(${S.z})`; camMoved(); }
   function bindCamera() {
     const v = S.view; let drag = null;
-    v.addEventListener('pointerdown', (e) => { drag = { y: e.clientY, ty: S.ty, moved: false, id: e.pointerId, at: Date.now() }; });
-    v.addEventListener('pointermove', (e) => { if (!drag) return; const dy = e.clientY - drag.y; if (Math.abs(dy) > 6) { drag.moved = true; try { v.setPointerCapture(drag.id); } catch (x) {} } if (drag.moved) { S.ty = drag.ty + dy; clampY(); apply(); } });
-    v.addEventListener('pointerup', (e) => { const d = drag; drag = null; if (d && !d.moved) click({ target: e.target, clientX: e.clientX, clientY: e.clientY, shiftKey: e.shiftKey, long: Date.now() - d.at > 550 }); });
+    v.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY, tx: S.tx, ty: S.ty, moved: false, id: e.pointerId, at: Date.now() }; });
+    // 29.10: большой этаж - перетаскивание во все стороны
+    v.addEventListener('pointermove', (e) => { if (!drag) return; const v3 = !!(S.Wd && S.Wd.v3), dx = v3 ? e.clientX - drag.x : 0, dy = e.clientY - drag.y; if (Math.hypot(dx, dy) > 6) { drag.moved = true; try { v.setPointerCapture(drag.id); } catch (x) {} } if (drag.moved) { if (v3) S.tx = drag.tx + dx; S.ty = drag.ty + dy; clampY(); apply(); } });
+    v.addEventListener('pointerup', (e) => { const d = drag; drag = null; if (d && !d.moved) click({ target: e.target, clientX: e.clientX, clientY: e.clientY, shiftKey: e.shiftKey, long: Date.now() - d.at > 550, tr: e.isTrusted }); });
     v.addEventListener('pointercancel', () => { drag = null; });
-    v.addEventListener('wheel', (e) => { e.preventDefault(); S.ty -= e.deltaY; clampY(); apply(); }, { passive: false });
+    v.addEventListener('wheel', (e) => { e.preventDefault(); if (S.Wd && S.Wd.v3) S.tx -= e.shiftKey ? e.deltaY : e.deltaX; S.ty -= e.shiftKey ? 0 : e.deltaY; clampY(); apply(); }, { passive: false });
     // 27.10 (просьба стримера): ПКМ в шахте - не меню браузера (как в «Городе»); в полях ввода, чате и на ссылках меню остаётся
     S.el.addEventListener('contextmenu', (e) => { if (e.target.closest && e.target.closest('input, textarea, select, a, [contenteditable]')) return; e.preventDefault(); });
   }
@@ -1307,7 +1518,13 @@
       ['Этажи', [
         'Расчистили этаж - клеть наверху зала горит зелёным, шахта спускается на следующий этаж.',
         'Чем глубже, тем выше уровень камней (копать дольше); в глубоких пластах - другая руда.',
-        'В каждом десятке этажей один - угольный (какой - заранее не узнать): на нём кучи угля, а вокруг каждой - жила угольных камней.',
+        'В каждом десятке этажей (1-10, 11-20…) один - угольный, какой именно - заранее не узнать. На нём 1-2 кучи угля (сквозь них можно ходить), а вокруг каждой - 5-9 камней с углём: копаются как обычные, угля на этаже заметно больше.',
+      ]],
+      // 29.10 (стример: «дописать, что такое вклад и за что его получают»)
+      ['Вклад', [
+        'Вклад - сколько работы твой герой вложил в камни. Растёт каждую минуту, пока герой копает: быстрее - с уровнем «Горного дела» и лучшей киркой.',
+        'На одном камне до 4 героев работают в полную силу. Толпа больше - камень копается быстрее, но на каждого приходится меньше работы, и вклад растёт медленнее.',
+        'За вклад: руда с камня делится между копавшими по вкладу; по нему же - шанс на сферу или звезду из сундука; вклад за неделю - награда за глубину (см. «Время»); «Наработай N» в поручениях - тоже вклад.',
       ]],
       ['Добыча', [
         'Руда приходит осколками по вкладу: 100 осколков = 1 штука.',
@@ -1357,7 +1574,10 @@
   }
 
   /* ---------- доска итогов шахт (у входа в шахту в «Городе»): вкладки — шахты канала (домашняя и города своих округов) ---------- */
+  // 29.10: окно «Итоги» - одно: повторное нажатие не плодит окна (они наслаивались и оставались после выхода из шахты)
+  let BD = null;
   async function board(Y, c0) {
+    if (BD && BD.d.isConnected) { if (c0) BD.show(c0); try { BD.d.querySelector('button').focus(); } catch (e) { /* фокус не главное */ } return; }
     const d = document.createElement('div'); d.className = 'mn-board-w'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-label', 'Итоги шахт');
     d.innerHTML = '<div class="mn-board panel"><p class="muted">Смотрю доску…</p></div>'; host().appendChild(d);
     // 25.10 (mine2): из шахты на широком ПК - на месте панели, у правой стены зала (панель на это время спрятана)
@@ -1381,7 +1601,10 @@
       d.querySelector('[data-x]').onclick = shut;
       d.querySelectorAll('[data-bt]').forEach((b) => { b.onclick = () => show(b.dataset.bt); });
     }
+    BD = { d, shut, show, mine: !!M };
     show(c0 || (list[0] && list[0].id) || 'home');
   }
-  window.LGMine = { open, close, onEvent, board, host, result, hero: () => { bagDraw(); if (S && S.buyInv) buyInv(); }, get on() { return !!S; } };   // 27.10: hero - данные героя обновились (app.js apply)
+  // 29.10: камера для снимков и проверок (стенд, e2e): центр мира (x, y) и масштаб z
+  const cam = (x, y, z) => { if (!S || !S.view) return false; S.z = Math.max(0.2, Math.min(2, +z || S.z)); S.tx = S.view.clientWidth / 2 - x * S.z; S.ty = S.view.clientHeight / 2 - y * S.z; apply(); return true; };
+  window.LGMine = { cam, open, close, onEvent, board, host, result, hero: () => { bagDraw(); if (S && S.buyInv) buyInv(); }, get on() { return !!S; } };   // 27.10: hero - данные героя обновились (app.js apply)
 })();

@@ -669,6 +669,9 @@
     for (const br of L.bridges) if (!m.free((br.x0 + br.x1) / 2, (br.y0 + br.y1) / 2)) err.push(`мост (${br.x0}, ${br.y0}): нельзя пройти`);
     return err;
   }
-  return { VER, MINE, H, HEIGHTS, SIZES, CAPITAL_PLUS, MINGAP, ART_PAD, META, MARK, LV_IDS, LV_MIN, LV_MAX, GEO, FOOT, TALL, baseLevel, levelsOf, frame, relevel, seedOf, hash, generate, map, check, artBoxes, pockets,
+  /** 29.10 (Шахта 3.0, шаг 5): товар лавки по уровню здания: ур. 1 - 60% витрины, каждый уровень +10%, ур. 5 - всё; эпические и
+   *  легендарные вещи - только с ур. 5. Выбор вещей - по id (у всех зрителей одинаковый). */
+  function goodsOk(id, rarity, lv) { lv = Math.max(1, Math.min(LV_MAX, Math.round(+lv) || 1)); if ((rarity === 'epic' || rarity === 'legendary') && lv < 5) return false; return hash('goods:' + id) % 100 < [0, 60, 70, 80, 90, 100][lv]; }
+  return { goodsOk, VER, MINE, H, HEIGHTS, SIZES, CAPITAL_PLUS, MINGAP, ART_PAD, META, MARK, LV_IDS, LV_MIN, LV_MAX, GEO, FOOT, TALL, baseLevel, levelsOf, frame, relevel, seedOf, hash, generate, map, check, artBoxes, pockets,
     offPaths, footOff, inPlaza, roadY, scaleAt, buildOf, buildLeft, buildMsg, buildClock, HAND, prep, prepFiles, depthK, checkHand };
 });

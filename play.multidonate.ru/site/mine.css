@@ -1,6 +1,6 @@
 /* 23.10: Шахта (промысел города) — локация на весь экран поверх «Города» (mine.js). Анимации — только transform/opacity. */
 body.mn-on { overflow: hidden; }
-.mn { position: fixed; inset: 0; z-index: 60; background: #1a1420; color: #f3efe6; font-family: inherit; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+.mn { --sbt: rgba(243, 239, 230, .3); position: fixed; inset: 0; z-index: 60; background: #1a1420; color: #f3efe6; font-family: inherit; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
 .mn-view { position: absolute; inset: 0; overflow: hidden; touch-action: none; cursor: grab; outline: none; }
 .mn-view:active { cursor: grabbing; }
 .mn-world { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
@@ -372,6 +372,13 @@ html body .mn-board-w .mn-board { position: relative; }
 @media (max-width: 720px) {
   .mn-inv2-w { left: 0; right: 0; top: auto; bottom: 0; width: auto; height: 60vh; height: 60dvh; max-height: none; }
   .mn.bag-on .cy-chat, .mn.bag-on .mn-zoom { display: none; }
+  /* 29.10 (зритель: «Сумка на телефоне не пролистывается - список вещей обрезан»): кукла и фильтры занимали почти всю карточку, на
+     список оставалось 100 px с прокруткой внутри, низ карточки обрезался. На телефоне прокручивается вся карточка (как с рудной
+     сумкой, .lgi-wob): заголовок и подсказка - прилипают сверху и снизу */
+  .mn-inv2-w .lgi--compact { overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; touch-action: pan-y; }
+  .mn-inv2-w .lgi--compact .lgi-g { flex: none; min-height: 0; overflow: visible; }
+  .mn-inv2-w .lgi--compact > .lgi-h { position: sticky; top: -8px; z-index: 2; margin: -8px -10px 0; padding: 8px 10px 4px; background: rgb(29,22,32); }
+  .mn-inv2-w .lgi--compact > .lgi-a { position: sticky; bottom: -10px; z-index: 2; margin: 0 -10px -10px; padding: 4px 10px 10px; background: rgb(29,22,32); }
 }
 
 /* 25.10 (mine2, просьба стримера): на широком ПК панель, окна и сумка - вплотную к правой стене зала (mine.js dockFit: --mn-pl - где
@@ -592,3 +599,36 @@ html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); 
 /* 27.10: угольный этаж - табличка в шапке рядом с номером этажа */
 .mn .mn-ttl span.mn-coal, .mn[data-m2="1"] .mn-ttl span.mn-coal { display: inline-flex; align-items: center; justify-self: start; width: max-content; padding: 1px 10px; border-radius: 999px; background: #2a2a34; border: 2px solid #5a5c72; color: #f2e6c8; font: 800 12px var(--tx, Golos Text, sans-serif); letter-spacing: .02em; white-space: nowrap; }
 .mn .mn-ttl span.mn-coal::before { content: ""; width: 9px; height: 9px; margin-right: 6px; border-radius: 3px; background: #121218; box-shadow: inset 2px 2px 0 #5a5c72; transform: rotate(18deg); }
+
+/* 29.10 (Шахта 3.0): большой этаж - куски сцены (mine3.js), камни фронта и закрытые, мини-карта */
+.mn3 { position: absolute; inset: 0; z-index: 0; isolation: isolate; pointer-events: auto; }   /* 29.10: куски этажа - свой слой, герои и предметы зала поверх */
+.mn3 .mn3-ch { overflow: visible; }
+.mn3 [data-i].open { cursor: pointer; }
+.mn3 [data-i].far { opacity: .72; }
+.mn3 [data-i].dg .rk { opacity: 0; }
+.mn-mm { position: absolute; left: 16px; top: 104px; z-index: 7; background: rgba(14, 12, 20, .86); border: 2px solid rgba(243, 239, 216, .3); border-radius: 10px; padding: 6px; pointer-events: none; }
+.mn-mm-t { font: 600 12px/1.2 system-ui, sans-serif; color: #f3efd8; opacity: .85; margin: 0 0 4px 2px; }
+.mn-mm svg { display: block; }
+@media (max-width: 720px) { .mn-mm { left: auto; top: 52px; right: 8px; padding: 4px; } .mn-mm svg { width: 140px; height: auto; } .mn-mm-t { font-size: 10px; } }
+.mn-bg.v3 { pointer-events: none; }
+.mn-bg.v3 [data-obj], .mn-bg.v3 [data-npc] { pointer-events: auto; }
+/* 29.10 (Шахта 3.0, шаг 3): окно лифта - этажи, сбор, кто скинулся */
+.mn-lift .mn-lfl { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 12px; max-height: 132px; overflow-y: auto; }
+.mn-lift .mn-lfl .btn { min-width: 44px; justify-content: center; }
+.mn-lbar { position: relative; height: 22px; border-radius: 11px; background: rgba(243, 239, 216, .12); overflow: hidden; margin: 8px 0; }
+.mn-lbar i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(#f4c74e, #d99a2b); border-radius: 11px; }
+.mn-lbar span { position: relative; display: block; text-align: center; font: 600 12px/22px system-ui, sans-serif; color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, .7); }
+.mn-lore, .mn-lby { list-style: none; margin: 4px 0 10px; padding: 0; }
+.mn-lore li, .mn-lby li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 0; border-bottom: 1px solid rgba(243, 239, 216, .08); }
+.mn-lore small { opacity: .7; margin-left: 4px; }
+.mn-lchip { position: absolute; transform: translateX(-50%); padding: 2px 10px; border-radius: 10px; background: rgba(14, 12, 20, .82); color: #f3efd8; font: 600 13px/18px system-ui, sans-serif; white-space: nowrap; border: 2px solid rgba(243, 239, 216, .25); }
+.mn-lchip-fund { border-color: #f4c74e; color: #ffe08a; }
+.mn-lchip-up { border-color: #7ad38a; color: #b9f3c2; }
+/* 29.10 (шаг 4): буровая - бур ходит, колесо крутится (только transform) */
+.mn3 .mn-drill { cursor: pointer; }
+.mn3 .mn-bit { animation: mnBit 1.1s ease-in-out infinite; }
+.mn3 .mn-wheel { animation: mnWheel 2.4s linear infinite; }
+@keyframes mnBit { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(8px); } }
+@keyframes mnWheel { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .mn3 .mn-bit, .mn3 .mn-wheel { animation: none; } }
+.mn-dbar i { background: linear-gradient(#c9a0ff, #8e63d8); }

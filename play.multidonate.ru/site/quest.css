@@ -55,7 +55,7 @@ b.dn, .dn { color: var(--dn); } b.up, .up { color: var(--up); } b.hit { color: v
 .q-hn b { font-size: var(--t-lg); }
 .q-cmds { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .q-cmds li { display: flex; align-items: baseline; gap: var(--s3); padding: 8px 10px; border-radius: 10px; background: var(--surface2, var(--surface)); }
-.q-cmds li b { font-size: var(--t-md); white-space: nowrap; }
+.q-cmds li b { font-size: var(--t-md); min-width: 0; overflow-wrap: anywhere; }
 .q-cmds li span { color: var(--mute); font-size: var(--t-sm); }
 .q-cmds li.rdy { outline: 1px solid var(--accent); }
 .q-cmds li.rdy b { color: var(--accent); }
@@ -69,7 +69,7 @@ b.dn, .dn { color: var(--dn); } b.up, .up { color: var(--up); } b.hit { color: v
 .q-foe.art { background: none; width: 50%; height: 84%; bottom: 0; right: 0; flex-direction: column; align-items: center; border-radius: 0; }
 .q-foe.art svg { width: 100%; height: 100%; overflow: visible; }
 .q-foe.art span { margin: -10px 0 0; font-size: var(--t-xs); color: var(--mute); }
-.q-foe span { margin-top: -24px; font-weight: 800; font-size: var(--t-sm); white-space: nowrap; }
+.q-foe span { margin-top: -24px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-weight: 800; font-size: var(--t-sm); white-space: nowrap; }
 @keyframes qHit { 30% { transform: translateX(12px); filter: brightness(1.6); } }
 .q-fx { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
 .q-skb { position: absolute; left: 12px; top: 12px; padding: 4px 12px; border-radius: 14px; background: rgba(26,20,38,.85); color: #ffe9b0; border: 1.5px solid #ffd34d; font-weight: 800; font-size: var(--t-sm); }
@@ -156,9 +156,10 @@ b.dn, .dn { color: var(--dn); } b.up, .up { color: var(--up); } b.hit { color: v
 .q-dgk i:empty { display: none; } .q-dgk:has(i:empty) { padding-right: 3px; }
 .q-dgk.me { box-shadow: 0 0 0 3px #ffd66e; }
 .q-dgk.sel b { background: #6fdc8c; }
-.q-dgb { position: absolute; transform: translate(-50%, -100%); max-width: min(280px, 70vw); padding: 8px 12px; border-radius: 14px; background: #fff4e0; color: #2b1d18; border: 2px solid #2b1d18;
+.q-dgb { position: absolute; transform: translate(-50%, -100%); max-width: min(280px, 92%); padding: 8px 12px; border-radius: 14px; background: #fff4e0; color: #2b1d18; border: 2px solid #2b1d18;
   font: 600 14px/1.3 var(--tx, system-ui); box-shadow: 0 4px 0 rgba(0, 0, 0, .3); opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none; text-wrap: balance; }
 .q-dgb::after { content: ''; position: absolute; left: 50%; bottom: -9px; width: 14px; height: 14px; background: #fff4e0; border: 2px solid #2b1d18; border-top: 0; border-left: 0; transform: translateX(-50%) rotate(45deg); }
+.q-dgb::after { left: var(--tl, 50%); }
 .q-dgb.on { opacity: 1; transform: translate(-50%, calc(-100% - 6px)); }
 .q-dgn { display: grid; place-items: center; height: 100%; min-height: 200px; text-align: center; color: #fff4e0; font-weight: 800; padding: 16px; }
 .q-dgp { display: flex; align-items: center; gap: var(--s2); padding: var(--s2) var(--s3); }
@@ -269,7 +270,7 @@ b.dn, .dn { color: var(--dn); } b.up, .up { color: var(--up); } b.hit { color: v
 
 /* 26.10: дверь с рунами - лучшие попытки сбоку; кости - свои игры */
 .q-code { display: grid; grid-template-columns: minmax(0, 1fr) minmax(150px, 220px); gap: var(--s3); align-items: start; }
-@media (max-width: 560px) { .q-code { grid-template-columns: 1fr; } }
+@media (max-width: 560px) { .q-code { grid-template-columns: 1fr; } .q-best { position: static; } }
 .q-best { position: sticky; top: 80px; padding: var(--s2) var(--s3); border-radius: 10px; background: var(--surface2, var(--surface)); border: 1px solid var(--line, rgba(127,127,127,.25)); font-size: var(--t-sm); }
 .q-best ol { margin: 6px 0 0; padding-left: 1.4em; display: flex; flex-direction: column; gap: 4px; }
 .q-best .rn { display: inline-flex; gap: 3px; }
@@ -302,15 +303,7 @@ b.dn, .dn { color: var(--dn); } b.up, .up { color: var(--up); } b.hit { color: v
 .q-bag .q-bi i { position: absolute; right: 2px; bottom: 0; font-size: 10px; font-style: normal; font-weight: 800; }
 .q-bag li[data-r="rare"] .q-bi { box-shadow: inset 0 0 0 2px #4a8fd8; } .q-bag li[data-r="epic"] .q-bi { box-shadow: inset 0 0 0 2px #a35ad8; } .q-bag li[data-r="legendary"] .q-bi { box-shadow: inset 0 0 0 2px #e0a83a; }
 @media (max-width: 420px) { .q-kd { flex-basis: 64px; width: 64px; } }
-/* 26.10 (стример: «скролл под дизайн сайта»): все полосы прокрутки вкладки «Поход» (журнал, история строки, окна) - как у чата
-   (city.css .cy-chat-l): тонкие, скруглённые, без стрелок, акцент сайта при наведении. Chrome/Safari - ::-webkit-scrollbar, Firefox - scrollbar-color */
-#tab-quest ::-webkit-scrollbar, #qbar ::-webkit-scrollbar { width: 8px; height: 8px; }
-#tab-quest ::-webkit-scrollbar-track, #qbar ::-webkit-scrollbar-track { background: transparent; }
-#tab-quest ::-webkit-scrollbar-thumb, #qbar ::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--ink, #fff) 22%, transparent); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
-#tab-quest ::-webkit-scrollbar-thumb:hover, #qbar ::-webkit-scrollbar-thumb:hover { background: var(--hov, #ffc94d); background-clip: padding-box; }
-#tab-quest ::-webkit-scrollbar-button, #qbar ::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
-#tab-quest ::-webkit-scrollbar-corner { background: transparent; }
-@supports (-moz-appearance: none) { #tab-quest *, #qbar * { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--ink, #fff) 30%, transparent) transparent; } }
+/* 26.10: полосы прокрутки вкладки - общие, см. style.css (29.10: один стиль на весь сайт) */
 /* 26.10 (стример): кнопки пульта игрока - по центру карточки; строка «принято / отправлено» под ними - тоже по центру */
 .qa-row, .qa-sel { justify-content: center; }
 .qa .qa-st { justify-content: center; text-align: center; }
@@ -487,7 +480,12 @@ body:has(#tab-quest.on .q-say:not([hidden])) .style-switch { display: none; }
 /* 28.10: подсказка кнопок «Бежать» / «Откупиться» при наведении (мышь); на телефоне - предупреждение второго нажатия, как было */
 .qa-b[data-tip] { position: relative; }
 @media (hover: hover) {
-  .qa-b[data-tip]:hover::after { content: attr(data-tip); position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%); z-index: 30; width: max-content; max-width: 260px; padding: 8px 10px; border-radius: 10px; background: #15122e; color: #f3efe6; font: 600 12.5px/1.35 Golos Text, Arial, sans-serif; text-align: left; white-space: normal; box-shadow: 0 6px 18px rgba(0,0,0,.45); pointer-events: none; }
+  .qa-b[data-tip]:hover::after { content: attr(data-tip); position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%); z-index: 30; width: max-content; max-width: min(260px, calc(100vw - 24px)); padding: 8px 10px; border-radius: 10px; background: #15122e; color: #f3efe6; font: 600 12.5px/1.35 Golos Text, Arial, sans-serif; text-align: left; white-space: normal; box-shadow: 0 6px 18px rgba(0,0,0,.45); pointer-events: none; }
+}
+
+@media (hover: hover) {
+  .qa-b[data-tip].tip-l:hover::after { left: 0; transform: none; }
+  .qa-b[data-tip].tip-r:hover::after { left: auto; right: 0; transform: none; }
 }
 
 /* 28.10 (hw-site-events): события Изнанки - что писать (крупно), счёт сладость / гадость, котёл, загадка, па скелетов, цепочка */

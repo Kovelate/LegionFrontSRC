@@ -116,6 +116,9 @@
     el.innerHTML = `${svgI('warn')}<div><b>Опоздал на ${s} с</b> — ${esc(what)} пришло, когда окно уже закрылось. Похоже, стрим у тебя идёт с большой задержкой: включи в плеере Twitch «Низкую задержку» или обнови страницу стрима.</div><button type="button" aria-label="Закрыть">×</button>`;
     el.querySelector('button').onclick = () => el.remove();
     document.body.appendChild(el); setTimeout(() => el.remove(), 12000);
+    // строка «Команда в поход» (sticky, на телефоне до 190 px) - плашку ставим над ней, а не поверх поля ввода
+    const sy = document.querySelector('#tab-quest .q-say:not([hidden])'), sr = sy && sy.getBoundingClientRect();
+    if (sr && sr.height && sr.top < window.innerHeight) el.style.bottom = Math.max(80, Math.ceil(window.innerHeight - sr.top + 10)) + 'px';
   }
 
   /* ---------- 26.10: слово-подсказка без копирования (решение стримера: слова реакций - печатать самому) ----------
@@ -277,6 +280,15 @@
     if (v.sh && v.sh.items && v.sh.items.length) return top + shopHtml(v) + (qaOn() ? qaHero(v) : '');   // 23.10: лавка — прилавок
     if (qaOn()) return top + (v.gather ? `<section class="q-card"><p class="muted">${gwName(v)} · <span data-until="${v.gather.until}"></span> с${partyOf(v) === 'q' ? ' · вступишь, когда отряд остановится' : ''}</p></section>` : '') + qaSquad(v, true) + qaHero(v);   // 26.10: «в отряде / не в отряде» - значок у заголовка   // 25.10: вступить / покинуть, панель героя
     return top + `<section class="q-card"><p>${v.party === 'in' ? 'Твой герой в отряде.' : v.party === 'ghost' ? 'Твой герой — призрак в этом походе.' : v.party === 'q' ? 'Ты в очереди: вступишь, когда отряд остановится.' : (v.gather && v.gather.hw ? 'Ты не в отряде — пиши «портал» в чат, чтобы шагнуть в Изнанку с отрядом.' : 'Ты не в отряде — пиши «поход» в чат, когда стример объявит сбор.')}</p>${v.gather ? `<p class="muted">${gwName(v)} · <span data-until="${v.gather.until}"></span> с</p>` : ''}</section>`;
+  }
+  // 29.10 (стример, телефон): окно «как на стриме» уезжало за левый край экрана (прижато правым краем к кнопке, а кнопка - слева).
+  // Открыли - сдвигаем по горизонтали, чтобы целиком влезало (отступ 8 px), только transform
+  function fitPop(dp) {
+    dp.style.transform = '';
+    if (dp.hidden) return;
+    const r = dp.getBoundingClientRect(), vw = document.documentElement.clientWidth || window.innerWidth;
+    const dx = r.left < 8 ? 8 - r.left : r.right > vw - 8 ? Math.max(8 - r.left, vw - 8 - r.right) : 0;
+    if (dx) dp.style.transform = `translateX(${Math.round(dx)}px)`;
   }
   /* 26.10 (п. 26): арена босса - площадки (контуры как на стриме), опасные - красным, уцелеющие - зелёным, своя - «ты»; кнопки «прыжок N»:
      на соседнюю (или на любую, если механика разрешает) - уходят строкой */
@@ -596,7 +608,7 @@
     el.innerHTML = `<svg class="q-dga" viewBox="0 0 ${W} 1080" preserveAspectRatio="xMinYMin meet">${ol}${art}${props}</svg><div class="q-dgm"></div><div class="q-dgb" role="status" hidden></div>`;
     el.querySelectorAll('svg svg.jl-doodle').forEach((d) => { const w = d.getAttribute('width'), hh = d.getAttribute('height'); if (w) d.style.width = parseFloat(w) + 'px'; if (hh) d.style.height = parseFloat(hh) + 'px'; d.style.position = 'static'; d.style.filter = 'none'; });
     el.querySelectorAll('animate, animateTransform, animateMotion').forEach((n) => n.remove());   // сайт — без анимаций сцены (легче; на стриме они есть)
-    el.querySelector('.q-dgm').innerHTML = (L.spots || []).map((p) => `<span class="q-dgk" data-k="${esc(p.key)}" hidden style="left:${(p.x / W * 100).toFixed(3)}%;top:${(p.y / 1080 * 100).toFixed(3)}%;--c:${(L.colors || {})[p.key] || '#ffcf4a'}"><b></b><i></i></span>`).join('');
+    el.querySelector('.q-dgm').innerHTML = (L.spots || []).map((p) => `<span class="q-dgk" data-k="${esc(p.key)}" hidden style="left:clamp(46px, ${(p.x / W * 100).toFixed(3)}%, calc(100% - 46px));top:max(32px, ${(p.y / 1080 * 100).toFixed(3)}%);--c:${(L.colors || {})[p.key] || '#ffcf4a'}"><b></b><i></i></span>`).join('');
     return { el, L, W };
   }
   // масштаб: высота вида — один экран 1920 по ширине вкладки, на телефоне не ниже 240 px (сцена шире — тянуть)
@@ -697,6 +709,13 @@
     const i = q.pop(); DG.last = i;
     b.textContent = P.lines[i]; b.style.left = (P.x / DG.W * 100).toFixed(3) + '%'; b.style.top = (P.y / 1080 * 100).toFixed(3) + '%';
     b.hidden = false; b.classList.remove('on'); void b.offsetWidth; b.classList.add('on');
+    // пузырь не должен вылезать за края сцены: зажимаем центр по ширине и верх по высоте (в пикселях сцены)
+    const box = DG.el.getBoundingClientRect(), bw = b.offsetWidth, bh = b.offsetHeight;
+    if (box.width && bw) {
+      const cx = Math.min(Math.max(P.x / DG.W * box.width, bw / 2 + 4), box.width - bw / 2 - 4), cy = Math.max(P.y / 1080 * box.height, bh + 18);
+      b.style.left = cx.toFixed(1) + 'px'; b.style.top = cy.toFixed(1) + 'px';
+      b.style.setProperty('--tl', Math.min(Math.max(P.x / DG.W * box.width - (cx - bw / 2), 14), bw - 14).toFixed(1) + 'px');
+    }
     n.classList.add('tap'); clearTimeout(DG.bubT);
     DG.bubT = setTimeout(() => { b.classList.remove('on'); n.classList.remove('tap'); setTimeout(() => { if (!b.classList.contains('on')) b.hidden = true; }, 250); }, 4000);
   }
@@ -765,6 +784,12 @@
   }
   function qaBind(el) {
     if (QA.bound || !el) return; QA.bound = true;
+    // подсказка кнопки у края окна: привязываем к краю кнопки, а не к центру (quest.css .tip-l / .tip-r)
+    el.addEventListener('mouseover', (e) => {
+      const b = e.target.closest && e.target.closest('.qa-b[data-tip]'); if (!b) return;
+      const r = b.getBoundingClientRect(), c = (r.left + r.right) / 2, half = Math.min(260, window.innerWidth - 24) / 2;
+      b.classList.toggle('tip-l', c - half < 12); b.classList.toggle('tip-r', c + half > window.innerWidth - 12);
+    });
     el.addEventListener('input', (e) => {   // 26.10: ползунок ставки - только подписи и кнопка, без перерисовки вкладки (палец не срывается)
       const r = e.target.closest && e.target.closest('[data-qbet]'); if (!r) return;
       const n = QA.n.bet = +r.value, box = r.closest('.q-card') || el;
@@ -1513,7 +1538,7 @@
     for (const [r, h] of Object.entries(P)) { if (QL.k[r] === h) continue; QL.k[r] = h; const box = wrap.querySelector(`[data-ql="${r}"]`); if (!box) continue; box.innerHTML = h; ncPaint(box); ch[r] = 1; }
     sayMount(el, v); qbag(el, v); invSync(el);
     if (ch.top) { const dl = wrap.querySelector('.q-dl'), dp = wrap.querySelector('.q-dlp');
-      if (dl && dp) { dl.onclick = () => { dp.hidden = !dp.hidden; dl.setAttribute('aria-expanded', String(!dp.hidden)); };
+      if (dl && dp) { dl.onclick = () => { dp.hidden = !dp.hidden; dl.setAttribute('aria-expanded', String(!dp.hidden)); fitPop(dp); };
         dp.querySelectorAll('[data-adj]').forEach((b) => b.onclick = () => { const d = +b.dataset.adj; adj = d ? Math.max(-10, Math.min(30, adj + d)) : 0; try { localStorage.setItem(ADJ, String(adj)); } catch (e) {} keyTab = ''; tick(); const p2 = el.querySelector('.q-dlp'); if (p2) p2.hidden = false; }); } }
     if (ch.act) {
       const tb = wrap.querySelector('[data-qtown]'); if (tb) tb.onclick = () => X.openTown(tb.dataset.qtown);
@@ -1650,7 +1675,7 @@
     wrap.innerHTML = th; ncPaint(wrap); sayMount(el, v);
     qbag(el, v);   // 25.10: сумка (библиотека инвентаря) — тот же элемент в новой разметке
     const dl = el.querySelector('.q-dl'), dp = el.querySelector('.q-dlp');
-    if (dl && dp) { dl.onclick = () => { dp.hidden = !dp.hidden; dl.setAttribute('aria-expanded', String(!dp.hidden)); };
+    if (dl && dp) { dl.onclick = () => { dp.hidden = !dp.hidden; dl.setAttribute('aria-expanded', String(!dp.hidden)); fitPop(dp); };
       dp.querySelectorAll('[data-adj]').forEach((b) => b.onclick = () => { const d = +b.dataset.adj; adj = d ? Math.max(-10, Math.min(30, adj + d)) : 0; try { localStorage.setItem(ADJ, String(adj)); } catch (e) {} keyTab = ''; tick(); const p2 = el.querySelector('.q-dlp'); if (p2) p2.hidden = false; }); }
     { const tb = el.querySelector('[data-qtown]'); if (tb) tb.onclick = () => X.openTown(tb.dataset.qtown); }   // 23.10: город округа
     el.querySelectorAll('[data-qv]').forEach((b) => { b.onclick = () => { const [vid, n] = b.dataset.qv.split(':').map(Number); castVote(vid, n); }; });   // 23.10: голос кликом

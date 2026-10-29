@@ -72,19 +72,29 @@
     s += `<path d="M${P(dc - dw / 2, base)} L${P(dc - dw / 2, base - dh + dw / 2)} Q${P(dc, base - dh - dw * 0.2)} ${P(dc + dw / 2, base - dh + dw / 2)} L${P(dc + dw / 2, base)} Z" fill="${M(INK, C0, 0.12)}" stroke="${INK}" stroke-width="3"/>`;
     s += `<path d="M${P(dc - dw / 2 + 6, base - 4)} Q${P(dc, base - 16)} ${P(dc + dw / 2 - 6, base - 4)}" fill="${o.bed || '#7a5a9a'}" stroke="${INK}" stroke-width="2"/>`;
     // штампы: «хрупкое», стрелки, лапка
-    const sx = x0 + fw * (o.flip ? 0.78 : 0.22);
-    s += `<g transform="translate(${P(sx, base - h * 0.5)}) rotate(-8)"><rect x="-30" y="-12" width="60" height="22" rx="3" fill="none" stroke="#c84a3a" stroke-width="3"/><text y="5" text-anchor="middle" font-family="Russo One, Arial Black, sans-serif" font-size="11" fill="#c84a3a">ХРУПКОЕ</text></g>`;
-    s += `<g fill="${M(C0, INK, 0.45)}" transform="translate(${P(sx, base - h * 0.18)})"><ellipse cy="4" rx="7" ry="6"/><circle cx="-7" cy="-5" r="3"/><circle cy="-8" r="3"/><circle cx="7" cy="-5" r="3"/></g>`;
+    // 29.10 (стример): штамп и лапка - по размеру лицевой стенки (у маленьких коробок штамп 60 px съезжал на бок и на вход):
+    // штамп - в полосе 0.04…0.40 стенки, вход - 0.47…0.77
+    const sx = x0 + fw * (o.flip ? 0.78 : 0.22), ks = f(Math.min(1, fw * 0.34 / 64)), kp = f(Math.min(1, fw / 110));
+    s += `<g transform="translate(${P(sx, base - h * 0.5)}) rotate(-8) scale(${ks})"><rect x="-30" y="-12" width="60" height="22" rx="3" fill="none" stroke="#c84a3a" stroke-width="3"/><text y="5" text-anchor="middle" font-family="Russo One, Arial Black, sans-serif" font-size="11" fill="#c84a3a">ХРУПКОЕ</text></g>`;
+    s += `<g fill="${M(C0, INK, 0.45)}" transform="translate(${P(sx, base - h * 0.18)}) scale(${kp})"><ellipse cy="4" rx="7" ry="6"/><circle cx="-7" cy="-5" r="3"/><circle cy="-8" r="3"/><circle cx="7" cy="-5" r="3"/></g>`;
     return { svg: s, h: h + dy + h * 0.45 };
   }
-  // спящий кот калачиком (силуэт на крыше коробки, у поленницы)
-  const sleepyCat = (X, x, y, c = '#8a8a96', s = 1) => `<g transform="translate(${f1(x)} ${f1(y)}) scale(${s})"><path d="M-34 0 Q-38 -26 -10 -30 Q18 -32 30 -16 Q38 -4 30 0 Z" fill="${c}" ${X.O(3)}/><path d="M18 -26 L22 -40 L28 -26 Z M26 -24 L34 -36 L36 -20 Z" fill="${c}" ${X.O(2.5)}/><path d="M22 -16 q4 2 8 0" stroke="${X.INK}" stroke-width="2" fill="none"/><path d="M-34 0 Q-48 -6 -40 -20 Q-34 -26 -26 -18" stroke="${X.INK}" stroke-width="9" fill="none" stroke-linecap="round"/><path d="M-34 0 Q-48 -6 -40 -20 Q-34 -26 -26 -18" stroke="${c}" stroke-width="4.5" fill="none" stroke-linecap="round"/><text x="40" y="-34" font-family="Russo One, Arial Black, sans-serif" font-size="14" fill="#fff6d0" stroke="${X.INK}" stroke-width="2.5" paint-order="stroke">z</text><text x="50" y="-48" font-family="Russo One, Arial Black, sans-serif" font-size="11" fill="#fff6d0" stroke="${X.INK}" stroke-width="2" paint-order="stroke">z</text></g>`;
+  // спящий кот калачиком (на крыше коробки, на поленнице): низ - y (лежит на поверхности, тень под ним), голова справа на лапках.
+  // 29.10 (стример: «коты парят, уши отдельно от головы»): уши рисуются до головы и сидят на ней, хвост обёрнут спереди
+  const sleepyCat = (X, x, y, c = '#8a8a96', s = 1) => { const d = X.mix(c, X.INK, 0.3), O = X.O(3), Z = (zx, zy, fs, sw) => `<text x="${zx}" y="${zy}" font-family="Russo One, Arial Black, sans-serif" font-size="${fs}" fill="#fff6d0" stroke="${X.INK}" stroke-width="${sw}" paint-order="stroke">z</text>`;
+    return `<g transform="translate(${f1(x)} ${f1(y)}) scale(${s})"><ellipse cx="2" cy="1" rx="44" ry="5" fill="${X.INK}" opacity=".3"/>`
+      + `<path d="M15 -22 L16 -40 L28 -27 Z M30 -27 L41 -40 L42 -21 Z" fill="${c}" ${O}/><path d="M18 -27 L18.5 -35 L24 -28.5 Z M33 -28 L38.5 -34 L39 -25 Z" fill="#ffb8c8"/>`
+      + `<path d="M-36 0 Q-40 -30 -8 -32 Q18 -33 24 -16 L24 0 Z" fill="${c}" ${O}/><path d="M-26 -22 Q-10 -29 8 -27" stroke="#ffffff" stroke-width="3" fill="none" opacity=".3" stroke-linecap="round"/>`
+      + `<circle cx="28" cy="-14" r="14" fill="${c}" ${O}/><ellipse cx="40" cy="-2.5" rx="7" ry="4" fill="${c}" stroke="${X.INK}" stroke-width="2.4"/>`
+      + `<path d="M19 -15 q3.5 3 7 0 M31 -15 q3.5 3 7 0" stroke="${X.INK}" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M27.5 -8.5 h3" stroke="#ff7aa2" stroke-width="3" stroke-linecap="round"/>`
+      + `<path d="M-34 -4 Q-30 6 -6 3 Q8 1 14 -3" stroke="${X.INK}" stroke-width="9" fill="none" stroke-linecap="round"/><path d="M-34 -4 Q-30 6 -6 3 Q8 1 14 -3" stroke="${c}" stroke-width="4.5" fill="none" stroke-linecap="round"/><path d="M-12 -24 q4 8 0 16 M-2 -26 q4 8 0 18" stroke="${d}" stroke-width="2.4" fill="none" opacity=".6"/>`
+      + Z(44, -32, 14, 2.5) + Z(54, -46, 11, 2) + '</g>'; };
 
   /* ---------- «Котики»: «Кошачий привал» - двор у крыш города: розовые шатры с ушами, палатки-коробки, рыба сушится на верёвках,
      клубки и миски; Когтекузня, Будуар, Рыбные ряды (как на Ярмарке котиков) ---------- */
   THEMES.cats = {
     line: '#2b1d18', ink: '#2b1d18', sky: 'linear-gradient(#0f0d2a 0%, #1d1a4a 40%, #3a2f6e 75%, #5a3a7a 100%)', moon: '#fff2c8', stars: '#fff7d6',
-    far: { kind: 'roofs', c: ['#231d4a', '#2e2758', '#3a2f68'] },
+    far: { kind: 'hills', c: ['#231d4a', '#2c2456', '#352b62'], tree: '#1b1740' },
     grass: '#4c5a4c', grass2: '#435144', grassL: '#6f8a62', dirt: '#b8765a', dirtD: '#8f4f3a', dirtL: '#d89a7a', stone: '#a9503c',
     wood: '#a8754f', woodD: '#6e4a2f', woodL: '#c99068', metal: '#3a2f5e', glass: '#ffd76a', log: '#a8754f',
     canvas: [['#ffb8c8', '#e86a8a'], ['#c8b8f0', '#8a6ad8'], ['#f2d4a8', ''], ['#ffd8a0', '#e8902a'], ['#bfe0f0', '#5a9ac8']], marquee: ['#ffb8c8', '#e86a8a'], pavilion: ['#f2a0c8', '#fff0f6'],
@@ -95,39 +105,32 @@
     laundry: ['sock', (x, y, c) => '', 'towel', 'sock', (x, y, c) => '', 'sock'], wash: ['#ff8fa3', '#8fd0ff', '#ffd76a', '#b9a2ff', '#f2d4a8'],
     smith: { hat: 'bandana', acc: ['mustache'] },
     roofs: { pink: { a: '#5a3a5a', b: '#6a4a6a', c: '#4a2e4a', edge: '#2b1d18' } },
-    // даль: крыши города с окошками и трубами, на луне - кот
+    // 29.10 (стример: «на заднем фоне город, хотя это привал»): даль - холмы с лесом под ночным небом, как у привала «Легиона»
+    // (крыши города с окошками остались у «Города» канала, styles/cats/fair.js); на луне - кот
     farDraw(X) {
-      const { f1, R, W, INK, mix } = X; let s = '', wins = '';
-      const row = (y0, c, rc, seed, n) => { const r = X.rng(seed); let g = ''; for (let x = -60; x < W + 60;) { const w = 120 + r() * 140, h = 70 + r() * 110, y = y0 - h, roofH = 40 + r() * 40;
-        g += `<path d="M${f1(x)} ${y0 + 120} V${f1(y)} L${f1(x + w / 2)} ${f1(y - roofH)} L${f1(x + w)} ${f1(y)} V${y0 + 120} Z" fill="${c}"/><path d="M${f1(x - 8)} ${f1(y + 4)} L${f1(x + w / 2)} ${f1(y - roofH - 4)} L${f1(x + w + 8)} ${f1(y + 4)}" stroke="${rc}" stroke-width="10" fill="none"/>`;
-        if (r() < 0.5) g += `<rect x="${f1(x + w * 0.7)}" y="${f1(y - roofH * 0.8)}" width="16" height="${f1(roofH * 0.6)}" fill="${rc}"/>`;
-        for (let k = 0; k < n; k++) if (r() < 0.45) wins += `<rect x="${f1(x + 16 + r() * (w - 40))}" y="${f1(y + 14 + r() * (h - 30))}" width="14" height="18" rx="2"/>`;
-        x += w + 6 + r() * 30; } return g; };
-      s += row(560, '#231d4a', '#2e2560', 7, 3) + row(640, '#2c2456', '#3a2e6a', 13, 2);
-      s += `<g fill="#ffd76a" opacity=".85">${wins}</g>`;
-      // кот на луне
+      let s = X.hills(X.TH.far);
       s += `<path d="M2914 244 q-4 -16 2 -26 l6 10 q8 -4 16 0 l6 -10 q6 10 2 26 q14 10 10 30 q-2 12 -24 12 q-22 0 -24 -12 q-4 -20 6 -30 Z" fill="#1d1640"/><path d="M2936 284 q22 -2 24 -22" stroke="#1d1640" stroke-width="6" fill="none" stroke-linecap="round"/>`;
       return s;
     },
     tent(X, t, i, op) {
       if (op.kind === 'box') return boxTent(X, t.x, t.y, t.w * 0.92, { flip: t.flip, bed: op.bed });
       if (op.kind === 'bell') { const w = t.w, rw = w / 2 * 1.04, wh = w * 0.24, ch = w * 0.48, apex = t.y - wh - ch;
-        return { svg: X.C.tentBell(t.x, t.y, w, { ...op, hk: 0.48 }) + ears(X, t.x, apex, rw, ch, op.c, X.mix(op.c, '#ff6a9a', 0.4)), h: w * 0.85 }; }
+        return { svg: ears(X, t.x, apex, rw, ch, op.c, X.mix(op.c, '#ff6a9a', 0.4)) + X.C.tentBell(t.x, t.y, w, { ...op, hk: 0.48 }), h: w * 0.85 }; }   // 29.10: уши - за куполом (основания закрыты скатом)
       // маленькая - с заплаткой-лапкой
       return null;
     },
-    coneTop: (X, cx, apex, w, c) => ears(X, cx, apex, w / 2 * 1.04, w * 0.52, c, '#ff9ac0'),
+    coneTop: (X, cx, apex, w, c) => ears(X, cx, apex, w / 2 * 1.04, w * 0.52, c, '#ff9ac0'), coneBack: true,   // 29.10: уши Шатра - за куполом
     towerTop: (X, tx, y) => ears(X, tx, y, 64, 140, '#ffb8c8', '#ff8ab0') + `<path d="M${tx} ${y} V${y - 40}" stroke="${X.INK}" stroke-width="6" stroke-linecap="round"/><path d="M${tx} ${y - 40} l36 8 l-36 11 Z" fill="${X.TH.banner}" stroke="${X.INK}" stroke-width="3"/>`,
-    fireDeco(X) {   // рыбка на палочках у костра
+    fireDeco(X) {   // рыбка на палочках у костра: палочки воткнуты между брёвнами, рыбка - над краем огня (29.10: раньше лежала на бревне)
       const F = X.L.fire; let s = '';
-      for (const [sx, sy, ex, ey, a] of [[F.x - 150, F.y + 64, F.x - 66, F.y - 30, -48], [F.x + 156, F.y + 60, F.x + 70, F.y - 28, 228]]) s += `<path d="M${sx} ${sy} L${ex} ${ey}" stroke="${X.INK}" stroke-width="7" stroke-linecap="round"/><path d="M${sx} ${sy} L${ex} ${ey}" stroke="${X.TH.woodL}" stroke-width="3.5" stroke-linecap="round"/>` + fish(X, ex - (ex - sx) * 0.12, ey - (ey - sy) * 0.12, a, 48, '#e8a07a');
+      for (const [sx, sy, ex, ey, a] of [[F.x - 135, F.y + 32, F.x - 48, F.y - 60, -47], [F.x + 135, F.y + 32, F.x + 48, F.y - 60, 227]]) s += `<path d="M${sx} ${sy} L${ex} ${ey}" stroke="${X.INK}" stroke-width="7" stroke-linecap="round"/><path d="M${sx} ${sy} L${ex} ${ey}" stroke="${X.TH.woodL}" stroke-width="3.5" stroke-linecap="round"/>` + fish(X, ex - (ex - sx) * 0.12, ey - (ey - sy) * 0.12, a, 48, '#e8a07a');
       return s;
     },
     goods(X, kind, sx, w, gy) {
       const O = X.O, INK = X.INK; let t = '';
       if (kind === 'food') { t += fish(X, sx + 46, gy - 12, -10, 56, '#8fb8d8') + fish(X, sx + 104, gy - 16, 8, 50, '#e8a07a'); for (let k = 0; k < 2; k++) { const bx = sx + w - 52 + k * 26; t += `<path d="M${bx - 9} ${gy} V${gy - 30} Q${bx - 9} ${gy - 38} ${bx - 4} ${gy - 42} V${gy - 50} H${bx + 4} V${gy - 42} Q${bx + 9} ${gy - 38} ${bx + 9} ${gy - 30} V${gy} Z" fill="#f8f6f0" ${O(3)}/><rect x="${bx - 9}" y="${gy - 26}" width="18" height="10" fill="#8fd0ff"/><rect x="${bx - 5}" y="${gy - 54}" width="10" height="6" fill="#5a9ac8" stroke="${INK}" stroke-width="2"/>`; } }
       else if (kind === 'potion') for (let k = 0; k < 4; k++) { const px = sx + 24 + k * ((w - 48) / 3), pc = ['#8fd06a', '#c77dff', '#ff8fa3', '#8fd06a'][k]; t += `<path d="M${px - 4} ${gy - 34} V${gy - 24} Q${px - 16} ${gy - 18} ${px - 14} ${gy - 6} Q${px - 12} ${gy} ${px} ${gy} Q${px + 12} ${gy} ${px + 14} ${gy - 6} Q${px + 16} ${gy - 18} ${px + 4} ${gy - 24} V${gy - 34} Z" fill="${pc}" ${O(3)}/><rect x="${px - 5}" y="${gy - 40}" width="10" height="7" rx="2" fill="#6e4a2f" stroke="${INK}" stroke-width="2"/><g fill="#ffffff" opacity=".8" transform="translate(${px} ${gy - 12})"><ellipse cy="2" rx="3.4" ry="3"/><circle cx="-3.5" cy="-2.5" r="1.4"/><circle cy="-4" r="1.4"/><circle cx="3.5" cy="-2.5" r="1.4"/></g>`; }
-      else t += yarn(X, sx + 40, gy - 18, '#ff8fa3', 18) + yarn(X, sx + 84, gy - 16, '#8fd0ff', 16) + yarn(X, sx + 124, gy - 18, '#ffd76a', 18) + `<rect x="${sx + w - 54}" y="${gy - 34}" width="40" height="34" fill="#d9a868" ${O(3)}/><path d="M${sx + w - 54} ${gy - 34} l8 -10 h40 l-8 10" fill="#e8c08a" ${O(2.5)}/>`;
+      else t += yarn(X, sx + 40, gy - 18, '#ff8fa3', 18) + yarn(X, sx + 84, gy - 16, '#8fd0ff', 16) + yarn(X, sx + 124, gy - 18, '#ffd76a', 18) + `<rect x="${sx + w - 64}" y="${gy - 34}" width="36" height="34" fill="#d9a868" ${O(3)}/><path d="M${sx + w - 64} ${gy - 34} l8 -10 h36 l-8 10" fill="#e8c08a" ${O(2.5)}/>`;
       return t;
     },
     b: {
@@ -136,13 +139,13 @@
         const cx = 318, base = X.BASE, B = boxTent(X, cx, base, 390, { bed: '#d9a868' });
         let s = B.svg + X.K.put(X.K.def('crate', () => ''), cx - 30, base - 6, 0.5) + X.C.sacks(cx + 40, base - 2, { c: '#c8a46a' });
         s += boxTent(X, 104, base + 26, 110, {}).svg + boxTent(X, 540, base + 30, 96, { flip: true }).svg;
-        s += sleepyCat(X, cx + 86, 570, '#e8a07a', 1.1);
+        s += sleepyCat(X, cx + 4, 610, '#e8a07a', 1.1);   // 29.10: на переднем краю коробки (раньше висел над тёмным нутром)
         s += X.sign(cx - 50, 668, X.TH.names.storage, 26);
         X.P(40, 620, `<g data-ol="storage">${s}</g>`, 470, base + 50);
       },
     },
     prop(X, p) {
-      if (p.k === 'woodpile') return { s: X.C.woodpile(p.x, p.y) + sleepyCat(X, p.x - 6, p.y - 76, '#8a8a96'), w: 220, h: 170 };
+      if (p.k === 'woodpile') return { s: X.C.woodpile(p.x, p.y) + sleepyCat(X, p.x - 30, p.y - 74, '#8a8a96'), w: 220, h: 170 };   // 29.10: кот левее топора, лежит на доске
       if (p.k === 'well') { const x = p.x, y = p.y; return { s: X.sh(x, y + 2, 34, 7) + `<path d="M${x - 26} ${y} V${y - 70} Q${x - 26} ${y - 84} ${x - 12} ${y - 92} V${y - 106} H${x + 12} V${y - 92} Q${x + 26} ${y - 84} ${x + 26} ${y - 70} V${y} Z" fill="#c8ccd8" ${X.O(4)}/><path d="M${x - 26} ${y - 30} H${x + 26} M${x - 26} ${y - 56} H${x + 26}" stroke="#8a8e9e" stroke-width="4"/><rect x="${x - 15}" y="${y - 114}" width="30" height="10" rx="3" fill="#8a8e9e" ${X.O(3)}/><text x="${x}" y="${y - 38}" text-anchor="middle" font-family="Russo One, Arial Black, sans-serif" font-size="12" fill="#5a9ac8">МОЛОКО</text>`, w: 90, h: 130 }; }
       return null;
     },
@@ -645,7 +648,7 @@
     const R = rng(0xca3b);
     const pieces = [], props = [], signs = [];
     const P = (x0, x1, svg, y0 = 0, y1 = H) => pieces.push({ x0: x0 - 4, x1: x1 + 4, y0, y1, svg });
-    const prop = (x, y, w, h, z, svg) => props.push({ x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h), z: Math.round(z), svg: () => svg });
+    const prop = (x, y, w, h, z, svg, ex) => props.push({ x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h), z: Math.round(z), svg: () => svg, ...(ex || {}) });
     const txt = (x, y, t, size, fill, sw) => `<text x="${f1(x)}" y="${f1(y)}" text-anchor="middle" font-family="Russo One, Arial Black, sans-serif" font-size="${size}" fill="${fill}" stroke="${INK}" stroke-width="${sw || Math.max(3, size / 7).toFixed(1)}" paint-order="stroke" letter-spacing="1.5">${t}</text>`;
     // вывеска-доска с надписью (в рамке); r - рамка для проверок (ярлык «Города» её не закрывает)
     const sign = (cx, cy, t, size = 26, o2 = {}) => {
@@ -665,15 +668,18 @@
       if (TH.stars) { let st = ''; for (let i = 0; i < 70; i++) { const x = R() * W, y = 170 + R() * 330, r = 1 + R() * 2.2; st += `M${f1(x - r)} ${f1(y)}a${f1(r)} ${f1(r)} 0 1 0 ${f1(2 * r)} 0a${f1(r)} ${f1(r)} 0 1 0 ${f1(-2 * r)} 0`; } s += `<path d="${st}" fill="${TH.stars}" opacity=".8"/>`; }
       if (TH.moon) s += `<circle cx="2930" cy="290" r="96" fill="url(#${K.glowId(TH.moon, 'moon')})" opacity=".55"/><circle cx="2930" cy="290" r="54" fill="${TH.moon}" ${O(4)}/><circle cx="2912" cy="276" r="9" fill="${mix(TH.moon, INK, 0.12)}"/><circle cx="2948" cy="304" r="6" fill="${mix(TH.moon, INK, 0.12)}"/>`;
       // даль: холмы в три плана, дорога из ворот расходится на три стороны (своя даль стиля - TH.farDraw)
-      if (TH.farDraw) s += TH.farDraw(X); else {
-      const F = TH.far, hill = (y0, amp, c, seed) => { const r = rng(seed); let d = `M-40 ${H} L-40 ${y0}`; for (let x = -40; x <= W + 80; x += 160) d += ` Q${f1(x + 80)} ${f1(y0 - amp * (0.4 + r()))} ${f1(x + 160)} ${f1(y0 - amp * r() * 0.5)}`; return `<path d="${d} L${W + 80} ${H} Z" fill="${c}"/>`; };
-      s += hill(520, 120, F.c[0], 11) + hill(590, 90, F.c[1], 23);
-      // дорога за воротами: от ворот вглубь и на три стороны
-      s += `<path d="M1700 790 Q1690 690 1700 640 M1700 640 Q1500 600 1180 560 M1700 640 Q1720 590 1760 540 M1700 640 Q1960 610 2300 572" stroke="${mix(F.c[1], '#ffffff', 0.12)}" stroke-width="18" fill="none" stroke-linecap="round"/>`;
-      s += hill(660, 60, F.c[2], 37);
-      // деревья вдали (силуэты)
-      if (F.tree) { let tr = ''; for (let i = 0; i < 26; i++) { const x = (i * 131 + R() * 80) % W, y = 600 + R() * 50, r = 18 + R() * 16; tr += `M${f1(x - r)} ${f1(y)}a${f1(r)} ${f1(r * 1.15)} 0 1 1 ${f1(2 * r)} 0Z`; } s += `<path d="${tr}" fill="${F.tree}"/>`; }
-      }
+      // X.hills(F) - общая даль (холмы, дорога из ворот, деревья); своя даль стиля может её позвать и дорисовать своё
+      X.hills = (F) => {
+        const hill = (y0, amp, c, seed) => { const r = rng(seed); let d = `M-40 ${H} L-40 ${y0}`; for (let x = -40; x <= W + 80; x += 160) d += ` Q${f1(x + 80)} ${f1(y0 - amp * (0.4 + r()))} ${f1(x + 160)} ${f1(y0 - amp * r() * 0.5)}`; return `<path d="${d} L${W + 80} ${H} Z" fill="${c}"/>`; };
+        let g = hill(520, 120, F.c[0], 11) + hill(590, 90, F.c[1], 23);
+        // дорога за воротами: от ворот вглубь и на три стороны
+        g += `<path d="M1700 790 Q1690 690 1700 640 M1700 640 Q1500 600 1180 560 M1700 640 Q1720 590 1760 540 M1700 640 Q1960 610 2300 572" stroke="${mix(F.c[1], '#ffffff', 0.12)}" stroke-width="18" fill="none" stroke-linecap="round"/>`;
+        g += hill(660, 60, F.c[2], 37);
+        // деревья вдали (силуэты)
+        if (F.tree) { let tr = ''; for (let i = 0; i < 26; i++) { const x = (i * 131 + R() * 80) % W, y = 600 + R() * 50, r = 18 + R() * 16; tr += `M${f1(x - r)} ${f1(y)}a${f1(r)} ${f1(r * 1.15)} 0 1 1 ${f1(2 * r)} 0Z`; } g += `<path d="${tr}" fill="${F.tree}"/>`; }
+        return g;
+      };
+      s += TH.farDraw ? TH.farDraw(X) : X.hills(TH.far);
       P(0, W, s, 160, 800);
     }
     // задний частокол (за зданиями), с промежутком у ворот
@@ -750,7 +756,8 @@
       const op = { c, s: st, flip: true, open: true, bed: TH.beds[1 % TH.beds.length], kind: TH.kinds.mid || 'ridge' };
       const own = TH.tent && TH.tent(X, t, 3, op);
       let s = own ? (own.svg || own) : op.kind === 'bell' ? C.tentBell(t.x, t.y, t.w, { ...op, hk: 0.48 }) : op.kind === 'cone' ? C.tentCone(t.x, t.y, t.w * 0.8, op) : C.tentRidge(t.x, t.y, t.w, op);
-      s += K.put(K.def('barrel', () => ''), 650, 812, 0.7) + K.put(K.def('crate', () => ''), 870, 816, 0.7) + K.put(K.def('crate', () => ''), 852, 768, 0.55);
+      // 29.10: у коробки-палатки (котики) ящиков справа нет - они налезали на её бок и на столб Когтекузни
+      s += K.put(K.def('barrel', () => ''), 650, 812, 0.7) + (op.kind === 'box' ? '' : K.put(K.def('crate', () => ''), 870, 816, 0.7) + K.put(K.def('crate', () => ''), 852, 768, 0.55));
       P(560, 960, s, 540, 840);
     }
     // Кузня: открытый навес на столбах (полотно в полоску), каменный горн с трубой, меха, инструмент, оружие на стенке
@@ -791,7 +798,7 @@
     else {
       const cx = 1700, gx0 = 1590, gx1 = 1810, top = 300;
       let s = '';
-      const tower = (tx) => {
+      const tower = (tx, sg) => {   // sg - наружная сторона (-1 слева, 1 справа)
         let t = sh(tx, BASE + 4, 70, 9);
         const legs = `M${tx - 46} ${BASE} L${tx - 36} 470 M${tx + 46} ${BASE} L${tx + 36} 470 M${tx - 44} 700 L${tx + 42} 590 M${tx + 44} 700 L${tx - 42} 590`;
         t += `<path d="${legs}" stroke="${INK}" stroke-width="15" stroke-linecap="round"/><path d="${legs}" stroke="${TH.wood}" stroke-width="9" stroke-linecap="round"/>`;
@@ -799,16 +806,19 @@
         const [rc, rs] = TH.canvas[0];
         t += `<path d="M${tx - 64} 446 L${tx} ${top + 50} L${tx + 64} 446 Z" fill="${rc}" ${O()}/>` + (rs ? `<path d="M${tx - 64} 446 L${tx - 20} ${top + 62} L${tx - 4} 446 Z M${tx + 4} 446 L${tx + 20} ${top + 62} L${tx + 64} 446 Z" fill="${rs}" opacity=".9"/><path d="M${tx - 64} 446 L${tx} ${top + 50} L${tx + 64} 446 Z" fill="none" ${O()}/>` : '');
         t += TH.towerTop ? TH.towerTop(X, tx, top + 50) : `<path d="M${tx} ${top + 50} V${top + 6}" stroke="${INK}" stroke-width="6" stroke-linecap="round"/><path d="M${tx} ${top + 6} l40 9 l-40 12 Z" fill="${TH.banner}" stroke="${INK}" stroke-width="3"/>`;
-        // факел
-        t += `<circle cx="${tx}" cy="505" r="46" fill="url(#${K.glowId(TH.fire[1], 'cfg')})" opacity=".7"/><path d="M${tx} 540 V510" stroke="${INK}" stroke-width="8" stroke-linecap="round"/><path d="M${tx} 540 V510" stroke="${TH.woodL}" stroke-width="4"/>` + C.flame(tx, 512, 0.32, { fire: TH.fire });
+        // факел на кронштейне у наружной ноги (29.10, стример: висел посреди вышки перед перекладиной, перекладина протыкала его)
+        const lx = tx + sg * 39, fx = tx + sg * 62;
+        t += `<circle cx="${fx}" cy="536" r="46" fill="url(#${K.glowId(TH.fire[1], 'cfg')})" opacity=".7"/><path d="M${lx} 584 H${fx} V570" stroke="${INK}" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M${lx} 584 H${fx} V570" stroke="${TH.metal}" stroke-width="4" stroke-linejoin="round" fill="none"/>`
+          + `<path d="M${fx - 10} 572 L${fx - 7} 556 H${fx + 7} L${fx + 10} 572 Z" fill="${TH.metal}" stroke="${INK}" stroke-width="2.5"/>` + C.flame(fx, 560, 0.32, { fire: TH.fire });
         return t;
       };
       // створки ворот (распахнуты внутрь - видно дорогу)
       const door = (x, dir) => `<path d="M${x} ${BASE} V610 L${x + dir * 70} 640 V${BASE + 18} Z" fill="${TH.wood}" ${O()}/>` + K.planks([Math.min(x, x + dir * 70) + 2, 640, Math.max(x, x + dir * 70) - 2, BASE + 6], TH.wood, 18) + `<path d="M${x} 660 L${x + dir * 70} 682 M${x} 750 L${x + dir * 70} 770" stroke="${TH.metal}" stroke-width="7"/><path d="M${x + dir * 8} 600 l${dir * 6} -18 l${dir * 6} 18 M${x + dir * 30} 612 l${dir * 6} -18 l${dir * 6} 18 M${x + dir * 52} 622 l${dir * 6} -18 l${dir * 6} 18" fill="${TH.woodL}" stroke="${INK}" stroke-width="2.5"/>`;
       s += door(gx0, 1) + door(gx1, -1);
-      s += tower(gx0 - 40) + tower(gx1 + 40);
+      s += tower(gx0 - 40, -1) + tower(gx1 + 40, 1);
       // перекладина над проёмом со знаменем «В ПОХОД»
-      s += `<path d="M${gx0 - 40} 520 H${gx1 + 40}" stroke="${INK}" stroke-width="18" stroke-linecap="round"/><path d="M${gx0 - 40} 520 H${gx1 + 40}" stroke="${TH.wood}" stroke-width="11" stroke-linecap="round"/>`;
+      // 29.10: перекладина лежит между внутренними ногами вышек (раньше доходила до середины вышки, к факелу)
+      s += `<path d="M${gx0 - 6} 520 H${gx1 + 6}" stroke="${INK}" stroke-width="18" stroke-linecap="round"/><path d="M${gx0 - 6} 520 H${gx1 + 6}" stroke="${TH.wood}" stroke-width="11" stroke-linecap="round"/>`;
       s += `<path d="M${cx - 120} 528 H${cx + 120} V586 L${cx + 100} 600 L${cx + 80} 586 H${cx - 80} L${cx - 100} 600 L${cx - 120} 586 Z" fill="${TH.banner}" ${O()}/>` + txt(cx, 568, NM.gate, 30, TH.bannerTx);
       signs.push({ t: NM.gate, r: [cx - 120, 528, cx + 120, 600] });
       P(gx0 - 130, gx1 + 130, `<g data-ol="gate">${s}</g>`, top - 20, BASE + 40);
@@ -821,7 +831,7 @@
       const inside = (x, base, dw, dh) => `<rect x="${f1(x - 18)}" y="${f1(base - dh * 0.62)}" width="36" height="${f1(dh * 0.5)}" rx="16" fill="#bfe6ff" stroke="${INK}" stroke-width="3"/><path d="M${f1(x - 10)} ${f1(base - dh * 0.55)} l12 18" stroke="#ffffff" stroke-width="3" opacity=".8"/>`
         + `<path d="M${f1(x - dw * 0.8)} ${f1(base - dh * 0.75)} H${f1(x - 26)}" stroke="${TH.woodL}" stroke-width="3"/>` + [0, 1].map((i) => `<path d="M${f1(x - dw * 0.72 + i * 16)} ${f1(base - dh * 0.75)} l-10 34 h22 Z" fill="${TH.flags[i]}" stroke="${INK}" stroke-width="2"/>`).join('');
       let s = C.tentBell(cx, BASE, 440, { c: pc, s: ps, d: mix(pc, INK, 0.3), hk: 0.52, wk: 0.32, top: TH.glass, vane: TH.banner, in: inside });
-      if (TH.coneTop) s += TH.coneTop(X, cx, BASE - 440 * 0.32 - 440 * 0.52, 440, pc);
+      if (TH.coneTop) { const ct = TH.coneTop(X, cx, BASE - 440 * 0.32 - 440 * 0.52, 440, pc); s = TH.coneBack ? ct + s : s + ct; }   // coneBack - за куполом (уши котиков)
       // вывеска на треноге справа
       const bx = cx + 236;
       s += `<path d="M${bx - 30} ${BASE + 14} L${bx} 690 L${bx + 30} ${BASE + 14}" stroke="${INK}" stroke-width="9" fill="none" stroke-linecap="round"/><path d="M${bx - 30} ${BASE + 14} L${bx} 690 L${bx + 30} ${BASE + 14}" stroke="${TH.woodL}" stroke-width="4.5" fill="none" stroke-linecap="round"/>`;
@@ -857,8 +867,11 @@
       // арка над рядами с вывеской и гирляндой флажков
       const ag = `M2590 868 V520 M3320 868 V520`;
       s = `<path d="${ag}" stroke="${INK}" stroke-width="16" stroke-linecap="round"/><path d="${ag}" stroke="${TH.wood}" stroke-width="9" stroke-linecap="round"/>` + s;
-      let bunt = `<path d="M2590 560 Q2750 610 2955 590 Q3160 610 3320 560" stroke="${INK}" stroke-width="3" fill="none"/>`;
-      for (let i = 0; i < 18; i++) { const t2 = (i + 0.5) / 18, x = 2590 + t2 * 730, y = 560 + Math.sin(t2 * Math.PI * 2) * 0 + (t2 < 0.5 ? Math.sin(t2 * 2 * Math.PI) * 38 : Math.sin((t2 - 0.5) * 2 * Math.PI) * 38) * 0.9; bunt += `<path d="M${f1(x - 13)} ${f1(y)} L${f1(x)} ${f1(y + 24)} L${f1(x + 13)} ${f1(y)} Z" fill="${TH.flags[i % TH.flags.length]}" stroke="${INK}" stroke-width="2"/>`; }
+      // 29.10 (стример: флажки не на нити, к середине висели выше неё): нить - одна дуга с провисом между столбами, у каждого флажка
+      // верхние углы и остриё считаются по этой же дуге (x на дуге линейный: управляющая точка - посередине)
+      const ny = (x) => { const t2 = (x - 2590) / 730; return 560 + 2 * t2 * (1 - t2) * 80; };
+      let bunt = `<path d="M2590 560 Q2955 640 3320 560" stroke="${INK}" stroke-width="3" fill="none"/>`;
+      for (let i = 0; i < 18; i++) { const x = 2590 + (i + 0.5) / 18 * 730; bunt += `<path d="M${f1(x - 13)} ${f1(ny(x - 13))} L${f1(x)} ${f1(ny(x) + 24)} L${f1(x + 13)} ${f1(ny(x + 13))} Z" fill="${TH.flags[i % TH.flags.length]}" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>`; }
       s += bunt + sign(2955, 520, NM.shop, 30);
       P(x0 - 40, x1 + 40, `<g data-ol="shop">${s}</g>`, 470, 900);
     }
@@ -877,13 +890,17 @@
     // костёр: камни, огонь, котёл на треноге, брёвна-скамьи вокруг
     {
       const F = L.fire;
-      let s = '';
-      const back = F.logs.filter((l) => l[1] < F.y), front = F.logs.filter((l) => l[1] >= F.y);
-      for (const [x, y, rx, ry, rot] of back) s += C.logSeat(x, y + 4, rx * 2, rot, { c: TH.log });
-      s += C.campfire(F.x, F.y + 6, 1.1, { fire: TH.fire, over: TH.noCauldron ? '' : C.cauldron(F.x, F.y + 8, 0.95, { brew: TH.brew, c: TH.pot, lift: 50 }) });
-      for (const [x, y, rx, ry, rot] of front) s += C.logSeat(x, y + 4, rx * 2, rot, { c: TH.log });
-      if (TH.fireDeco) s += TH.fireDeco(X);
+      // 29.10: брёвна-скамьи - каждое своим предметом со своей глубиной (низ бревна). Были одной картинкой с костром (z = F.y + 20):
+      // герой перед боковым бревном (оно на 1066, ноги героя ~1085) оказывался под ним
+      for (const [x, y, rx, ry, rot] of F.logs) prop(x - rx - 40, y - 60, rx * 2 + 80, 90, y + 4, C.logSeat(x, y + 4, rx * 2, rot, { c: TH.log }));
+      let s = C.campfire(F.x, F.y + 6, 1.1, { fire: TH.fire, noFlame: true, over: TH.noCauldron ? '' : C.cauldron(F.x, F.y + 8, 0.95, { brew: TH.brew, c: TH.pot, lift: 50 }) });
       prop(F.x - 240, F.y - 240, 480, 340, F.y + 20, s);
+      // украшения костра (рыбка на палочках, кокосы…) - как раньше, поверх брёвен
+      if (TH.fireDeco) prop(F.x - 260, F.y - 260, 520, 400, Math.max(...F.logs.map((l) => l[1])) + 10, TH.fireDeco(X));
+      // 29.10: пламя - свой предмет с глубиной (сразу над костром): герой перед костром - поверх огня, за ним - под огнём. Раньше живое пламя
+      // лежало DOM-слоем поверх всей Pixi-сцены (и героев перед костром), а под ним - такое же неподвижное в костре: края «рвались».
+      // flick: [x, y] - низ пламени; Pixi качает картинку вокруг него (как cyCampFl), SVG-версия - тем же CSS (класс cy-camp-fl)
+      prop(F.x - 65, F.y + 2 - 140, 130, 140, F.y + 21, C.flame(F.x, F.y + 2, 0.99, { fire: TH.fire }), { flick: [F.x, F.y + 2] });
     }
     // предметы раскладки
     const poles = L.props.filter((p) => p.k === 'pole');
@@ -937,8 +954,7 @@
     flush();
     // предметам - свои <defs> (каждый печётся отдельной картинкой)
     const outProps = props.map((p) => { const svg = K.wrap(p.svg()); return { ...p, svg: () => svg }; });
-    // пламя костра поверх (страница может оживить его одной CSS-анимацией; Pixi печёт неподвижное - это для DOM-слоя)
-    const anim = [{ k: 'flame', x: L.fire.x, y: L.fire.y + 2, svg: K.wrap(C.flame(0, 0, 0.99, { fire: TH.fire })), w: 130, h: 140 }];
+    const anim = [];   // 29.10: пламя - предмет с глубиной (flick), отдельного слоя поверх сцены больше нет
     return { sky: TH.sky, defs: '', layers, props: outProps, fx: TH.fx || '', anim, signs, L, theme: TH };
   }
   root.LGCampArt = { draw, THEMES, themeOf };

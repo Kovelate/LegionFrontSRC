@@ -1,0 +1,801 @@
+/* ───── стиль «42brothers»: styles/42brothers/characters.js ───── */
+try {
+/* Стиль «42 Братухи» — эпатажные парни и девчонки: шубы (цвет шубы = цвет человечка в Костюмерной),
+   золотые цепи, огромные очки, кроксы на ногах, у части — оранжевое джерси «42».
+   Шапки, оружие и щиты собраны из фастфуда, бижутерии и лимузинов: ведро с крылышками, коробка фри,
+   бумажная корона, бургер-молот, дверь лимузина, диско-шар.
+   Устроен как образец styles/legion/characters.js, договор — styles/README.md.
+   Холст 120×170, ноги на y = 168, центр по x = 60. Каждая функция возвращает строку SVG.
+   Классы body/ln/face/eye не используются: все цвета заданы прямо в SVG (как у «Котиков»). */
+(function () {
+  'use strict';
+  const D = window.MDDoodle;
+  if (!D) return;
+
+  // ── цвета стиля ──
+  const INK = '#1c1022';      // обводка всего: тёмная сливово-чёрная
+  const GOLD = '#ffc83d';     // цепи, оправы, корона
+  const JERSEY = '#ff7a1a';   // оранжевое джерси «42»
+  const JERSEY_B = '#ff7b1c';  // оранжевое джерси «42» с чёрными полосами по бокам (вместо чёрной шубы)
+  const TEE = '#36c94a';       // зелёная футболка «42» (вместо одной из розовых шуб)
+  // «не шубы»: цвет человечка = вид одежды. Рук у них в рукавах нет — короткие рукава, голые руки, без меха
+  const OUTFIT = { [JERSEY]: 'jersey', [JERSEY_B]: 'jerseyB', [TEE]: 'tee' };
+  const RED = '#e8262f';      // фастфуд: ведро, коробка фри, стакан
+  const BUN = '#e8a24a';      // булка
+  const FRY = '#ffd54a';      // картошка фри
+  const WS = `stroke="${INK}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"`;
+  const S3 = `stroke="${INK}" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"`;
+  const FS = `fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"`;   // линии лица
+  const RARITY = { common: null, uncommon: '#5bd36a', rare: '#4fc3ff', epic: '#c77dff', legendary: '#ffcf3a' };
+  const BLING = { common: '#e3e7ee', uncommon: '#cdeec4', rare: '#9fe0ff', epic: '#e2b8ff', legendary: '#ffd34d' };   // «металл» по редкости
+  const FONT = 'font-family="Arial Black,Impact,sans-serif" font-weight="900" text-anchor="middle"';
+  const f1 = (v) => +(+v).toFixed(1);
+
+  // шубы «по нику» (цвет Костюмерной тоже становится цветом шубы)
+  // много розовых и «леопардовых» основ — это главные шубы братух
+  const COATS = ['#ff5fa2', '#ff8cc6', TEE, '#ffc2df', '#e8b35a', '#d99a3e', '#e8b35a', '#f4f1ec', JERSEY_B, '#b48cff', '#5ad1ff', '#ffcf3a', '#9aff6a', '#7a4a2e', '#c9a27a', '#e7e1ff'];
+  const LEO_BASE = ['#e8b35a', '#d99a3e'];   // на этих основах шуба всегда леопардовая
+  /* Вид шубы — из seed: узор, застёжка, огромный воротник, брошь.
+     plain — классика с ворсинками, mink — поперечная норка, leopard — леопард (чаще всех), shaggy — лохматая,
+     zebra — зебра, tiger — тигровая, patch — лоскутная. */
+  const PAT = ['plain', 'mink', 'leopard', 'leopard', 'leopard', 'shaggy', 'zebra', 'tiger', 'patch', 'mink'];
+  function coatOf(k) {
+    const s = (k && k.seed) >>> 0, h = Math.imul(s ^ 0x9e3779b9, 2654435761) >>> 0;
+    return { pat: LEO_BASE.includes(k.fill) ? 'leopard' : PAT[h % PAT.length], close: (h >>> 8) % 4, big: (h >>> 12) % 3 === 0, brooch: (h >>> 16) % 3 === 0 };
+  }
+  const SKIN = ['#ffe0c4', '#f6c9a4', '#e9b08a', '#c98c62', '#9a603e', '#ffd2b8'];
+  const HAIR = ['#fff1a8', '#2a1c1a', '#ff5fb0', '#7b4a2a', '#f4f4f4', '#b58cff', '#ffcf3a'];
+  const CROC = ['#8fe33a', '#ff5fa2', '#ffcf3a', '#5ad1ff', '#ff7a1a', '#f4f1ec', '#b48cff', '#2b2733'];
+  const COLLAR = ['#fbf3e6', '#2a2230', null];   // меховой воротник: белый, чёрный или в цвет шубы
+
+  /* Черты по нику — из seed, без r() (r() не трогаем, чтобы порядок случайных чисел остался как в договоре).
+     Если seed нет (виджеты рисуют шапки отдельно) — получится 0, это нормально. */
+  function T(k) {
+    const s = (k && k.seed) >>> 0;
+    return {
+      girl: !!((s >>> 3) & 1),
+      skin: SKIN[(s >>> 13) % SKIN.length],
+      hair: HAIR[(s >>> 17) % HAIR.length],
+      short: ((s >>> 20) & 3) !== 0,           // у парней: короткая стрижка или лысый
+      croc: CROC[(s >>> 22) % CROC.length],
+      chain: (s >>> 25) % 4 !== 0,
+      collar: COLLAR[(s >>> 9) % COLLAR.length],
+      lip: ['#e8336b', '#b3123f', '#ff6fa8'][(s >>> 27) % 3],
+    };
+  }
+  const isJersey = (k) => !!OUTFIT[k.fill];
+  const sleeve = (k) => (isJersey(k) ? T(k).skin : k.fill);
+
+  /* ── тела: (r) → { L, R, top, hw, eyeY, armY, d, square?, narrow? } — формы как у «Легиона» ── */
+  const bodies = {
+    bean(r) { const w = 25 + Math.floor(r() * 9), L = 60 - w, R = 60 + w, top = 76; return { L, R, top, hw: f1(w * 0.72), eyeY: 100, armY: 112, d: `M${L} 168 C${L - 4} 124 ${L + 1} 80 60 ${top} C${R - 1} 80 ${R + 4} 124 ${R} 168 Z` }; },
+    box(r) { const w = 24 + Math.floor(r() * 9), L = 60 - w, R = 60 + w, top = 80 + Math.floor(r() * 10); return { L, R, top, hw: w - 4, eyeY: top + 26, armY: top + 34, square: true, d: `M${L + 9} ${top} H${R - 9} Q${R} ${top} ${R} ${top + 9} V168 H${L} V${top + 9} Q${L} ${top} ${L + 9} ${top} Z` }; },
+    ball(r) { const w = 33 + Math.floor(r() * 6), L = 60 - w, R = 60 + w, top = 98; return { L, R, top, hw: f1(w * 0.62), eyeY: 122, armY: 128, d: `M${L + 6} 168 C${L - 8} 150 ${L - 4} ${top} 60 ${top} C${R + 4} ${top} ${R + 8} 150 ${R - 6} 168 Z` }; },
+    tall(r) { const w = 19 + Math.floor(r() * 4), L = 60 - w, R = 60 + w, top = 58; return { L, R, top, hw: f1(w * 0.8), eyeY: 82, armY: 96, narrow: true, d: `M${L} 168 C${L - 2} 110 ${L} 62 60 ${top} C${R} 62 ${R + 2} 110 ${R} 168 Z` }; },
+    ghost(r) { const w = 25 + Math.floor(r() * 6), L = 60 - w, R = 60 + w, top = 78, s = f1((2 * w) / 3); return { L, R, top, hw: f1(w * 0.72), eyeY: 102, armY: 114, ghosty: true, d: `M${L} 162 C${L} 112 ${L + 2} 82 60 ${top} C${R - 2} 82 ${R} 112 ${R} 162 q${-s / 2} 10 ${-s} 0 q${-s / 2} 10 ${-s} 0 q${-s / 2} 10 ${-s} 0 Z` }; },
+    cone(r) { const w = 28 + Math.floor(r() * 6), L = 60 - w, R = 60 + w, top = 74; return { L, R, top, hw: 13, eyeY: 104, armY: 118, narrow: true, d: `M${L} 168 C${L + 4} 140 ${L + 16} 88 60 ${top} C${R - 16} 88 ${R - 4} 140 ${R} 168 Z` }; },
+    egg(r) { const w = 27 + Math.floor(r() * 5), L = 60 - w, R = 60 + w, top = 70; return { L, R, top, hw: f1(w * 0.6), eyeY: 98, armY: 116, d: `M60 ${top} C${R - 4} ${top} ${R + 6} 130 ${R - 2} 160 Q60 174 ${L + 2} 160 C${L - 6} 130 ${L + 4} ${top} 60 ${top} Z` }; },
+  };
+
+  // кроксы: носок влево, x — середина ступни; dir = 1 левая, −1 правая (зеркально)
+  const croc = (x, dir, col) => `<g transform="translate(${x} 0) scale(${dir} 1)"><path d="M-12 170 C-13 162 -8 159 -2 159 H6 C10 159 12 162 12 166 V170 Z" fill="${col}" ${WS}/>`
+    + `<path d="M6 160 q6 1 6 8" fill="none" stroke="${INK}" stroke-width="1.6"/><g fill="${INK}" opacity=".45"><circle cx="-6" cy="164" r="1.2"/><circle cx="-2" cy="162" r="1.2"/><circle cx="2" cy="164.5" r="1.2"/></g><circle cx="-8" cy="166" r="1.8" fill="${GOLD}"/></g>`;
+  const faceW = (k) => Math.max(k.b.hw - 1, k.ex + 9);   // полуширина «окна» лица в причёске
+
+  /* ── шуба: узор + застёжка (рисуется внутри контура тела, ниже рта) ── */
+  // тёмная ли шуба (для цвета полос и пятен)
+  const isDark = (c) => { const m = /^#([0-9a-f]{6})$/i.exec(String(c)); if (!m) return false; const n = parseInt(m[1], 16); return ((n >> 16) * 0.3 + ((n >> 8) & 255) * 0.59 + (n & 255) * 0.11) < 90; };
+  function coatArt(k, y, t, co, u) {
+    const dk = isDark(k.fill);
+    let s = `<rect y="${y}" width="120" height="${172 - y}" fill="${k.fill}"/>`, p = '';
+    switch (co.pat) {
+      case 'leopard': {   // розетки: рваное тёмное кольцо + рыжая серединка
+        const pts = [[38, 14], [58, 20], [80, 12], [46, 34], [70, 36], [34, 52], [58, 52], [84, 54], [44, 70], [70, 70], [56, 86]];
+        s += `<g stroke="${dk ? '#e8b35a' : '#2a1608'}" stroke-width="2.3" fill="rgba(150,75,10,.42)" stroke-dasharray="5 2.4">${pts.map(([x, dy], i) => `<ellipse cx="${x}" cy="${y + dy}" rx="${4 + (i % 3)}" ry="${3 + (i % 2)}" transform="rotate(${(i * 23) % 40 - 20} ${x} ${y + dy})"/>`).join('')}</g>`
+          + `<g fill="${dk ? '#e8b35a' : '#2a1608'}">${[[50, 24], [66, 26], [40, 42], [78, 44], [52, 62], [30, 64], [86, 68]].map(([x, dy]) => `<circle cx="${x}" cy="${y + dy}" r="1.6"/>`).join('')}</g>`;
+        break;
+      }
+      case 'mink':   // поперечная норка: волнистые полосы меха
+        for (let yy = y + 10; yy < 170; yy += 10) p += `M0 ${yy} q30 4 60 0 t60 0 `;
+        s += `<path d="${p}" fill="none" stroke="rgba(0,0,0,.2)" stroke-width="2.6"/><path d="${p}" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1.3" transform="translate(0 3)"/>`;
+        break;
+      case 'shaggy':   // лохматая: длинный ворс
+        for (let j = 0; j < 7; j++) for (let x = 30 + (j % 2) * 5; x <= 90; x += 10) p += `M${x} ${y + 8 + j * 11} q-3 5 1 10 `;
+        s += `<path d="${p}" fill="none" stroke="rgba(0,0,0,.24)" stroke-width="2.2" stroke-linecap="round"/><path d="${p}" fill="none" stroke="rgba(255,255,255,.32)" stroke-width="1.4" stroke-linecap="round" transform="translate(3 -2)"/>`;
+        break;
+      case 'zebra':
+      case 'tiger': {   // полосы с боков к середине
+        const z = co.pat === 'zebra';
+        for (let j = 0; j < 7; j++) { const yy = y + 8 + j * 11, a = z ? 26 : 16 + (j % 2) * 6; p += `M${k.L - 2} ${yy} q${a * 0.6} -6 ${a} 2 q8 4 ${z ? 16 : 6} -2 M${k.R + 2} ${yy + 5} q${-a * 0.6} -6 ${-a} 2 q-8 4 ${z ? -16 : -6} -2 `; }
+        s += `<path d="${p}" fill="none" stroke="${dk ? (z ? '#f4f1ec' : '#ff9a3d') : z ? INK : '#3a1a08'}" stroke-width="${z ? 3.8 : 3}" stroke-linecap="round" opacity="${z ? 0.85 : 0.7}"/>`;
+        break;
+      }
+      case 'patch':   // лоскутная: шахматка из кусков меха со строчкой
+        s += `<defs><pattern id="${u}p" patternUnits="userSpaceOnUse" width="24" height="20"><rect width="12" height="10" fill="rgba(255,255,255,.24)"/><rect x="12" y="10" width="12" height="10" fill="rgba(0,0,0,.16)"/><path d="M0 10 H24 M12 0 V20" stroke="rgba(255,255,255,.5)" stroke-width="1" stroke-dasharray="2 1.6"/></pattern></defs><rect y="${y}" width="120" height="${172 - y}" fill="url(#${u}p)"/>`;
+        break;
+      default:   // классика: ворсинки
+        s += `<path d="M42 ${y + 22} l3 6 M78 ${y + 30} l-3 6 M48 ${y + 48} l2 6 M74 ${y + 56} l-2 6 M36 ${y + 40} l2 5 M84 ${y + 44} l-2 5" stroke="rgba(0,0,0,.2)" stroke-width="2" stroke-linecap="round"/>`;
+    }
+    // застёжка: 0 — золотые пуговицы, 1 — пояс с пряжкой, 2 — золотые застёжки-палочки, 3 — распахнута (видно кофточку цвета c2)
+    const fc = t.collar || k.fill;
+    if (co.close === 3) s += `<path d="M48 ${y} L60 ${y + 36} L72 ${y} Z" fill="${k.c2}"/><path d="M48 ${y} L60 ${y + 36} L72 ${y}" fill="none" stroke="${fc}" stroke-width="6" stroke-linejoin="round"/><path d="M48 ${y} L60 ${y + 36} L72 ${y}" fill="none" stroke="rgba(28,16,34,.45)" stroke-width="1.4" stroke-dasharray="0.1 3" stroke-linecap="round"/><path d="M60 ${y + 36} V170" stroke="rgba(0,0,0,.25)" stroke-width="2"/>`;
+    else {
+      s += `<path d="M60 ${y + 6} V170" stroke="rgba(0,0,0,.25)" stroke-width="2"/>`;
+      if (co.close === 0) s += `<g fill="${GOLD}" stroke="${INK}" stroke-width="1.6">${[16, 30, 44].map((dy) => `<circle cx="64" cy="${y + dy}" r="3"/>`).join('')}</g>`;
+      if (co.close === 1) s += `<rect y="${y + 30}" width="120" height="7" fill="rgba(28,16,34,.6)"/><rect x="53" y="${y + 28}" width="14" height="11" rx="2.5" fill="none" stroke="${GOLD}" stroke-width="2.8"/><path d="M60 ${y + 31} v5" stroke="${GOLD}" stroke-width="2"/>`;
+      if (co.close === 2) s += `<path d="${[16, 28, 40].map((dy) => `M54 ${y + dy} h12`).join(' ')}" stroke="${INK}" stroke-width="5" stroke-linecap="round"/><path d="${[16, 28, 40].map((dy) => `M54 ${y + dy} h12`).join(' ')}" stroke="${GOLD}" stroke-width="2.8" stroke-linecap="round"/>`;
+    }
+    return s;
+  }
+
+  /* Тело: голова (кожа) → шуба / джерси ниже рта → причёска → цепь → контур → кроксы → серьги */
+  function body(k) {
+    const b = k.b, t = T(k), d = b.d, u = k.uid('jlB'), cy = k.my + 8, ey = k.ey, jer = isJersey(k), co = coatOf(k), furCol = t.collar || k.fill;
+    let s = `<defs><clipPath id="${u}"><path d="${d}"/></clipPath><clipPath id="${u}f"><rect x="-20" y="${cy + 6}" width="160" height="${Math.max(0, 158 - cy)}"/></clipPath></defs><path d="${d}" fill="${t.skin}"/><g clip-path="url(#${u})">`;
+    if (jer) {
+      const kind = OUTFIT[k.fill], tee = kind === 'tee';
+      s += `<rect y="${cy}" width="120" height="${172 - cy}" fill="${k.fill}"/>`
+        + (tee ? `<path d="M49 ${cy - 1} Q60 ${cy + 10} 71 ${cy - 1}" fill="${t.skin}" stroke="#1f8a2e" stroke-width="3.4"/>` : `<path d="M48 ${cy - 1} L60 ${cy + 9} L72 ${cy - 1}" fill="${t.skin}" stroke="#fff" stroke-width="3"/>`)
+        // чёрные полосы по бокам — идут вдоль контура тела: широкая полоса у края и тонкая рядом
+        + (kind === 'jerseyB' ? `<g clip-path="url(#${u}f)" fill="none"><path d="${d}" stroke="${INK}" stroke-width="22"/><path d="${d}" stroke="${k.fill}" stroke-width="18"/><path d="${d}" stroke="${INK}" stroke-width="14"/></g>` : '')
+        + `<text x="60" y="${Math.min(cy + 33, 158)}" ${FONT} font-size="${Math.min(22, Math.max(12, 154 - cy))}" fill="#fff" stroke="${INK}" stroke-width="1.2">42</text>`
+        + (tee ? '' : `<path d="M0 ${cy + 42} H120" stroke="#fff" stroke-width="3"/>`);
+    } else {
+      s += coatArt(k, cy, t, co, u);
+      if (!co.big) { let c = ''; for (let x = 4; x <= 116; x += 7) c += `<circle cx="${x}" cy="${cy + 2 + (x % 3)}" r="5.5"/>`; s += `<g fill="${furCol}" stroke="rgba(28,16,34,.55)" stroke-width="1.6">${c}</g>`; }
+    }
+    // причёска (внутри контура тела): у девушек — длинные волосы с окном для лица, у парней — короткая стрижка
+    const fw = faceW(k), top = b.top - 12;
+    if (t.girl) s += `<path d="M0 ${cy + 4} V${top} H120 V${cy + 4} H${f1(60 + fw)} V${ey - 4} Q60 ${ey - 19} ${f1(60 - fw)} ${ey - 4} V${cy + 4} Z" fill="${t.hair}" stroke="rgba(28,16,34,.5)" stroke-width="1.6"/>`;
+    else if (t.short) s += `<path d="M0 ${ey - 8} V${top} H120 V${ey - 8} Q60 ${ey - 20} 0 ${ey - 8} Z" fill="${t.hair === '#ff5fb0' || t.hair === '#b58cff' ? '#2a1c1a' : t.hair}"/>`;
+    s += '</g>';
+    if (t.chain && !(jer && cy > 128)) s +=   // на короткой майке цепь закрыла бы номер «42» `<path d="M${f1(60 - fw * 0.75)} ${cy + 2} Q60 ${cy + 22} ${f1(60 + fw * 0.75)} ${cy + 2}" fill="none" stroke="${GOLD}" stroke-width="3.2" stroke-dasharray="3.4 1.6"/><circle cx="60" cy="${cy + 13}" r="4.6" fill="${GOLD}" stroke="${INK}" stroke-width="1.6"/>`;
+    s += `<path d="${d}" fill="none" stroke="rgba(255,240,250,.55)" stroke-width="6" stroke-linejoin="round"/><path d="${d}" fill="none" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>`;
+    if (!jer) {
+      // пушистый край шубы: толстый пунктир с круглыми концами по контуру тела = меховые «клочки»
+      const W = co.pat === 'shaggy' ? 11 : 8, G = co.pat === 'shaggy' ? 5.5 : 6.5;
+      s += `<g clip-path="url(#${u}f)"><path d="${d}" fill="none" stroke="${INK}" stroke-width="${W + 3}" stroke-dasharray="0.1 ${G}" stroke-linecap="round"/><path d="${d}" fill="none" stroke="${k.fill}" stroke-width="${W}" stroke-dasharray="0.1 ${G}" stroke-linecap="round"/></g>`;
+      // огромный воротник, выходит за плечи
+      if (co.big) { const sp = faceW(k) + 9; let c = ''; for (let x = -sp; x <= sp + 0.1; x += 7.5) c += `<circle cx="${f1(60 + x)}" cy="${f1(cy + 3 - Math.cos(x / sp * 1.4) * 3)}" r="7.4"/>`; s += `<g fill="${furCol}" stroke="${INK}" stroke-width="1.8">${c}</g><g fill="rgba(255,255,255,.3)">${c.replace(/r="7.4"/g, 'r="3"')}</g>`; }
+      if (co.brooch && !t.chain) s += `<path d="${starAt(f1(60 - faceW(k) * 0.55), cy + 18, 5.5)}" fill="${GOLD}" stroke="${INK}" stroke-width="1.4"/><circle cx="${f1(60 - faceW(k) * 0.55)}" cy="${cy + 18}" r="1.6" fill="#ff2f7a"/>`;
+    }
+    if (!b.ghosty) s += croc(46, 1, t.croc) + croc(74, -1, t.croc);
+    if (t.girl) s += `<circle cx="${f1(60 - fw)}" cy="${ey + 13}" r="4" fill="none" stroke="${GOLD}" stroke-width="2.2"/><circle cx="${f1(60 + fw)}" cy="${ey + 13}" r="4" fill="none" stroke="${GOLD}" stroke-width="2.2"/>`;
+    return s;
+  }
+
+  /* ── очки: фирменная деталь стиля. glam — огромная золотая оправа с розовыми стёклами, heart — сердечки, starg — звёзды ── */
+  const GLASSES = ['glam', 'heart', 'starg'];
+  const heartAt = (x, y, s) => `M${x} ${f1(y + 7 * s)} C${f1(x - 12 * s)} ${f1(y - s)} ${f1(x - 8 * s)} ${f1(y - 11 * s)} ${x} ${f1(y - 5 * s)} C${f1(x + 8 * s)} ${f1(y - 11 * s)} ${f1(x + 12 * s)} ${f1(y - s)} ${x} ${f1(y + 7 * s)} Z`;
+  const starAt = (x, y, R) => { let p = ''; for (let i = 0; i < 10; i++) { const a = Math.PI / 5 * i - Math.PI / 2, rr = i % 2 ? R * 0.48 : R; p += `${i ? 'L' : 'M'}${f1(x + Math.cos(a) * rr)} ${f1(y + Math.sin(a) * rr)}`; } return p + 'Z'; };
+  function glassesArt(kind, k) {
+    const { ex, ey } = k, cyc = k.cyc, xs = cyc ? [60] : [60 - ex, 60 + ex];
+    if (kind === 'glam') {
+      const w = cyc ? 30 : 2 * ex - 1, h = 18;
+      return xs.map((x) => `<rect x="${f1(x - w / 2)}" y="${ey - 9}" width="${w}" height="${h}" rx="6" fill="rgba(255,110,190,.38)" stroke="${GOLD}" stroke-width="3"/>`).join('')
+        + (cyc ? '' : `<path d="M${f1(60 - ex + w / 2)} ${ey - 3} h${f1(2 * ex - w)}" stroke="${GOLD}" stroke-width="3"/>`) + `<path d="M${f1(xs[0] - w / 2 + 3)} ${ey - 5} l4 -2" stroke="#fff" stroke-width="2" opacity=".8"/>`;
+    }
+    if (kind === 'heart') return xs.map((x) => `<path d="${heartAt(x, ey, cyc ? 1.5 : 1)}" fill="#ff2f7a" stroke="${INK}" stroke-width="2.2" stroke-linejoin="round"/>`).join('') + `<path d="M${xs[0] - 5} ${ey - 4} l2 -2" stroke="#fff" stroke-width="2"/>`;
+    return xs.map((x) => `<path d="${starAt(x, ey, cyc ? 15 : 10.5)}" fill="#2a1f3a" stroke="${GOLD}" stroke-width="2.4" stroke-linejoin="round"/>`).join('') + `<path d="M${xs[0] - 3} ${ey - 4} l2 -2" stroke="#fff" stroke-width="1.8"/>`;
+  }
+  const withGlasses = (k, eyes) => (GLASSES.includes(k.eyesKind) ? eyes + glassesArt(k.eyesKind, k) : eyes);
+  const lashes = (k) => { const { ex, ey } = k; return `<path d="M${60 - ex - 4} ${ey - 2} l-4 -3 M${60 - ex - 2} ${ey - 4} l-2 -4 M${60 + ex + 4} ${ey - 2} l4 -3 M${60 + ex + 2} ${ey - 4} l2 -4" fill="none" stroke="${INK}" stroke-width="2" stroke-linecap="round"/>`; };
+  const dots = (k) => `<circle cx="${60 - k.ex}" cy="${k.ey}" r="4" fill="${INK}"/><circle cx="${60 + k.ex}" cy="${k.ey}" r="4" fill="${INK}"/>`;
+
+  function eyes(kind, k) {
+    const { ex, ey } = k, girl = T(k).girl;
+    if (kind === 'big') return `<circle cx="${60 - ex}" cy="${ey}" r="7" fill="#fff" stroke="${INK}" stroke-width="2.6"/><circle cx="${60 + ex}" cy="${ey}" r="7" fill="#fff" stroke="${INK}" stroke-width="2.6"/><circle cx="${60 - ex + 1}" cy="${ey + 1}" r="3" fill="${INK}"/><circle cx="${60 + ex + 1}" cy="${ey + 1}" r="3" fill="${INK}"/>` + (girl ? lashes(k) : '');
+    if (kind === 'cyclops') return `<circle cx="60" cy="${ey}" r="10" fill="#fff" stroke="${INK}" stroke-width="2.6"/><circle cx="61" cy="${ey + 1}" r="4.5" fill="${INK}"/>`;
+    if (kind === 'stars') return [60 - ex, 60 + ex].map((x) => `<path d="${starAt(x, ey, 6)}" fill="${GOLD}" stroke="${INK}" stroke-width="1.6" stroke-linejoin="round"/>`).join('');
+    if (kind === 'happy') return `<path d="M${60 - ex - 4} ${ey + 1} q4 -6 8 0 M${60 + ex - 4} ${ey + 1} q4 -6 8 0" ${FS}/>`;
+    if (kind === 'lash') return dots(k) + lashes(k);
+    if (kind === 'glam') return dots(k) + glassesArt('glam', k);
+    if (kind === 'heart' || kind === 'starg') return glassesArt(kind, k);
+    return dots(k) + (girl ? lashes(k) : '');   // dots
+  }
+  function mouth(kind, k) {
+    const my = k.my, lip = T(k).girl ? T(k).lip : INK;
+    if (kind === 'open') return `<path d="M51 ${my - 2} q9 13 18 0 z" fill="#5a1630" stroke="${lip}" stroke-width="2.8" stroke-linejoin="round"/>`;
+    if (kind === 'grin') return `<path d="M50 ${my - 3} h20 q-2 10 -10 10 q-8 0 -10 -10 z" fill="#fff" stroke="${lip}" stroke-width="2.8" stroke-linejoin="round"/><path d="M53 ${my} h14" stroke="${GOLD}" stroke-width="3.2"/>`;   // золотые грилзы
+    return `<path d="M50 ${my - 2} q10 10 20 0" fill="none" stroke="${lip}" stroke-width="3" stroke-linecap="round"/><path d="M57 ${my + 2} q3 7 6 0 z" fill="#ff6b8a"/>`;
+  }
+  const faces = {
+    sad(k) {
+      const { ex, ey, my } = k;
+      const e = k.eyesKind === 'cyclops'
+        ? `<circle cx="60" cy="${ey}" r="10" fill="#fff" stroke="${INK}" stroke-width="2.6"/><circle cx="60" cy="${ey + 3}" r="4.5" fill="${INK}"/><path d="M48 ${ey - 13} q12 -8 24 0" ${FS}/>`
+        : `<circle cx="${60 - ex}" cy="${ey + 1}" r="4" fill="${INK}"/><circle cx="${60 + ex}" cy="${ey + 1}" r="4" fill="${INK}"/><path d="M${60 - ex - 6} ${ey - 9} l9 -4 M${60 + ex + 6} ${ey - 9} l-9 -4" ${FS}/>`;
+      return { eyes: withGlasses(k, e) + `<path class="tear" d="M${60 + ex + 4} ${ey + 9} q-3 6 0 8 q3 -2 0 -8 z" fill="#7cc8ff" stroke="${INK}" stroke-width="1.4"/>`, mouth: `<path d="M51 ${my + 4} q9 -8 18 0" ${FS}/>` };
+    },
+    chill(k) {
+      const { ex, ey, my } = k;
+      return { eyes: withGlasses(k, k.cyc ? `<path d="M51 ${ey + 1} q9 -7 18 0" ${FS}/>` : `<path d="M${60 - ex - 5} ${ey + 1} q5 -5 10 0 M${60 + ex - 5} ${ey + 1} q5 -5 10 0" ${FS}/>`), mouth: `<path d="M51 ${my} q9 8 18 0" ${FS}/>` };
+    },
+    stern(k) {
+      const { ex, ey, my } = k;
+      return { eyes: withGlasses(k, k.cyc ? `<circle cx="60" cy="${ey}" r="10" fill="#fff" stroke="${INK}" stroke-width="2.6"/><circle cx="60" cy="${ey + 2}" r="4.5" fill="${INK}"/><path d="M47 ${ey - 13} l13 5 l13 -5" ${FS}/>`
+        : `<circle cx="${60 - ex}" cy="${ey + 1}" r="4" fill="${INK}"/><circle cx="${60 + ex}" cy="${ey + 1}" r="4" fill="${INK}"/><path d="M${60 - ex - 7} ${ey - 11} l10 4 M${60 + ex + 7} ${ey - 11} l-10 4" ${FS}/>`), mouth: `<path d="M51 ${my + 3} q9 -4 18 0" ${FS}/>` };
+    },
+    hurt(k) {
+      const { ex, ey, my } = k;
+      return { eyes: k.cyc ? `<circle cx="60" cy="${ey}" r="10" fill="#fff" stroke="${INK}" stroke-width="2.6"/><path d="M51 ${ey + 1} q9 -5 18 0" ${FS}/><circle cx="60" cy="${ey + 3}" r="3" fill="${INK}"/>`
+        : `<path d="M${60 - ex - 4} ${ey - 4} l8 8 M${60 - ex + 4} ${ey - 4} l-8 8" ${FS}/><circle cx="${60 + ex}" cy="${ey + 1}" r="3.4" fill="${INK}"/><path d="M${60 + ex + 7} ${ey - 7} l-9 -3" ${FS}/>`, mouth: `<path d="M50 ${my + 2} q5 -5 10 0 q5 5 10 0" ${FS}/>` };
+    },
+  };
+
+  /* ── шапки: k → { id: svg } (только k.b, k.fill, k.c2 — так их вызывают и виджеты) ── */
+  function hats(k) {
+    const b = k.b, c1 = k.fill, c2 = k.c2;
+    const t = b.square ? b.top - 6 : b.top, hw = b.hw, cx = 60;
+    const L = f1(cx - hw), R = f1(cx + hw);
+    let crown = ''; { const x0 = cx - hw - 2, w = (2 * hw + 4) / 4; crown = `M${f1(x0)} ${t + 8} V${t - 12}`; for (let i = 1; i <= 4; i++) crown += ` L${f1(x0 + w * (i - 0.5))} ${i % 2 ? t - 2 : t - 4} L${f1(x0 + w * i)} ${t - 12}`; crown += ` V${t + 8} Z`; }
+    let tiara = ''; for (let i = -2; i <= 2; i++) { const x = f1(cx + i * hw * 0.42), y = f1(t + 2 - (2 - Math.abs(i)) * 4.5), s = i ? 3.6 : 5; tiara += `<path d="M${x} ${f1(y - s * 1.3)} L${f1(x + s)} ${y} L${x} ${f1(y + s)} L${f1(x - s)} ${y} Z" fill="#c9f3ff" stroke="${INK}" stroke-width="1.6"/>`; }
+    const furRow = (x0, x1, y, col) => { let c = ''; for (let x = x0; x <= x1; x += 6) c += `<circle cx="${f1(x)}" cy="${y}" r="4.6"/>`; return `<g fill="${col}" stroke="rgba(28,16,34,.55)" stroke-width="1.4">${c}</g>`; };
+    return {
+      none: '',
+      // начёс-кок платинового блонда
+      tuft: `<path d="M${L + 2} ${t + 8} C${L} ${t - 14} ${cx + 4} ${t - 24} ${R + 7} ${t - 12} C${R - 1} ${t - 6} ${R + 1} ${t + 2} ${R - 2} ${t + 8} Q${cx} ${t - 2} ${L + 2} ${t + 8} Z" fill="#fff1a8" ${S3}/><path d="M${cx - 6} ${t - 7} q8 -8 18 -8" fill="none" stroke="#d9b94a" stroke-width="2"/>`,
+      // снэпбэк «42», козырёк вбок
+      cap: `<path d="M${L - 2} ${t + 10} Q${L - 2} ${t - 13} ${cx} ${t - 13} Q${R + 2} ${t - 13} ${R + 2} ${t + 10} Z" fill="${c2}" ${S3}/><path d="M${L - 3} ${t + 10} H${R + 18} l-3 5 H${L - 3} Z" fill="${INK}"/><text x="${cx}" y="${t + 5}" ${FONT} font-size="11" fill="#fff" stroke="${INK}" stroke-width=".8">42</text>`,
+      // огромный бант со стразами
+      bow: `<path d="M${cx} ${t + 2} l-16 -11 l0 20 z M${cx} ${t + 2} l16 -11 l0 20 z" fill="${c2}" ${S3}/><circle cx="${cx}" cy="${t + 1}" r="4" fill="${GOLD}" stroke="${INK}" stroke-width="1.8"/><circle cx="${cx - 10}" cy="${t - 2}" r="1.5" fill="#fff"/><circle cx="${cx + 10}" cy="${t + 4}" r="1.5" fill="#fff"/>`,
+      // блестящие рожки
+      horns: `<path d="M${f1(cx - hw * 0.55)} ${t + 7} q-10 -8 -6 -24 q6 10 14 18 z M${f1(cx + hw * 0.55)} ${t + 7} q10 -8 6 -24 q-6 10 -14 18 z" fill="#ff2a55" ${S3}/><path d="M${f1(cx - hw * 0.55 - 6)} ${t - 9} l2 -2 M${f1(cx + hw * 0.55 + 4)} ${t - 9} l2 -2" stroke="#fff" stroke-width="2"/>`,
+      // бумажная корона из бургерной
+      crown: `<path d="${crown}" fill="${GOLD}" ${S3}/><path d="M${f1(cx - hw - 2)} ${t + 2} H${f1(cx + hw + 2)}" stroke="#e0951a" stroke-width="2"/><circle cx="${cx}" cy="${t - 3}" r="2.6" fill="${RED}"/><circle cx="${f1(cx - hw * 0.6)}" cy="${t - 3}" r="2.2" fill="#3fa9ff"/><circle cx="${f1(cx + hw * 0.6)}" cy="${t - 3}" r="2.2" fill="#3fa9ff"/>`,
+      // ведро крылышек вместо цилиндра
+      tophat: `<ellipse cx="${cx - 6}" cy="${t - 25}" rx="7" ry="5" fill="#c9792c" ${WS}/><ellipse cx="${cx + 6}" cy="${t - 27}" rx="6" ry="5" fill="#b8692a" ${WS}/><path d="M${cx - 17} ${t + 6} L${cx - 14} ${t - 22} H${cx + 14} L${cx + 17} ${t + 6} Z" fill="#fff"/><path d="M${cx - 9} ${t + 6} L${cx - 8} ${t - 22} M${cx} ${t + 6} V${t - 22} M${cx + 9} ${t + 6} L${cx + 8} ${t - 22}" stroke="${RED}" stroke-width="4.5"/><path d="M${cx - 17} ${t + 6} L${cx - 14} ${t - 22} H${cx + 14} L${cx + 17} ${t + 6} Z" fill="none" ${S3}/><rect x="${cx - 16}" y="${t - 25}" width="32" height="5" rx="2" fill="${RED}" ${WS}/>`,
+      // коробка фри вместо колпака
+      party: `<path d="M${cx - 10} ${t - 10} V${t - 30} M${cx - 4} ${t - 10} V${t - 36} M${cx + 2} ${t - 10} V${t - 32} M${cx + 8} ${t - 10} V${t - 28}" stroke="${INK}" stroke-width="7"/><path d="M${cx - 10} ${t - 10} V${t - 29} M${cx - 4} ${t - 10} V${t - 35} M${cx + 2} ${t - 10} V${t - 31} M${cx + 8} ${t - 10} V${t - 27}" stroke="${FRY}" stroke-width="4"/><path d="M${cx - 15} ${t - 14} Q${cx} ${t - 6} ${cx + 15} ${t - 14} L${cx + 11} ${t + 6} H${cx - 11} Z" fill="${RED}" ${S3}/><text x="${cx}" y="${t + 3}" ${FONT} font-size="8" fill="${FRY}">42</text>`,
+      // рожок мороженого вместо шляпы мага
+      wizard: `<ellipse cx="${cx}" cy="${t - 1}" rx="${f1(hw + 4)}" ry="8" fill="#fff3f8" ${S3}/><ellipse cx="${cx}" cy="${t - 12}" rx="${f1(hw - 2)}" ry="7" fill="#ffe0ef" ${S3}/><ellipse cx="${cx}" cy="${t - 22}" rx="${f1(Math.max(6, hw - 8))}" ry="6" fill="#fff3f8" ${S3}/><path d="M${cx - 4} ${t - 27} Q${cx} ${t - 40} ${cx + 6} ${t - 36} Q${cx + 2} ${t - 32} ${cx + 4} ${t - 27} Z" fill="#ffe0ef" ${S3}/><path d="M${cx - 8} ${t - 3} l3 -1 M${cx + 6} ${t - 13} l2 2 M${cx - 3} ${t - 21} l3 1 M${cx + 9} ${t} l2 -2" stroke="#ff5fa2" stroke-width="2.2" stroke-linecap="round"/>`,
+      // антенна с диско-шаром
+      antenna: `<path d="M${cx} ${t} q-6 -14 4 -24" fill="none" stroke="#d6dbe4" stroke-width="3"/><circle cx="${cx + 4}" cy="${t - 29}" r="7" fill="#d6dbe4" ${WS}/><path d="M${cx - 3} ${t - 29} h14 M${cx + 4} ${t - 36} v14" stroke="rgba(28,16,34,.4)" stroke-width="1.2"/><path d="M${cx + 1} ${t - 32} l2 -1" stroke="#fff" stroke-width="2"/>`,
+      // две антенны: «4» и «2»
+      antenna2: `<path d="M${cx - 6} ${t + 2} l-8 -20 M${cx + 6} ${t + 2} l8 -20" stroke="${GOLD}" stroke-width="3" stroke-linecap="round"/><circle cx="${cx - 14}" cy="${t - 22}" r="7" fill="${c2}" ${WS}/><circle cx="${cx + 14}" cy="${t - 22}" r="7" fill="${c2}" ${WS}/><text x="${cx - 14}" y="${t - 18.5}" ${FONT} font-size="9" fill="#fff">4</text><text x="${cx + 14}" y="${t - 18.5}" ${FONT} font-size="9" fill="#fff">2</text>`,
+      // пушистые меховые ушки
+      cat: `<path d="M${L} ${t + 12} l2 -24 l14 14 z M${R} ${t + 12} l-2 -24 l-14 14 z" fill="${c1}" ${S3}/><path d="M${L + 4} ${t + 4} l1 -10 l6 6 z M${R - 4} ${t + 4} l-1 -10 l-6 6 z" fill="#ff9fc6"/>`,
+      bunny: `<ellipse cx="${cx - 9}" cy="${t - 16}" rx="7" ry="20" fill="${c1}" ${S3}/><ellipse cx="${cx + 9}" cy="${t - 16}" rx="7" ry="20" fill="${c1}" ${S3}/><ellipse cx="${cx - 9}" cy="${t - 16}" rx="3" ry="13" fill="#ff9fc6"/><ellipse cx="${cx + 9}" cy="${t - 16}" rx="3" ry="13" fill="#ff9fc6"/>`,
+      // неоновое кольцо
+      halo: `<ellipse cx="${cx}" cy="${t - 14}" rx="18" ry="5" fill="none" stroke="#ff5fd0" stroke-width="6" opacity=".45"/><ellipse cx="${cx}" cy="${t - 14}" rx="18" ry="5" fill="none" stroke="#ffe27a" stroke-width="3"/>`,
+      // куриная ножка, воткнутая в причёску
+      sprout: `<path d="M${cx + 2} ${t + 2} L${cx - 4} ${t - 14}" stroke="${INK}" stroke-width="7" stroke-linecap="round"/><path d="M${cx + 2} ${t + 2} L${cx - 4} ${t - 14}" stroke="#fff8e8" stroke-width="4" stroke-linecap="round"/><circle cx="${cx - 7}" cy="${t - 16}" r="3" fill="#fff8e8" ${WS}/><circle cx="${cx - 2}" cy="${t - 18}" r="3" fill="#fff8e8" ${WS}/><path d="M${cx + 1} ${t - 2} C${cx + 14} ${t - 8} ${cx + 20} ${t + 4} ${cx + 12} ${t + 10} C${cx + 6} ${t + 12} ${cx} ${t + 8} ${cx + 1} ${t - 2} Z" fill="#c9792c" ${S3}/>`,
+      bandana: `<path d="M${L - 2} ${t + 16} Q${cx} ${t - 6} ${R + 2} ${t + 16} Z" fill="${c2}" ${S3}/><path d="M${R} ${t + 14} l12 -2 l-4 10 z" fill="${c2}" ${S3}/><g fill="#fff"><circle cx="${cx - 6}" cy="${t + 6}" r="1.6"/><circle cx="${cx + 5}" cy="${t + 4}" r="1.6"/><circle cx="${cx}" cy="${t + 11}" r="1.6"/><circle cx="${cx + 12}" cy="${t + 11}" r="1.6"/><circle cx="${cx - 13}" cy="${t + 12}" r="1.6"/></g>`,
+      // только из Костюмерной
+      // шлем: оранжевый спортивный шлем «42»
+      legion: `<path d="M${L - 6} ${t + 20} Q${L - 7} ${t - 16} ${cx} ${t - 16} Q${R + 7} ${t - 16} ${R + 6} ${t + 20} L${R - 1} ${t + 20} L${R - 1} ${t + 10} H${L + 1} V${t + 20} Z" fill="${JERSEY}" ${S3}/><path d="M${cx} ${t - 16} V${t + 10}" stroke="#fff" stroke-width="4"/><path d="M${cx} ${t - 16} V${t + 10}" stroke="${INK}" stroke-width="1" opacity=".3"/><text x="${f1(cx - hw * 0.5)}" y="${t + 4}" ${FONT} font-size="9" fill="#fff">42</text><text x="${f1(cx + hw * 0.5)}" y="${t + 4}" ${FONT} font-size="9" fill="#fff">42</text>`,
+      // диадема со стразами вместо лаврового венка
+      laurel: `<path d="M${L} ${t + 8} Q${cx} ${t - 12} ${R} ${t + 8}" fill="none" stroke="${INK}" stroke-width="6.5" stroke-linecap="round"/><path d="M${L} ${t + 8} Q${cx} ${t - 12} ${R} ${t + 8}" fill="none" stroke="${GOLD}" stroke-width="3.5" stroke-linecap="round"/>${tiara}`,
+      // меховая папаха вместо берета
+      beret: `<rect x="${L - 6}" y="${t - 18}" width="${f1(2 * hw + 12)}" height="26" rx="11" fill="${c2}" ${S3}/>${furRow(cx - hw - 2, cx + hw + 2, t - 16, 'rgba(255,255,255,.35)')}<path d="M${cx - 8} ${t - 6} l3 4 M${cx + 6} ${t - 4} l-3 4 M${cx - 1} ${t} l2 4" stroke="rgba(0,0,0,.2)" stroke-width="2" stroke-linecap="round"/>`,
+      // золотые наушники
+      headphones: `<path d="M${L - 6} ${b.eyeY - 4} Q${L - 6} ${t - 14} ${cx} ${t - 14} Q${R + 6} ${t - 14} ${R + 6} ${b.eyeY - 4}" fill="none" stroke="${INK}" stroke-width="8" stroke-linecap="round"/><path d="M${L - 6} ${b.eyeY - 4} Q${L - 6} ${t - 14} ${cx} ${t - 14} Q${R + 6} ${t - 14} ${R + 6} ${b.eyeY - 4}" fill="none" stroke="${GOLD}" stroke-width="4" stroke-linecap="round"/>`
+        + `<rect x="${f1(L - 13)}" y="${b.eyeY - 14}" width="13" height="22" rx="5" fill="${GOLD}" ${WS}/><rect x="${f1(R)}" y="${b.eyeY - 14}" width="13" height="22" rx="5" fill="${GOLD}" ${WS}/><path d="M${f1(L - 6.5)} ${b.eyeY - 9} v12 M${f1(R + 6.5)} ${b.eyeY - 9} v12" stroke="${c2}" stroke-width="3" stroke-linecap="round"/>`,
+      // розовая ковбойская шляпа с меховой лентой
+      cowboy: `<path d="M${cx - 18} ${t + 5} q-4 -30 18 -34 q22 4 18 34 z" fill="#ff6fb5" ${S3}/><path d="M${cx - 38} ${t + 2} q38 18 76 0 q-8 12 -38 13 q-30 -1 -38 -13 z" fill="#ff4fa0" ${S3}/>${furRow(cx - 15, cx + 15, t - 3, '#fff6fb')}`,
+      // бумажная пилотка работника бургерной вместо поварского колпака
+      chef: `<path d="M${L - 2} ${t + 8} L${L + 4} ${t - 10} H${R - 4} L${R + 2} ${t + 8} Z" fill="#fff" ${S3}/><path d="M${L - 1} ${t + 2} H${R + 1}" stroke="${RED}" stroke-width="4"/><text x="${cx}" y="${t - 1}" ${FONT} font-size="8" fill="${RED}">42</text>`,
+    };
+  }
+
+  /* ── руки: рукава шубы (или голые руки у джерси) + кисть ── */
+  const limb = (d, col) => `<path d="${d}" fill="none" stroke="${INK}" stroke-width="10" stroke-linecap="round"/><path d="${d}" fill="none" stroke="${col}" stroke-width="6" stroke-linecap="round"/>`;
+  // меховая манжета на запястье (у шуб)
+  const cuff = (k, x, y) => { if (isJersey(k)) return ''; const c = T(k).collar || k.fill; return `<circle cx="${f1(x)}" cy="${f1(y)}" r="6.4" fill="${c}" stroke="${INK}" stroke-width="5.6" stroke-dasharray="0.1 3.3" stroke-linecap="round"/><circle cx="${f1(x)}" cy="${f1(y)}" r="6.4" fill="${c}" stroke="${c}" stroke-width="3" stroke-dasharray="0.1 3.3" stroke-linecap="round"/>`; };
+  const handAt = (k, x, y) => `<circle cx="${f1(x)}" cy="${f1(y)}" r="5.5" fill="${T(k).skin}" stroke="${INK}" stroke-width="2.2"/><path d="M${f1(x - 3)} ${f1(y - 4.6)} h4" stroke="${GOLD}" stroke-width="2"/>`;
+
+  /* ── снаряжение: оружие (рукоять в (0,0), клинок вверх) ── */
+  function weapon(kind, rar) {
+    const m = BLING[rar] || BLING.common, rich = rar && rar !== 'common';
+    const grip = (y0, y1, col) => `<rect x="-2.5" y="${y1}" width="5" height="${y0 - y1}" rx="2" fill="${col || INK}" ${WS}/><rect x="-3.5" y="${y1}" width="7" height="4" rx="2" fill="${m}" ${WS}/>`;
+    switch (kind) {
+      case 'sword': return `<rect x="-4.5" y="-64" width="9" height="66" rx="2" fill="${FRY}" ${WS}/><path d="M-2 -56 v9 M1.5 -34 v8 M-1 -16 v6" stroke="#e0a32a" stroke-width="1.6"/><path d="M-8 14 L-6.5 -6 H6.5 L8 14 Z" fill="${rich ? m : RED}" ${WS}/>`;   // гигантская фри в бумажном кармане
+      case 'gladius': return `<rect x="-2.5" y="-6" width="5" height="18" rx="2" fill="#fff8e8" ${WS}/><circle cx="-3" cy="13" r="3.2" fill="#fff8e8" ${WS}/><circle cx="3" cy="13" r="3.2" fill="#fff8e8" ${WS}/><path d="M0 -4 C-12 -10 -13 -34 -4 -42 C6 -48 14 -36 10 -20 C8 -10 4 -6 0 -4 Z" fill="#c9792c" ${WS}/><path d="M-5 -34 q4 -4 8 -2" fill="none" stroke="#f0b060" stroke-width="2"/><rect x="-5" y="-7" width="10" height="4" rx="2" fill="${m}" ${WS}/>`;   // куриная ножка
+      case 'dagger': return `<rect x="-2.5" y="-14" width="5" height="26" rx="2.5" fill="${m}" ${WS}/><path d="M-6 -14 Q-7 -30 0 -32 Q7 -30 6 -14 Z" fill="${m}" ${WS}/><path d="M-2.5 -32 V-25 M2.5 -32 V-25" stroke="${INK}" stroke-width="1.6"/>`;   // ловилка-спорк
+      case 'axe': return `${grip(14, -44, '#ff5fa2')}<g transform="translate(3 -50) rotate(-90) scale(1.7)"><path d="M-12 8 C-13 0 -8 -3 -2 -3 H6 C10 -3 12 0 12 4 V8 Z" fill="${rich ? m : '#8fe33a'}" ${WS}/><g fill="${INK}" opacity=".45"><circle cx="-6" cy="2" r="1.2"/><circle cx="-2" cy="0" r="1.2"/><circle cx="2" cy="2.5" r="1.2"/></g><circle cx="-8" cy="4" r="1.8" fill="${GOLD}"/></g>`;   // крокс-секира
+      case 'club': return `<path d="M-3 12 L-6 -42 Q-6 -54 0 -54 Q6 -54 6 -42 L3 12 Z" fill="${JERSEY}" ${WS}/><rect x="-4.5" y="3" width="9" height="11" rx="2" fill="${INK}"/><text x="0" y="-24" ${FONT} font-size="8" fill="#fff" transform="rotate(-90 0 -24)">42</text><path d="M-5.2 -8 h10.4" stroke="${m}" stroke-width="3"/>`;   // оранжевая бита «42»
+      case 'mace': return `${grip(12, -32, GOLD)}<circle cy="-43" r="11" fill="${m}" ${WS}/><path d="M-11 -43 H11 M0 -54 V-32 M-9 -49 H9 M-9 -37 H9 M-5 -53 V-33 M5 -53 V-33" stroke="rgba(28,16,34,.3)" stroke-width="1.1"/><path d="M-5 -49 l3 -2" stroke="#fff" stroke-width="2.4"/>`;   // диско-шар
+      case 'hammer': return `${grip(14, -38, '#7a4a2e')}<path d="M-15 -50 Q-15 -62 0 -62 Q15 -62 15 -50 Z" fill="${BUN}" ${WS}/><path d="M-6 -57 l2 -1 M2 -58 l2 1 M7 -55 l1 -1" stroke="#fff6dc" stroke-width="1.8" stroke-linecap="round"/><path d="M-16 -49 h32" stroke="#6fd23a" stroke-width="4" stroke-linecap="round"/><rect x="-15" y="-48" width="30" height="6" rx="3" fill="#6b3a1e" ${WS}/><path d="M-14 -42 h28" stroke="${FRY}" stroke-width="3"/><rect x="-14" y="-41" width="28" height="6" rx="3" fill="${BUN}" ${WS}/>${rich ? `<circle cy="-66" r="3" fill="${m}" ${WS}/>` : ''}`;   // бургер-молот
+      case 'spear': { let st = ''; for (let y = -74; y < 28; y += 12) st += `M-2.5 ${y} l5 -4 `; return `<rect x="-2.5" y="-80" width="5" height="110" rx="2" fill="#fff"/><path d="${st}" stroke="${RED}" stroke-width="3"/><rect x="-2.5" y="-80" width="5" height="110" rx="2" fill="none" ${WS}/><path d="M-6 -78 L0 -94 L6 -78 Z" fill="${m}" ${WS}/>`; }   // полосатая трубочка-копьё
+      case 'pitchfork': return `<rect x="-2.5" y="-54" width="5" height="86" rx="2" fill="#c9ced6" ${WS}/><path d="M-11 -54 H11 M-10 -54 V-76 M0 -54 V-80 M10 -54 V-76" fill="none" stroke="${INK}" stroke-width="6" stroke-linecap="round"/><path d="M-11 -54 H11 M-10 -54 V-76 M0 -54 V-80 M10 -54 V-76" fill="none" stroke="${m}" stroke-width="3" stroke-linecap="round"/><ellipse cx="-10" cy="-66" rx="5" ry="4" fill="#e9a640" ${WS}/><ellipse cx="0" cy="-70" rx="5" ry="4" fill="#e9a640" ${WS}/><ellipse cx="10" cy="-64" rx="5" ry="4" fill="#e9a640" ${WS}/>`;   // вилы с наггетсами
+      case 'bow': return `<path d="M-2 -44 C16 -30 16 30 -2 44" fill="none" stroke="${INK}" stroke-width="8" stroke-linecap="round"/><path d="M-2 -44 C16 -30 16 30 -2 44" fill="none" stroke="${rich ? m : '#ff5fa2'}" stroke-width="4.5" stroke-linecap="round"/><path d="M-2 -44 L-6 0 L-2 44" fill="none" stroke="${GOLD}" stroke-width="2" stroke-dasharray="2.6 1.4"/>`;   // розовый лук с тетивой-цепью
+      case 'staff': return `<rect x="-2.5" y="-58" width="5" height="92" rx="2" fill="#9aa0ad" ${WS}/><rect x="-5" y="-66" width="10" height="14" rx="3" fill="${GOLD}" ${WS}/><circle cy="-73" r="8" fill="${m}" ${WS}/><path d="M-6 -73 h12 M0 -80 v14 M-4 -78 l8 10 M4 -78 l-8 10" stroke="rgba(28,16,34,.3)" stroke-width="1.1"/>`;   // золотой микрофон на стойке
+      case 'crook': return `<path d="M0 34 V-48 C-3 -62 10 -68 13 -58 C15 -50 5 -47 5 -54" fill="none" stroke="${INK}" stroke-width="7" stroke-linecap="round"/><path d="M0 34 V-48 C-3 -62 10 -68 13 -58 C15 -50 5 -47 5 -54" fill="none" stroke="${GOLD}" stroke-width="3.6" stroke-linecap="round"/><path d="M0 -50 l4 5 l-4 5 l-4 -5 z" fill="${rich ? m : '#c9f3ff'}" ${WS}/>`;   // трость франта
+      case 'censer': return `<path d="M0 0 V22" stroke="${GOLD}" stroke-width="2.5" stroke-dasharray="3 1.6"/><path d="M-9 24 L-7 38 H7 L9 24 Z" fill="#fff" ${WS}/><path d="M-4 24 L-3.5 38 M3 24 L3 38" stroke="${rich ? m : RED}" stroke-width="3"/><path d="M-9 24 L-7 38 H7 L9 24 Z" fill="none" ${WS}/><ellipse cx="-3" cy="22" rx="4" ry="3" fill="#e9a640" ${WS}/><ellipse cx="3" cy="21" rx="4" ry="3" fill="#e9a640" ${WS}/><circle cx="-4" cy="12" r="3" fill="rgba(235,235,245,.55)"/><circle cx="2" cy="6" r="4" fill="rgba(235,235,245,.45)"/>`;   // ведёрко наггетсов на цепи
+      default: return '';
+    }
+  }
+  // щит: центр в (0,0)
+  function shield(kind, rar) {
+    const m = BLING[rar] || BLING.common;
+    switch (kind) {
+      case 'scutum': return `<rect x="-14" y="-21" width="28" height="42" rx="4" fill="#1f1d26" ${WS}/><rect x="-11" y="-18" width="22" height="15" rx="3" fill="#4d5d7d"/><path d="M-8 -6 l9 -9 M-3 -5 l7 -7" stroke="#fff" stroke-width="1.6" opacity=".5"/><path d="M-14 4 H14" stroke="${m}" stroke-width="1.8"/><rect x="3" y="8" width="8" height="3.4" rx="1.6" fill="${m}"/>`;   // дверь лимузина
+      case 'round': return `<path d="M-16 -2 Q-16 -18 0 -18 Q16 -18 16 -2 Z" fill="${BUN}" ${WS}/><path d="M-7 -12 l2 -1 M2 -13 l2 1 M8 -9 l1 -1" stroke="#fff6dc" stroke-width="1.8" stroke-linecap="round"/><path d="M-17 -1 h34" stroke="#6fd23a" stroke-width="4" stroke-linecap="round"/><rect x="-16" y="1" width="32" height="7" rx="3.5" fill="#6b3a1e" ${WS}/><path d="M-15 9.5 h30" stroke="${FRY}" stroke-width="3"/><rect x="-15" y="10" width="30" height="7" rx="3.5" fill="${BUN}" ${WS}/>${rar && rar !== 'common' ? `<circle cy="-19" r="3" fill="${m}" ${WS}/>` : ''}`;   // бургер
+      case 'buckler': return `<circle r="11" fill="#1c1022" stroke="${m}" stroke-width="3"/><circle r="7.5" fill="none" stroke="#3a3044" stroke-width="1"/><circle r="3.6" fill="${GOLD}"/><path d="M-6 -5 a8 8 0 0 1 5 -3" fill="none" stroke="#fff" stroke-width="1.4" opacity=".5"/>`;   // золотая пластинка
+      case 'barrel': return `<ellipse cx="-5" cy="-15" rx="6" ry="4.5" fill="#c9792c" ${WS}/><ellipse cx="5" cy="-16" rx="5.5" ry="4.5" fill="#b8692a" ${WS}/><path d="M-14 15 L-12 -12 H12 L14 15 Z" fill="#fff"/><path d="M-7 15 L-6 -12 M0 15 V-12 M7 15 L6 -12" stroke="${RED}" stroke-width="4"/><path d="M-14 15 L-12 -12 H12 L14 15 Z" fill="none" ${WS}/><rect x="-14" y="-15" width="28" height="5" rx="2" fill="${m === BLING.common ? RED : m}" ${WS}/>`;   // ведро крылышек
+      default: return '';
+    }
+  }
+
+  /* ── доспехи для манекена Кузни: lorica — шуба, robe — длинное джерси «42». Низ на y = 0, центр x = 0 ── */
+  const COAT_RAR = { common: '#c9a27a', uncommon: '#c4eeb8', rare: '#bfe8ff', epic: '#d59bff', legendary: '#ffd34d' };
+  function armor(kind, rar) {
+    const tr = RARITY[rar] || '#ffffff';
+    if (kind === 'robe') return `<path d="M-26 -100 L-46 -84 L-38 -64 L-28 -70 V0 H28 V-70 L38 -64 L46 -84 L26 -100 Q0 -88 -26 -100 Z" fill="${JERSEY}" ${S3}/>`
+      + `<path d="M-12 -98 L0 -86 L12 -98" fill="none" stroke="#fff" stroke-width="3.5"/><path d="M-44 -80 L-38 -68 M44 -80 L38 -68" stroke="${tr}" stroke-width="4"/><text x="0" y="-36" ${FONT} font-size="34" fill="#fff" stroke="${INK}" stroke-width="1.6">42</text><path d="M-28 -12 H28" stroke="${tr}" stroke-width="4"/>`;
+    const c = COAT_RAR[rar] || COAT_RAR.common;
+    let fur = ''; for (let x = -30; x <= 30; x += 7) fur += `<circle cx="${x}" cy="${-96 + Math.abs(x) * 0.12}" r="6"/>`;
+    for (let x = -40; x <= 40; x += 8) fur += `<circle cx="${x}" cy="-2" r="5"/>`;
+    return `<path d="M-30 -96 Q-50 -70 -50 -36 L-38 -36 Q-38 -64 -30 -74 Z M30 -96 Q50 -70 50 -36 L38 -36 Q38 -64 30 -74 Z" fill="${c}" ${S3}/>`
+      + `<path d="M-30 -98 C-36 -70 -40 -30 -42 0 H42 C40 -30 36 -70 30 -98 Q0 -88 -30 -98 Z" fill="${c}" ${S3}/><path d="M0 -88 V0 M-22 -60 l3 6 M20 -44 l-3 6 M-14 -26 l2 6" stroke="rgba(0,0,0,.22)" stroke-width="2" stroke-linecap="round"/>`
+      + `<g fill="#fbf3e6" stroke="rgba(28,16,34,.55)" stroke-width="1.6">${fur}<circle cx="-44" cy="-36" r="6"/><circle cx="44" cy="-36" r="6"/></g><circle cx="-6" cy="-60" r="2.5" fill="${GOLD}"/><circle cx="-6" cy="-44" r="2.5" fill="${GOLD}"/>`;
+  }
+
+  /* ── ауры: золото — монетки, искры — звёзды, нимб — неон, тёмное пламя — фиолетовый неон, мороз — бриллианты ── */
+  const AURA = { gold: ['#ffd76a', '#ffb83d'], sparks: ['#fff6c8', '#ff8fd0'], halo: ['#ffe27a', '#ff5fd0'], shadow: ['#a24bff', '#3a0f66'], frost: ['#bfe8ff', '#6fb8ff'] };
+  function aura(kind, k) {
+    const b = k.b, seed = k.seed >>> 0;
+    const c = AURA[kind]; if (!c) return { back: '', front: '' };
+    const id = k.uid('jlA'), d0 = (seed % 997) / 997 * 2;
+    const cy = (b.top + 170) / 2 + 2, rx = (b.R - b.L) / 2 + 46, ry = (170 - b.top) / 2 + 42;
+    const glow = (op1, op2, dur) => `<defs><radialGradient id="${id}"><stop offset=".3" stop-color="${c[0]}"/><stop offset=".62" stop-color="${c[1]}" stop-opacity=".7"/><stop offset="1" stop-color="${c[1]}" stop-opacity="0"/></radialGradient></defs>`
+      + `<ellipse cx="60" cy="${f1(cy)}" rx="${f1(rx)}" ry="${f1(ry)}" fill="url(#${id})"><animate attributeName="opacity" values="${op1};${op2};${op1}" dur="${dur}s" begin="-${d0.toFixed(2)}s" repeatCount="indefinite"/></ellipse>`;
+    const motes = (n, col, shape, size) => Array.from({ length: n }, (_, i) => {
+      const x = b.L - 8 + ((i * 37 + (seed >>> (i % 8))) % (b.R - b.L + 16)), y0 = 168 - (i * 23) % 40, dur = 1.8 + (i % 4) * 0.45, beg = ((i * 0.53 + d0) % dur).toFixed(2);
+      const sh = shape === 'star' ? `<path d="${starAt(0, 0, size)}" fill="${col}"/>`
+        : shape === 'coin' ? `<ellipse rx="${size}" ry="${size}" fill="${col}" stroke="#b07a10" stroke-width="1"><animate attributeName="rx" values="${size};0.6;${size}" dur="0.9s" repeatCount="indefinite"/></ellipse>`
+        : shape === 'gem' ? `<path d="M0 ${-size} L${f1(size * 0.8)} 0 L0 ${size} L${f1(-size * 0.8)} 0 Z" fill="${col}" stroke="#fff" stroke-width=".8"/>`
+        : `<circle r="${size}" fill="${col}"/>`;
+      return `<g opacity="0"><animateTransform attributeName="transform" type="translate" values="${x} ${y0};${x + (i % 2 ? 6 : -6)} ${y0 - 70}" dur="${dur}s" begin="-${beg}s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.2;.7;1" dur="${dur}s" begin="-${beg}s" repeatCount="indefinite"/>${sh}</g>`;
+    }).join('');
+    let back = '', front = '';
+    if (kind === 'gold') { back = glow(0.7, 1, 2.4); front = motes(8, '#ffd34d', 'coin', 3.4); }
+    else if (kind === 'sparks') { back = glow(0.25, 0.45, 2); front = motes(12, '#fff6c8', 'star', 5); }
+    else if (kind === 'shadow') { back = glow(0.75, 1, 1.6); front = motes(11, '#d08bff', 'dot', 3.2); }
+    else if (kind === 'frost') { back = glow(0.6, 0.95, 2.8); front = motes(10, '#e6f7ff', 'gem', 4.4); }
+    else if (kind === 'halo') {
+      const t = (b.square ? b.top - 6 : b.top) - 36;
+      front = `<g><animateTransform attributeName="transform" type="translate" values="0 0;0 -3;0 0" dur="2.2s" begin="-${d0.toFixed(2)}s" repeatCount="indefinite"/>`
+        + `<ellipse cx="60" cy="${t}" rx="19" ry="5.5" fill="none" stroke="#ff5fd0" stroke-width="9" opacity=".35"/><ellipse cx="60" cy="${t}" rx="19" ry="5.5" fill="none" stroke="#ffe27a" stroke-width="4"><animate attributeName="stroke-opacity" values=".75;1;.75" dur="1.6s" repeatCount="indefinite"/></ellipse></g>`;
+    }
+    return { back, front };
+  }
+
+  const OUT = `stroke="${INK}" stroke-width="2.4" stroke-linejoin="round"`;
+  // перьевое боа: пушистые шарики вдоль шеи и свисающий конец
+  const BOA = (() => { const p = []; for (let i = 0; i <= 8; i++) { const u = i / 8; p.push([-1 + 2 * u, Math.sin(u * Math.PI)]); } return p; })();
+
+  D.addStyle({
+    id: '42brothers',
+    name: '42 Братухи',
+    css: '',   // классы body/ln/face/eye не используются: все цвета заданы прямо в SVG
+
+    // цвета «по нику»: ровно 3 вызова r(). Каждый шестой — в оранжевом джерси «42», остальные — в шубах
+    palette(r) {
+      const a = r(), b = r(), c = r();
+      const fill = a < 0.17 ? JERSEY : COATS[Math.floor(b * COATS.length)];
+      const c2 = `hsl(${Math.floor(c * 360)} 85% 58%)`;
+      return { fill, c2 };
+    },
+    bodies,
+    frame(b) {
+      return { L: b.L, R: b.R, ex: b.narrow ? 8 : 10, ey: b.eyeY, my: b.eyeY + 14, sx: { l: b.L + (b.square ? 4 : 6), r: b.R - (b.square ? 4 : 6) } };
+    },
+    body,
+
+    // ── лицо: очки — фирменная деталь, поэтому их много в выборе по нику ──
+    eyePool: ['dots', 'big', 'happy', 'lash', 'glam', 'glam', 'heart', 'starg', 'cyclops', 'stars'],
+    eyes,
+    mouthPool: ['open', 'grin', 'grin', 'tongue'],
+    mouth,
+    faces,
+    blushChance: 0.5,
+    blush: (k) => `<circle cx="${60 - k.ex - 9}" cy="${k.ey + 9}" r="4" fill="#ff5fa2" opacity=".55"/><circle cx="${60 + k.ex + 9}" cy="${k.ey + 9}" r="4" fill="#ff5fa2" opacity=".55"/>`,
+    hurt(k) {
+      const b = k.b, px = f1(60 + b.hw * 0.45), py = b.square ? b.top + 8 : b.top + 12;
+      return `<g transform="rotate(35 ${px} ${py})"><rect x="${f1(px - 10)}" y="${py - 3.5}" width="20" height="7" rx="2" fill="#ffb3d1" stroke="${INK}" stroke-width="1.6"/><rect x="${f1(px - 3.5)}" y="${py - 10}" width="7" height="20" rx="2" fill="#ffb3d1" stroke="${INK}" stroke-width="1.6"/></g>`
+        + `<circle cx="${60 - k.ex - 8}" cy="${k.ey + 10}" r="5" fill="#8a5ab8" opacity=".45"/>`;
+    },
+
+    hatPool: ['none', 'tuft', 'cap', 'bow', 'horns', 'crown', 'tophat', 'party', 'wizard', 'antenna', 'antenna2', 'cat', 'bunny', 'halo', 'sprout', 'bandana'],
+    hatNoneChance: 0.22,
+    hats,
+
+    arms: {
+      up(k) {
+        const b = k.b, sx = k.sx, col = sleeve(k), hy = 34 + (b.top > 90 ? 10 : 0);
+        const arm = (s, hx) => limb(`M${s} ${b.armY} C${f1(s + (hx - s) * 0.2)} ${b.armY - 30} ${hx} ${hy + 34} ${hx} ${hy}`, col) + cuff(k, hx, hy + 7) + handAt(k, hx, hy);
+        return `<g class="arm armL" style="transform-origin:${sx.l}px ${b.armY}px">${arm(sx.l, k.L - 16)}</g><g class="arm armR" style="transform-origin:${sx.r}px ${b.armY}px">${arm(sx.r, k.R + 16)}</g>`;
+      },
+      down(k) {
+        const b = k.b, sx = k.sx, col = sleeve(k), ey = Math.min(162, b.armY + 44);
+        const arm = (s, dir) => limb(`M${s} ${b.armY} C${s + dir * 10} ${b.armY + 14} ${s + dir * 12} ${b.armY + 30} ${s + dir * 9} ${ey}`, col) + cuff(k, s + dir * 9, ey - 3) + handAt(k, s + dir * 9, ey + 3);
+        return `<g class="arm sadL">${arm(sx.l, -1)}</g><g class="arm sadR">${arm(sx.r, 1)}</g>`;
+      },
+      armed(k) {
+        const b = k.b, sx = k.sx, col = sleeve(k);
+        const hr = { x: k.R + 15, y: b.armY + 12 }, hl = { x: k.L - 7, y: b.armY + 20 };
+        const svg = `<g class="arm batL">${limb(`M${sx.l} ${b.armY} C${sx.l - 8} ${b.armY + 6} ${hl.x + 2} ${hl.y - 8} ${hl.x} ${hl.y}`, col)}${cuff(k, hl.x + 2, hl.y - 6)}</g><g class="arm batR">${limb(`M${sx.r} ${b.armY} C${sx.r + 8} ${b.armY + 4} ${hr.x - 2} ${hr.y - 8} ${hr.x} ${hr.y}`, col)}${cuff(k, hr.x - 4, hr.y - 5)}</g>`;
+        return { svg, right: hr, left: hl };
+      },
+    },
+    hand: (k, x, y) => handAt(k, x, y),
+    hold: { weaponScale: 1.2, weaponRot: (kind) => (kind === 'bow' || kind === 'censer' || kind === 'grimoire' ? 0 : 12), shieldScale: 1.12, shieldDx: 6, shieldDy: 2 },
+    weapon,
+    shield,
+    armor,
+    wear: { line: INK, ink: INK },   // 19.10: обводка надетых доспехов и амулета (рисует скелет, doodle-core.js)
+    rarityGlow: RARITY,
+    gearGlow: (id, color) => `<filter id="${id}" x="-60%" y="-60%" width="220%" height="220%"><feDropShadow dx="0" dy="0" stdDeviation="3.4" flood-color="${color}" flood-opacity="1"/></filter>`,
+    held: {
+      // стакан газировки с трубочкой
+      cocktail(k, rot) {
+        const hy = Math.min(162, k.b.armY + 44) + 3, hx = k.sx.r + 9;
+        return `<g transform="translate(${hx} ${hy}) rotate(${rot})"><g class="jd-cocktail">`
+          + `<path d="M2 -33 L8 -48" stroke="${INK}" stroke-width="4.5" stroke-linecap="round"/><path d="M2 -33 L8 -48" stroke="#ff5fa2" stroke-width="2.4" stroke-linecap="round"/>`
+          + `<path d="M-9 -31 L9 -31 L6 -2 H-6 Z" fill="#fff"/><path d="M-8.6 -22 H8.6 M-7.6 -12 H7.6" stroke="${RED}" stroke-width="4"/><path d="M-9 -31 L9 -31 L6 -2 H-6 Z" fill="none" ${WS}/>`
+          + `<rect x="-11" y="-35" width="22" height="5" rx="2" fill="#f4f1ec" ${WS}/></g></g>${handAt(k, hx, hy)}`;
+      },
+    },
+
+    // ── аксессуары Костюмерной ──
+    capeColor: '#ff5fa2',   // шуба-накидка до пола
+    acc: {
+      cape(k, col) {   // длинная шуба-накидка за телом, с меховой опушкой
+        const L = k.L, R = k.R, t = k.b.armY - 8;
+        let fur = ''; for (let x = L - 14; x <= R + 14; x += 8) fur += `<circle cx="${x}" cy="166" r="5"/>`;
+        return `<path d="M${L + 6} ${t} C${L - 12} ${t + 30} ${L - 20} 150 ${L - 18} 168 L${R + 18} 168 C${R + 20} 150 ${R + 12} ${t + 30} ${R - 6} ${t} Z" fill="${col}" ${S3}/>`
+          + `<g fill="#fbf3e6" stroke="rgba(28,16,34,.5)" stroke-width="1.4">${fur}</g>`;
+      },
+      bowtie(k, col) {
+        const y = k.my + 14;
+        return `<path d="M60 ${y} l-11 -7 l0 14 z M60 ${y} l11 -7 l0 14 z" fill="${col}" ${OUT}/><circle cx="60" cy="${y}" r="3" fill="${GOLD}" stroke="${INK}" stroke-width="1.4"/><circle cx="53" cy="${y - 2}" r="1.2" fill="#fff"/><circle cx="66" cy="${y + 2}" r="1.2" fill="#fff"/>`;
+      },
+      glasses(k) {   // огромные круглые белые оправы
+        const { ex, ey } = k;
+        return k.cyc ? `<circle cx="60" cy="${ey}" r="15" fill="rgba(255,255,255,.18)" stroke="#fff" stroke-width="3.4"/><circle cx="60" cy="${ey}" r="16.6" fill="none" stroke="${INK}" stroke-width="1.4"/>`
+          : [60 - ex, 60 + ex].map((x) => `<circle cx="${x}" cy="${ey}" r="10" fill="rgba(255,255,255,.18)" stroke="${INK}" stroke-width="5.2"/><circle cx="${x}" cy="${ey}" r="10" fill="none" stroke="#fff" stroke-width="2.6"/>`).join('');
+      },
+      shades(k) {   // широкие тёмные очки в золотой оправе
+        const { ex, ey } = k;
+        return k.cyc ? `<rect x="42" y="${ey - 8}" width="36" height="16" rx="6" fill="${INK}" stroke="${GOLD}" stroke-width="2.4"/><path d="M47 ${ey - 4} l6 0" stroke="#fff" stroke-width="2" opacity=".6"/>`
+          : `<path d="M${60 - ex - 12} ${ey - 7} h${2 * ex + 24} v4 q0 10 -10 10 q-7 0 -${ex - 1} -8 h-2 q-${ex - 3} 8 -${ex - 1} 8 q-10 0 -10 -10 z" fill="${INK}" stroke="${GOLD}" stroke-width="2.2" stroke-linejoin="round"/><path d="M${60 - ex - 7} ${ey - 3} l5 0" stroke="#fff" stroke-width="2" opacity=".6"/>`;
+      },
+      monocle(k) {   // золотой монокль со стразой
+        const { ex, ey } = k, cyc = k.cyc, x = cyc ? 60 : 60 + ex, r = cyc ? 13 : 8.5;
+        return `<circle cx="${x}" cy="${ey}" r="${r}" fill="rgba(255,255,255,.2)" stroke="${GOLD}" stroke-width="3"/><path d="M${x + (cyc ? 9 : 6)} ${ey + (cyc ? 10 : 6)} q6 14 -2 30" fill="none" stroke="${GOLD}" stroke-width="1.8" stroke-dasharray="2.4 1.2"/><path d="M${x} ${ey - r - 3} l2.5 3 l-2.5 3 l-2.5 -3 z" fill="#c9f3ff" stroke="${INK}" stroke-width="1"/>`;
+      },
+      mustache(k) {   // тонкие усики-ниточка
+        const my = k.my;
+        return `<path d="M60 ${my - 4} q-6 -4 -14 -1 q-4 2 -6 -1 q2 6 10 4 q6 -1 10 -2 q4 1 10 2 q8 2 10 -4 q-2 3 -6 1 q-8 -3 -14 1 z" fill="${INK}" stroke="${INK}" stroke-width="1.2" stroke-linejoin="round"/>`;
+      },
+      scarf(k, col) {   // перьевое боа
+        const L = k.L + 4, R = k.R - 4, y = k.my + 11, hw = (R - L) / 2;
+        let c = BOA.map(([u, s]) => `<circle cx="${f1(60 + u * hw)}" cy="${f1(y + s * 7)}" r="5.4"/>`).join('');
+        for (let i = 1; i <= 4; i++) c += `<circle cx="${f1(R - 4 + (i % 2) * 2)}" cy="${y + i * 7}" r="${f1(5.2 - i * 0.4)}"/>`;
+        return `<g fill="${col}" stroke="${INK}" stroke-width="1.8">${c}</g><g fill="rgba(255,255,255,.35)">${BOA.filter((_, i) => i % 2).map(([u, s]) => `<circle cx="${f1(60 + u * hw - 1.5)}" cy="${f1(y + s * 7 - 1.5)}" r="2"/>`).join('')}</g>`;
+      },
+      tie(k, col) {   // узкий галстук с золотым зажимом
+        const y = k.my + 11;
+        return `<path d="M56 ${y} h8 l-2 5 h-4 z" fill="${col}" ${OUT}/><path d="M58 ${y + 5} h4 l4 30 l-6 7 l-6 -7 z" fill="${col}" ${OUT}/><path d="M55 ${y + 16} h10" stroke="${GOLD}" stroke-width="2.6" stroke-linecap="round"/>`;
+      },
+    },
+
+    event: {
+      crown(k, size) {   // корона «Тцаря дня»: золото и стразы
+        const b = k.b, kk = size === 'mini' ? 0.7 : 1, t = b.top + (b.square ? -1 : 4), w = 16 * kk, h = 20 * kk;
+        return `<path d="M${60 - w} ${t} l0 ${-h} l${w / 2} ${h * 0.45} l${w / 2} ${-h * 0.7} l${w / 2} ${h * 0.7} l${w / 2} ${-h * 0.45} l0 ${h} z" fill="${GOLD}" stroke="${INK}" stroke-width="${2.8 * kk}" stroke-linejoin="round"/>`
+          + `<circle cx="60" cy="${f1(t - h * 0.35)}" r="${3 * kk}" fill="#ff2f7a"/><circle cx="${f1(60 - w * 0.55)}" cy="${f1(t - h * 0.2)}" r="${2.2 * kk}" fill="#c9f3ff"/><circle cx="${f1(60 + w * 0.55)}" cy="${f1(t - h * 0.2)}" r="${2.2 * kk}" fill="#c9f3ff"/>`;
+      },
+      wig(k) {   // парик судьи — блондинистые кудри
+        const b = k.b, t = b.square ? b.top - 4 : b.top, hw = b.hw, cs = [];
+        for (let i = -3; i <= 3; i++) cs.push(`<circle cx="${f1(60 + i * hw / 3.1)}" cy="${f1(t + 3 - (3 - Math.abs(i)) * 2.2)}" r="9.5"/>`);
+        for (let j = 1; j <= 4; j++) { cs.push(`<circle cx="${f1(60 - hw - 7)}" cy="${t + 4 + j * 13}" r="9"/>`); cs.push(`<circle cx="${f1(60 + hw + 7)}" cy="${t + 4 + j * 13}" r="9"/>`); }
+        return `<g fill="#fff1a8" stroke="#b8912a" stroke-width="2.5">${cs.join('')}</g>`;
+      },
+    },
+    uniform(k) {   // тюремная роба поверх шубы
+      const u = k.uid('jlU'), y0 = k.my + 11, d = k.b.d;
+      return `<defs><clipPath id="${u}c"><path d="${d}"/></clipPath><pattern id="${u}p" patternUnits="userSpaceOnUse" width="120" height="16" patternTransform="rotate(-4)"><rect width="120" height="16" fill="#f1efe8"/><rect y="8" width="120" height="8" fill="#23212b"/></pattern></defs>`
+        + `<g clip-path="url(#${u}c)"><rect y="${y0}" width="120" height="${170 - y0}" fill="url(#${u}p)"/><path d="M0 ${y0} H120" stroke="#23212b" stroke-width="4"/>`
+        + `<path d="M48 ${y0} l12 9 l12 -9" fill="#f1efe8" stroke="#23212b" stroke-width="2.5" stroke-linejoin="round"/></g>`
+        + `<path fill="none" stroke="${INK}" stroke-width="3" stroke-linejoin="round" d="${d}"/>`;
+    },
+
+    // призрак: полупрозрачный, без кроксов, с «рваным» низом; очки-сердечки и звёзды остаются призрачными
+    ghost(k, parts) {
+      const g = k.uid('jlG'), cyc = k.cyc, GI = '#2a2f55', { ex, ey, my } = k;
+      let wave = 'M-20 190 V160'; for (let x = -20; x < 140; x += 12) wave += ' q6 -9 12 0'; wave += ' V190 Z';
+      const gEyes = cyc ? `<ellipse cx="60" cy="${ey}" rx="7" ry="9" fill="${GI}"/>` : `<ellipse cx="${60 - ex}" cy="${ey}" rx="4.6" ry="6.6" fill="${GI}"/><ellipse cx="${60 + ex}" cy="${ey}" rx="4.6" ry="6.6" fill="${GI}"/>`;
+      const gMouth = `<ellipse cx="60" cy="${my + 1}" rx="4.2" ry="${k.sad ? 3 : 5.6}" fill="${GI}"/>`;
+      const fl = ((k.seed >>> 0) % 1000) / 1000 * 2.6;
+      return {
+        style: 'filter:grayscale(.65) drop-shadow(0 0 7px rgba(190,210,255,.75))',
+        inner: `<defs><mask id="${g}" maskUnits="userSpaceOnUse" x="-60" y="-80" width="240" height="280"><rect x="-60" y="-80" width="240" height="280" fill="#fff"/><path d="${wave}" fill="#000"/></mask></defs>`
+          + `<g opacity=".8"><animateTransform attributeName="transform" type="translate" values="0 0;0 -6;0 0" dur="2.6s" begin="-${fl.toFixed(2)}s" repeatCount="indefinite"/>`
+          + `<g mask="url(#${g})">${parts.arms}<path fill="rgba(228,236,255,.62)" stroke="#f5f2ff" stroke-width="3" stroke-linejoin="round" d="${k.b.d}"/></g>${gEyes}<g class="jd-mouth">${gMouth}</g>${parts.head}</g>`,
+      };
+    },
+
+    aura,
+  });
+})();
+
+} catch (e) { console.error('[стили] styles/42brothers/characters.js не загрузился:', e); }
+
+/* ───── стиль «42brothers»: styles/42brothers/goods.js ───── */
+try {
+/* Стиль «42 Братухи» — товары (часть 'goods'): фудкорт - пончик, кола, пицца, хот-дог, ведро крыльев; «энергетик» и VIP-приглашение.
+   Рисунки совпадают с названиями из names.json. Договор — styles/legion/goods.js: { food: { id: () => svg }, potion: (it) => svg, scroll: (it) => svg }.
+   Низ вещи — y = 0, ширина около 60–70. Обводка — сливово-чёрная, как у самих братух. */
+(function () {
+  'use strict';
+  if (!window.MDDoodle || !window.MDDoodle.addPart) return;
+  window.MDDoodle.addPart('42brothers', 'goods', function () {
+    const INK = '#1c1022', O = (w = 3) => `stroke="${INK}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"`;
+    const GOLD = '#ffc83d', PINK = '#ff5fa2', RED = '#e8262f', BUN = '#e8a24a', FRY = '#ffd54a';
+    const FONT = 'font-family="Arial Black,Impact,sans-serif" font-weight="900" text-anchor="middle"';
+    // стакан с крышкой и трубочкой: c - цвет стакана, label - что написано
+    const cup = (c, label, straw = PINK) => `<path d="M-16 -44 H16 L12 0 H-12 Z" fill="${c}" ${O(3)}/><rect x="-19" y="-50" width="38" height="8" rx="3" fill="#fff" ${O(2.6)}/>`
+      + `<path d="M4 -50 L12 -66" stroke="${INK}" stroke-width="7" stroke-linecap="round"/><path d="M4 -50 L12 -66" stroke="${straw}" stroke-width="3.6" stroke-linecap="round"/>`
+      + (label ? `<text x="0" y="-16" ${FONT} font-size="11" fill="#fff" stroke="${INK}" stroke-width="2.4" paint-order="stroke">${label}</text>` : '');
+    const FOOD = {
+      // Яблоко в карамели: на палочке, глянцевая корка
+      apple: () => `<path d="M0 -30 V-58" stroke="#c9a27a" stroke-width="5" stroke-linecap="round"/><circle cy="-16" r="17" fill="${RED}" ${O(3)}/><path d="M-17 -12 Q0 -2 17 -12 V-6 Q0 6 -17 -6 Z" fill="#c9792c" stroke="${INK}" stroke-width="2"/><circle cx="-7" cy="-22" r="4.5" fill="#fff" opacity=".7"/>`,
+      // Смузи: розовый стакан с трубочкой
+      pear: () => cup('#ff8cc6', '', '#36c94a') + `<path d="M0 -18 C-10 -26 -6 -34 0 -28 C6 -34 10 -26 0 -18 Z" fill="#fff" stroke="${INK}" stroke-width="2"/>`,
+      // Пончик: розовая глазурь и посыпка
+      pretzel: () => `<ellipse cy="-14" rx="30" ry="14" fill="${BUN}" ${O(3)}/><path d="M-26 -18 Q-28 -30 0 -30 Q28 -30 26 -18 Q20 -10 14 -16 Q6 -10 0 -16 Q-8 -10 -14 -16 Q-20 -10 -26 -18 Z" fill="${PINK}" ${O(2.4)}/><ellipse cx="0" cy="-20" rx="8" ry="4" fill="#3a1a2a" ${O(2)}/>`
+        + [[-16, -24, '#5ad1ff'], [-6, -27, '#fff'], [10, -26, GOLD], [18, -22, '#36c94a'], [-20, -19, GOLD]].map(([x, y, c]) => `<rect x="${x}" y="${y}" width="6" height="2.6" rx="1.3" fill="${c}" transform="rotate(${x * 3} ${x} ${y})"/>`).join(''),
+      // Сэндвич: треугольник с салатом и сыром
+      bread: () => `<rect x="-30" y="-12" width="60" height="12" rx="5" fill="#f4e2b8" ${O(3)}/><path d="M-32 -12 q6 -6 12 0 q6 -6 12 0 q6 -6 12 0 q6 -6 12 0 q6 -6 12 0" fill="#36c94a" stroke="${INK}" stroke-width="2.2"/><rect x="-28" y="-20" width="56" height="7" fill="#ff8a8a" stroke="${INK}" stroke-width="2"/><path d="M-28 -20 L28 -20 L22 -26 L-24 -26 Z" fill="${FRY}" stroke="${INK}" stroke-width="2"/><rect x="-30" y="-38" width="60" height="13" rx="6" fill="#f4e2b8" ${O(3)}/><path d="M0 -38 V-54" stroke="${INK}" stroke-width="2.6"/><circle cy="-55" r="4.5" fill="#36c94a" ${O(2)}/>`,
+      // Стакан колы
+      kvass: () => cup(RED, 'COLA'),
+      // Начос с сыром: треугольнички в лодочке, сырный соус
+      cheese: () => `<path d="M-32 -14 H32 L26 0 H-26 Z" fill="${RED}" ${O(3)}/>` + [[-18, -10], [-4, -14], [10, -12], [22, -10]].map(([x, y], i) => `<path d="M${x - 9} ${y} L${x + 9} ${y} L${x + (i % 2 ? 4 : -4)} ${y - 20} Z" fill="${FRY}" ${O(2.4)}/>`).join('')
+        + `<path d="M-14 -16 q6 6 12 0 q4 6 10 0 q4 4 8 0" stroke="#ff9a2a" stroke-width="5" fill="none" stroke-linecap="round"/>`,
+      // Кусок пиццы: пепперони
+      pie: () => `<path d="M-30 -30 Q0 -40 30 -30 L0 2 Z" fill="${FRY}" ${O(3)}/><path d="M-30 -30 Q0 -40 30 -30 L28 -24 Q0 -34 -28 -24 Z" fill="#d97a2a" stroke="${INK}" stroke-width="2"/><circle cx="-8" cy="-20" r="5" fill="${RED}" ${O(1.8)}/><circle cx="8" cy="-16" r="4.5" fill="${RED}" ${O(1.8)}/><circle cx="0" cy="-6" r="4" fill="${RED}" ${O(1.8)}/>`,
+      // Хот-дог: булка, сосиска, горчица
+      ham: () => `<path d="M-34 -10 Q-34 -22 -24 -22 H24 Q34 -22 34 -10 Q34 0 24 0 H-24 Q-34 0 -34 -10Z" fill="#c9562a" ${O(3)}/><path d="M-30 -8 Q-30 -2 -22 -2 H22 Q30 -2 30 -8 L28 4 H-28 Z" fill="${BUN}" ${O(3)}/><path d="M-22 -14 q5 -5 10 0 q5 5 10 0 q5 -5 10 0 q5 5 10 0" stroke="${FRY}" stroke-width="3.6" fill="none" stroke-linecap="round"/>`,
+      // Ведро крыльев: красно-белое ведро, торчат крылышки
+      roast: () => [[-12, -36], [2, -42], [14, -36]].map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="9" ry="12" fill="#c9792c" ${O(2.4)}/>`).join('')
+        + `<path d="M-24 -32 L-18 0 H18 L24 -32 Z" fill="#fff" ${O(3)}/><path d="M-18 -32 L-14 0 M-6 -32 L-5 0 M6 -32 L5 0 M18 -32 L14 0" stroke="${RED}" stroke-width="5"/><path d="M-24 -32 L-18 0 H18 L24 -32 Z" fill="none" ${O(3)}/><rect x="-26" y="-36" width="52" height="6" rx="2" fill="${RED}" ${O(2.4)}/>`,
+      // Молочный коктейль: высокий стакан, сливки, вишенка
+      honey_cake: () => `<path d="M-14 -40 H14 L10 0 H-10 Z" fill="#ffc2df" ${O(3)}/><path d="M-16 -40 Q-16 -54 0 -52 Q16 -54 16 -40 Z" fill="#fff" ${O(2.6)}/><circle cx="2" cy="-56" r="5" fill="${RED}" ${O(2)}/><path d="M-10 -24 H10" stroke="${PINK}" stroke-width="3"/>`,
+      // Латте на овсяном: бумажный стакан с рукавом
+      sage_tea: () => `<path d="M-15 -44 H15 L11 0 H-11 Z" fill="#fff" ${O(3)}/><path d="M-14 -30 H14 L13 -16 H-13 Z" fill="#c9a27a" stroke="${INK}" stroke-width="2"/><rect x="-18" y="-50" width="36" height="8" rx="3" fill="#7a4a2e" ${O(2.6)}/><path d="M-6 -56 q-4 -6 0 -11 M6 -56 q-4 -6 0 -11" stroke="#c9ced6" stroke-width="2.6" fill="none" stroke-linecap="round"/>`,
+      // Острая лапша: коробочка с палочками
+      spicy_stew: () => `<path d="M-22 -34 H22 L16 0 H-16 Z" fill="#fff" ${O(3)}/><path d="M-22 -34 L-14 -42 H14 L22 -34" fill="none" ${O(3)}/><path d="M-16 -36 q8 -10 16 0 q8 -10 16 0" stroke="#ffd54a" stroke-width="4" fill="none"/><path d="M4 -40 L18 -66 M10 -38 L26 -62" stroke="${INK}" stroke-width="3.6" stroke-linecap="round"/>`
+        + `<path d="M-8 -20 l4 -8 l4 8 Z" fill="${RED}" ${O(1.8)}/><text x="0" y="-6" ${FONT} font-size="9" fill="${RED}">HOT</text>`,
+    };
+    // Энергетик: малый - банка, большой - высокая банка с молнией
+    const potion = (big, c) => {
+      const h = big ? 58 : 42, w = big ? 18 : 15;
+      return `<path d="M${-w} 0 V${-h + 4} Q${-w} ${-h} ${-w + 4} ${-h} H${w - 4} Q${w} ${-h} ${w} ${-h + 4} V0 Z" fill="${c}" ${O(3)}/><rect x="${-w + 3}" y="${-h - 4}" width="${2 * w - 6}" height="5" rx="2" fill="#c9ced6" ${O(2)}/>`
+        + `<path d="M${big ? 3 : 2} ${-h * 0.78} L${big ? -8 : -6} ${-h * 0.42} H${big ? 0 : 0} L${big ? -4 : -3} ${-h * 0.14} L${big ? 9 : 7} ${-h * 0.52} H${big ? 1 : 1} Z" fill="${GOLD}" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>`
+        + `<path d="M${-w + 4} ${-h + 10} V-8" stroke="#fff" stroke-width="3" opacity=".5" stroke-linecap="round"/>`;
+    };
+    // Свиток возрождения: золотое VIP-приглашение с лентой
+    const scroll = () => `<rect x="-30" y="-42" width="60" height="38" rx="5" fill="#1c1022" ${O(3)}/><rect x="-26" y="-38" width="52" height="30" rx="3" fill="none" stroke="${GOLD}" stroke-width="2.4"/>`
+      + `<text x="0" y="-18" ${FONT} font-size="13" fill="${GOLD}">VIP</text><path d="M-6 -4 L-10 8 L-3 4 L0 10 L3 4 L10 8 L6 -4 Z" fill="${PINK}" ${O(2)}/><circle cy="-6" r="6" fill="${PINK}" ${O(2)}/>`;
+    return {
+      food: FOOD,
+      potion: (it) => potion(/hp|big|больш/i.test(String(it.id) + (it.name || '')), /mana|ман/i.test(String(it.id)) ? '#5ad1ff' : '#36c94a'),
+      scroll: () => scroll(),
+    };
+  });
+})();
+
+} catch (e) { console.error('[стили] styles/42brothers/goods.js не загрузился:', e); }
+
+/* ───── стиль «42brothers»: styles/42brothers/hero.js ───── */
+try {
+/* Стиль «42 Братухи» — карточки героя (модуль «Легионер»): VIP-пропуск - розовый мех с леопардом, золотая цепь по краю, стразы и неон
+   Разметка и анимации — в modules/legionary/client/widget.js; здесь только вид. Основа — CSS «Легиона», ниже — правила этого стиля
+   (последние перекрывают основу). Договор — styles/README.md, раздел «Карточки героя». */
+(function () {
+  'use strict';
+  if (!window.MDDoodle || !window.MDDoodle.addPart) return;
+  window.MDDoodle.addPart('42brothers', 'hero', function () {
+    const css = `/* «Легионер»: карточка героя, сумка, смерть / воскрешение / новый уровень */
+.lg-box { position: absolute; inset: 0; pointer-events: none; font-family: 'Golos Text', 'Segoe UI', sans-serif; }
+.lg-box .jl-doodle { width: 120px; height: 170px; overflow: visible; }
+.lg-box .jl-doodle .ln { fill: none; stroke: #f5f2ff; stroke-width: 4.5; stroke-linecap: round; stroke-linejoin: round; }
+.lg-box .jl-doodle .body { stroke: #f5f2ff; stroke-width: 4.5; stroke-linejoin: round; }
+.lg-box .jl-doodle .face:not([fill]) { fill: none; }
+.lg-box .jl-doodle .face { stroke: #15122e; stroke-width: 3.5; stroke-linecap: round; }
+.lg-box .jl-doodle .eye { fill: #15122e; }
+.lg-box .jl-doodle .tear { opacity: 0; }
+
+/* ---------- карточка: боевая — тёмное железо, кровь и угли ---------- */
+.lg-card { position: absolute; left: 0; bottom: 0; width: 540px; display: flex; gap: 14px; padding: 16px 18px 16px 10px; border-radius: 10px;
+  background:
+    repeating-linear-gradient(115deg, rgba(255,255,255,.018) 0 2px, transparent 2px 9px),
+    radial-gradient(ellipse at 18% 110%, rgba(190,40,20,.38), transparent 55%),
+    linear-gradient(165deg, #2a2a2e 0%, #17161a 45%, #0d0c0f 100%);
+  border: 3px solid #050506;
+  box-shadow: 0 0 0 2px #5b4a3a, 0 0 0 5px #141215, inset 0 1px 0 rgba(255,255,255,.08), inset 0 -30px 50px rgba(0,0,0,.55), 0 10px 22px rgba(0,0,0,.6);
+  color: #e8e2d6; opacity: 0; transform: translateY(40px) scale(.94); transition: opacity .3s, transform .45s cubic-bezier(.3,1.4,.5,1); }
+/* заклёпки по углам */
+.lg-card::before, .lg-card::after { content: ''; position: absolute; top: 7px; width: 9px; height: 9px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #b9a88f, #4a3e31 70%); box-shadow: 0 1px 0 rgba(0,0,0,.8), 0 calc(100% + 0px) 0 transparent; }
+.lg-card::before { left: 7px; } .lg-card::after { right: 7px; }
+.lg-card.on { opacity: 1; transform: none; }
+.lg-card.off { opacity: 0; transform: translateY(20px) scale(.97); transition: opacity .35s, transform .35s; }
+/* призрак — холодная сталь, без огня */
+.lg-card.ghost { background:
+    repeating-linear-gradient(115deg, rgba(255,255,255,.02) 0 2px, transparent 2px 9px),
+    radial-gradient(ellipse at 18% 110%, rgba(110,140,220,.28), transparent 55%),
+    linear-gradient(165deg, #23283a 0%, #12141f 50%, #090a10 100%);
+  box-shadow: 0 0 0 2px #4b5577, 0 0 0 5px #10121a, 0 0 26px rgba(140,165,255,.3), inset 0 -30px 50px rgba(0,0,0,.55), 0 10px 22px rgba(0,0,0,.6); }
+.lg-card .pic { flex: none; width: 150px; display: flex; align-items: flex-end; justify-content: center; position: relative; border-radius: 6px;
+  background: radial-gradient(ellipse at 50% 100%, rgba(220,70,30,.35), transparent 65%), linear-gradient(#0b0a0c, #19151a); box-shadow: inset 0 0 0 2px #050506, inset 0 0 18px rgba(0,0,0,.8); overflow: hidden; }
+.lg-card.ghost .pic { background: radial-gradient(ellipse at 50% 100%, rgba(140,165,255,.3), transparent 65%), linear-gradient(#090a10, #151826); }
+.lg-card .pic { justify-content: flex-start; padding-left: 10px; align-items: center; min-height: 188px; }   /* человечек всегда целиком и по центру, даже если сумка пустая */
+.lg-card .info { justify-content: center; }
+.lg-card .pic .jl-doodle { width: 120px; height: 170px; margin-bottom: 4px; }   /* справа — место под оружие в руке */
+.lg-card .info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.lg-card .nm { font: 400 30px 'Russo One', sans-serif; line-height: 1.05; color: #efe6d2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-shadow: 0 2px 0 #000, 0 0 12px rgba(200,50,30,.35); letter-spacing: .01em; }
+.lg-card.ghost .nm { color: #cfd8f2; text-shadow: 0 2px 0 #000, 0 0 12px rgba(140,165,255,.4); }
+.lg-card .role { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; color: #a89a86; text-transform: uppercase; letter-spacing: .08em; }
+.lg-card .lvl { font: 400 14px 'Russo One', sans-serif; padding: 3px 10px 3px; color: #f3e2c4; letter-spacing: .04em;
+  background: linear-gradient(#8e1b1b, #4f0c0c); border: 1.5px solid #050506; box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 0 0 1px #6d5a45;
+  clip-path: polygon(8% 0, 92% 0, 100% 50%, 92% 100%, 8% 100%, 0 50%); }
+.lg-card .xp { height: 8px; border-radius: 2px; background: #050506; box-shadow: inset 0 0 0 1px #3a3128; overflow: hidden; }
+.lg-card .xp i { display: block; height: 100%; background: linear-gradient(90deg, #6e1010, #d2491d 70%, #ffb054); box-shadow: 0 0 8px rgba(255,120,40,.6); }
+.lg-card.ghost .xp i { background: linear-gradient(90deg, #2c3970, #7d95e6); box-shadow: none; }
+.lg-card .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 8px; margin-top: 2px; }
+.lg-card .stats div { display: flex; align-items: center; gap: 7px; font-size: 15px; color: #b8ab98; padding: 5px 10px; border-radius: 4px;
+  background: linear-gradient(#232026, #141217); box-shadow: inset 0 0 0 1px #050506, inset 0 1px 0 rgba(255,255,255,.06); }
+.lg-card .stats b { font: 400 21px 'Russo One', sans-serif; margin-left: auto; color: #efe6d2; text-shadow: 0 2px 0 #000; }
+.lg-card .gear { display: flex; flex-wrap: wrap; gap: 5px; font-size: 13px; color: #cfc4b2; }
+.lg-card .gear span { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 3px; background: #0f0e11; border: 1px solid #3a3128; }
+/* редкость: обычное — сталь, редкое — синее, эпическое — фиолетовое, легендарное — золото с переливом */
+.lg-box .gem { display: inline-block; width: 8px; height: 8px; transform: rotate(45deg); flex: none; background: #8d867b; box-shadow: 0 0 0 1px #050506; }
+.lg-box .r-common { color: #d6cdbd; }
+.lg-box .r-uncommon { color: #a8eeb0; } .lg-box .r-uncommon .gem { background: #4cc95a; box-shadow: 0 0 0 1px #050506, 0 0 6px #4cc95a; }
+.lg-box .r-rare { color: #9ccaff; } .lg-box .r-rare .gem { background: #4aa3ff; box-shadow: 0 0 0 1px #050506, 0 0 6px #4aa3ff; }
+.lg-box .r-epic { color: #dcbcff; } .lg-box .r-epic .gem { background: #b06bff; box-shadow: 0 0 0 1px #050506, 0 0 7px #b06bff; }
+.lg-box .r-legendary { color: #ffd27a; } .lg-box .r-legendary .gem { background: #ffb83d; box-shadow: 0 0 0 1px #050506, 0 0 9px #ffb83d; animation: lgGem 1.4s ease-in-out infinite alternate; }
+@keyframes lgGem { to { box-shadow: 0 0 0 1px #050506, 0 0 16px #ffd76a; } }
+.lg-card .gear span.r-uncommon { border-color: #3f9a4c; box-shadow: inset 0 0 10px rgba(76,201,90,.16); }
+.lg-card .gear span.r-rare { border-color: #3d7fc7; box-shadow: inset 0 0 10px rgba(74,163,255,.18); }
+.lg-card .gear span.r-epic { border-color: #8b55c9; box-shadow: inset 0 0 12px rgba(176,107,255,.25), 0 0 8px rgba(176,107,255,.35); }
+.lg-card .gear span.r-legendary { border-color: #d29a2e; position: relative; overflow: hidden; box-shadow: inset 0 0 12px rgba(255,184,61,.3), 0 0 12px rgba(255,184,61,.5); }
+.lg-card .gear span.r-legendary::after { content: ''; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 30%, rgba(255,240,190,.45) 50%, transparent 70%); background-size: 250% 100%; animation: lgShine 2.4s linear infinite; }
+@keyframes lgShine { from { background-position: 150% 0; } to { background-position: -100% 0; } }
+.lg-card .bag .it { display: inline-flex; align-items: center; gap: 6px; }
+.lg-card .gear em { opacity: .5; font-style: normal; }
+.lg-card .bag { display: flex; flex-direction: column; gap: 3px; font-size: 15px; color: #d8cfbf; }
+.lg-card .bag div { display: flex; gap: 8px; align-items: baseline; }
+.lg-card .bag .n { font: 400 15px 'Russo One', sans-serif; color: #c9472a; width: 22px; text-align: right; }
+.lg-card .bag .on { color: #8fbf6a; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+.lg-card .hint { font-size: 12.5px; color: #85796a; }
+.lg-card .note { font-weight: 700; font-size: 15px; color: #f3e2c4; background: linear-gradient(#7d1717, #4a0b0b); border: 1px solid #050506; box-shadow: 0 0 0 1px #6d5a45; border-radius: 3px; padding: 4px 10px; align-self: flex-start; }
+.lg-card .ghostline { font-weight: 700; font-size: 14px; color: #9fb0e6; }
+
+/* ---------- сцены: смерть, воскрешение, новый уровень ---------- */
+.lg-scene { position: absolute; left: 0; bottom: 0; width: 540px; height: 440px; }
+.lg-scene .guy { position: absolute; left: 195px; bottom: 30px; width: 150px; height: 212px; transform-origin: 75px 200px; }
+.lg-scene .guy .jl-doodle { width: 150px; height: 212px; }
+.lg-scene .ttl { position: absolute; left: 0; right: 0; top: 0; text-align: center; opacity: 0; transform: scale(.4); transition: opacity .3s, transform .55s cubic-bezier(.3,1.6,.5,1); }
+.lg-scene .ttl.on { opacity: 1; transform: none; }
+.lg-scene .ttl b { display: block; font: 400 46px 'Russo One', sans-serif; letter-spacing: .03em; -webkit-text-stroke: 2.5px #15122e; paint-order: stroke fill; text-shadow: 0 5px 0 rgba(0,0,0,.35); }
+.lg-scene .ttl span { display: inline-block; margin-top: 4px; font: 400 26px 'Russo One', sans-serif; color: #fff; -webkit-text-stroke: 1.5px #15122e; paint-order: stroke fill; max-width: 520px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lg-scene .sub { position: absolute; left: 0; right: 0; bottom: 0; text-align: center; font-weight: 700; font-size: 16px; color: #fff; opacity: 0; transition: opacity .4s; }
+.lg-scene .sub.on { opacity: 1; }
+.lg-scene .sub i { display: inline-block; font-style: normal; background: rgba(21,18,46,.82); border-radius: 9px; padding: 4px 10px; margin: 2px; }
+.lg-scene canvas { position: absolute; left: -100px; top: -100px; width: 740px; height: 640px; pointer-events: none; }
+.lg-scene .beam { position: absolute; left: 170px; top: -60px; width: 200px; height: 470px; opacity: 0; background: linear-gradient(180deg, rgba(255,246,200,.9), rgba(255,220,120,.15) 85%, transparent); clip-path: polygon(30% 0, 70% 0, 100% 100%, 0 100%); filter: blur(2px); transition: opacity .6s; }
+.lg-scene .beam.on { opacity: 1; }
+.lg-scene .flash { position: absolute; inset: -40px; background: radial-gradient(circle at 50% 70%, rgba(232,69,92,.75), transparent 60%); opacity: 0; }
+.lg-scene .flash.go { animation: lgFlash .5s ease-out; }
+@keyframes lgFlash { 0% { opacity: 1; } 100% { opacity: 0; } }
+.lg-scene .ring { position: absolute; left: 270px; bottom: 120px; width: 10px; height: 10px; margin: -5px; border-radius: 50%; border: 6px solid #ffc94d; opacity: 0; }
+.lg-scene .ring.go { animation: lgRing .9s ease-out forwards; }
+@keyframes lgRing { 0% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(34); border-width: 1px; } }
+.lg-scene .shake { animation: lgShake .45s linear; }
+@keyframes lgShake { 15% { transform: translate(-8px, 2px); } 35% { transform: translate(7px, -3px); } 55% { transform: translate(-5px, 1px); } 75% { transform: translate(3px, 0); } }
+
+/* текущее здоровье: число / максимум и полоска под ним */
+.lg-card .stats .hpc { position: relative; }
+.lg-card .stats .hpc small { font-size: 13px; color: #8f8474; margin-left: 1px; }
+.lg-card .stats .hpbar { position: absolute; left: 8px; right: 8px; bottom: 2px; height: 3px; background: #050506; border-radius: 2px; overflow: hidden; }
+.lg-card .stats .hpbar i { display: block; height: 100%; background: linear-gradient(90deg, #8e1b1b, #e8455c); }
+.lg-card .woundline { font-weight: 700; font-size: 14px; color: #e88a7a; }
+
+/* удар по герою: карточка дёргается и вспыхивает красным */
+.lg-card.on.hit { animation: lgHit .55s ease-out; }
+@keyframes lgHit { 0% { transform: translate(0,0); box-shadow: 0 0 0 2px #e8455c, 0 0 0 5px #141215, 0 0 40px rgba(232,69,92,.9), 0 10px 22px rgba(0,0,0,.6); }
+  20% { transform: translate(-9px, 3px); } 40% { transform: translate(7px, -2px); } 60% { transform: translate(-4px, 1px); } 80% { transform: translate(2px, 0); } 100% { transform: none; } }
+
+/* временные баффы (например, «Закалка кузнеца» с Ярмарки) */
+.lg-card .buffline { font-weight: 700; font-size: 14px; color: #ffb36b; }
+
+/* ===== «42 Братухи»: карточка как VIP-пропуск - розовый мех с леопардом, золотая цепь по краю, неон ===== */
+.lg-card { border-radius: 16px; padding: 18px 18px 16px 10px;
+  background:
+    radial-gradient(circle at 12% 20%, rgba(28,16,34,.55) 0 7px, transparent 8px), radial-gradient(circle at 34% 78%, rgba(28,16,34,.5) 0 6px, transparent 7px),
+    radial-gradient(circle at 62% 30%, rgba(28,16,34,.5) 0 8px, transparent 9px), radial-gradient(circle at 88% 70%, rgba(28,16,34,.5) 0 6px, transparent 7px),
+    radial-gradient(circle at 78% 12%, rgba(232,140,60,.6) 0 9px, transparent 10px), radial-gradient(circle at 22% 60%, rgba(232,140,60,.55) 0 8px, transparent 9px),
+    linear-gradient(160deg, #ff8cc6 0%, #ff5fa2 45%, #c2307a 100%);
+  border: 3px solid #1c1022; box-shadow: 0 0 0 4px #ffc83d, 0 0 0 7px #1c1022, 0 0 26px rgba(255,95,162,.65), inset 0 -30px 50px rgba(60,0,40,.35), 0 10px 22px rgba(0,0,0,.55); color: #fff; }
+.lg-card::before, .lg-card::after { top: 9px; width: 16px; height: 16px; border-radius: 3px; transform: rotate(45deg); background: linear-gradient(135deg, #fff, #9fe0ff 50%, #5ad1ff); box-shadow: 0 0 8px #9fe0ff; }
+.lg-card.ghost { background: linear-gradient(160deg, #d8d4e8 0%, #a8a2c0 50%, #6a6488 100%); box-shadow: 0 0 0 4px #c9ced6, 0 0 0 7px #1c1022, 0 0 24px rgba(200,200,255,.5), 0 10px 22px rgba(0,0,0,.55); }
+.lg-card .pic { border-radius: 12px; background: radial-gradient(ellipse at 50% 105%, rgba(255,200,61,.65), transparent 60%), linear-gradient(#2a1036, #1c1022); box-shadow: inset 0 0 0 3px #1c1022, inset 0 0 0 6px #ffc83d; }
+.lg-card.ghost .pic { background: radial-gradient(ellipse at 50% 105%, rgba(200,200,255,.45), transparent 65%), linear-gradient(#2a2838, #16141e); box-shadow: inset 0 0 0 3px #1c1022, inset 0 0 0 6px #c9ced6; }
+.lg-card .nm { color: #fff; text-shadow: 0 2px 0 #1c1022, 0 0 14px #ff5fa2, 0 0 4px #fff; }
+.lg-card.ghost .nm { color: #fff; text-shadow: 0 2px 0 #1c1022, 0 0 12px #a8a2c0; }
+.lg-card .role { color: #fff3c0; text-shadow: 0 1px 0 #1c1022; }
+.lg-card .lvl { color: #1c1022; background: linear-gradient(#fff3a8, #ffc83d 55%, #d48a10); border: 2px solid #1c1022; box-shadow: none; clip-path: none; border-radius: 999px; }
+.lg-card .xp { height: 10px; border-radius: 6px; background: #1c1022; box-shadow: inset 0 0 0 2px #1c1022; }
+.lg-card .xp i { background: linear-gradient(90deg, #5ad1ff, #b48cff 50%, #ffc83d); box-shadow: 0 0 10px rgba(90,209,255,.8); border-radius: 6px; }
+.lg-card.ghost .xp i { background: linear-gradient(90deg, #8a84a8, #e7e1ff); box-shadow: none; }
+.lg-card .stats div { color: #ffd6ea; border-radius: 10px; background: rgba(28,16,34,.82); box-shadow: inset 0 0 0 2px #ffc83d; }
+.lg-card .stats b { color: #fff; text-shadow: 0 0 8px #ff5fa2; }
+.lg-card .stats .hpc small { color: #ffb8d8; }
+.lg-card .stats .hpbar { background: #3a1036; } .lg-card .stats .hpbar i { background: linear-gradient(90deg, #ff5fa2, #ffc83d); }
+.lg-card .gear { color: #fff; }
+.lg-card .gear span { border-radius: 999px; background: rgba(28,16,34,.78); border: 1.5px solid #ffc83d; }
+.lg-box .gem { box-shadow: 0 0 0 1px #1c1022; }
+.lg-box .r-common { color: #fff; }
+.lg-card .bag { color: #fff; } .lg-card .bag .n { color: #ffc83d; } .lg-card .bag .on { color: #9fe0ff; }
+.lg-card .hint { color: #ffd6ea; }
+.lg-card .note { color: #1c1022; background: linear-gradient(#fff3a8, #ffc83d); border: 2px solid #1c1022; box-shadow: none; border-radius: 999px; }
+.lg-card .ghostline { color: #e7e1ff; } .lg-card .woundline { color: #fff3c0; } .lg-card .buffline { color: #9fe0ff; }
+.lg-scene .ttl b { -webkit-text-stroke: 2.5px #1c1022; }
+.lg-scene .ttl span { -webkit-text-stroke: 1.5px #1c1022; }
+.lg-scene .sub i { background: rgba(28,16,34,.88); border-radius: 999px; box-shadow: 0 0 0 2px #ffc83d; }
+.lg-scene .flash { background: radial-gradient(circle at 50% 70%, rgba(255,95,162,.75), transparent 60%); }
+.lg-scene .ring { border-color: #ffc83d; }
+.lg-scene .beam { background: linear-gradient(180deg, rgba(255,240,200,.95), rgba(255,95,162,.2) 85%, transparent); }
+`;
+    return {
+      css,
+      slotIcons: { weapon: '🍟', armor: '🧥', shield: '🍔', helmet: '👑', trinket: '💎' },
+      stats: { hp: { label: '❤️ ХП', icon: '❤️' }, def: { label: '🧥 Шуба', icon: '🧥' }, atk: { label: '🍟 Замес', icon: '🍟' }, mag: { label: '✨ Харизма', icon: '✨' } },
+      texts: { recruit: 'Новичок', ghost: '👻 Призрак тусовки', nothing: 'Ничего не надето — даже цепи нет', level: 'УР.', buff: '⚡' },
+      scenes: { death: { title: '💀 ТУСОВКА ВСЁ', color: '#ff5fa2' }, revive: { title: '😎 СНОВА В ДЕЛЕ', color: '#ffc83d' }, level: { title: (n) => `👑 УРОВЕНЬ ${n}`, color: '#5ad1ff' } },
+    };
+  });
+  // монеты стиля «42 Братухи»: жетон (бронза), серебряная фишка, золотой слиток. 100 : 1, как у всех
+  window.MDDoodle.addPart('42brothers', 'coins', function () {
+    // крупные простые формы: читаются и в 16 px
+    const ART = {
+      b: '<circle cx="20" cy="20" r="16" fill="#cd7f3c" stroke="#1c1022" stroke-width="2.6"/><circle cx="20" cy="20" r="11" fill="none" stroke="#8f4e1e" stroke-width="2.2"/><text x="20" y="25.5" font-family="Arial Black,Impact,sans-serif" font-weight="900" font-size="14" text-anchor="middle" fill="#fff1d8" stroke="#5a2c0c" stroke-width="1">42</text>',
+      s: '<circle cx="20" cy="20" r="16" fill="#dfe3ea" stroke="#1c1022" stroke-width="2.6"/><path d="M20 4 V10 M20 30 V36 M4 20 H10 M30 20 H36 M8.7 8.7 L13 13 M27 27 L31.3 31.3 M31.3 8.7 L27 13 M13 27 L8.7 31.3" stroke="#ff5fa2" stroke-width="4"/><circle cx="20" cy="20" r="9" fill="#fff" stroke="#1c1022" stroke-width="2"/><circle cx="20" cy="20" r="4" fill="#ff5fa2"/>',
+      g: '<path d="M2 34 L9 8 H31 L38 34 Z" fill="#ffc83d" stroke="#1c1022" stroke-width="2.6" stroke-linejoin="round"/><path d="M9 8 L14 18 H26 L31 8" fill="none" stroke="#d48a10" stroke-width="2.4"/><path d="M14 18 L11 34 M26 18 L29 34" stroke="#d48a10" stroke-width="2.4"/><path d="M12 13 H19" stroke="#fff6c0" stroke-width="2.4" stroke-linecap="round"/>',
+    };
+    return {
+      b: { name: 'жетон', forms: ['жетон', 'жетона', 'жетонов'], color: '#cd7f3c', emoji: '🟤' },
+      s: { name: 'серебряная фишка', forms: ['серебряная фишка', 'серебряные фишки', 'серебряных фишек'], color: '#dfe3ea', emoji: '⚪' },
+      g: { name: 'золотой слиток', forms: ['золотой слиток', 'золотых слитка', 'золотых слитков'], color: '#ffc83d', emoji: '🟡' },
+      svg: (k, size = 22) => `<svg class="coin coin-${k}" viewBox="0 0 40 40" width="${size}" height="${size}">${ART[k] || ART.b}</svg>`,
+    };
+  });
+})();
+
+} catch (e) { console.error('[стили] styles/42brothers/hero.js не загрузился:', e); }
+
+/* ───── стиль «42brothers»: styles/42brothers/legend.js ───── */
+try {
+/* Стиль «42 Братухи» - своя рамка легендарки с босса (часть 'legend'): золотая цепь, неоновое кольцо, корона с «42», искорки-звёздочки.
+   Раскладка, рамка вида и эмблема ауры - общие (styles/legion/legend.js → MDDoodle.legendKit); без фильтров, движение - SVG animate. */
+(function () {
+  'use strict';
+  const D = window.MDDoodle;
+  if (!D || !D.addPart || !D.legendKit) return;
+  D.addPart('42brothers', 'legend', () => D.legendKit.make({
+    glow: ['#e8fbff', '#ff5fa2'], item: '#ffd6ec',
+    back: (cx, cy, R, f) => { let g = ''; for (let i = 0; i < 20; i++) { const a = i * Math.PI / 10, x = cx + Math.cos(a) * R * 1.02, y = cy + Math.sin(a) * R * 1.02; g += `<ellipse cx="${f(x)}" cy="${f(y)}" rx="${f(R * (i % 2 ? 0.1 : 0.13))}" ry="${f(R * 0.07)}" transform="rotate(${f(a * 180 / Math.PI + 90)} ${f(x)} ${f(y)})" fill="none" stroke="#1c1022" stroke-width="${f(R * 0.07)}"/><ellipse cx="${f(x)}" cy="${f(y)}" rx="${f(R * (i % 2 ? 0.1 : 0.13))}" ry="${f(R * 0.07)}" transform="rotate(${f(a * 180 / Math.PI + 90)} ${f(x)} ${f(y)})" fill="none" stroke="#ffc83d" stroke-width="${f(R * 0.035)}"/>`; } return g; },
+    ring: (cx, cy, R, f) => [['#ff5fa2', 0], ['#5ad1ff', 1]].map(([c, k]) => `<circle cx="${f(cx)}" cy="${f(cy)}" r="${f(R * 1.2)}" fill="none" stroke="${c}" stroke-width="${f(R * 0.05)}" stroke-dasharray="${f(R * 0.5)} ${f(R * 0.5)}" stroke-dashoffset="${f(k * R * 0.5)}" stroke-linecap="round"/>`).join(''),
+    top: (cx, cy, R, f) => { const y = cy - R * 1.02, w = R * 0.42; return `<path d="M${f(cx - w)} ${f(y)} L${f(cx - w * 1.1)} ${f(y - R * 0.3)} L${f(cx - w * 0.45)} ${f(y - R * 0.14)} L${f(cx)} ${f(y - R * 0.38)} L${f(cx + w * 0.45)} ${f(y - R * 0.14)} L${f(cx + w * 1.1)} ${f(y - R * 0.3)} L${f(cx + w)} ${f(y)} Z" fill="#ffc83d" stroke="#1c1022" stroke-width="${f(R * 0.03)}" stroke-linejoin="round"/><text x="${f(cx)}" y="${f(y - R * 0.04)}" text-anchor="middle" font-family="Russo One, Arial Black, sans-serif" font-size="${f(R * 0.16)}" fill="#1c1022">42</text>`; },
+    spark: (x, y, r, f) => `<path d="M${f(x)} ${f(y - r * 1.4)} Q${f(x)} ${f(y)} ${f(x + r * 1.4)} ${f(y)} Q${f(x)} ${f(y)} ${f(x)} ${f(y + r * 1.4)} Q${f(x)} ${f(y)} ${f(x - r * 1.4)} ${f(y)} Q${f(x)} ${f(y)} ${f(x)} ${f(y - r * 1.4)} Z" fill="#5ad1ff"/>`,
+  }));
+})();
+
+} catch (e) { console.error('[стили] styles/42brothers/legend.js не загрузился:', e); }
+
+if (window.MDDoodle && window.MDDoodle.addNames) window.MDDoodle.addNames("42brothers", {"items":{"dagger":{"name":"Спорк","chat":["спорк"]},"rusty_sword":{"name":"Остывшая фри","chat":["остывшая"]},"wood_club":{"name":"Бита «42»","chat":["бита"]},"pitchfork":{"name":"Вилка с наггетсом","chat":["вилка"]},"hatchet":{"name":"Крокс-топорик","chat":["крокс"]},"wood_spear":{"name":"Трубочка для колы","chat":["трубочка"]},"smith_hammer":{"name":"Бургер-молоток","chat":["бургер-молоток"]},"mace":{"name":"Мини диско-шар","chat":["мини"]},"gladius":{"name":"Куриная ножка","chat":["ножка"]},"hunting_bow":{"name":"Розовый лук","chat":["розовый"]},"bow":{"name":"Лук с цепочкой","chat":["цепочкой"]},"crook":{"name":"Трость франта","chat":["трость"]},"walking_staff":{"name":"Микрофон караоке","chat":["караоке"]},"staff":{"name":"Золотой микрофон","chat":["микрофон"]},"copper_censer":{"name":"Ведёрко наггетсов","chat":["ведёрко","ведерко"]},"censer":{"name":"Ведро на цепи","chat":["ведро на цепи"]},"war_axe":{"name":"Боевой крокс","chat":["боевой"]},"spatha":{"name":"Фри большая","chat":["большая фри"]},"storm_staff":{"name":"Микрофон с эхом","chat":["эхом"]},"aquila_blade":{"name":"Золотая фри","chat":["золотая фри"]},"barrel_lid":{"name":"Ведро крылышек","chat":["крылышек"]},"buckler":{"name":"Пластинка","chat":["пластинка"]},"wood_shield":{"name":"Бургер","chat":["бургер"]},"scutum":{"name":"Дверь лимузина","chat":["дверь"]},"centurion_shield":{"name":"Дверь Хаммера","chat":["хаммера"]},"lorica":{"name":"Спортивный костюм","chat":["костюм"]},"robe":{"name":"Шёлковый халат","chat":["халат"]},"galea":{"name":"Шлем байкера","chat":["байкера"]},"laurel":{"name":"Венок из купюр","chat":["купюр"]},"spark_charm":{"name":"Бенгальский огонь","chat":["бенгальский"]},"frost_amulet":{"name":"Бриллиант-льдинка","chat":["льдинка"]},"shadow_amulet":{"name":"Чёрная карта","chat":["карта"]},"aquila_amulet":{"name":"Цепь «42»","chat":["цепь"]},"saint_halo":{"name":"Нимб из неона","chat":["неона"]},"potion_small":{"name":"Малый энергетик","chat":["малый"]},"potion_hp":{"name":"Большой энергетик","chat":["большой"]},"apple":{"name":"Яблоко в карамели","chat":["карамели"]},"pear":{"name":"Смузи","chat":["смузи"]},"pretzel":{"name":"Пончик","chat":["пончик"]},"bread":{"name":"Сэндвич","chat":["сэндвич"]},"kvass":{"name":"Стакан колы","chat":["кола","колы"]},"cheese":{"name":"Начос с сыром","chat":["начос"]},"pie":{"name":"Кусок пиццы","chat":["пицца","пиццы"]},"ham":{"name":"Хот-дог","chat":["хот-дог","хотдог"]},"roast":{"name":"Ведро крыльев","chat":["ведро крыльев"]},"honey_cake":{"name":"Молочный коктейль","chat":["коктейль"]},"sage_tea":{"name":"Латте на овсяном","chat":["латте"]},"spicy_stew":{"name":"Острая лапша","chat":["лапша"]},"hadrian_wall":{"name":"Ворота виллы","chat":["виллы"]},"storm_heart":{"name":"Микрофон-молния","chat":["молния"]},"vesta_breath":{"name":"Ведро с салютом","chat":["салютом"]},"diana_bow":{"name":"Лук из неона","chat":["лук из неона"]},"rog_shiv":{"name":"Пилка для ногтей","chat":["пилка"]},"rog_dirk":{"name":"Нож для стейка","chat":["стейка"]},"rog_kris":{"name":"Кривая пилка","chat":["кривая"]},"rog_twin":{"name":"Две пилочки","chat":["пилочки"]},"rog_viper":{"name":"Шпилька","chat":["шпилька"]},"mercury_fang":{"name":"Золотая шпилька","chat":["золотая шпилька"]},"nec_bone_wand":{"name":"Селфи-палка","chat":["селфи"]},"nec_old_book":{"name":"Старый смартфон","chat":["смартфон"]},"nec_skull_staff":{"name":"Палка с черепком","chat":["черепком"]},"nec_grimoire":{"name":"Блокнот хейтера","chat":["хейтера"]},"nec_crypt_staff":{"name":"Стойка с черепом","chat":["стойка"]},"nec_black_book":{"name":"Чёрный список","chat":["список"]},"orcus_scepter":{"name":"Скипетр продюсера","chat":["продюсера"]},"pal_novice_mace":{"name":"Кубок новичка","chat":["новичка"]},"pal_mace":{"name":"Серебряный кубок","chat":["серебряный"]},"pal_war_hammer":{"name":"Молот диджея","chat":["диджея"]},"pal_sun_mace":{"name":"Кубок рассвета","chat":["рассвета"]},"pal_guard_hammer":{"name":"Молот охранника","chat":["охранника"]},"sol_hammer":{"name":"Платиновый кубок","chat":["платиновый"]},"dragon_scale":{"name":"Шуба из дракона","chat":["дракона"]},"star_mantle":{"name":"Халат со стразами","chat":["стразами"]},"triumph_galea":{"name":"Корона чемпиона","chat":["чемпиона"]},"phoenix_tear":{"name":"Перо феникса","chat":["феникса"]},"mars_horn":{"name":"Золотой рог","chat":["рог"]},"lucky_coin":{"name":"Счастливая фишка","chat":["фишка"]},"wolf_tooth":{"name":"Клык на цепочке","chat":["клык"]},"clay_charm":{"name":"Брелок «42»","chat":["брелок"]},"river_pearl":{"name":"Жемчужная серьга","chat":["серьга"]},"iron_sword":{"name":"Фри с солью","chat":["солью"]},"sharp_gladius":{"name":"Острое крылышко","chat":["крылышко"]},"stiletto":{"name":"Каблук-шпилька","chat":["каблук"]},"bearded_axe":{"name":"Крокс с шипами","chat":["шипами"]},"pilum":{"name":"Трубочка-дротик","chat":["дротик"]},"flanged_mace":{"name":"Диско-шар с шипами","chat":["диско-шар"]},"composite_bow":{"name":"Лук из клюшек","chat":["клюшек"]},"yew_bow":{"name":"Лук с пайетками","chat":["пайетками"]},"oak_staff":{"name":"Микрофон с бантом","chat":["бантом"]},"druid_crook":{"name":"Трость с камнем","chat":["камнем"]},"silver_censer":{"name":"Ведро на цепочке","chat":["на цепочке"]},"iron_buckler":{"name":"Серебряный диск","chat":["диск"]},"oak_shield":{"name":"Двойной бургер","chat":["двойной"]},"veteran_scutum":{"name":"Дверь такси","chat":["такси"]},"chainmail":{"name":"Кольчуга из цепей","chat":["кольчуга"]},"leather_armor":{"name":"Кожанка","chat":["кожанка"]},"adept_robe":{"name":"Махровый халат","chat":["махровый"]},"iron_galea":{"name":"Шлем мотоциклиста","chat":["мотоциклиста"]},"hunter_cap":{"name":"Кепка задом","chat":["кепка"]},"wizard_hat":{"name":"Коробка фри","chat":["коробка фри"]},"legion_charm":{"name":"Жетон братухи","chat":["жетон"]},"healer_beads":{"name":"Чётки из жемчуга","chat":["чётки","четки"]},"legate_gladius":{"name":"Ножка гриль","chat":["гриль"]},"champion_mace":{"name":"Диско-шар чемпиона","chat":["чемпиона шар"]},"warhammer":{"name":"Бургер-кувалда","chat":["кувалда"]},"triarius_hasta":{"name":"Трубочка-зонтик","chat":["зонтиком"]},"assassin_dagger":{"name":"Спорк ночи","chat":["ночи"]},"retiarius_trident":{"name":"Вилка для фондю","chat":["фондю"]},"barbarian_club":{"name":"Бита громилы","chat":["громилы"]},"longbow":{"name":"Длинный лук","chat":["длинный"]},"sagittarius_bow":{"name":"Лук снайпера","chat":["снайпера"]},"ember_staff":{"name":"Микрофон-огонёк","chat":["огонёк","огонек"]},"elder_crook":{"name":"Трость старейшины","chat":["старейшины"]},"gold_censer":{"name":"Золотое ведёрко","chat":["золотое"]},"tower_shield":{"name":"Дверь лимузина XL","chat":["xl"]},"hoplite_shield":{"name":"Гигантский бургер","chat":["гигантский"]},"spiked_buckler":{"name":"Пластинка с шипами","chat":["пластинка с шипами"]},"segmentata":{"name":"Бронежилет","chat":["бронежилет"]},"scale_armor":{"name":"Куртка с пайетками","chat":["куртка"]},"stargazer_robe":{"name":"Халат звездочёта","chat":["звездочёта","звездочета"]},"crested_helm":{"name":"Шлем с ирокезом","chat":["ирокезом"]},"horned_helm":{"name":"Шлем викинга","chat":["викинга"]},"priest_tiara":{"name":"Диадема","chat":["диадема"]},"wolfpack_amulet":{"name":"Цепь стаи","chat":["стаи"]},"frost_bead":{"name":"Ледяной страз","chat":["страз"]},"praetorian_spatha":{"name":"Фри охраны","chat":["охраны"]},"apollo_bow":{"name":"Солнечный лук","chat":["солнечный"]},"pontifex_censer":{"name":"Ведро босса","chat":["босса"]},"praetorian_armor":{"name":"Костюм охраны","chat":["костюм охраны"]},"golden_crown":{"name":"Золотая корона","chat":["корона"]},"quilted_jacket":{"name":"Пуховик","chat":["пуховик"]},"ranger_jacket":{"name":"Ветровка","chat":["ветровка"]},"hunter_armor":{"name":"Жилет с карманами","chat":["жилет"]},"novice_cassock":{"name":"Халат новичка","chat":["халат новичка"]},"archmage_robe":{"name":"Халат из шелка","chat":["шелка"]},"archer_hood":{"name":"Худи с капюшоном","chat":["худи"]},"marksman_hood":{"name":"Бейсболка","chat":["бейсболка"]},"novice_hat":{"name":"Бумажная пилотка","chat":["пилотка"]},"archer_charm":{"name":"Брелок стрелка","chat":["стрелка"]},"sage_charm":{"name":"Брелок мудреца","chat":["мудреца"]},"stone_charm":{"name":"Брелок-камешек","chat":["камешек"]},"scroll_revive":{"name":"VIP-пропуск","chat":["пропуск","вип","свиток"]},"metamorph_seal":{"name":"Печать Ребрендинга","chat":["ребрендинга","ребрендинг"]},"enchant_star":{"name":"Звезда удачи","chat":["звезда"]},"enchant_sphere":{"name":"Снежный шар","chat":["шар","снежный"]},"rog_jerkin":{"name":"Олимпийка","chat":["олимпийка"]},"rog_leathers":{"name":"Косуха налётчика","chat":["косуха"]},"rog_night_coat":{"name":"Чёрный бомбер","chat":["бомбер"]},"rog_shadow_cloak":{"name":"Худи-невидимка","chat":["невидимка"]},"rog_laverna_cloak":{"name":"Шуба Лаверны","chat":["шуба лаверны"]},"rog_hood":{"name":"Капюшон олимпийки","chat":["капюшон олимпийки"]},"rog_mask":{"name":"Балаклава","chat":["балаклава"]},"rog_cowl":{"name":"Тёмные очки","chat":["очки","тёмные","темные"]},"rog_faceless":{"name":"Маска-смайлик","chat":["смайлик"]},"rog_laverna_mask":{"name":"Очки Лаверны","chat":["очки лаверны"]},"rog_lockpick":{"name":"Отмычка-брелок","chat":["отмычка"]},"rog_viper_vial":{"name":"Флакон парфюма","chat":["парфюм","парфюма"]},"rog_cat_eye":{"name":"Перстень-глаз","chat":["перстень-глаз"]},"nec_shroud":{"name":"Халат из гримёрки","chat":["гримёрки","гримерки"]},"nec_undertaker_robe":{"name":"Чёрный пиджак","chat":["пиджак"]},"nec_bone_mantle":{"name":"Пиджак со скелетом","chat":["со скелетом"]},"nec_lich_robe":{"name":"Смокинг лича","chat":["смокинг"]},"nec_proserpina_mantle":{"name":"Шуба Прозерпины","chat":["прозерпины"]},"nec_hood":{"name":"Бини продюсера","chat":["бини"]},"nec_skull_hood":{"name":"Кепка с черепом","chat":["кепка с черепом"]},"nec_bone_crown":{"name":"Корона из костей","chat":["корона из костей"]},"nec_lich_crown":{"name":"Корона-череп","chat":["корона-череп"]},"nec_dis_crown":{"name":"Цилиндр Дис Патера","chat":["цилиндр"]},"nec_dead_finger":{"name":"Перстень-кость","chat":["перстень-кость"]},"nec_soul_jar":{"name":"Флешка с душой","chat":["флешка"]},"nec_phylactery":{"name":"Мастер-копия","chat":["мастер-копия"]},"pal_cuirass":{"name":"Жилет охранника","chat":["жилет охранника"]},"pal_templar_plate":{"name":"Белый бронежилет","chat":["белый бронежилет"]},"pal_blessed_plate":{"name":"Броня с бейджем","chat":["броня с бейджем"]},"pal_dawn_plate":{"name":"Латы с пайетками","chat":["латы"]},"pal_apollo_plate":{"name":"Платиновый доспех","chat":["платиновый доспех"]},"pal_helm":{"name":"Кепка охраны","chat":["кепка охраны"]},"pal_great_helm":{"name":"Шлем охраны VIP","chat":["шлем охраны"]},"pal_winged_helm":{"name":"Шлем с крыльями","chat":["крыльями"]},"pal_halo_helm":{"name":"Шлем с неон-нимбом","chat":["неон-нимбом"]},"pal_apollo_helm":{"name":"Платиновый шлем","chat":["платиновый шлем"]},"pal_ladanka":{"name":"Бейдж охраны","chat":["бейдж"]},"pal_sun_medal":{"name":"Медаль-солнце","chat":["медаль"]},"pal_dawn_sign":{"name":"Значок рассвета","chat":["значок"]},"miner_helmet":{"name":"Неоновая каска","chat":["каска"]},"aurus_seal_5":{"name":"Печать Аурума 5","chat":["аурума","печать"]},"aurus_seal_6":{"name":"Печать Аурума 6","chat":["аурума","печать"]},"aurus_seal_7":{"name":"Печать Аурума 7","chat":["аурума","печать"]},"aurus_seal_8":{"name":"Печать Аурума 8","chat":["аурума","печать"]},"aurus_seal_9":{"name":"Печать Аурума 9","chat":["аурума","печать"]},"aurus_seal_10":{"name":"Печать Аурума 10","chat":["аурума","печать"]},"aurus_seal_11":{"name":"Печать Аурума 11","chat":["аурума","печать"]},"aurus_seal_12":{"name":"Печать Аурума 12","chat":["аурума","печать"]},"aurus_seal_13":{"name":"Печать Аурума 13","chat":["аурума","печать"]},"aurus_seal_14":{"name":"Печать Аурума 14","chat":["аурума","печать"]},"aurus_seal_15":{"name":"Печать Аурума 15","chat":["аурума","печать"]}},"roles":{"recruit":"Новичок","legionary":"Вышибала","archer":"Снайпер","mage":"Диджей","priest":"Тамада","rogue":"Карманник","necromancer":"Продюсер","paladin":"Охранник VIP"},"looks":{"shapes":{"bean":"Братуха","box":"Шкаф","ball":"Пухляш","tall":"Модель","ghost":"Тусовщик-призрак","cone":"Качок","egg":"Малой"},"eyes":{"dots":"Невозмутимый","big":"Удивлённый","happy":"Довольный","cyclops":"Моноочко","stars":"Звёздные очи","jack":"Тыквенный взгляд","void":"Пустой взгляд"},"mouths":{"open":"Йоу!","grin":"Улыбка-грилзы","tongue":"Язык наружу"},"hats":{"none":"Без шапки","tuft":"Укладка","cap":"Кепка задом","bow":"Бант","horns":"Рожки","crown":"Бумажная корона","tophat":"Ведро крылышек","party":"Колпак тусовки","wizard":"Коробка фри","antenna":"Диско-антенна","antenna2":"Две антенны","cat":"Кошачьи ушки","bunny":"Заячьи уши","halo":"Неоновый нимб","sprout":"Пальма на макушке","bandana":"Бандана","legion":"Шлем легиона","laurel":"Венок из купюр","beret":"Берет","headphones":"Наушники","cowboy":"Ковбойская шляпа","chef":"Пилотка бургерной","pumpkin":"Тыква","witch":"Шляпа ведьмы","batears":"Уши нетопыря","skull":"Черепок","reaper":"Капюшон жнеца","scarehat":"Шляпа пугала"},"acc":{"bowtie":"Бабочка","tie":"Галстук","scarf":"Шарф","glasses":"Очки-сердечки","shades":"Огромные очки","monocle":"Монокль","mustache":"Усы","cape":"Меховая накидка","fangs":"Золотые грилзы","vampcape":"Плащ вампира","candybag":"Пакет из бутика","bolts":"Болты","cobweb":"Паутинка"},"auras":{"gold":"Золотой блеск","sparks":"Конфетти","halo":"Нимб звезды","shadow":"Тёмный шик","frost":"Бриллиантовый лёд","wisps":"Огни софитов","bats":"Нетопыри","jackglow":"Тыквенное сияние","haunt":"Дым кальяна","leaves":"Дождь из купюр"},"colors":{"#ff9fb2":"Розовая шуба","#ffb27a":"Персиковая шуба","#ffe27a":"Лимонная шуба","#9fe39a":"Мятная шуба","#7fd6e6":"Бирюзовая шуба","#8fb6ff":"Голубая шуба","#b9a2ff":"Лиловая шуба","#e6e6ee":"Белая норка","#ffc94d":"Золотая шуба","#5a5470":"Графитовая шуба","#ff8a1f":"Джерси «42»","#9fffd0":"Неоновая шуба","#7b3fe4":"Фиолетовая шуба"}},"places":{"camp":{"name":"Глэмпинг Братух","sub":"лагерь новобранцев Легиона"}}});

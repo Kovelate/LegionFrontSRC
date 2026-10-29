@@ -4,8 +4,9 @@
 ENDPOINT="play.multidonate.ru/site/ver"     # URL эндпоинта с версией
 FILES_LIST="files.link"                     # Файл со списком ссылок
 
-INTERVAL_NORMAL=600                         # Обычный интервал (10 минут)
-INTERVAL_ERROR=2400                         # Интервал при ошибке (40 минут)
+INTERVAL_FAST=60                            # Частый интервал
+INTERVAL_NORMAL=600                         # Обычный интервал
+INTERVAL_ERROR=1200                         # Интервал при ошибке
 CURRENT_INTERVAL=$INTERVAL_NORMAL           # Текущий интервал (по умолчанию обычный)
 
 LAST_VERSION_FILE="last_version"            # Файл для хранения последней версии
@@ -15,7 +16,7 @@ echo ""
 
 while true; do
     # 1. Получаем текущую версию
-    CURRENT_VERSION=$(curl -L -s --max-time 15 "$ENDPOINT")
+    CURRENT_VERSION=$(curl -L -s --retry 3 --max-time 5 "$ENDPOINT")
 
     # Проверяем, что ответ от сервера вообще пришел
     if [ -z "$CURRENT_VERSION" ]; then

@@ -50,6 +50,12 @@
 .cy-tip { position: absolute; transform: translate(-50%, -100%); white-space: nowrap; font: 800 calc(13px * var(--iz, 1.5))/1 var(--tx, system-ui); color: #15122e; background: #fff3c8;
   border: calc(2px * var(--iz, 1.5)) solid var(--hov); padding: calc(5px * var(--iz, 1.5)) calc(10px * var(--iz, 1.5)); border-radius: 999px; box-shadow: 0 calc(2px * var(--iz, 1.5)) 0 rgba(0, 0, 0, .3); }
 @media (prefers-reduced-motion: reduce) { .cy-hov, .cy-ols canvas { transition: none; } }
+/* 29.10 (city-wasd): «E - войти» у двери ближайшего здания (ходьба клавишами, city.js kwHint): слой камеры, место - transform, появление - opacity */
+.cy-ekey { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 3; opacity: 0; transition: opacity .15s; white-space: nowrap;
+  font: 800 calc(12px * var(--iz, 1.5))/1 var(--tx, system-ui); color: #fff3c8; background: rgba(21, 18, 46, .86); padding: calc(4px * var(--iz, 1.5)) calc(9px * var(--iz, 1.5)); border-radius: 999px; }
+.cy-ekey.on { opacity: 1; }
+.cy-ekey kbd { display: inline-block; font: inherit; color: #15122e; background: #ffd34a; border-radius: calc(4px * var(--iz, 1.5)); padding: calc(2px * var(--iz, 1.5)) calc(5px * var(--iz, 1.5)); margin-right: calc(3px * var(--iz, 1.5)); }
+@media (prefers-reduced-motion: reduce) { .cy-ekey { transition: none; } }
 .cy-tags { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; }
 .cy-tag { position: absolute; transform: translate(-50%, -100%); pointer-events: auto; display: flex; align-items: center; gap: calc(5px * var(--iz, 1.5)); padding: calc(4px * var(--iz, 1.5)) calc(9px * var(--iz, 1.5)); border-radius: 999px;
   font: 800 calc(13px * var(--iz, 1.5))/1 var(--tx, system-ui); color: #15122e; background: #fff3c8; border: calc(2px * var(--iz, 1.5)) solid #15122e; cursor: pointer; white-space: nowrap; opacity: .92; }
@@ -93,7 +99,7 @@ html.cy-full .cy-bar { padding: 6px 8px; background: var(--bg, #0d0b22); }
 @media (prefers-reduced-motion: reduce) { .cy-tipb { transition: none; } }
 
 /* быстрый переход к зданиям */
-.cy-bar { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: thin; padding-bottom: 2px; }
+.cy-bar { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
 .cy-bar button { flex: none; display: flex; align-items: center; gap: 6px; min-height: 40px; padding: 6px 12px; border-radius: 10px; border: 2px solid var(--ink, #15122e);
   background: var(--surface, #fff); color: var(--ink, #15122e); font: 700 14px/1 var(--tx, system-ui); cursor: pointer; }
 .cy-bar button.soon { opacity: .7; }
@@ -354,6 +360,9 @@ html.cy-reading { overflow: hidden; }
   .cyf-wrap { grid-template-columns: minmax(0, 1.08fr) minmax(300px, 1fr); grid-template-areas: "doll anv" "doll mat" "doll ctl" "bag ctl"; grid-template-rows: auto auto auto 1fr; column-gap: 20px; align-items: start; }
   .cyf-anvbox { grid-area: anv; position: static; margin: 0; padding: 0; background: none; }
   .cyf-dollbox { grid-area: doll; } .cyf-bagbox { grid-area: bag; } .cyf-matbox { grid-area: mat; } .cyf-ctl { grid-area: ctl; }
+  /* 29.10: новая сумка (inv2) - кукла и сумка одним блоком в .cyf-bagbox; область «doll» пустела (~290 px над куклой) - сумка слева сверху */
+  .cyf-wrap.cyf-i2 { grid-template-areas: "bag anv" "bag mat" "bag ctl"; grid-template-rows: auto auto 1fr; }
+  .cyf-wrap.cyf-i2 .cyf-dollbox { display: none; }
 }
 .cyf-ctl:has(.fg-wrap) .cyf-hint { display: none; }
 .cyf-anv { display: grid; grid-template-columns: 112px 1fr; align-items: center; gap: 6px 14px; padding: 12px; border-radius: 14px; border: 2px dashed color-mix(in srgb, var(--ink, #15122e) 25%, transparent);
@@ -781,3 +790,25 @@ html.cy-reading { overflow: hidden; }
 .cy-room .cy-npcf, .cy-fig2 > .jd-ghost { animation: cy-npcFloat 3.4s ease-in-out infinite; }
 @keyframes cy-npcFloat { 50% { transform: translateY(-6px); } }
 @media (prefers-reduced-motion: reduce) { .cy-room .cy-npcf, .cy-fig2 > .jd-ghost { animation: none; } }
+/* 29.10 (Шахта 3.0, шаг 5): Ратуша - склад на 100 ячеек, мэр, здания */
+.cy-hgrid { list-style: none; margin: 6px 0 10px; padding: 0; display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 3px; }
+.cy-hs { position: relative; aspect-ratio: 1; border-radius: 6px; background: rgba(127, 127, 127, .12); border: 1.5px solid rgba(127, 127, 127, .4); display: flex; align-items: center; justify-content: center; }
+.cy-hs.empty { opacity: .5; }
+.cy-hs.over { border-color: #c0392b; }
+.cy-hs i { width: 46%; height: 46%; border-radius: 4px; border: 1.5px solid #15122e; }
+.cy-hs b { position: absolute; right: 2px; bottom: 0; font-size: 10px; line-height: 1.2; }
+.cy-hs.gem { box-shadow: inset 0 0 0 2px #b9a2ff; }
+.cy-htk { position: absolute; left: 0; top: 0; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 4px; background: #15122e; color: #fff; font-size: 11px; cursor: pointer; }
+.cy-hrow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0; }
+.cy-hrow .input { max-width: 180px; }
+.cy-hbld, .cy-hput { list-style: none; margin: 4px 0; padding: 0; }
+.cy-hbld li, .cy-hput li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 5px 0; border-bottom: 1px solid rgba(21, 18, 46, .12); }
+.cy-hbld li em { flex: 1; font-style: normal; opacity: .75; font-size: 13px; }
+.cy-hlog ul { margin: 4px 0; padding-left: 18px; font-size: 13px; }
+@media (max-width: 520px) { .cy-hgrid { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
+
+/* 29.10: лавка расходников - сколько штук (− 1 +) в окне покупки */
+.cy-qty { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 4px 0 10px; }
+.cy-qty .btn { min-width: 40px; padding: 6px 0; font-size: 20px; line-height: 1; }
+.cy-qty b { min-width: 2.2em; text-align: center; font-size: 20px; }
+.cy-qty small { opacity: .7; }

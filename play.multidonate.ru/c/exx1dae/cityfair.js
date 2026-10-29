@@ -496,7 +496,7 @@ try {
           s += `<path d="M${f1(mx)} ${f1(base - dh)} Q${f1(mx + dx * 0.62)} ${f1(base - dh * 0.5)} ${f1(mx + dx * 0.5)} ${f1(base)} L${f1(mx + dx * 0.86)} ${f1(base)} Q${f1(mx + dx * 0.78)} ${f1(base - dh * 0.6)} ${f1(mx)} ${f1(base - dh)} Z" fill="${lt}" stroke="${T.ink}" stroke-width="2.5"/>`;
           s += `<path d="M${f1(mx - dx * 0.7)} ${f1(base - dh * 0.42)} h${f1(dx * 0.18)} M${f1(mx + dx * 0.52)} ${f1(base - dh * 0.42)} h${f1(dx * 0.18)}" stroke="${o.tie || '#c8402a'}" stroke-width="4" stroke-linecap="round"/>`;
         } else s += `<path d="M${f1(mx)} ${f1(base - dh)} V${f1(base)}" stroke="${mix(c, T.ink, 0.4)}" stroke-width="2.5"/>`;
-        if (o.mud) s += `<path d="M${f1(B[0] + sg * 6)} ${f1(base - 4)} q${f1(sg * 14)} -10 ${f1(sg * 28)} -2 q${f1(sg * 14)} -9 ${f1(sg * 26)} 0" stroke="${mix(c, '#5a4030', 0.6)}" stroke-width="5" fill="none" stroke-linecap="round" opacity=".7"/>`;
+        // 29.10 (стример: лишние полосы у входа): «грязь» волнистой полоской по низу фронтона убрана - она шла через вход и полог (o.mud не рисуется)
         // кол на коньке, верёвки фронтона
         s += `<path d="M${pt(A)} V${f1(A[1] - 16)}" stroke="${T.ink}" stroke-width="7" stroke-linecap="round"/><path d="M${pt(A)} V${f1(A[1] - 16)}" stroke="${o.pole || T.woodL}" stroke-width="3.5" stroke-linecap="round"/>`;
         s += peg(A[0], A[1] + 4, A[0] - sg * w * 0.34, base - 4);
@@ -514,10 +514,12 @@ try {
         // конус крыши: дольки
         const cone = `M${f1(x)} ${f1(top)} L${f1(x - rw * 1.04)} ${f1(base - wh)} Q${f1(x)} ${f1(base - wh + 16)} ${f1(x + rw * 1.04)} ${f1(base - wh)} Z`;
         s += `<path d="${cone}" fill="${c}" ${O(4.5)}/>`;
-        if (o.s) for (let k = -3; k <= 3; k += 2) { const a = x + k * rw * 0.3, b = x + (k + 1) * rw * 0.3; s += `<path d="M${f1(x)} ${f1(top + 4)} L${f1(a)} ${f1(base - wh + 10 - Math.abs(a - x) * 0.06)} L${f1(b)} ${f1(base - wh + 10 - Math.abs(b - x) * 0.06)} Z" fill="${o.s}"/>`; }
+        // 29.10 (стример: «нижний край шатров кривой»): низ конуса - дуга Q (провис 8 посередине); полосы и фестоны садятся на неё же
+        const RR = rw * 1.04, cy = (xx) => { const t = Math.max(0, Math.min(1, (xx - x + RR) / (2 * RR))); return base - wh + 32 * t * (1 - t); };
+        if (o.s) for (let k = -3; k <= 3; k += 2) { const a = x + k * rw * 0.3, b = x + (k + 1) * rw * 0.3; s += `<path d="M${f1(x)} ${f1(top + 4)} L${f1(a)} ${f1(cy(a))} L${f1(b)} ${f1(cy(b))} Z" fill="${o.s}"/>`; }
         s += `<path d="M${f1(x - 6)} ${f1(top + 14)} L${f1(x - rw * 0.7)} ${f1(base - wh + 2)}" stroke="${lt}" stroke-width="4" stroke-linecap="round" opacity=".7"/>`;
         // кайма-фестоны по краю конуса
-        let fs = ''; const n = Math.max(6, Math.round(w / 34)); for (let i = 0; i < n; i++) { const a = x - rw * 1.02 + (i + 0.5) * (rw * 2.04 / n), y = base - wh + 6 + Math.abs(a - x) * -0.04 + 4; fs += `<path d="M${f1(a - rw / n)} ${f1(y - 6)} Q${f1(a)} ${f1(y + 10)} ${f1(a + rw / n)} ${f1(y - 6)} Z" fill="${i % 2 ? (o.s || d) : c}" stroke="${T.ink}" stroke-width="2"/>`; }
+        let fs = ''; const n = Math.max(6, Math.round(w / 34) | 1), sw = 2 * RR / n; for (let i = 0; i < n; i++) { const xa = x - RR + i * sw, xb = xa + sw, ya = cy(xa), yb = cy(xb); fs += `<path d="M${f1(xa)} ${f1(ya)} Q${f1((xa + xb) / 2)} ${f1(Math.max(ya, yb) + sw * 0.55)} ${f1(xb)} ${f1(yb)} Z" fill="${i % 2 ? (o.s || d) : c}" stroke="${T.ink}" stroke-width="2" stroke-linejoin="round"/>`; }
         s += fs;
         // вход
         const dh = wh + ch * 0.36, dw = w * 0.14;
@@ -579,8 +581,8 @@ try {
         return `<g transform="rotate(${rot} ${f1(x)} ${f1(base)})"><ellipse cx="${f1(x)}" cy="${f1(base + 3)}" rx="${f1(len / 2 + 6)}" ry="7" fill="${T.ink}" opacity=".3"/><rect x="${f1(x - len / 2)}" y="${f1(base - r * 2)}" width="${f1(len)}" height="${r * 2}" rx="${r}" fill="${c}" ${O(4)}/><path d="M${f1(x - len / 2 + 14)} ${f1(base - r * 1.4)} H${f1(x + len / 2 - 20)} M${f1(x - len / 2 + 24)} ${f1(base - r * 0.7)} H${f1(x + len / 2 - 30)}" stroke="${mix(c, T.ink, 0.35)}" stroke-width="2.2" stroke-linecap="round" opacity=".7"/><ellipse cx="${f1(x + len / 2 - 4)}" cy="${f1(base - r)}" rx="7" ry="${r - 1}" fill="${T.woodL}" stroke="${T.ink}" stroke-width="3"/><path d="M${f1(x + len / 2 - 5)} ${f1(base - r - 5)} a3 4 0 1 0 1 0" stroke="${mix(T.woodL, T.ink, 0.35)}" stroke-width="1.6" fill="none"/></g>`;
       }
       // подстилка (скатка) у палатки
-      // подстилка у палатки: коврик в перспективе (полосы по краю), скатанное одеяло, подушка
-      const bedroll = (x, base, c = '#7a5a9a', o = {}) => `<ellipse cx="${f1(x)}" cy="${f1(base + 6)}" rx="70" ry="12" fill="${T.ink}" opacity=".25"/><path d="M${f1(x - 64)} ${f1(base + 8)} L${f1(x - 44)} ${f1(base - 18)} H${f1(x + 60)} L${f1(x + 70)} ${f1(base + 8)} Z" fill="${o.mat || mix(c, '#efe4c8', 0.55)}" ${O(3)}/><path d="M${f1(x - 56)} ${f1(base)} L${f1(x - 40)} ${f1(base - 12)} M${f1(x + 54)} ${f1(base - 12)} L${f1(x + 62)} ${f1(base)}" stroke="${c}" stroke-width="5" stroke-linecap="round"/>`
+      // подстилка у палатки: коврик в перспективе, скатанное одеяло, подушка (29.10: косые полоски на концах коврика убраны - висели мимо края)
+      const bedroll = (x, base, c = '#7a5a9a', o = {}) => `<ellipse cx="${f1(x)}" cy="${f1(base + 6)}" rx="70" ry="12" fill="${T.ink}" opacity=".25"/><path d="M${f1(x - 64)} ${f1(base + 8)} L${f1(x - 44)} ${f1(base - 18)} H${f1(x + 60)} L${f1(x + 70)} ${f1(base + 8)} Z" fill="${o.mat || mix(c, '#efe4c8', 0.55)}" ${O(3)}/>`
         + `<path d="M${f1(x + 6)} ${f1(base - 16)} H${f1(x + 54)} Q${f1(x + 70)} ${f1(base - 4)} ${f1(x + 56)} ${f1(base + 8)} H${f1(x + 8)} Q${f1(x - 8)} ${f1(base - 4)} ${f1(x + 6)} ${f1(base - 16)} Z" fill="${c}" stroke="${T.ink}" stroke-width="2.6"/><path d="M${f1(x + 16)} ${f1(base - 12)} q-8 8 0 16 M${f1(x + 30)} ${f1(base - 13)} q-8 8 0 18 M${f1(x + 44)} ${f1(base - 13)} q-8 8 0 18" stroke="${mix(c, T.ink, 0.35)}" stroke-width="2" fill="none"/>`
         + `<path d="M${f1(x - 46)} ${f1(base - 8)} Q${f1(x - 40)} ${f1(base - 22)} ${f1(x - 22)} ${f1(base - 18)} Q${f1(x - 10)} ${f1(base - 8)} ${f1(x - 18)} ${f1(base + 2)} Q${f1(x - 40)} ${f1(base + 6)} ${f1(x - 46)} ${f1(base - 8)} Z" fill="${o.pillow || '#efe4c8'}" stroke="${T.ink}" stroke-width="2.4"/>`;
       /* верёвка с бельём между точками (x0, y0) и (x1, y1): items - массив видов 'shirt' | 'sock' | 'towel' | 'pants' | своё (функция) */
@@ -652,7 +654,8 @@ try {
       function woodpile(x, base) {
         let s = `<ellipse cx="${f1(x)}" cy="${f1(base + 2)}" rx="76" ry="9" fill="${T.ink}" opacity=".3"/><rect x="${f1(x - 70)}" y="${f1(base - 70)}" width="140" height="70" fill="${T.woodD}" ${O(3.5)}/>`;
         for (let r = 0; r < 3; r++) for (let i = 0; i < 6 - (r === 2 ? 1 : 0); i++) s += put(def('logEnd', () => ''), x - 58 + i * 23 + (r % 2) * 11, base - 12 - r * 21);
-        return s + `<path d="M${f1(x - 82)} ${f1(base - 70)} H${f1(x + 82)}" stroke="${T.ink}" stroke-width="12" stroke-linecap="round"/><path d="M${f1(x - 82)} ${f1(base - 70)} H${f1(x + 82)}" stroke="${T.wood}" stroke-width="7" stroke-linecap="round"/><path d="M${f1(x + 50)} ${f1(base - 84)} l20 6" stroke="${T.ink}" stroke-width="5" stroke-linecap="round"/><path d="M${f1(x + 44)} ${f1(base - 92)} l16 -8 l8 8 Z" fill="#c8ccd4" stroke="${T.ink}" stroke-width="2.5"/>`;
+        return s + `<path d="M${f1(x - 82)} ${f1(base - 70)} H${f1(x + 82)}" stroke="${T.ink}" stroke-width="12" stroke-linecap="round"/><path d="M${f1(x - 82)} ${f1(base - 70)} H${f1(x + 82)}" stroke="${T.wood}" stroke-width="7" stroke-linecap="round"/><path d="M${f1(x + 40)} ${f1(base - 86)} L${f1(x + 74)} ${f1(base - 104)}" stroke="${T.ink}" stroke-width="8" stroke-linecap="round"/><path d="M${f1(x + 40)} ${f1(base - 86)} L${f1(x + 74)} ${f1(base - 104)}" stroke="${T.woodL}" stroke-width="4" stroke-linecap="round"/>`
+          + `<path d="M${f1(x + 33)} ${f1(base - 95)} H${f1(x + 44)} L${f1(x + 50)} ${f1(base - 75)} Q${f1(x + 38.5)} ${f1(base - 71)} ${f1(x + 27)} ${f1(base - 75)} Z" fill="#c8ccd4" stroke="${T.ink}" stroke-width="2.5" stroke-linejoin="round"/><path d="M${f1(x + 33)} ${f1(base - 87)} H${f1(x + 44)}" stroke="${T.ink}" stroke-width="2"/><path d="M${f1(x + 30)} ${f1(base - 78)} Q${f1(x + 38.5)} ${f1(base - 75)} ${f1(x + 47)} ${f1(base - 78)}" stroke="#ffffff" stroke-width="2" fill="none" opacity=".7"/>`;   // 29.10: топор воткнут в доску - лезвие и топорище вместе (были врозь)
       }
       // котелок на маленькой треноге (у палатки), под ним - угли
       function potTripod(x, base, o = {}) {

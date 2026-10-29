@@ -10,6 +10,8 @@
   --item-ol-c: #f2b632; --item-ol: drop-shadow(1.5px 0 0 var(--item-ol-c)) drop-shadow(-1.5px 0 0 var(--item-ol-c)) drop-shadow(0 1.5px 0 var(--item-ol-c)) drop-shadow(0 -1.5px 0 var(--item-ol-c));
 }
 *, *::before, *::after { box-sizing: border-box; }
+/* 29.10: выпадающий список (сортировка сумки и др.) - пункты в цветах темы: раньше светлый текст на белом фоне браузера */
+select option, select optgroup { background-color: var(--surface, #fff); color: var(--ink, #111); }
 html, body { margin: 0; }
 body { min-height: 100vh; background: var(--bg); color: var(--ink); font: 500 var(--t-md)/1.45 var(--tx); -webkit-font-smoothing: antialiased; }
 button { font: inherit; color: inherit; cursor: pointer; }
@@ -21,6 +23,18 @@ button:disabled { cursor: not-allowed; }
 .i { width: 1.15em; height: 1.15em; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vertical-align: -.2em; }
 h1, h2, h3 { margin: 0; }
 p { margin: 0; text-wrap: pretty; }
+
+/* 29.10 (стример: «скролл по стилю сайта везде»): ОДИН стиль полос прокрутки для всего сайта - страница, окна, списки, поля ввода (textarea),
+   выпадающие списки: тонкие (8 px), скруглённые, без стрелок, цвет текста темы (--ink) с прозрачностью, акцент (--hov) при наведении.
+   Тёмные окна на светлой теме задают свой --sbt (цвет полосы), как .mn в mine.css. Chrome/Edge/Safari - ::-webkit-scrollbar (scrollbar-color в Chrome 121+
+   отключил бы его - поэтому для них свойств scrollbar-* не ставим), Firefox - scrollbar-width / scrollbar-color. */
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: var(--sbt, color-mix(in srgb, var(--ink, #888) 26%, transparent)); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+*::-webkit-scrollbar-thumb:hover { background: var(--hov, var(--accent, #ffc94d)); background-clip: padding-box; }
+*::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+*::-webkit-scrollbar-corner { background: transparent; }
+@supports (-moz-appearance: none) { * { scrollbar-width: thin; scrollbar-color: var(--sbt, color-mix(in srgb, var(--ink, #888) 34%, transparent)) transparent; } }
 
 /* человечки движка */
 .jl-doodle { display: block; width: 100%; height: auto; overflow: visible; }
@@ -101,8 +115,20 @@ main { max-width: 1320px; margin: 0 auto; padding: var(--s5) var(--s5) var(--s7)
 .bag-h { display: flex; align-items: baseline; gap: var(--s3); flex-wrap: wrap; margin-bottom: var(--s4); }
 .filters { display: flex; flex-wrap: wrap; gap: var(--s2); margin-bottom: var(--s4); }
 .filters button { min-height: 36px; padding: 6px var(--s3); font-size: var(--t-sm); font-weight: 700; transition: background .2s var(--ease), color .2s var(--ease), border-color .2s var(--ease); }
-.filters.cls { margin-top: calc(-1 * var(--s2)); }
-.filters.cls button { min-height: 32px; font-weight: 600; }
+/* 29.10: фильтр сумки по классу - одна строка «Класс: <список>»; цвета берёт у оформления (--ink, --surface2, --accent), стрелка рисуется границами */
+.clsf { position: relative; display: flex; width: fit-content; align-items: center; gap: var(--s2); max-width: 100%; margin: 0 0 var(--s3); font-size: var(--t-sm); color: var(--mute); }
+.clsf > span { flex: none; font-weight: 700; }
+.clsf select { appearance: none; -webkit-appearance: none; flex: 0 1 auto; min-width: 0; max-width: 100%; min-height: 36px; padding: 4px 32px 4px var(--s3); border: 1px solid color-mix(in srgb, var(--ink) 28%, transparent); border-radius: var(--pop-r, 999px); background: var(--surface2); color: var(--ink); font: inherit; font-weight: 700; text-overflow: ellipsis; cursor: pointer; }
+.clsf select option { background: var(--surface); color: var(--ink); }
+.clsf::after { content: ""; position: absolute; right: 14px; top: 50%; width: 7px; height: 7px; margin-top: -6px; border: solid var(--mute); border-width: 0 2px 2px 0; transform: rotate(45deg); pointer-events: none; }
+.clsf.on select { border-color: var(--accent); }
+.clsf.on > span { color: var(--ink); }
+.clsf select:hover { border-color: var(--accent-2, var(--accent)); }
+html[data-skin="poster"] .clsf select, html[data-skin="comic"] .clsf select, html[data-skin="sticker"] .clsf select, html[data-skin="box"] .clsf select { border-width: 2px; border-color: var(--ink); }
+html[data-skin="poster"] .clsf select, html[data-skin="box"] .clsf select, html[data-skin="plank"] .clsf select { border-radius: 3px; }
+html[data-skin="comic"] .clsf select { border-radius: 8px; }
+html[data-skin="poster"] .clsf.on select, html[data-skin="comic"] .clsf.on select, html[data-skin="sticker"] .clsf.on select, html[data-skin="box"] .clsf.on select { background: var(--ink); color: var(--surface); }
+html[data-skin="poster"] .clsf.on select option, html[data-skin="comic"] .clsf.on select option, html[data-skin="sticker"] .clsf.on select option, html[data-skin="box"] .clsf.on select option { background: var(--surface); color: var(--ink); }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: var(--s3); }
 .cell { position: relative; display: grid; grid-template-rows: 1fr auto; gap: var(--s1); aspect-ratio: 1 / 1.12; padding: var(--s3) var(--s2) var(--s2); text-align: center;
   transition: transform .2s var(--ease), box-shadow .2s var(--ease), border-color .2s var(--ease), background .2s var(--ease); }
@@ -1927,3 +1953,50 @@ html[data-skin="cave"] .cell[aria-pressed="true"] { box-shadow: inset 0 -6px 0 v
 
 /* переключатель стиля тестеров: 7 стилей - на телефоне переносом в две строки, не шире экрана */
 @media (max-width: 720px) { .style-switch { flex-wrap: wrap; justify-content: center; max-width: calc(100vw - 24px); } .style-switch button { min-height: 32px; padding: 0 8px; } html:has(.style-switch) body { padding-bottom: 104px; } }
+
+/* 29.10: личка страницы (packages/site-ui/dm.js, window.LGDm) - во вкладке «Личные» чата «Города» и шахты, вне них - окно в ЛЕВОМ
+   нижнем углу (правый - вебка стримера). Цвета - как у чата «Города» (тёмная подложка); движение - только opacity. */
+.dm { display: flex; flex-direction: column; gap: 4px; font: 500 14px/1.35 var(--tx, system-ui); color: #fff; }
+.dm-tabs { display: flex; flex-wrap: wrap; gap: 4px; }
+.dm-tab { display: inline-flex; align-items: center; border-radius: 999px; background: rgba(255, 255, 255, .08); }
+.dm-tab.on { background: rgba(255, 255, 255, .2); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .45); }
+.dm-tab button { min-height: 28px; border: 0; background: none; font: 700 12px/1 var(--tx, system-ui); cursor: pointer; }
+.dm-tab [data-dmt] { padding: 0 4px 0 10px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dm-x { width: 26px; padding: 0; color: rgba(255, 255, 255, .6); font-size: 16px !important; }
+.dm-x:hover, .dm-x:focus-visible { color: #fff; }
+.dm-tab button:focus-visible { outline: 2px solid #fff; outline-offset: 0; border-radius: 999px; }
+.dm-un { margin-left: 5px; padding: 0 5px; border-radius: 999px; background: #ffc94d; color: #15122e; font-size: 11px; line-height: 16px; }
+.dm-h { display: flex; align-items: center; gap: 6px; justify-content: space-between; }
+.dm-h[hidden], .dm-rep[hidden] { display: none; }
+.dm-who { font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dm-acts { display: flex; gap: 4px; flex: none; }
+.dm-acts button, .dm-rep button { min-height: 26px; padding: 0 8px; border: 1px solid rgba(255, 255, 255, .3); border-radius: 8px; background: transparent; color: #fff; font: 600 11px/1 var(--tx, system-ui); cursor: pointer; }
+.dm-acts button:hover, .dm-rep button:hover { background: rgba(255, 255, 255, .14); }
+.dm-rep { display: flex; gap: 4px; }
+.dm-rep input, .dm-f input { flex: 1 1 auto; min-width: 0; min-height: 32px; padding: 4px 10px; border: 1px solid rgba(255, 255, 255, .25); border-radius: 10px; background: rgba(0, 0, 0, .25); color: #fff; font: inherit; }
+.dm-l { list-style: none; margin: 0; padding: 0 2px 0 0; max-height: min(240px, 34vh); overflow-y: auto; overscroll-behavior: contain; }
+.dm-l li { padding: 3px 0; overflow-wrap: anywhere; }
+.dm-l li b { font-weight: 800; }
+.dm-l li.me b { color: #9fe0ff !important; }
+.dm-l .dm-0 { color: rgba(255, 255, 255, .65); }
+.dm-old button { border: 0; background: none; color: #ffc94d; font: 600 12px/1 var(--tx, system-ui); cursor: pointer; padding: 2px 0; }
+.dm-e { min-height: 1em; margin: 0; font-size: 12px; color: #ffb0a6; }
+.dm-e.ok { color: #9be7a8; }
+.dm-e:empty { min-height: 0; }
+.dm-f { display: flex; gap: 6px; }
+.dm-f button { width: 36px; border: 0; border-radius: 10px; background: #ffc94d; color: #15122e; font-weight: 800; cursor: pointer; }
+.dm-f input:disabled { opacity: .6; }
+.dm-float { position: fixed; z-index: 60; left: max(12px, env(safe-area-inset-left)); bottom: max(12px, env(safe-area-inset-bottom)); width: min(340px, calc(100vw - 24px));
+  padding: 8px 10px 10px; border-radius: 14px; background: rgba(15, 12, 34, .92); box-shadow: 0 6px 20px rgba(0, 0, 0, .35); animation: dm-in .15s ease; }
+@keyframes dm-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .dm-float { animation: none; } }
+.dm-float[hidden] { display: none; }
+.dm-float.fold { width: auto; padding: 0; background: none; box-shadow: none; }
+.dm-float.fold .dm-fb { display: none; }
+.dm-fh { display: flex; margin-bottom: 6px; }
+.dm-float.fold .dm-fh { margin: 0; }
+.dm-ft { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 12px; border: 0; border-radius: 999px; background: rgba(15, 12, 34, .9); color: #fff; font: 700 13px/1 var(--tx, system-ui); cursor: pointer; }
+.dm-ft:focus-visible { outline: 2px solid #fff; }
+.dm-fn { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: #ffc94d; color: #15122e; font-size: 11px; line-height: 18px; text-align: center; }
+.dm-fn[hidden] { display: none; }
+html.sm-on .dm-float, body.sm-on .dm-float { display: none; }   /* режим стримера - без лички поверх пульта */

@@ -18,6 +18,7 @@
             <div class="cy-chat-tabs" role="tablist" aria-label="Вкладки чата" hidden><button type="button" role="tab" data-tab="g" aria-selected="true">Общий<b class="cy-chat-tn" hidden></b></button><button type="button" role="tab" data-tab="tr" aria-selected="false" hidden>Торговля<b class="cy-chat-tn" hidden></b></button><button type="button" role="tab" data-tab="ev" aria-selected="false" hidden title="События игры: заточки, достижения">Достижения<b class="cy-chat-tn" hidden></b></button><button type="button" role="tab" data-tab="dm" aria-selected="false" hidden>Личные<b class="cy-chat-tn" hidden></b></button></div>
             <div class="cy-chat-p" hidden></div>
             <ol class="cy-chat-l" role="log" aria-label="Сообщения"></ol>
+            <div class="cy-chat-dmx" hidden></div>
             <div class="cy-chat-to" hidden></div>
             <p class="cy-chat-e" role="status"></p>
             <form class="cy-chat-f" autocomplete="off"><input type="text" maxlength="200" enterkeyhint="send" placeholder="${esc(K.ph || 'Написать в чат…')}" aria-label="Сообщение в чат"><button type="submit" aria-label="Отправить">➤</button></form>
@@ -45,7 +46,8 @@
       if (!St()) return;
       const h = X.hero(), box = St().el.querySelector('.cy-chat'); if (!box) return;
       const F = K.flags(h) || {}, on = !!F.on;
-      if (!St().chat) St().chat = { on, list: [], c: 0, mod: null, muted: null, open: chatPref(), unread: 0, panel: false, info: null, tab: 'g', un: { g: 0, tr: 0, dm: 0, ev: 0 }, peer: null, ign: new Set() };
+      if (!St().chat) St().chat = { on, list: [], c: 0, mod: null, muted: null, open: chatPref(), unread: 0, panel: false, info: null, tab: K.lastTab || 'g',   // 29.10: выбранная вкладка чата - переживает пересоздание сцены
+        un: { g: 0, tr: 0, dm: 0, ev: 0 }, peer: null, ign: new Set() };
       St().chat.on = on; box.hidden = !on;
       St().chat.tr = !!F.tr;
       St().chat.dm = !!F.dm;
@@ -53,6 +55,11 @@
       if (((St().chat.tab === 'tr' || St().chat.tab === 'ev') && !St().chat.tr) || (St().chat.tab === 'dm' && !St().chat.dm)) St().chat.tab = 'g';
       if (!on || box.dataset.bound) { if (on) chatRender(); return; }
       box.dataset.bound = '1';
+      // 29.10: личка страницы (window.LGDm, packages/site-ui/dm.js) - живёт вне сцены: здесь только её место во вкладке «Личные»
+      if (window.LGDm) {
+        window.LGDm.dock(K.key, box, box.querySelector('.cy-chat-dmx'));
+        window.LGDm.on(K.key, (why) => { if (!St() || !St().chat || !St().el.contains(box)) return; if (why === 'show' && St().chat.dm) { if (!St().chat.open) chatOpen(true); chatTab('dm'); } else chatBadges(box, St().chat); });
+      }
       const f = box.querySelector('.cy-chat-f'), inp = f.querySelector('input'), l = box.querySelector('.cy-chat-l'), pn = box.querySelector('.cy-chat-p');
       box.querySelector('.cy-chat-t').onclick = () => chatOpen(!St().chat.open);
       box.querySelector('.cy-chat-x').onclick = () => { chatOpen(false); try { box.querySelector('.cy-chat-t').focus({ preventScroll: true }); } catch {} };
@@ -140,8 +147,10 @@
       const me = nk === X.login(), h = X.hero(), C = St().chat;
       const items = [];
       if (!me && C.tab !== 'ev') items.push(['reply', 'Ответить']);
-      if (!me && C.dm) items.push(['dm', 'Написать в личку']);
+      if (!me && C.dm) items.push(['dm', window.LGDm ? 'Написать' : 'Написать в личку']);
+      if (!me && C.dm && window.LGDm) items.push(['dmrep', 'Пожаловаться']);   // 29.10: снимок переписки - модераторам
       if (!me && K.trade && h && h.tr && window.LGTrade) items.push(['trade', 'Предложить обмен']);
+      if (!me && window.LGFriends) for (const it of window.LGFriends.menuItems(nk)) items.push(it);   // 29.10: друзья и блок (friends.js)
       if (!items.length) return;
       const el = document.createElement('div'); el.className = 'cy-nm'; el.setAttribute('role', 'menu'); el.setAttribute('aria-label', `Ник ${name || nk}`);
       el.innerHTML = `<div class="cy-nm-h">${esc(name || nk)}</div>` + items.map(([k, t]) => `<button type="button" role="menuitem" data-nm="${k}">${t}</button>`).join('');
@@ -167,11 +176,13 @@
         const k = b.dataset.nm; nickMenuClose();
         if (k === 'reply') { if (C.tab === 'dm') chatTab('g'); chatReply(nk); }
         else if (k === 'dm') chatPeer(nk);
+        else if (k === 'dmrep') { const why = window.prompt(`Пожаловаться на ${name || nk}? Модераторы канала увидят последние 30 сообщений вашей переписки. Что случилось (можно пусто):`, ''); if (why !== null) window.LGDm.report(nk, why); }
         else if (k === 'trade') { window.LGTrade.mount(X, St().el); window.LGTrade.invite(nk); }
+        else if (k.startsWith('fr-') && window.LGFriends) window.LGFriends.menuAct(k, nk);
       });
       try { el.querySelector('button').focus({ preventScroll: true }); } catch {}
     }
-    function chatPeer(nk) { if (!St().chat.dm || !nk || nk === X.login()) return; St().chat.peer = nk; chatTab('dm'); }
+    function chatPeer(nk) { if (!St().chat.dm || !nk || nk === X.login()) return; if (window.LGDm) { window.LGDm.open(nk); chatTab('dm'); return; } St().chat.peer = nk; chatTab('dm'); }   // 29.10: вкладка собеседника - в LGDm
     async function chatIgnore(nk, on) {
       const r = await X.api(K.base + '/ignore', { login: nk, on }); if (!St() || !St().chat) return;
       if (!r || !r.ok) { chatErr((r && (CHAT_ERR[r.error] || r.error)) || 'не вышло'); return; }
@@ -179,20 +190,20 @@
     }
     function chatTab(t) {
       const C = St().chat; if (((t === 'tr' || t === 'ev') && !C.tr) || (t === 'dm' && !C.dm)) t = 'g';
-      C.tab = t; C.un[t] = 0; C.ren = null; chatRender(true);
-      const i = St().el.querySelector('.cy-chat input'); if (i && !window.LGSiteUi.is('touch')) try { i.focus({ preventScroll: true }); } catch {}
+      C.tab = t; K.lastTab = t; C.un[t] = 0; C.ren = null; chatRender(true);
+      const i = St().el.querySelector(St().chat.tab === 'dm' && window.LGDm ? '.cy-chat-dmx .dm-f input' : '.cy-chat-f input'); if (i && !window.LGSiteUi.is('touch')) try { i.focus({ preventScroll: true }); } catch {}
     }
     function chatOpen(on) {
       St().chat.open = on; if (on) { St().chat.unread = 0; St().chat.un[St().chat.tab] = 0; }
       try { localStorage.setItem(K.key, on ? '1' : '0'); } catch {}
       chatRender(true);
-      if (on && !St().chat.panel) { const i = St().el.querySelector('.cy-chat input'); if (i && !window.LGSiteUi.is('touch')) try { i.focus({ preventScroll: true }); } catch {} }
+      if (on && !St().chat.panel) { const i = St().el.querySelector(St().chat.tab === 'dm' && window.LGDm ? '.cy-chat-dmx .dm-f input' : '.cy-chat-f input'); if (i && !window.LGSiteUi.is('touch')) try { i.focus({ preventScroll: true }); } catch {} }
     }
     function chatEnter(r) {
       if (!St().chat || !St().chat.on) return;
       St().chat.mod = r.mod === 'own' || r.mod === 'mod' ? r.mod : null; St().chat.muted = r.muted || null;
       if (!St().chat.mod) St().chat.panel = false;
-      if (Array.isArray(r.chat)) { St().chat.list = r.chat.slice(); chatTrim(); St().chat.unread = 0; St().chat.un = { g: 0, tr: 0, dm: 0, ev: 0 }; }
+      if (Array.isArray(r.chat)) { St().chat.list = r.chat.filter((m) => !(m && m.k === 'dm' && window.LGDm)); chatTrim(); St().chat.unread = 0; St().chat.un = { g: 0, tr: 0, dm: 0, ev: 0 }; }
       if (Array.isArray(r.ign)) St().chat.ign = new Set(r.ign);
       if (r.c != null) St().chat.c = +r.c || 0;
       chatRender(true);
@@ -202,6 +213,7 @@
       let ch = false;
       for (const m of d.chat || []) {
         if (!m || !m.id || St().chat.list.some((x) => x.id === m.id)) continue;
+        if (m.k === 'dm' && window.LGDm) continue;   // 29.10: личные - событием «dm» в LGDm (сервер на время выкладки шлёт их и сюда)
         St().chat.list.push(m); ch = true;
         const tb = tabOf(m);
         if (St().chat.ign.has(m.l)) continue;   // игнор — не считаем и облачко не показываем
@@ -232,7 +244,7 @@
     const chatVis = () => { const C = St().chat; return C.list.filter((m) => tabOf(m) === C.tab && !C.ign.has(m.l) && (C.tab !== 'dm' || !C.peer || m.sys || m.l === C.peer || m.to === C.peer)); };
     // 24.10: строка «кому» в «Личных»: переписки (последние собеседники), выбранный — с «Игнор»; кто в игноре — «Снять игнор»
     function chatTo(box, C) {
-      const el = box.querySelector('.cy-chat-to'), on = C.tab === 'dm' && !C.panel; el.hidden = !on; if (!on) return;
+      const el = box.querySelector('.cy-chat-to'), on = C.tab === 'dm' && !C.panel && !window.LGDm; el.hidden = !on; if (!on) return;
       const me = X.login(), peers = [];
       for (let i = C.list.length - 1; i >= 0 && peers.length < 8; i--) { const m = C.list[i]; if (m.k !== 'dm') continue; const p = m.l === me ? m.to : m.l; if (p && !peers.includes(p) && !C.ign.has(p)) peers.push(p); }
       if (C.peer && !peers.includes(C.peer)) peers.unshift(C.peer);
@@ -270,25 +282,28 @@
     const canMod = (m) => m.k !== 'dm' && St().chat.mod && m.l !== X.login() && (St().chat.mod === 'own' || !m.r);
     // 24.10: вкладки (видны, только если открыта хоть одна, кроме «Общего»), счётчики непрочитанного на них и на кнопке «Чат»
     function chatBadges(box, C) {
-      const n = box.querySelector('.cy-chat-n'); n.hidden = !C.unread || C.open; n.textContent = C.unread > 99 ? '99+' : String(C.unread);
+      const du = C.dm && window.LGDm ? window.LGDm.unread() : 0, nu = C.unread + (C.open ? 0 : du);   // 29.10: непрочитанные личные - из LGDm
+      const n = box.querySelector('.cy-chat-n'); n.hidden = !nu; n.textContent = nu > 99 ? '99+' : String(nu);
       const tabs = box.querySelector('.cy-chat-tabs'); tabs.hidden = !(C.tr || C.dm) || !!C.panel;
       for (const tb of tabs.querySelectorAll('[data-tab]')) {
-        const t = tb.dataset.tab, u = C.un[t] || 0, bn = tb.querySelector('.cy-chat-tn');
+        const t = tb.dataset.tab, u = t === 'dm' && window.LGDm ? du : C.un[t] || 0, bn = tb.querySelector('.cy-chat-tn');
         if (t !== 'g') tb.hidden = !C[t];
         tb.setAttribute('aria-selected', String(C.tab === t)); bn.hidden = !u || C.tab === t; bn.textContent = u > 99 ? '99+' : String(u);
       }
     }
     function chatRender(toEnd) {
       const box = St() && St().el.querySelector('.cy-chat'); if (!box || !St().chat || !St().chat.on) return;
-      const C = St().chat, b = box.querySelector('.cy-chat-b'), n = box.querySelector('.cy-chat-n'), l = box.querySelector('.cy-chat-l'), inp = box.querySelector('input'), sh = box.querySelector('.cy-chat-sh');
+      const C = St().chat, b = box.querySelector('.cy-chat-b'), n = box.querySelector('.cy-chat-n'), l = box.querySelector('.cy-chat-l'), inp = box.querySelector('.cy-chat-f input'), sh = box.querySelector('.cy-chat-sh');
       box.querySelector('.cy-chat-t').setAttribute('aria-expanded', String(C.open)); b.hidden = !C.open; box.classList.toggle('open', C.open);
       chatBadges(box, C); chatTo(box, C);
       if (C.muted && C.muted.until && C.muted.until <= Date.now()) C.muted = null;   // мут истёк
       clearTimeout(St().chatMuteT); if (C.muted && C.muted.until) St().chatMuteT = setTimeout(() => chatRender(), Math.min(C.muted.until - Date.now() + 500, 60000));
       inp.disabled = !!C.muted || (C.tab === 'dm' && !C.peer); inp.placeholder = C.muted ? (C.muted.until ? `Мут ещё ${leftT(C.muted.until - Date.now())}` : 'Модератор запретил тебе писать') : (C.tab === 'dm' ? (C.peer ? `Лично для ${C.peer}…` : 'Выбери собеседника: «✉» у ника') : C.mod && C.tab === 'g' ? 'Написать… (/help — команды)' : TAB_PH[C.tab] || TAB_PH.g);
       sh.hidden = !C.mod; sh.setAttribute('aria-pressed', String(!!C.panel)); box.classList.toggle('pnl', !!C.panel);
-      box.querySelector('.cy-chat-p').hidden = !C.panel; l.hidden = !!C.panel; box.querySelector('.cy-chat-f').hidden = !!C.panel || C.tab === 'ev';   // 24.10: «Достижения» — только чтение
-      if (!C.open || C.panel) return;
+      const dmx = box.querySelector('.cy-chat-dmx'), dmOn = C.tab === 'dm' && !!window.LGDm && !!dmx;   // 29.10: «Личные» рисует LGDm
+      box.querySelector('.cy-chat-p').hidden = !C.panel; l.hidden = !!C.panel || dmOn; box.querySelector('.cy-chat-f').hidden = !!C.panel || C.tab === 'ev' || dmOn;   // 24.10: «Достижения» — только чтение
+      if (dmx) { dmx.hidden = !dmOn || !!C.panel; if (window.LGDm) window.LGDm.place(); }
+      if (!C.open || C.panel || dmOn) return;
       const end = toEnd || l.scrollHeight - l.scrollTop - l.clientHeight < 40;
       const V = chatVis();
       l.innerHTML = V.length ? V.map(chatLi).join('') : `<li class="cy-chat-0">${esc(TAB_EMPTY[C.tab] || TAB_EMPTY.g)}</li>`;

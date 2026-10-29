@@ -404,6 +404,9 @@
 
     /* --- предметы с глубиной (колодец, фонари, прилавки): по картинке на предмет, глубина — zIndex (как z-index в SVG-версии) --- */
     const props = o.props.map((p) => ({ ...p, spr: null, gen: -1, q: false, box: [p.x + (p.dx || 0) - 160, p.y - 160, p.w + 320, p.h + 320] }));
+    // 29.10: кадры пламени костра - как @keyframes cyCampFl (city.css): [время, scaleX, scaleY, прозрачность], между кадрами - ease-in-out
+    const FLK = [[0, 1, 1, 1], [0.3, 0.94, 1.07, 0.92], [0.55, 1.04, 0.95, 1], [0.8, 0.97, 1.04, 0.95], [1, 1, 1, 1]];
+    const flickAt = (t) => { const u = (t / 1700) % 1; let i = 1; while (i < FLK.length - 1 && u > FLK[i][0]) i++; const a = FLK[i - 1], b = FLK[i], v = (u - a[0]) / (b[0] - a[0]), e = v * v * (3 - 2 * v); return [a[1] + (b[1] - a[1]) * e, a[2] + (b[2] - a[2]) * e, a[3] + (b[3] - a[3]) * e]; };
     const waveR = () => (wave ? Math.max(0, (performance.now() - wave.t0) / wave.ms) * wave.R : Infinity);
     function wantProps(vx, vy, vw, vh) {
       const wr = waveR();
@@ -429,7 +432,8 @@
             if (p.paint && mort) deadPaint(r.c);   // 28.10 (hw-city-dead): предмет ивента, который тоже «мёртвый» (рамка портала)
             const spr = new P.Sprite(texOf(r)); spr.position.set(x0 + (p.dx || 0), y0); spr.scale.set(1 / kk); spr.zIndex = p.z;
             if (G.ptint != null && !p.tag) spr.tint = G.ptint;   // 28.10 (hw-city): холодный тон города - и предметам города (убранство ивента - тёплое, без тона)
-            if (p.spin) { spr.pivot.set((p.spin[0] - x0) * kk, (p.spin[1] - y0) * kk); spr.position.set(p.spin[0] + (p.dx || 0), p.spin[1]); }   // 28.10 (hw-city): вращается вокруг spin (воронка портала на оверлее)
+            if (p.spin) { spr.pivot.set((p.spin[0] - x0) * kk, (p.spin[1] - y0) * kk); spr.position.set(p.spin[0] + (p.dx || 0), p.spin[1]); }
+            if (p.flick) { spr.pivot.set((p.flick[0] - x0) * kk, (p.flick[1] - y0) * kk); spr.position.set(p.flick[0] + (p.dx || 0), p.flick[1]); spr.__k = kk; }   // 29.10: пламя костра качается от низа (campart.js)   // 28.10 (hw-city): вращается вокруг spin (воронка портала на оверлее)
             if (p.spr) p.spr.destroy(true);
             p.spr = spr; p.gen = g0; p.box = [x0 + (p.dx || 0), y0, r.cw / kk, r.ch / kk];
             walk.addChild(spr);
@@ -705,6 +709,9 @@
         more = true; dirty = true;
       }
       if (!reduce) for (const p of props) if (p.spin && p.spr && p.spr.visible) { p.spr.rotation = ((t / 1000) * (p.spinV || 1.2)) % (Math.PI * 2); more = true; dirty = true; }
+      // 29.10: p.flick = [x, y низа] - пламя костра лагеря: те же кадры, что CSS cyCampFl (1,7 с: сжатие-вытяжка и чуть прозрачности), только transform/alpha
+      //   12 кадров/с: сцена перерисовывается только при смене кадра пламени (не каждый кадр экрана - телефоны зрителей)
+      if (!reduce) for (const p of props) if (p.flick && p.spr && p.spr.visible) { more = true; const fi = Math.floor(t / 83); if (p.fi === fi) continue; p.fi = fi; const f = flickAt(fi * 83); p.spr.scale.set(f[0] / (p.spr.__k || 1), f[1] / (p.spr.__k || 1)); p.spr.alpha = f[2]; dirty = true; }
       // 28.10 (hw-city-light): p.pulse = [от, до, период с] - прозрачность дышит (сердцевина портала)
       if (!reduce) for (const p of props) if (p.pulse && p.spr && p.spr.visible) { const [a0, a1, per] = p.pulse; p.spr.alpha = a0 + (a1 - a0) * (0.5 + 0.5 * Math.sin((t / 1000) * Math.PI * 2 / (per || 2))); more = true; dirty = true; }
       for (let i = rips.length - 1; i >= 0; i--) {

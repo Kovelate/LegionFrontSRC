@@ -387,7 +387,7 @@
 
   /* 26.10 (просьба стримера): верхняя клеть этажа (спуск на следующий) - в том же стиле, что подъёмник «В город»: брусья с волокнами
      и гвоздями, шкив, трос, клеть с решёткой, сигнальный огонь (красный - камни ещё есть, зелёный - этаж расчищен), табличка
-     «ЭТАЖ N ↑» на цепях. Место и размер - как у прежнего рисунка (ex - центр ствола, top - верх зала); craftworld.js кладёт его
+     «ЭТАЖ N ↓» на цепях. Место и размер - как у прежнего рисунка (ex - центр ствола, top - верх зала); craftworld.js кладёт его
      предметом { obj: 'up' } - mine.js даёт подсветку и подпись */
   function upLift(ex, top, n, done, r) {
     let s = `<circle cx="${ex}" cy="${top - 170}" r="150" fill="url(#cwLift)"/>`;
@@ -412,7 +412,7 @@
     s += `<path d="M${ex + 104} ${top - 270} h14" stroke="${INK}" stroke-width="4" stroke-linecap="round"/><circle cx="${ex + 126}" cy="${top - 270}" r="26" fill="${lc}" opacity=".25"/>`
       + `<circle cx="${ex + 126}" cy="${top - 270}" r="14" fill="#3a3442" ${O(3.5)}/><circle cx="${ex + 126}" cy="${top - 270}" r="9" fill="${lc}"/><circle cx="${ex + 123}" cy="${top - 273}" r="3" fill="#fff" opacity=".8"/>`;
     // табличка на цепях
-    s += `<path d="M${ex - 58} ${top - 318} l-4 -22 M${ex + 58} ${top - 318} l4 -22" stroke="#8a8a9a" stroke-width="3" stroke-dasharray="3 3"/>` + sign(ex, top - 336, `ЭТАЖ ${n} ↑`, 22, 160);
+    s += `<path d="M${ex - 58} ${top - 318} l-4 -22 M${ex + 58} ${top - 318} l4 -22" stroke="#8a8a9a" stroke-width="3" stroke-dasharray="3 3"/>` + sign(ex, top - 336, `ЭТАЖ ${n} ↓`, 22, 160);
     return s;
   }
   function entry(F, L, r, o) {
@@ -436,7 +436,7 @@
     s += lantern(lx + 104, ly - 170, 1);
     s += `<path d="M${lx + 92} ${ly - 200} h-10" stroke="${INK}" stroke-width="4" stroke-linecap="round"/>`;
     // вывеска на цепях
-    s += `<path d="M${lx - 54} ${ly - 252} l-4 -22 M${lx + 54} ${ly - 252} l4 -22" stroke="#8a8a9a" stroke-width="3" stroke-dasharray="3 3"/>` + sign(lx, ly - 270, 'В ГОРОД ↓', 22, 150);
+    s += `<path d="M${lx - 54} ${ly - 252} l-4 -22 M${lx + 54} ${ly - 252} l4 -22" stroke="#8a8a9a" stroke-width="3" stroke-dasharray="3 3"/>` + sign(lx, ly - 270, 'В ГОРОД ↑', 22, 150);
     out.push({ obj: 'lift', x: lx, y: ly, svg: s });
 
     // лавка «Скупка»: навес полосами с фестонами и тенью, столбы, прилавок из досок, весы, ящик и мешок руды, монеты
@@ -760,8 +760,10 @@
       under += el(cl(c, [[-0.66, -0.9], [-0.56, -0.93], [-0.2, -0.56], [-0.3, -0.53]], 0.02) + ' ' + cl(c, [[-0.36, -0.95], [-0.3, -0.97], [-0.04, -0.7], [-0.1, -0.68]], 0.02), `fill="${C.rim}"`);
       const lv = walk([ox + (c.shape % 2 ? 0.5 : -0.55) * W, oy - 0.1 * H], c.shape % 2 ? -2.2 : -0.95, 0.75 * W, c.inside, r, 7);
       if (lv.length > 2) { const d = PL(lv) + ' ' + PL(walk(lv[Math.floor(lv.length / 2)], -Math.PI / 2, 0.22 * H, c.inside, r, 5)); under += `<path d="${d}" stroke="#ff4a10" stroke-width="8" stroke-opacity=".3" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="${d}" stroke="#ff7a1a" stroke-width="3.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="${d}" stroke="#ffe066" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`; }
-      let em = ''; if (!c.wall) for (let k = 0; k < 3; k++) em += dot(ox + (r() - 0.5) * 1.4 * W, oy - (1.05 + r() * 0.3) * H, 1.1 + r() * 0.9);
-      if (em) over += `<path d="${em}" fill="#ffb23a"/>`;
+      // 29.10 (замечание зрителя): над макушкой были 3 «уголька» - часть рисунка камня: камень трясётся при копании, и они вместе с ним,
+      // выглядело мусором. Искры бездны летают отдельно (пылинки пласта, mine-biome.js) - здесь не рисуем. Случайные числа берём те же,
+      // чтобы остальной рисунок камней не поменялся
+      if (!c.wall) for (let k = 0; k < 9; k++) r();
     }
     return { back, under, over };
   }
@@ -1612,7 +1614,7 @@
     // вывеска
     p.L(); signBoard(p, lx, ly - 275, 156, 32, WD2, 0); rivets(p, [[lx - 70, ly - 275], [lx + 70, ly - 275]], 2.4);
     const box = [30, 2096, 290, 330];
-    return { svg: objSym('mre-lift', box, p.out()) + lantern2(lx + 104, ly - 170, 1) + signText(lx, ly - 267, 'В ГОРОД ↓', 21) };
+    return { svg: objSym('mre-lift', box, p.out()) + lantern2(lx + 104, ly - 170, 1) + signText(lx, ly - 267, 'В ГОРОД ↑', 21) };
   }
 
   /* --- «Скупка»: полосатый навес с объёмными фестонами и кантом, вывеска, столбы, прилавок из досок с уголками, весы с чашами,

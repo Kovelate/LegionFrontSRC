@@ -1,0 +1,765 @@
+/* ───── стиль «cats»: styles/cats/characters.js ───── */
+try {
+/* Стиль «Котики» — человечки Легиона в виде котов: уши в контуре тела, хвост покачивается,
+   кошачьи глаза со зрачком-щёлкой, розовый нос, усы, мех с узором «по нику» (полосатый, грудка, пятно).
+   Тёплая тёмно-коричневая обводка, как в детской книжке-картинке. Лапки с подушечками вместо кистей.
+   Устроен как образец styles/legion/characters.js, договор — styles/README.md.
+   Холст 120×170, ноги на y = 168, центр по x = 60. Каждая функция возвращает строку SVG. */
+let catRobeN = 0;   // 20.10: счётчик id обрезки пледа (свой у каждого рисунка)
+(function () {
+  'use strict';
+  const D = window.MDDoodle;
+  if (!D) return;
+
+  // ── цвета стиля ──
+  const INK = '#2b1d18';     // обводка всего: тёплый тёмно-коричневый
+  const NOSE = '#ff8fa3';    // нос, подушечки, внутренность ушей
+  const STRIPE = 'rgba(70,35,15,.32)';   // полоски и пятна меха (ложатся на любой цвет)
+  const IRIS = ['#9be15d', '#ffd23f', '#f5a623', '#6ec6ff', '#7bdcb5'];   // цвет глаз — по нику (из seed, без r())
+  const WS = `stroke="${INK}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"`;   // обводка снаряжения
+  const RARITY = { common: null, uncommon: '#5bd36a', rare: '#5ec8ff', epic: '#c77dff', legendary: '#ffcf4a' };
+  const METAL = { common: '#b7bec4', uncommon: '#cdeec4', rare: '#bfe3ff', epic: '#e0c8ff', legendary: '#ffd76a' };
+  const FUR = ['#f2a65a', '#e8914a', '#f3d9b1', '#9aa3ad', '#7d8a99', '#f4f1ec', '#4a4350', '#a8754f', '#ffc6a0', '#c9ccd3', '#b6a6c9', '#e7b98a'];
+  const f1 = (v) => +v.toFixed(1);
+  // цвет глаз «по нику»; у купленных глаз — тот же, что у образца в Шатре (образец рисуется с ником «образец eyes <id>»):
+  // 17.10 купили «голубые» глаза-блюдца, а на своём коте они были жёлтыми
+  const iris = (k) => IRIS[(((k.look && k.look.eyes ? D.jhash('образец eyes ' + k.look.eyes) : k.seed) >>> 0) >>> 3) % IRIS.length];
+
+  /* ── тела: (r) → { L, R, top, hw, eyeY, armY, d, square?, narrow?, ear, pat } ──
+     Уши — часть контура d (их видят и виджеты). ear — точки левого уха (для розовой серединки и кисточек рыси),
+     pat — узор меха: 0 гладкий, 1 полосатый, 2 светлая грудка, 3 пятно у глаза, 4 полосатый с грудкой. */
+  function earSeg(top, hw, eh) {
+    const ox = f1(60 - hw), oy = top + 9, tx = f1(ox + hw * 0.1), ty = top - eh, ix = f1(60 - hw * 0.3), iy = top + 1;
+    return { ear: { ox, oy, tx, ty, ix, iy }, seg: `L${tx} ${ty} L${ix} ${iy} Q60 ${top - 2.5} ${f1(120 - ix)} ${iy} L${f1(120 - tx)} ${ty} L${f1(120 - ox)} ${oy}` };
+  }
+  const bodies = {
+    bean(r) { const w = 25 + Math.floor(r() * 9), L = 60 - w, R = 60 + w, top = 78, hw = f1(w * 0.8), e = earSeg(top, hw, 15), o = e.ear.ox; return { L, R, top, hw, eyeY: 101, armY: 114, ear: e.ear, pat: Math.floor(r() * 5), d: `M${L} 168 C${L - 4} 128 ${L - 2} ${top + 34} ${o} ${top + 9} ${e.seg} C${R + 2} ${top + 34} ${R + 4} 128 ${R} 168 Z` }; },
+    box(r) { const w = 24 + Math.floor(r() * 9), L = 60 - w, R = 60 + w, top = 82 + Math.floor(r() * 8), hw = w - 3, e = earSeg(top, hw, 14), o = e.ear.ox; return { L, R, top, hw, eyeY: top + 27, armY: top + 37, square: true, ear: e.ear, pat: Math.floor(r() * 5), d: `M${L} 168 V${top + 15} Q${L} ${top + 9} ${o} ${top + 9} ${e.seg} Q${R} ${top + 9} ${R} ${top + 15} V168 Z` }; },
+    ball(r) { const w = 33 + Math.floor(r() * 6), L = 60 - w, R = 60 + w, top = 100, hw = f1(w * 0.6), e = earSeg(top, hw, 13), o = e.ear.ox; return { L, R, top, hw, eyeY: 123, armY: 131, ear: e.ear, pat: Math.floor(r() * 5), d: `M${L + 6} 168 C${L - 8} 152 ${L - 6} ${top + 16} ${o} ${top + 9} ${e.seg} C${R + 6} ${top + 16} ${R + 8} 152 ${R - 6} 168 Z` }; },
+    tall(r) { const w = 19 + Math.floor(r() * 4), L = 60 - w, R = 60 + w, top = 60, hw = f1(w * 0.85), e = earSeg(top, hw, 14), o = e.ear.ox; return { L, R, top, hw, eyeY: 84, armY: 98, narrow: true, ear: e.ear, pat: Math.floor(r() * 5), d: `M${L} 168 C${L - 2} 112 ${L - 1} ${top + 26} ${o} ${top + 9} ${e.seg} C${R + 1} ${top + 26} ${R + 2} 112 ${R} 168 Z` }; },
+    ghost(r) { const w = 25 + Math.floor(r() * 6), L = 60 - w, R = 60 + w, top = 78, hw = f1(w * 0.78), e = earSeg(top, hw, 15), o = e.ear.ox, s = f1((2 * w) / 3); return { L, R, top, hw, eyeY: 102, armY: 114, ear: e.ear, pat: Math.floor(r() * 5), d: `M${L} 162 C${L} 116 ${L} ${top + 30} ${o} ${top + 9} ${e.seg} C${R} ${top + 30} ${R} 116 ${R} 162 q${-s / 2} 10 ${-s} 0 q${-s / 2} 10 ${-s} 0 q${-s / 2} 10 ${-s} 0 Z` }; },
+    cone(r) { const w = 28 + Math.floor(r() * 6), L = 60 - w, R = 60 + w, top = 76, hw = 14, e = earSeg(top, hw, 12), o = e.ear.ox; return { L, R, top, hw, eyeY: 102, armY: 118, narrow: true, ear: e.ear, pat: Math.floor(r() * 5), d: `M${L} 168 C${L + 4} 140 ${o - 12} ${top + 34} ${o} ${top + 9} ${e.seg} C${f1(120 - o + 12)} ${top + 34} ${R - 4} 140 ${R} 168 Z` }; },
+    egg(r) { const w = 27 + Math.floor(r() * 5), L = 60 - w, R = 60 + w, top = 72, hw = f1(w * 0.66), e = earSeg(top, hw, 14), o = e.ear.ox; return { L, R, top, hw, eyeY: 99, armY: 116, ear: e.ear, pat: Math.floor(r() * 5), d: `M${L + 2} 160 C${L - 6} 128 ${L + 1} ${top + 24} ${o} ${top + 9} ${e.seg} C${R - 1} ${top + 24} ${R + 6} 128 ${R - 2} 160 Q60 174 ${L + 2} 160 Z` }; },
+  };
+  const earOf = (b) => b.ear || { ox: 60 - b.hw, oy: b.top + 9, tx: 60 - b.hw * 0.9, ty: b.top - 14, ix: 60 - b.hw * 0.3, iy: b.top + 1 };
+
+  // тело: хвост (покачивается) → контур с ушами → серединки ушей → узор меха → нос и усы
+  // 18.10: хвост — отдельным слоем, скелет кладёт его ПОД руки (раньше хвост перекрывал правую лапу)
+  function tail(k) {
+    const b = k.b, fill = k.fill, pat = b.pat || 0;
+    const bx = b.R - 7, by = 158, beg = (((k.seed >>> 0) % 997) / 997 * 2.8).toFixed(2);
+    const T = `M${bx} ${by} C${bx + 18} ${by + 2} ${bx + 26} ${by - 18} ${bx + 20} ${by - 36} C${bx + 17} ${by - 44} ${bx + 22} ${by - 50} ${bx + 27} ${by - 48}`;
+    let s = `<g><animateTransform attributeName="transform" type="rotate" values="-6 ${bx} ${by};8 ${bx} ${by};-6 ${bx} ${by}" dur="2.8s" begin="-${beg}s" repeatCount="indefinite"/>`
+      + `<path d="${T}" fill="none" stroke="${INK}" stroke-width="10.5" stroke-linecap="round"/><path d="${T}" fill="none" stroke="${fill}" stroke-width="6" stroke-linecap="round"/>`
+      + (pat === 1 || pat === 4 ? `<path d="${T}" fill="none" stroke="${STRIPE}" stroke-width="6" stroke-dasharray="3 6"/>` : '') + '</g>';
+    return s;
+  }
+  function body(k) {
+    const b = k.b, fill = k.fill, e = earOf(b), pat = b.pat || 0;
+    let s = '';
+    s += `<path d="${b.d}" fill="${fill}" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>`;
+    s += `<path d="M${f1(e.ox + 4)} ${e.oy - 2} L${f1(e.tx + 2)} ${e.ty + 7} L${f1(e.ix - 2.5)} ${e.iy + 2} Z M${f1(116 - e.ox)} ${e.oy - 2} L${f1(118 - e.tx)} ${e.ty + 7} L${f1(122.5 - e.ix)} ${e.iy + 2} Z" fill="${NOSE}" opacity=".75"/>`;
+    if (pat) {
+      const c = k.uid('jlP');
+      let p = '';
+      if (pat === 2 || pat === 4) p += `<ellipse cx="60" cy="${f1((b.armY + 168) / 2 + 8)}" rx="${f1((b.R - b.L) * 0.27)}" ry="${f1((168 - b.armY) / 2)}" fill="rgba(255,255,255,.5)"/>`;
+      if (pat === 1 || pat === 4) {
+        p += `<path d="M55.5 ${b.top + 3} l1 7 M60 ${b.top + 1} v8 M64.5 ${b.top + 3} l-1 7" stroke="${STRIPE}" stroke-width="2.4" stroke-linecap="round"/>`;
+        let st = ''; for (let y = b.eyeY + 18; y < 166; y += 14) st += `M${b.L - 4} ${y} q8 2 13 -2 M${b.R + 4} ${y} q-8 2 -13 -2 `;
+        p += `<path d="${st}" fill="none" stroke="${STRIPE}" stroke-width="3.5" stroke-linecap="round"/>`;
+      }
+      if (pat === 3) p += `<ellipse cx="${60 + k.ex + 1}" cy="${k.ey - 1}" rx="10" ry="9" fill="${STRIPE}"/><ellipse cx="${b.L + 12}" cy="150" rx="9" ry="7" fill="${STRIPE}"/>`;
+      s += `<defs><clipPath id="${c}"><path d="${b.d}"/></clipPath></defs><g clip-path="url(#${c})">${p}</g>`;
+    }
+    const ey = k.ey, ex = k.ex, n = ey + 7;
+    s += `<path d="M${60 - ex - 7} ${ey + 10} l-15 -3 M${60 - ex - 7} ${ey + 12.5} l-16 1 M${60 - ex - 7} ${ey + 15} l-14 4 M${60 + ex + 7} ${ey + 10} l15 -3 M${60 + ex + 7} ${ey + 12.5} l16 1 M${60 + ex + 7} ${ey + 15} l14 4" stroke="${INK}" stroke-width="1.3" stroke-linecap="round" opacity=".55"/>`;
+    s += `<path d="M56.5 ${n} h7 l-3.5 4 z" fill="${NOSE}" stroke="${INK}" stroke-width="1.6" stroke-linejoin="round"/>`;
+    return s;
+  }
+
+  /* ── лицо ── */
+  const eyeIris = (x, y, rr, col) => `<circle cx="${x}" cy="${y}" r="${rr}" fill="${col}" stroke="${INK}" stroke-width="2"/><ellipse cx="${x}" cy="${y}" rx="${f1(rr * 0.22)}" ry="${f1(rr * 0.78)}" fill="${INK}"/><circle cx="${f1(x - rr * 0.38)}" cy="${f1(y - rr * 0.4)}" r="${f1(rr * 0.24)}" fill="#fff"/>`;
+  const starP = (x, y, rr) => { let d = ''; for (let i = 0; i < 10; i++) { const a = (i * 36 - 90) * Math.PI / 180, q = i % 2 ? rr * 0.45 : rr; d += `${i ? 'L' : 'M'}${f1(x + Math.cos(a) * q)} ${f1(y + Math.sin(a) * q)}`; } return d + 'Z'; };
+  const FL = `fill="none" stroke="${INK}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"`;
+  function eyes(kind, k) {
+    const { ex, ey } = k, xs = [60 - ex, 60 + ex], col = iris(k);
+    if (kind === 'dots') return xs.map((x) => `<ellipse cx="${x}" cy="${ey}" rx="3.6" ry="4.4" fill="${INK}"/><circle cx="${x - 1.2}" cy="${ey - 1.6}" r="1.3" fill="#fff"/>`).join('');
+    if (kind === 'big') return xs.map((x) => eyeIris(x, ey, 6.5, col)).join('');
+    if (kind === 'cyclops') return eyeIris(60, ey - 2, 9, col);
+    if (kind === 'stars') return `<path d="${starP(xs[0], ey, 5.8)}${starP(xs[1], ey, 5.8)}" fill="#ffd23f" stroke="${INK}" stroke-width="1.5" stroke-linejoin="round"/>`;
+    if (kind === 'slit') return xs.map((x) => `<path d="M${x - 7} ${ey} q7 -8 14 0 q-7 8 -14 0 z" fill="${col}" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/><path d="M${x} ${ey - 4} v8" stroke="${INK}" stroke-width="2.2" stroke-linecap="round"/>`).join('');
+    if (kind === 'sleepy') return xs.map((x) => `<path d="M${x - 6} ${ey} a6 5 0 0 0 12 0 z" fill="${col}" stroke="${INK}" stroke-width="1.8"/><path d="M${x} ${ey} v3.6" stroke="${INK}" stroke-width="2"/><path d="M${x - 7} ${ey} h14" ${FL}/>`).join('');
+    return `<path d="M${60 - ex - 5} ${ey + 1} q5 -6 10 0 M${60 + ex - 5} ${ey + 1} q5 -6 10 0" ${FL}/>`;   // happy: ^ ^
+  }
+  const PH = (my) => `M60 ${my - 4} v2.5`;   // от носа ко рту
+  const OMEGA = (my, w = 6.5) => `M60 ${my - 1.5} q-3 4 -${w} 0.5 M60 ${my - 1.5} q3 4 ${w} 0.5`;
+  function mouth(kind, k) {
+    const my = k.my;
+    if (kind === 'open') return `<path d="${PH(my)}" ${FL}/><path d="M53 ${my - 1.5} Q60 ${my + 11} 67 ${my - 1.5} Q60 ${my + 2} 53 ${my - 1.5} Z" fill="#7a2b3a" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/><ellipse cx="60" cy="${my + 4.6}" rx="3" ry="1.8" fill="${NOSE}"/>`;
+    if (kind === 'grin') return `<path d="${PH(my)} ${OMEGA(my, 9)}" ${FL}/><path d="M53.5 ${my + 1.2} l1.4 3.4 l1.4 -3.6 z M63.7 ${my + 1} l1.4 3.6 l1.4 -3.4 z" fill="#fff" stroke="${INK}" stroke-width="1.2" stroke-linejoin="round"/>`;
+    return `<path d="M57.5 ${my + 0.8} q2.5 7.5 5 0 z" fill="#ff7f9a" stroke="${INK}" stroke-width="1.4" stroke-linejoin="round"/><path d="${PH(my)} ${OMEGA(my)}" ${FL}/>`;   // tongue: «блеп»
+  }
+  // настроения
+  const faces = {
+    sad(k) {   // огромные блестящие глаза «кота в сапогах», бровки домиком, слеза
+      const { ex, ey, my } = k;
+      const big = (x, y, rr) => `<circle cx="${x}" cy="${y}" r="${rr}" fill="${INK}"/><circle cx="${f1(x - rr * 0.35)}" cy="${f1(y - rr * 0.35)}" r="${f1(rr * 0.36)}" fill="#fff"/><circle cx="${f1(x + rr * 0.35)}" cy="${f1(y + rr * 0.3)}" r="${f1(rr * 0.16)}" fill="#fff"/>`;
+      const eyesS = (k.cyc ? big(60, ey - 2, 8.5) + `<path d="M50 ${ey - 13} q10 -6 20 0" ${FL}/>`
+        : big(60 - ex, ey + 1, 5.5) + big(60 + ex, ey + 1, 5.5) + `<path d="M${60 - ex - 7} ${ey - 6} l9 -4 M${60 + ex + 7} ${ey - 6} l-9 -4" ${FL}/>`)
+        + `<path class="tear" d="M${60 + ex + 4} ${ey + 6} q-3 6 0 8 q3 -2 0 -8 z" fill="#8fd3ff" stroke="${INK}" stroke-width="1.2"/>`;
+      return { eyes: eyesS, mouth: `<path d="${PH(my)} M53 ${my + 3} q3.5 -5 7 -3 q3.5 -2 7 3" ${FL}/>` };
+    },
+    chill(k) {   // мурчит: глаза-щёлочки дужками вниз, довольное «ω»
+      const { ex, ey, my } = k;
+      return { eyes: k.cyc ? `<path d="M51 ${ey - 1} q9 6 18 0" ${FL}/>` : `<path d="M${60 - ex - 5} ${ey} q5 4 10 0 M${60 + ex - 5} ${ey} q5 4 10 0" ${FL}/>`, mouth: `<path d="${PH(my)} ${OMEGA(my)}" ${FL}/>` };
+    },
+    stern(k) {   // прищур охотника: полуприкрытые глаза, брови вниз, клык
+      const { ex, ey, my } = k, col = iris(k);
+      const half = (x, y, rr) => `<path d="M${x - rr} ${y - 1} h${2 * rr} a${rr} ${f1(rr * 0.8)} 0 0 1 ${-2 * rr} 0 z" fill="${col}" stroke="${INK}" stroke-width="1.8" stroke-linejoin="round"/><path d="M${x} ${y - 1} v${f1(rr * 0.75)}" stroke="${INK}" stroke-width="2.2" stroke-linecap="round"/>`;
+      return { eyes: k.cyc ? half(60, ey - 1, 9) + `<path d="M48 ${ey - 10} l12 5 l12 -5" ${FL}/>`
+        : half(60 - ex, ey + 1, 6) + half(60 + ex, ey + 1, 6) + `<path d="M${60 - ex - 7} ${ey - 8} l11 4 M${60 + ex + 7} ${ey - 8} l-11 4" ${FL}/>`,
+        mouth: `<path d="${PH(my)} M53 ${my + 1} q7 -3 14 0" ${FL}/><path d="M63 ${my + 0.4} l1.3 3.4 l1.3 -3.2 z" fill="#fff" stroke="${INK}" stroke-width="1.1" stroke-linejoin="round"/>` };
+    },
+    hurt(k) {   // один глаз крестиком, второй зажмурен, рот волной
+      const { ex, ey, my } = k;
+      return { eyes: k.cyc ? `<path d="M52 ${ey - 8} l16 12 M68 ${ey - 8} l-16 12" ${FL}/>`
+        : `<path d="M${60 - ex - 4} ${ey - 4} l8 8 M${60 - ex + 4} ${ey - 4} l-8 8 M${60 + ex - 5} ${ey - 3} l9 3 l-9 3" ${FL}/>`, mouth: `<path d="${PH(my)} M52 ${my + 2} q4 -4 8 0 q4 4 8 0" ${FL}/>` };
+    },
+  };
+  const blush = (k) => `<ellipse cx="${60 - k.ex - 9}" cy="${k.ey + 8}" rx="4.2" ry="2.6" fill="#ff7aa2" opacity=".55"/><ellipse cx="${60 + k.ex + 9}" cy="${k.ey + 8}" rx="4.2" ry="2.6" fill="#ff7aa2" opacity=".55"/>`;
+  // раненый: пластырь крестом у уха, клок шерсти дыбом, синяк
+  function hurt(k) {
+    const b = k.b, px = f1(60 + b.hw * 0.45), py = b.top + 9;
+    return `<g transform="rotate(35 ${px} ${py})"><rect x="${px - 9}" y="${py - 3}" width="18" height="6" rx="2" fill="#f1d9b5" stroke="${INK}" stroke-width="1.5"/><rect x="${px - 3}" y="${py - 9}" width="6" height="18" rx="2" fill="#f1d9b5" stroke="${INK}" stroke-width="1.5"/></g>`
+      + `<circle cx="${60 - k.ex - 8}" cy="${k.ey + 10}" r="5" fill="#8a5ab8" opacity=".45"/>`;
+  }
+
+  /* ── шапки: k → { id: svg }. Шапки садятся между ушами, уши торчат по бокам ── */
+  function hats(k) {
+    const b = k.b, c1 = k.fill, c2 = k.c2, t = b.top, hw = b.hw, cx = 60, e = earOf(b);
+    const S = `stroke="${INK}" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"`;
+    let leaves = '';
+    for (let i = 0; i < 6; i++) for (const sd of [-1, 1]) { const a = (200 + i * 14) * Math.PI / 180, x = f1(cx + sd * Math.cos(a) * -(hw + 4)), y = f1(t + 9 + Math.sin(a) * 12 - i * 1.5); leaves += `<ellipse cx="${x}" cy="${y}" rx="6.5" ry="3.3" transform="rotate(${(sd * (35 - i * 12)).toFixed(0)} ${x} ${y})" fill="${i % 2 ? '#8fd16a' : '#b6e38f'}"/>`; }
+    return {
+      none: '',
+      tuft: `<path d="M${cx - 5} ${t + 2} q-3 -9 -9 -11 q6 -1 10 5 q-1 -9 3 -13 q3 6 2 13 q4 -7 10 -7 q-4 4 -6 13 z" fill="${c1}" ${S}/>`,
+      cap: `<path d="M${f1(cx - hw * 0.75)} ${t + 8} q${f1(hw * 0.75)} -24 ${f1(hw * 1.5)} 0 z" fill="${c2}" ${S}/><path d="M${f1(cx + hw * 0.6)} ${t + 7} q10 -2 17 3 q-8 3 -17 1 z" fill="${c2}" ${S}/><circle cx="${cx}" cy="${t - 8}" r="2" fill="${INK}"/>`,
+      bow: `<path d="M${f1(cx + hw * 0.5)} ${t + 2} l-10 -8 l1 14 z M${f1(cx + hw * 0.5)} ${t + 2} l10 -8 l-1 14 z" fill="${c2}" ${S}/><circle cx="${f1(cx + hw * 0.5)}" cy="${t + 2}" r="3" fill="${c2}" ${S}/>`,
+      horns: `<path d="M${cx - 7} ${t + 3} q-4 -9 -1 -17 q3 9 7 15 z M${cx + 7} ${t + 3} q4 -9 1 -17 q-3 9 -7 15 z" fill="#e8455c" ${S}/>`,
+      crown: `<path d="M${cx - 13} ${t + 6} l0 -16 l7 8 l6 -12 l6 12 l7 -8 l0 16 z" fill="#ffc94d" ${S}/><circle cx="${cx}" cy="${t}" r="2.2" fill="#e8455c"/>`,
+      tophat: `<rect x="${cx - 12}" y="${t - 24}" width="24" height="28" rx="2" fill="#2a2440" ${S}/><rect x="${cx - 19}" y="${t + 2}" width="38" height="4.5" rx="2" fill="#2a2440" ${S}/><path d="M${cx - 11} ${t - 3} h22" stroke="${c2}" stroke-width="4.5"/>`,
+      party: `<path d="M${cx - 12} ${t + 6} L${cx} ${t - 30} L${cx + 12} ${t + 6} z" fill="${c2}" ${S}/><circle cx="${cx}" cy="${t - 32}" r="4.5" fill="#fff" ${S}/><circle cx="${cx - 3}" cy="${t - 4}" r="2" fill="#fff"/><circle cx="${cx + 4}" cy="${t - 14}" r="2" fill="#fff"/><circle cx="${cx - 1}" cy="${t - 22}" r="1.6" fill="#fff"/>`,
+      // 18.10: колпак накрывает уши целиком (раньше кончики ушей торчали из-под полей)
+      wizard: `<path d="M${f1(Math.min(cx - hw, e.ox) - 4)} ${t + 9} C${f1(e.tx - 11)} ${e.ty - 1} ${cx - 10} ${t - 24} ${cx + 4} ${t - 38} Q${cx + 12} ${t - 34} ${cx + 20} ${t - 28} C${cx + 14} ${t - 22} ${f1(127 - e.tx)} ${e.ty - 2} ${f1(Math.max(cx + hw, 120 - e.ox) + 4)} ${t + 9} z" fill="#4b3bb8" ${S}/><path d="${starP(cx + 1, t - 10, 5)}" fill="#ffc94d"/><path d="M${cx - 9} ${t - 22} a4 4 0 1 0 4 -5 a3 3 0 1 1 -4 5 z" fill="#ffe27a"/>`,
+      antenna: `<path d="M${cx + 2} ${t + 1} q2 -16 12 -26" fill="none" stroke="${INK}" stroke-width="2.4" stroke-linecap="round"/><path d="M${cx + 14} ${t - 25} q6 6 4 14" fill="none" stroke="${INK}" stroke-width="1.2"/><path d="M${cx + 18} ${t - 12} q6 4 4 16 q-7 -6 -4 -16 z" fill="${c2}" ${S}/>`,
+      antenna2: `<path d="M${cx - 5} ${t + 1} q-1 -10 -9 -18 M${cx + 5} ${t + 1} q1 -10 9 -18" fill="none" stroke="${INK}" stroke-width="2.4" stroke-linecap="round"/><circle cx="${cx - 14}" cy="${t - 19}" r="5" fill="${c2}" ${S}/><circle cx="${cx + 14}" cy="${t - 19}" r="5" fill="${c2}" ${S}/>`,
+      cat: `<path d="M${f1(e.tx - 2.5)} ${e.ty + 4} L${f1(e.tx - 1)} ${e.ty - 11} L${f1(e.tx + 3)} ${e.ty + 3} Z M${f1(122.5 - e.tx)} ${e.ty + 4} L${f1(121 - e.tx)} ${e.ty - 11} L${f1(117 - e.tx)} ${e.ty + 3} Z" fill="${INK}" stroke="${INK}" stroke-width="1.5" stroke-linejoin="round"/>`,   // кисточки рыси
+      bunny: `<ellipse cx="${cx - 8}" cy="${t - 18}" rx="6" ry="17" fill="#f7f2ee" ${S}/><ellipse cx="${cx + 8}" cy="${t - 18}" rx="6" ry="17" fill="#f7f2ee" ${S}/><ellipse cx="${cx - 8}" cy="${t - 17}" rx="2.6" ry="11" fill="${NOSE}"/><ellipse cx="${cx + 8}" cy="${t - 17}" rx="2.6" ry="11" fill="${NOSE}"/><path d="M${cx - 13} ${t + 3} q13 -8 26 0" fill="none" stroke="${c2}" stroke-width="3.5" stroke-linecap="round"/>`,
+      halo: `<ellipse cx="${cx}" cy="${t - 22}" rx="16" ry="4.5" fill="none" stroke="#ffe27a" stroke-width="3.6"/>`,
+      sprout: `<path d="M${cx} ${t + 1} v-14" stroke="#3d7a2a" stroke-width="2.4" stroke-linecap="round"/><path d="M${cx} ${t - 9} q-13 -1 -13 -11 q11 0 13 11 z M${cx} ${t - 12} q11 -3 13 -13 q-11 0 -13 13 z" fill="#6fdc6f" ${S}/>`,   // кошачья мята
+      bandana: `<path d="M${f1(cx - hw - 1)} ${t + 12} Q${cx} ${t - 8} ${f1(cx + hw + 1)} ${t + 12} Z" fill="#e8455c" ${S}/><path d="M${f1(cx + hw - 1)} ${t + 10} l11 -1 l-4 9 z" fill="#e8455c" ${S}/><circle cx="${cx - 6}" cy="${t + 5}" r="1.5" fill="#fff"/><circle cx="${cx + 5}" cy="${t + 3}" r="1.5" fill="#fff"/><circle cx="${cx}" cy="${t + 8}" r="1.5" fill="#fff"/>`,
+      // только из Костюмерной: шлем легионера с ушками
+      legion: `<path d="M${f1(cx - hw * 0.7)} ${t - 6} l3 -16 l9 11 z M${f1(cx + hw * 0.7)} ${t - 6} l-3 -16 l-9 11 z" fill="#d9b04a" ${S}/>`
+        + `<path d="M${f1(cx - hw - 5)} ${t + 16} Q${f1(cx - hw - 5)} ${t - 15} ${cx} ${t - 15} Q${f1(cx + hw + 5)} ${t - 15} ${f1(cx + hw + 5)} ${t + 16} L${f1(cx + hw - 2)} ${t + 16} L${f1(cx + hw - 2)} ${t + 8} L${f1(cx - hw + 2)} ${t + 8} L${f1(cx - hw + 2)} ${t + 16} Z" fill="#d9b04a" ${S}/>`
+        + `<path d="M${cx - 15} ${t - 13} Q${cx - 12} ${t - 38} ${cx} ${t - 39} Q${cx + 12} ${t - 38} ${cx + 15} ${t - 13} Z" fill="#e8455c" ${S}/><path d="M${cx - 7} ${t - 30} v13 M${cx} ${t - 34} v17 M${cx + 7} ${t - 30} v13" stroke="#a3122a" stroke-width="2.2"/>`,
+      laurel: `<g stroke="#2f5a24" stroke-width="1.4">${leaves}</g>`,
+      beret: `<ellipse cx="${cx - 3}" cy="${t + 1}" rx="${f1(hw * 0.8 + 4)}" ry="9" transform="rotate(-8 ${cx} ${t})" fill="${c2}" ${S}/><path d="M${cx - 1} ${t - 7} l3 -7" stroke="${INK}" stroke-width="3" stroke-linecap="round"/>`,
+      headphones: `<path d="M${f1(cx - hw - 6)} ${b.eyeY - 4} Q${f1(cx - hw - 6)} ${t - 16} ${cx} ${t - 16} Q${f1(cx + hw + 6)} ${t - 16} ${f1(cx + hw + 6)} ${b.eyeY - 4}" fill="none" stroke="#2a2440" stroke-width="5" stroke-linecap="round"/>`
+        + `<rect x="${f1(cx - hw - 13)}" y="${b.eyeY - 14}" width="12" height="20" rx="5" fill="${c2}" ${S}/><rect x="${f1(cx + hw + 1)}" y="${b.eyeY - 14}" width="12" height="20" rx="5" fill="${c2}" ${S}/>`,
+      cowboy: `<path d="M${cx - 17} ${t + 5} q-4 -28 17 -32 q21 4 17 32 z" fill="#a0703a" ${S}/><path d="M${cx - 36} ${t + 2} q36 18 72 0 q-8 12 -36 13 q-28 -1 -36 -13 z" fill="#8a5a2b" ${S}/><path d="M${cx - 16} ${t - 3} h32" stroke="#e8455c" stroke-width="4.5"/>`,
+      chef: `<path d="M${cx - 13} ${t + 6} v-13 q-12 -2 -8 -14 q4 -10 14 -4 q4 -10 12 -2 q10 -4 12 6 q2 10 -10 14 v13 z" fill="#fff" ${S}/><path d="M${cx - 13} ${t + 1} h26" stroke="${INK}" stroke-width="1.4"/>`,
+    };
+  }
+
+  /* ── снаряжение ── */
+  const paw = (x, y, s, col) => `<g fill="${col}"><ellipse cx="${x}" cy="${f1(y + s * 0.35)}" rx="${f1(s * 0.55)}" ry="${f1(s * 0.45)}"/><circle cx="${f1(x - s * 0.55)}" cy="${f1(y - s * 0.3)}" r="${f1(s * 0.22)}"/><circle cx="${x}" cy="${f1(y - s * 0.55)}" r="${f1(s * 0.22)}"/><circle cx="${f1(x + s * 0.55)}" cy="${f1(y - s * 0.3)}" r="${f1(s * 0.22)}"/></g>`;
+  // оружие котиков: рукоять в (0,0), «клинок» вверх (−y). Начальное снаряжение — забавное: вобла, рыбья кость, коготь, открывашка…
+  // обычное — своего цвета; редкое, эпическое и легендарное — окрашено «металлом» редкости (и светится — это делает скелет)
+  function weapon(kind, rar) {
+    const m = METAL[rar] || METAL.common, hi = rar && rar !== 'common', wood = '#a0703a';
+    const grip = (y0, y1, w = 5, c = wood) => `<rect x="${-w / 2}" y="${y1}" width="${w}" height="${y0 - y1}" rx="2" fill="${c}" ${WS}/>`;
+    const line = (d, c = INK, w = 1.6) => `<path d="${d}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
+    switch (kind) {
+      case 'sword': {   // сушёная вобла: держат за хвост
+        const c = hi ? m : '#c99a58';
+        return `<path d="M-7 13 L0 2 L7 13 Q0 9 -7 13 Z" fill="${c}" ${WS}/><path d="M0 3 C-10 -8 -11 -40 0 -60 C11 -40 10 -8 0 3 Z" fill="${c}" ${WS}/>`
+          + `<path d="M0 -58 C-5 -40 -5 -12 0 1" fill="none" stroke="rgba(90,50,20,.35)" stroke-width="3"/>`
+          + line('M-6 -44 Q0 -40 6 -44') + line('M-3 -54 l4 4 M1 -54 l-4 4', INK, 1.5)
+          + line('M-7 -30 l3 2 M-7 -20 l3 2 M7 -30 l-3 2 M7 -20 l-3 2', 'rgba(60,30,10,.5)', 1.3)
+          + `<path d="M-9 -26 l-5 4 l5 2 Z M9 -26 l5 4 l-5 2 Z" fill="${c}" ${WS}/>`;
+      }
+      case 'gladius': {   // рыбья кость
+        const c = hi ? m : '#f3ead8';
+        let ribs = ''; for (let y = -8; y >= -38; y -= 7) ribs += `<path d="M-10 ${y + 4} Q0 ${y - 3} 10 ${y + 4}" fill="none" stroke="${INK}" stroke-width="5" stroke-linecap="round"/><path d="M-10 ${y + 4} Q0 ${y - 3} 10 ${y + 4}" fill="none" stroke="${c}" stroke-width="2.6" stroke-linecap="round"/>`;
+        return `<path d="M-7 12 L0 2 L7 12 Z" fill="${c}" ${WS}/><rect x="-2" y="-44" width="4" height="47" rx="2" fill="${c}" ${WS}/>${ribs}`
+          + `<path d="M-8 -42 L0 -56 L8 -42 Q0 -38 -8 -42 Z" fill="${c}" ${WS}/><circle cx="-1.5" cy="-47" r="2" fill="${INK}"/>`;
+      }
+      case 'dagger': {   // коготь
+        const c = hi ? m : '#f1ece2';
+        return `<rect x="-5" y="1" width="10" height="11" rx="5" fill="#ff8fa3" ${WS}/><circle cx="-2" cy="5" r="1.4" fill="${INK}" opacity=".35"/><circle cx="2" cy="8" r="1.4" fill="${INK}" opacity=".35"/>`
+          + `<path d="M-4 2 C-5 -10 -1 -24 9 -33 C5 -22 5 -10 4 2 Z" fill="${c}" ${WS}/>` + line('M-1 -2 C-1 -12 2 -22 7 -29', 'rgba(255,255,255,.7)', 1.4);
+      }
+      case 'axe':   // открывашка для консервов
+        return `${grip(14, -32, 5, '#e8455c')}<circle cy="-40" r="9" fill="${m}" ${WS}/><circle cy="-40" r="3" fill="${INK}"/>`
+          + `<path d="M3 -44 L19 -52 Q24 -46 20 -40 L5 -35 Z" fill="${m}" ${WS}/><path d="M-6 -46 l-6 -6 l4 -3 l6 6 Z" fill="${m}" ${WS}/>`
+          + line('M-5 -40 h10 M0 -45 v10', 'rgba(0,0,0,.3)', 1.2);
+      case 'club': {   // колбаса на верёвочке
+        const c = hi ? m : '#c8564b';
+        return line('M0 2 V14', INK, 2.4) + `<path d="M-7 -54 C-10 -40 -10 -16 -7 -3 C-5 4 5 4 7 -3 C10 -16 10 -40 7 -54 C5 -61 -5 -61 -7 -54 Z" fill="${c}" ${WS}/>`
+          + [[-2, -44], [3, -34], [-3, -24], [2, -14], [-1, -6]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.7" fill="#f6d9cb"/>`).join('')
+          + line('M-5 -58 q5 -6 10 0', INK, 2) + line('M-4 -50 Q-6 -30 -4 -8', 'rgba(255,255,255,.35)', 2);
+      }
+      case 'mace': {   // клубок ниток на спицах
+        const c = hi ? m : '#e8607a';
+        return `${grip(12, -30, 5, '#c9ced4')}<circle cy="-42" r="11" fill="${c}" ${WS}/>`
+          + line('M-10 -46 Q0 -36 10 -46 M-9 -38 Q0 -50 9 -36 M-4 -52 Q2 -42 -2 -31', 'rgba(43,29,24,.45)', 1.6)
+          + `<path d="M-15 -58 L10 -28 M15 -58 L-10 -28" stroke="${INK}" stroke-width="4" stroke-linecap="round"/><path d="M-15 -58 L10 -28 M15 -58 L-10 -28" stroke="#dfe3e6" stroke-width="2" stroke-linecap="round"/>`
+          + `<circle cx="-15" cy="-58" r="2.6" fill="#ffd23f" ${WS}/><circle cx="15" cy="-58" r="2.6" fill="#ffd23f" ${WS}/>` + line('M10 -36 q8 6 4 16 q-4 8 2 14', c, 2);
+      }
+      case 'hammer': {   // игрушечный молоток-пищалка
+        const c = hi ? m : '#ff5a7a';
+        return `${grip(14, -38, 5, '#ffd23f')}<rect x="-16" y="-56" width="32" height="18" rx="9" fill="${c}" ${WS}/><rect x="-11" y="-53" width="9" height="4" rx="2" fill="#fff" opacity=".6"/>`
+          + line('M19 -50 l5 -2 M19 -44 l6 0 M-19 -50 l-5 -2 M-19 -44 l-6 0', INK, 1.6);
+      }
+      case 'spear': {   // дразнилка: палочка с пёрышками на верёвке
+        const c = hi ? m : '#6ec6ff';
+        return `<rect x="-2" y="-62" width="4" height="94" rx="2" fill="#d9b37a" ${WS}/>` + line('M0 -62 Q12 -66 13 -80', INK, 1.4)
+          + `<path d="M13 -80 q9 5 3 17 q-9 -4 -3 -17 Z" fill="${c}" ${WS}/><path d="M13 -80 q-9 3 -6 16 q8 -5 6 -16 Z" fill="#ff8fa3" ${WS}/><circle cx="13" cy="-81" r="2.4" fill="#ffd23f" ${WS}/>`;
+      }
+      case 'pitchfork': {   // расчёска-вилы
+        const c = hi ? m : '#ff8fa3';
+        let teeth = ''; for (let i = 0; i < 6; i++) { const x = -12.5 + i * 5; teeth += `<path d="M${x} -56 V-76" stroke="${INK}" stroke-width="5" stroke-linecap="round"/><path d="M${x} -56 V-76" stroke="${c}" stroke-width="2.4" stroke-linecap="round"/>`; }
+        return `<rect x="-3" y="-50" width="6" height="82" rx="3" fill="#e8914a" ${WS}/>${teeth}<rect x="-16" y="-58" width="32" height="10" rx="4" fill="${c}" ${WS}/>`;
+      }
+      case 'bow': {   // рогатка с кошачьим кормом
+        const c = hi ? m : wood;
+        return `<path d="M0 20 V-6 M0 -6 L-12 -32 M0 -6 L12 -32" fill="none" stroke="${INK}" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><path d="M0 20 V-6 M0 -6 L-12 -32 M0 -6 L12 -32" fill="none" stroke="${c}" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/>`
+          + line('M-12 -32 Q0 -16 12 -32', '#ff5a7a', 2) + `<path d="M-3 -24 h6 l-1 5 h-4 Z" fill="#7a4a2a" ${WS}/><circle cx="-1" cy="-25" r="1.3" fill="#c88a50"/><circle cx="1.6" cy="-26" r="1.2" fill="#c88a50"/>`;
+      }
+      case 'staff': {   // лазерная указка — главное оружие кота-колдуна
+        const dot = hi ? RARITY[rar] : '#ff3030';
+        return `<rect x="-2.2" y="-62" width="4.4" height="98" rx="2" fill="${hi ? m : '#3a3a44'}" ${WS}/><rect x="-3.5" y="-10" width="7" height="12" rx="2" fill="#5a5a66" ${WS}/><circle cy="-4" r="1.6" fill="#ff3030"/>`
+          + `<path d="M0 -64 V-84" stroke="${dot}" stroke-width="2" stroke-dasharray="3 3" opacity=".8"/><circle cy="-88" r="6" fill="${dot}" opacity=".35"/><circle cy="-88" r="3" fill="${dot}"/><circle cy="-64" r="2.6" fill="${dot}"/>`;
+      }
+      case 'crook': {   // мышка на палочке
+        const c = hi ? m : '#9aa3ad';
+        return `<rect x="-2.5" y="-50" width="5" height="86" rx="2" fill="${wood}" ${WS}/>` + line('M0 -50 C4 -62 14 -62 16 -54', INK, 1.6)
+          + `<ellipse cx="17" cy="-44" rx="6" ry="9" fill="${c}" ${WS}/><circle cx="12.5" cy="-50" r="3" fill="${c}" ${WS}/><circle cx="21.5" cy="-50" r="3" fill="${c}" ${WS}/>`
+          + `<circle cx="17" cy="-37" r="1.4" fill="#ff8fa3"/>` + line('M17 -35 q-4 8 3 12', '#ff8fa3', 1.4);
+      }
+      case 'censer':   // кадило с валерьянкой (зелёный дымок)
+        return `<path d="M0 0 V22" stroke="${INK}" stroke-width="2" stroke-dasharray="3 2"/><path d="M-9 26 Q0 20 9 26 L7 36 Q0 41 -7 36 Z" fill="${hi ? m : '#c58a45'}" ${WS}/>`
+          + `<path d="M-4 30 h8" stroke="${INK}" stroke-width="1.4"/><circle cx="-4" cy="14" r="3" fill="rgba(150,230,150,.6)"/><circle cx="2" cy="8" r="4" fill="rgba(150,230,150,.5)"/><circle cx="-1" cy="0" r="3.4" fill="rgba(150,230,150,.4)"/>`;
+      default: return '';
+    }
+  }
+  // щиты котиков: центр в (0,0)
+  function shield(kind, rar) {
+    const m = METAL[rar] || METAL.common, hi = rar && rar !== 'common';
+    switch (kind) {
+      case 'scutum': {   // когтеточка
+        let rope = ''; for (let y = -16; y <= 16; y += 4) rope += `<path d="M-10 ${y} H10" stroke="#a07a40" stroke-width="1.6"/>`;
+        return `<rect x="-13" y="-21" width="26" height="42" rx="4" fill="${hi ? m : '#8a5a2b'}" ${WS}/><rect x="-10" y="-18" width="20" height="36" rx="2" fill="#dcbf86"/>${rope}`
+          + `<path d="M-6 -10 l9 12 M-2 -12 l9 12 M2 -14 l7 10" stroke="#ff8fa3" stroke-width="1.8" stroke-linecap="round"/>`;
+      }
+      case 'round':   // миска с кормом
+        return `<circle r="15" fill="${hi ? m : '#c58a45'}" ${WS}/><circle r="10.5" fill="#7a4a2a" stroke="${INK}" stroke-width="1.6"/>`
+          + [[-4, -3], [3, -5], [5, 2], [-2, 4], [-6, 3], [1, -1]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2.2" fill="#c88a50" stroke="${INK}" stroke-width=".8"/>`).join('');
+      case 'buckler':   // крышка от консервы
+        return `<circle r="10.5" fill="${m}" ${WS}/><circle r="8" fill="none" stroke="rgba(0,0,0,.2)" stroke-width="1.2"/><ellipse cy="-4.5" rx="4" ry="2.4" fill="none" stroke="${INK}" stroke-width="1.6"/>`
+          + `<path d="M-4 3 q4 -4 8 0 q-4 4 -8 0 z M4 3 l3 -2 v4 z" fill="#6ec6ff" stroke="${INK}" stroke-width=".8"/>`;
+      case 'barrel':   // лежанка-пончик
+        return `<circle r="14.5" fill="${hi ? m : '#b6a6c9'}" ${WS}/><circle r="7" fill="#8e7aa8" stroke="${INK}" stroke-width="1.6"/>`
+          + `<path d="M-11 -6 q2 -3 4 0 M6 -10 q2 -3 4 0 M-10 7 q2 3 4 0 M7 8 q2 3 4 0" fill="none" stroke="#fff" stroke-width="1.2" opacity=".6"/><text x="0" y="3" text-anchor="middle" font-size="6" font-weight="700" fill="#fff">zz</text>`;
+      default: return '';
+    }
+  }
+  // доспехи котиков: сама вещь без стойки, низ на y = 0. Лорика — вязаный свитер с рыбкой, мантия — клетчатый плед колдуна
+  const ARMOR_RAR = { uncommon: '#4cc95a', rare: '#4aa3ff', epic: '#b06bff', legendary: '#ffb83d' };
+  function armor(kind, rar) {
+    const tr = rar === 'common' || !ARMOR_RAR[rar] ? null : ARMOR_RAR[rar];
+    if (kind === 'robe') {
+      const base = tr || '#5a3fa0';
+      let plaid = '';
+      for (const x of [-30, -15, 0, 15, 30]) plaid += `<path d="M${x} -100 V0" stroke="#ffd23f" stroke-width="3" opacity=".55"/>`;
+      for (const y of [-80, -60, -40, -20]) plaid += `<path d="M-44 ${y} H44" stroke="#ff8fa3" stroke-width="4" opacity=".5"/>`;
+      const rc = 'catRobeClip' + (++catRobeN).toString(36);   // 20.10: свой id у каждого рисунка (общий id ломался на части телефонов)
+      return `<defs><clipPath id="${rc}"><path d="M-22 -102 C-30 -70 -38 -30 -42 0 H42 C38 -30 30 -70 22 -102 Q0 -92 -22 -102 Z"/></clipPath></defs>`
+        + `<path d="M-22 -102 C-30 -70 -38 -30 -42 0 H42 C38 -30 30 -70 22 -102 Q0 -92 -22 -102 Z" fill="${base}"/><g clip-path="url(#${rc})">${plaid}</g>`
+        + `<path d="M-22 -102 C-30 -70 -38 -30 -42 0 H42 C38 -30 30 -70 22 -102 Q0 -92 -22 -102 Z" fill="none" ${WS}/>`
+        + `<path d="M-40 -4 l4 8 M-30 -4 l3 8 M-20 -4 l2 8 M-10 -4 l1 8 M0 -4 v8 M10 -4 l-1 8 M20 -4 l-2 8 M30 -4 l-3 8 M40 -4 l-4 8" stroke="#ffd23f" stroke-width="2.2" stroke-linecap="round"/>`;
+    }
+    const base = tr || '#e8607a';
+    let knit = '';
+    for (let r = 0; r < 5; r++) for (let c = 0; c < 6; c++) { const x = -22 + c * 9 + (r % 2) * 4, y = -80 + r * 14; knit += `<path d="M${x - 3} ${y} l3 4 l3 -4" fill="none" stroke="rgba(0,0,0,.18)" stroke-width="1.4"/>`; }
+    return `<path d="M-32 -96 C-36 -70 -32 -40 -28 -6 H28 C32 -40 36 -70 32 -96 Q0 -86 -32 -96 Z" fill="${base}" ${WS}/>${knit}`
+      + `<path d="M-44 -98 Q-34 -112 -14 -102 L-16 -78 Q-34 -82 -44 -74 Z M44 -98 Q34 -112 14 -102 L16 -78 Q34 -82 44 -74 Z" fill="${base}" ${WS}/>`
+      + `<rect x="-29" y="-10" width="58" height="10" rx="3" fill="#ffd23f" ${WS}/><path d="M-22 -10 v10 M-14 -10 v10 M-6 -10 v10 M2 -10 v10 M10 -10 v10 M18 -10 v10" stroke="rgba(0,0,0,.2)" stroke-width="1.4"/>`
+      + `<path d="M-12 -100 Q0 -92 12 -100" fill="none" stroke="#ffd23f" stroke-width="4"/>`
+      + `<path d="M-10 -52 q10 -10 18 0 q-8 10 -18 0 z M8 -52 l6 -5 v10 z" fill="#6ec6ff" ${WS}/><circle cx="-5" cy="-53" r="1.3" fill="${INK}"/>`;
+  }
+
+  /* ── ауры: свечение за котом, поднимающиеся следы лапок, звёзды, снежинки — анимация встроена в SVG ── */
+  const AURA = { gold: ['#ffd76a', '#ffb83d'], sparks: ['#fff6c8', '#ffd76a'], halo: ['#ffe27a', '#ffe27a'], shadow: ['#a24bff', '#3a0f66'], frost: ['#bfe8ff', '#6fb8ff'] };
+  function aura(kind, k) {
+    const b = k.b, seed = k.seed >>> 0;
+    const c = AURA[kind]; if (!c) return { back: '', front: '' };
+    const id = k.uid('jlA'), d0 = (seed % 997) / 997 * 2;
+    const cx = 60, cy = (b.top + 170) / 2 + 2, rx = (b.R - b.L) / 2 + 46, ry = (170 - b.top) / 2 + 44;
+    let back = '', front = '';
+    const glow = (op1, op2, dur) => `<defs><radialGradient id="${id}"><stop offset=".3" stop-color="${c[0]}"/><stop offset=".62" stop-color="${c[1]}" stop-opacity=".7"/><stop offset="1" stop-color="${c[1]}" stop-opacity="0"/></radialGradient></defs>`
+      + `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="url(#${id})"><animate attributeName="opacity" values="${op1};${op2};${op1}" dur="${dur}s" begin="-${d0.toFixed(2)}s" repeatCount="indefinite"/></ellipse>`;
+    const motes = (n, col, shape, size) => Array.from({ length: n }, (_, i) => {
+      const x = b.L - 8 + ((i * 37 + (seed >>> (i % 8))) % (b.R - b.L + 16)), y0 = 168 - (i * 23) % 40, dur = 1.8 + (i % 4) * 0.45, beg = ((i * 0.53 + d0) % dur).toFixed(2);
+      const sh = shape === 'paw' ? paw(0, 0, size, col) : shape === 'star' ? `<path d="${starP(0, 0, size)}" fill="${col}"/>` : shape === 'flake' ? `<path d="M0 ${-size} V${size} M${-size} 0 H${size} M${f1(-size * 0.7)} ${f1(-size * 0.7)} L${f1(size * 0.7)} ${f1(size * 0.7)} M${f1(size * 0.7)} ${f1(-size * 0.7)} L${f1(-size * 0.7)} ${f1(size * 0.7)}" stroke="${col}" stroke-width="1.6" stroke-linecap="round"/>` : `<circle r="${size}" fill="${col}"/>`;
+      return `<g opacity="0"><animateTransform attributeName="transform" type="translate" values="${x} ${y0};${x + (i % 2 ? 6 : -6)} ${y0 - 70}" dur="${dur}s" begin="-${beg}s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.2;.7;1" dur="${dur}s" begin="-${beg}s" repeatCount="indefinite"/>${sh}</g>`;
+    }).join('');
+    if (kind === 'gold') { back = glow(0.7, 1, 2.4); front = motes(8, '#ffe9a0', 'paw', 5); }
+    else if (kind === 'sparks') { back = glow(0.25, 0.45, 2); front = motes(12, '#fff6c8', 'star', 4.5); }
+    else if (kind === 'shadow') { back = glow(0.75, 1, 1.6); front = motes(11, '#c48bff', 'dot', 3.2); }
+    else if (kind === 'frost') { back = glow(0.6, 0.95, 2.8); front = motes(10, '#e6f7ff', 'flake', 4.4); }
+    else if (kind === 'halo') {   // нимб с ушками
+      const t = b.top - 30;
+      front = `<g><animateTransform attributeName="transform" type="translate" values="0 0;0 -3;0 0" dur="2.2s" begin="-${d0.toFixed(2)}s" repeatCount="indefinite"/>`
+        + `<ellipse cx="60" cy="${t}" rx="19" ry="5.5" fill="none" stroke="#fff3b0" stroke-width="9" opacity=".35"/>`
+        + `<path d="M46 ${t - 3} l1 -9 l6 6 M74 ${t - 3} l-1 -9 l-6 6" fill="none" stroke="#ffe27a" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>`
+        + `<ellipse cx="60" cy="${t}" rx="19" ry="5.5" fill="none" stroke="#ffe27a" stroke-width="4"><animate attributeName="stroke-opacity" values=".75;1;.75" dur="1.6s" repeatCount="indefinite"/></ellipse></g>`;
+    }
+    return { back, front };
+  }
+
+  // лапа-конечность: тёмная обводка + мех; кисть — круглая лапка с пальчиками
+  const limb = (d, col) => `<path d="${d}" fill="none" stroke="${INK}" stroke-width="9" stroke-linecap="round"/><path d="${d}" fill="none" stroke="${col}" stroke-width="5" stroke-linecap="round"/>`;
+  const pawHand = (x, y, col, dir) => `<circle cx="${x}" cy="${y}" r="5.6" fill="${col}" stroke="${INK}" stroke-width="2.2"/><path d="M${x - 2} ${f1(y + dir * 4.4)} v${-dir * 2.4} M${x + 2} ${f1(y + dir * 4.4)} v${-dir * 2.4}" stroke="${INK}" stroke-width="1.2" stroke-linecap="round"/>`;
+  const OUT = `stroke="${INK}" stroke-width="2.4" stroke-linejoin="round"`;
+
+  D.addStyle({
+    id: 'cats',
+    hw: { line: INK, ink: INK, sw: 2.6, face: INK },   // HW: токены для деталей «Ночи Тыквенной Луны» (doodle-core.js → hwHats / hwAcc / hwEyes)
+    name: 'Котики',
+    css: '',   // классы body/ln/face/eye стиль не использует: все цвета заданы прямо в SVG
+    // цвета «по нику»: ровно 3 вызова r(): окрас шерсти, оттенок и насыщенность второго цвета
+    palette(r) {
+      const fill = FUR[Math.floor(r() * FUR.length)];
+      const c2 = `hsl(${Math.floor(r() * 360)} ${70 + Math.floor(r() * 15)}% 58%)`;
+      return { fill, c2 };
+    },
+    // 19.10: названия окрасов «по нику» (сайт, вкладка «Облик»: что даёт ник)
+    colorNames: { '#f2a65a': 'Рыжий', '#e8914a': 'Тёмно-рыжий', '#f3d9b1': 'Кремовый', '#9aa3ad': 'Серый', '#7d8a99': 'Сизый', '#f4f1ec': 'Белый', '#4a4350': 'Чёрный', '#a8754f': 'Коричневый', '#ffc6a0': 'Персиковый', '#c9ccd3': 'Серебристый', '#b6a6c9': 'Лиловый', '#e7b98a': 'Песочный' },
+    bodies,
+    frame(b) {
+      return { L: b.L, R: b.R, ex: b.narrow ? 8 : 10, ey: b.eyeY, my: b.eyeY + 15, sx: { l: b.L + (b.square ? 4 : 6), r: b.R - (b.square ? 4 : 6) } };
+    },
+    body,
+    tail,
+
+    eyePool: ['dots', 'big', 'big', 'slit', 'happy', 'sleepy', 'cyclops', 'stars'],
+    eyes,
+    mouthPool: ['open', 'grin', 'tongue'],
+    mouth,
+    faces,
+    blushChance: 0.55,
+    blush,
+    hurt,
+
+    hatPool: ['none', 'tuft', 'cap', 'bow', 'horns', 'crown', 'tophat', 'party', 'wizard', 'antenna', 'antenna2', 'cat', 'bunny', 'halo', 'sprout', 'bandana'],
+    hatNoneChance: 0.2,
+    hats,
+
+    arms: {
+      up(k) {   // лапы вверх
+        const b = k.b, sx = k.sx, hy = b.top - 4;
+        const arm = (s, hx) => limb(`M${s} ${b.armY} C${f1(s + (hx - s) * 0.2)} ${b.armY - 24} ${hx} ${hy + 26} ${hx} ${hy}`, k.fill) + pawHand(hx, hy, k.fill, -1);
+        return `<g class="arm armL" style="transform-origin:${sx.l}px ${b.armY}px">${arm(sx.l, k.L - 14)}</g><g class="arm armR" style="transform-origin:${sx.r}px ${b.armY}px">${arm(sx.r, k.R + 14)}</g>`;
+      },
+      down(k) {   // лапы вдоль тела
+        const b = k.b, sx = k.sx, ey = Math.min(160, b.armY + 42);
+        const arm = (s, dir) => limb(`M${s} ${b.armY} C${s + dir * 10} ${b.armY + 14} ${s + dir * 12} ${b.armY + 28} ${s + dir * 9} ${ey}`, k.fill) + pawHand(s + dir * 9, ey + 2, k.fill, 1);
+        return `<g class="arm sadL">${arm(sx.l, -1)}</g><g class="arm sadR">${arm(sx.r, 1)}</g>`;
+      },
+      armed(k) {   // боевая стойка
+        const b = k.b, sx = k.sx;
+        const hr = { x: k.R + 15, y: b.armY + 12 }, hl = { x: k.L - 7, y: b.armY + 20 };
+        const svg = `<g class="arm batL">${limb(`M${sx.l} ${b.armY} C${sx.l - 8} ${b.armY + 6} ${hl.x + 2} ${hl.y - 8} ${hl.x} ${hl.y}`, k.fill)}</g><g class="arm batR">${limb(`M${sx.r} ${b.armY} C${sx.r + 8} ${b.armY + 4} ${hr.x - 2} ${hr.y - 8} ${hr.x} ${hr.y}`, k.fill)}</g>`;
+        return { svg, right: hr, left: hl };
+      },
+    },
+    hand: (k, x, y) => pawHand(x, y, k.fill, -1),
+    hold: { weaponScale: 1.18, weaponRot: (kind) => (kind === 'bow' || kind === 'censer' || kind === 'grimoire' ? 0 : 12), shieldScale: 1.12, shieldDx: 6, shieldDy: 2 },
+    weapon,
+    shield,
+    armor,
+    wear: { line: INK, ink: INK },   // 19.10: обводка надетых доспехов и амулета (рисует скелет, doodle-core.js)
+    rarityGlow: RARITY,
+    gearGlow: (id, color) => `<filter id="${id}" x="-60%" y="-60%" width="220%" height="220%"><feDropShadow dx="0" dy="0" stdDeviation="3.2" flood-color="${color}" flood-opacity="1"/></filter>`,
+    held: {
+      cocktail(k, rot) {   // молочный коктейль с рыбкой на бортике
+        const hy = Math.min(160, k.b.armY + 42) + 2, hx = k.sx.r + 9;
+        return `<g transform="translate(${hx} ${hy}) rotate(${rot})"><g class="jd-cocktail">`
+          + `<path d="M-1.5 0 V-10 M-7 1 h11" stroke="${INK}" stroke-width="2.6" stroke-linecap="round"/>`
+          + `<path d="M-14 -26 L12 -26 L-1 -10 Z" fill="rgba(230,245,255,.6)" stroke="${INK}" stroke-width="2.2" stroke-linejoin="round"/>`
+          + `<path d="M-11 -23 L9 -23 L-1 -12 Z" fill="#fff6ee"/><path d="M-11 -23 L9 -23 L7 -21 L-9 -21 Z" fill="#ffc6d2"/>`
+          + `<path d="M4 -24 L12 -44" stroke="${NOSE}" stroke-width="2.6" stroke-linecap="round"/>`
+          + `<path d="M-15 -30 q5 -6 11 0 q-6 6 -11 0 z M-4 -30 l4 -3 v6 z" fill="#ff9a3d" stroke="${INK}" stroke-width="1.3" stroke-linejoin="round"/>`
+          + `</g></g>${pawHand(hx, hy, k.fill, -1)}`;
+      },
+    },
+
+    // 19.10: «Плащ первопроходца» у котика — маленький, чуть выше лапок, с фестонами (шире боков — видно из-за круглого котика) и застёжками-лапками
+    // 20.10: застёжки — у ворота (collar): на «плечах» они садились на щёки поверх румянца
+    pioneer: { cloak: '#35507a', lining: '#cfe8ff', line: INK, ink: INK, w: 3, len: 150, flare: 24, hem: 'round', clasp: 'paw', claspAt: 'collar' },
+    capeColor: '#c0182b',
+    acc: {
+      cape(k, col) {
+        const L = k.L, R = k.R, t = k.b.armY - 8;
+        return `<path d="M${L + 6} ${t} C${L - 12} ${t + 30} ${L - 20} 150 ${L - 18} 168 L${R + 18} 168 C${R + 20} 150 ${R + 12} ${t + 30} ${R - 6} ${t} Z" fill="${col}" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>`
+          + `<path d="M${L + 4} ${t + 2} Q60 ${t + 14} ${R - 4} ${t + 2}" fill="none" stroke="#ffc94d" stroke-width="4" stroke-linecap="round"/>`;
+      },
+      bowtie(k, col) {   // бабочка с бубенчиком
+        const y = k.my + 13;
+        return `<path d="M60 ${y} l-11 -7 l0 14 z M60 ${y} l11 -7 l0 14 z" fill="${col}" ${OUT}/><circle cx="60" cy="${y + 6}" r="3.6" fill="#ffc94d" ${OUT}/><path d="M60 ${y + 7} v2.5" stroke="${INK}" stroke-width="1.2"/>`;
+      },
+      glasses(k) {
+        const { ex, ey } = k;
+        return k.cyc ? `<circle cx="60" cy="${ey - 2}" r="13" fill="rgba(255,255,255,.18)" stroke="${INK}" stroke-width="2.6"/>`
+          : `<circle cx="${60 - ex}" cy="${ey}" r="8.5" fill="rgba(255,255,255,.18)" stroke="${INK}" stroke-width="2.6"/><circle cx="${60 + ex}" cy="${ey}" r="8.5" fill="rgba(255,255,255,.18)" stroke="${INK}" stroke-width="2.6"/><path d="M${60 - ex + 8} ${ey - 1} q${ex - 8} -5 ${2 * ex - 16} 0" fill="none" stroke="${INK}" stroke-width="2.6"/>`;
+      },
+      shades(k) {   // очки «кошачий глаз»
+        const { ex, ey } = k;
+        if (k.cyc) return `<path d="M43 ${ey - 11} L77 ${ey - 11} Q75 ${ey + 7} 60 ${ey + 7} Q45 ${ey + 7} 43 ${ey - 11} Z" fill="${INK}"/><path d="M48 ${ey - 6} l6 0" stroke="#fff" stroke-width="2" opacity=".6"/>`;
+        const lens = (xo, xi) => `M${xo} ${ey - 8} L${xi} ${ey - 4} Q${xi} ${ey + 6} ${f1((xo + xi) / 2)} ${ey + 6} Q${xo + (xi > xo ? 2 : -2)} ${ey + 5} ${xo} ${ey - 8} Z`;
+        return `<path d="${lens(60 - ex - 10, 60 - ex + 7)} ${lens(60 + ex + 10, 60 + ex - 7)} M${60 - ex + 7} ${ey - 3} h${2 * ex - 14}" fill="${INK}" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/><path d="M${60 - ex - 5} ${ey - 3} l5 0" stroke="#fff" stroke-width="2" opacity=".6"/>`;
+      },
+      monocle(k) {
+        const { ex, ey } = k, cyc = k.cyc, x = cyc ? 60 : 60 + ex, y = cyc ? ey - 2 : ey;
+        return `<circle cx="${x}" cy="${y}" r="${cyc ? 12.5 : 8.5}" fill="rgba(255,255,255,.2)" stroke="#ffc94d" stroke-width="2.8"/><path d="M${x + (cyc ? 9 : 6)} ${y + (cyc ? 9 : 6)} q6 14 -2 30" fill="none" stroke="#ffc94d" stroke-width="1.6"/>`;
+      },
+      mustache(k) {   // подкрученные усы под носом
+        const y = k.my - 2;
+        return `<path d="M60 ${y} c-3 -4 -10 -5 -14 -1 c-3 3 -6 2 -7 -1 c0 6 9 9 15 5 c3 -1 5 -2 6 -3 c1 1 3 2 6 3 c6 4 15 1 15 -5 c-1 3 -4 4 -7 1 c-4 -4 -11 -3 -14 1 z" fill="#3a2410" stroke="#3a2410" stroke-width="1.2" stroke-linejoin="round"/>`;
+      },
+      scarf(k, col) {
+        const L = k.L, R = k.R, y = k.my + 12;
+        return `<path d="M${L + 4} ${y - 3} Q60 ${y + 9} ${R - 4} ${y - 3} L${R - 3} ${y + 7} Q60 ${y + 19} ${L + 3} ${y + 7} Z" fill="${col}" ${OUT}/><path d="M${R - 16} ${y + 8} l3 26 l10 -2 l-3 -26 z" fill="${col}" ${OUT}/><path d="M${R - 14} ${y + 30} l2 5 M${R - 10} ${y + 30} l2 5 M${R - 6} ${y + 29} l2 5" stroke="${INK}" stroke-width="1.6"/>`;
+      },
+      tie(k, col) {
+        const y = k.my + 10;
+        return `<path d="M55 ${y} h10 l-2 6 h-6 z" fill="${col}" ${OUT}/><path d="M57 ${y + 6} h6 l5 30 l-8 8 l-8 -8 z" fill="${col}" ${OUT}/>${paw(60, y + 22, 3.4, 'rgba(0,0,0,.25)')}`;
+      },
+    },
+
+    event: {
+      crown(k, size) {   // корона между ушами
+        const b = k.b, kk = size === 'mini' ? 0.7 : 1, t = b.top + 5, w = 15 * kk, h = 19 * kk;
+        return `<path d="M${60 - w} ${t} l0 ${-h} l${w / 2} ${f1(h * 0.45)} l${w / 2} ${f1(-h * 0.7)} l${w / 2} ${f1(h * 0.7)} l${w / 2} ${f1(-h * 0.45)} l0 ${h} z" fill="#ffc94d" stroke="${INK}" stroke-width="${f1(2.8 * kk)}" stroke-linejoin="round"/>`
+          + `<circle cx="60" cy="${f1(t - h * 0.35)}" r="${f1(3 * kk)}" fill="#e8455c"/><circle cx="${f1(60 - w * 0.55)}" cy="${f1(t - h * 0.2)}" r="${f1(2.2 * kk)}" fill="#4ab0ff"/><circle cx="${f1(60 + w * 0.55)}" cy="${f1(t - h * 0.2)}" r="${f1(2.2 * kk)}" fill="#6fdc6f"/>`;
+      },
+      wig(k) {   // парик судьи: кудри поверх головы и по бокам (ушки выглядывают)
+        const b = k.b, t = b.top, hw = b.hw, cs = [];
+        for (let i = -2; i <= 2; i++) cs.push(`<circle cx="${f1(60 + i * hw / 3.4)}" cy="${f1(t + 4 - (2 - Math.abs(i)) * 2)}" r="8.5"/>`);
+        for (let j = 1; j <= 4; j++) { cs.push(`<circle cx="${f1(60 - hw - 6)}" cy="${t + 6 + j * 13}" r="8.5"/>`); cs.push(`<circle cx="${f1(60 + hw + 6)}" cy="${t + 6 + j * 13}" r="8.5"/>`); }
+        return `<g fill="#f4f1ea" stroke="#9a9488" stroke-width="2.2">${cs.join('')}</g>`;
+      },
+    },
+    uniform(k) {   // тюремная роба
+      const u = k.uid('jlU'), y0 = k.my + 11, d = k.b.d;
+      return `<defs><clipPath id="${u}c"><path d="${d}"/></clipPath><pattern id="${u}p" patternUnits="userSpaceOnUse" width="120" height="16" patternTransform="rotate(-4)"><rect width="120" height="16" fill="#f1efe8"/><rect y="8" width="120" height="8" fill="#23212b"/></pattern></defs>`
+        + `<g clip-path="url(#${u}c)"><rect x="0" y="${y0}" width="120" height="${170 - y0}" fill="url(#${u}p)"/><path d="M0 ${y0} H120" stroke="#23212b" stroke-width="4"/>`
+        + `<path d="M48 ${y0} l12 9 l12 -9" fill="#f1efe8" stroke="#23212b" stroke-width="2.5" stroke-linejoin="round"/></g>`
+        + `<path fill="none" stroke="${INK}" stroke-width="3" stroke-linejoin="round" d="${d}"/>`;
+    },
+
+    // призрак: полупрозрачный кот с ушками, низ «рваный», светящиеся глаза, плавно парит
+    ghost(k, parts) {
+      const g = k.uid('jlG'), cyc = k.cyc, GI = '#2a2f55', { ex, ey, my } = k;
+      let wave = 'M-20 190 V160'; for (let x = -20; x < 140; x += 12) wave += ' q6 -9 12 0'; wave += ' V190 Z';
+      const gEyes = cyc ? `<ellipse cx="60" cy="${ey - 2}" rx="7" ry="9" fill="${GI}"/><ellipse cx="60" cy="${ey - 2}" rx="1.6" ry="6" fill="#bff7ff"/>`
+        : `<ellipse cx="${60 - ex}" cy="${ey}" rx="4.6" ry="6.4" fill="${GI}"/><ellipse cx="${60 + ex}" cy="${ey}" rx="4.6" ry="6.4" fill="${GI}"/><path d="M${60 - ex} ${ey - 4} v8 M${60 + ex} ${ey - 4} v8" stroke="#bff7ff" stroke-width="1.6" stroke-linecap="round"/>`;
+      const gMouth = k.sad ? `<path d="M54 ${my + 3} q6 -5 12 0" fill="none" stroke="${GI}" stroke-width="2.2" stroke-linecap="round"/>` : `<path d="M54 ${my} q3 4 6 0 q3 4 6 0" fill="none" stroke="${GI}" stroke-width="2.2" stroke-linecap="round"/>`;
+      const fl = ((k.seed >>> 0) % 1000) / 1000 * 2.6;
+      return {
+        style: 'filter:drop-shadow(0 0 7px rgba(190,230,255,.75))',
+        inner: `<defs><mask id="${g}" maskUnits="userSpaceOnUse" x="-60" y="-80" width="240" height="280"><rect x="-60" y="-80" width="240" height="280" fill="#fff"/><path d="${wave}" fill="#000"/></mask></defs>`
+          + `<g opacity=".8"><animateTransform attributeName="transform" type="translate" values="0 0;0 -6;0 0" dur="2.6s" begin="-${fl.toFixed(2)}s" repeatCount="indefinite"/>`
+          + `<g mask="url(#${g})">${parts.arms}<path fill="rgba(228,240,255,.62)" stroke="rgba(255,255,255,.85)" stroke-width="3" stroke-linejoin="round" d="${k.b.d}"/></g>`
+          + `<path d="M56.5 ${ey + 7} h7 l-3.5 4 z" fill="${GI}" opacity=".6"/>${gEyes}<g class="jd-mouth">${gMouth}</g>${parts.head}</g>`,
+      };
+    },
+
+    aura,
+  });
+})();
+
+} catch (e) { console.error('[стили] styles/cats/characters.js не загрузился:', e); }
+
+/* ───── стиль «cats»: styles/cats/goods.js ───── */
+try {
+/* Стиль «Котики» — товары (часть 'goods'): кошачья еда и «молочко здоровья» — рисунки совпадают с названиями из names.json.
+   Договор — styles/legion/goods.js: { food: { id: () => svg }, potion: (it) => svg }. Низ вещи — y = 0, ширина около 60–70.
+   Обводка — тёплая коричневая, как у самих котиков. */
+(function () {
+  'use strict';
+  if (!window.MDDoodle || !window.MDDoodle.addPart) return;
+  window.MDDoodle.addPart('cats', 'goods', function () {
+    const INK = '#2b1d18', O = (w = 3) => `stroke="${INK}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"`;
+    const MILK = '#fffaf0', PINK = '#ff8fa3';
+    // рыбка мордой вправо: c — спинка, b — брюшко, L — длина, H — полувысота
+    const fish = (c, b, L = 52, H = 11, dy = 0) => {
+      const rx = L * 0.36, cy = -(H + 2) + dy;
+      return `<path d="M${-rx + 3} ${cy} L${-rx - 15} ${cy - H - 2} L${-rx - 15} ${cy + H + 2} Z" fill="${c}" ${O(2.6)}/>`
+        + `<ellipse cx="0" cy="${cy}" rx="${rx}" ry="${H}" fill="${c}" ${O(3)}/>`
+        + `<path d="M${-rx * 0.7} ${cy + 3} Q0 ${cy + H - 1} ${rx * 0.75} ${cy + 2}" fill="none" stroke="${b}" stroke-width="4" stroke-linecap="round"/>`
+        + `<path d="M${rx * 0.28} ${cy - H + 3} q4 ${H - 3} 0 ${2 * H - 6}" fill="none" stroke="${INK}" stroke-width="2"/>`
+        + `<circle cx="${rx * 0.58}" cy="${cy - 3}" r="2.6" fill="${INK}"/>`;
+    };
+    // миска: внутри — что угодно (рисуется поверх ободка)
+    const bowl = (inside, c = PINK) => `<path d="M-32 -16 H32 Q30 4 0 4 Q-30 4 -32 -16 Z" fill="${c}" ${O(3.2)}/>`
+      + `<ellipse cy="-16" rx="32" ry="7" fill="#fff" ${O(2.6)}/>${inside}<path d="M-14 -4 q14 4 28 0" stroke="#fff" stroke-width="2.4" fill="none" opacity=".6"/>`;
+    const steam = (x = 0, y = -36) => `<path d="M${x - 6} ${y} q-5 -7 0 -13 M${x + 6} ${y} q-5 -7 0 -13" stroke="#fff" stroke-width="2.6" fill="none" opacity=".8" stroke-linecap="round"/>`;
+    const FOOD = {
+      // Килька — маленькая серебристая рыбка
+      apple: () => fish('#9fb7cf', '#e8f1fa', 46, 9),
+      // Корюшка — зеленоватая рыбка
+      pear: () => fish('#9cc7a8', '#e9f6ec', 50, 9),
+      // Хрустящий корм — миска с кормом-рыбками
+      pretzel: () => bowl([[-16, -19], [-4, -22], [9, -20], [20, -18], [-9, -16], [4, -17]].map(([x, y], i) => `<path d="M${x - 4} ${y} q4 -4 8 0 l3 -2 v4 l-3 -2 q-4 4 -8 0" fill="${i % 2 ? '#b5762f' : '#8a5a2b'}" stroke="${INK}" stroke-width="1.4"/>`).join(''), '#7cc8ff'),
+      // Миска сметаны — белая горка в миске
+      bread: () => bowl(`<path d="M-24 -17 Q-18 -30 -4 -28 Q6 -38 16 -28 Q26 -26 24 -17 Z" fill="${MILK}" ${O(2.6)}/><path d="M0 -36 q4 -4 2 -8" stroke="${INK}" stroke-width="2.4" fill="none"/>`),
+      // Блюдце молока
+      kvass: () => `<ellipse cy="-6" rx="34" ry="8" fill="#ffd9a8" ${O(3)}/><ellipse cy="-9" rx="24" ry="5" fill="${MILK}" ${O(2.2)}/><circle cx="-8" cy="-10" r="1.6" fill="#fff"/>`,
+      // Сыр с дырками
+      cheese: () => `<path d="M-30 0 H30 V-28 L-30 -12 Z" fill="#ffd34d" ${O(3.4)}/><circle cx="-8" cy="-8" r="4" fill="#e8b923"/><circle cx="14" cy="-14" r="3.4" fill="#e8b923"/><circle cx="20" cy="-5" r="2.4" fill="#e8b923"/>`,
+      // Рыбный пирог — пирог, из которого торчит хвост
+      pie: () => `<path d="M30 -20 L44 -32 L44 -10 Z" fill="#9fb7cf" ${O(2.6)}/><path d="M-34 0 L-29 -16 H29 L34 0 Z" fill="#d9993f" ${O(3.4)}/><path d="M-28 -16 q28 -18 56 0" fill="#e8a23a" ${O(3)}/><path d="M-22 -24 l4 4 m4 -4 l4 4 m-4 -4" stroke="#8a5a2b" stroke-width="2.4"/><path d="M-30 -20 q-8 -6 -10 -14" stroke="#9fb7cf" stroke-width="0"/>`,
+      // Копчёная колбаска — с перевязками на концах
+      ham: () => `<path d="M-30 -10 Q-30 -26 -12 -26 H14 Q32 -26 32 -12 Q32 0 14 0 H-12 Q-30 0 -30 -10 Z" fill="#b5523a" ${O(3.2)}/><path d="M-30 -13 l-8 -6 M-30 -13 l-8 4 M32 -13 l8 -6 M32 -13 l8 4" stroke="${INK}" stroke-width="2.4"/><circle cx="-6" cy="-14" r="2.4" fill="#f2c3a8"/><circle cx="8" cy="-10" r="2" fill="#f2c3a8"/><circle cx="18" cy="-17" r="2" fill="#f2c3a8"/><path d="M-18 -21 q10 -3 20 0" stroke="#fff" stroke-width="2.4" fill="none" opacity=".5"/>`,
+      // Целый лосось — большая розово-оранжевая рыба
+      roast: () => fish('#f08a66', '#ffd2bf', 70, 14) + `<path d="M-6 -24 q4 -6 10 0 M6 -24 q4 -6 10 0" stroke="${INK}" stroke-width="1.6" fill="none" opacity=".5"/>`,
+      // Пучок кошачьей мяты
+      honey_cake: () => `<path d="M0 0 V-24 M0 -8 L-12 -26 M0 -8 L12 -26" stroke="#5a8a3a" stroke-width="3.4" stroke-linecap="round"/>`
+        + [[-14, -30, -30], [0, -36, 0], [14, -30, 30], [-8, -18, -40], [9, -18, 40]].map(([x, y, a]) => `<ellipse cx="${x}" cy="${y}" rx="7" ry="11" transform="rotate(${a} ${x} ${y})" fill="#8fd16a" ${O(2.4)}/>`).join('')
+        + `<path d="M-6 -2 H6" stroke="${PINK}" stroke-width="5" stroke-linecap="round"/>`,
+      // Тёплое молоко с мёдом — кружка, мёд стекает, пар
+      sage_tea: () => `<path d="M-18 -32 H16 L13 -2 Q0 3 -15 -2 Z" fill="${MILK}" ${O(3)}/><path d="M16 -26 q12 2 8 12 q-3 6 -11 4" fill="none" stroke="${INK}" stroke-width="3.2"/><path d="M-18 -32 H16 L15 -26 Q8 -22 6 -26 Q2 -18 -2 -26 Q-10 -22 -17 -26 Z" fill="#ffc94d" ${O(2)}/>${steam(-2, -38)}`,
+      // Бойцовая уха — котелок с рыбьим хвостом
+      spicy_stew: () => `<path d="M-30 -24 H30 Q30 4 0 4 Q-30 4 -30 -24Z" fill="#6d5a45" ${O(3.4)}/><ellipse cy="-24" rx="30" ry="6" fill="#ffb27a" ${O(2.6)}/><path d="M8 -26 L20 -40 L24 -26 Z" fill="#9fb7cf" ${O(2.2)}/><circle cx="-10" cy="-25" r="3" fill="#ff6a3d"/><circle cx="-2" cy="-23" r="2" fill="#6fbf4a"/>${steam(-10, -34)}`,
+    };
+    // Молочко здоровья: малое — бутылочка с розовой крышкой, большое — бидон-кувшин
+    const potion = (it) => /hp|big|больш/i.test(String(it.id) + (it.name || ''))
+      ? `<path d="M-22 0 V-34 Q-22 -42 -12 -44 V-52 H12 V-44 Q22 -42 22 -34 V0 Z" fill="${MILK}" ${O(3.2)}/><rect x="-14" y="-58" width="28" height="8" rx="3" fill="${PINK}" ${O(2.6)}/><path d="M22 -36 q14 0 12 14 q-2 10 -12 10" fill="none" stroke="${INK}" stroke-width="3.2"/><path d="M-8 -26 q-6 -6 0 -10 q6 4 8 0 q2 4 -8 10" fill="${PINK}" stroke="${INK}" stroke-width="1.6"/><path d="M-22 -14 H22" stroke="#e8e0d0" stroke-width="2.4"/>`
+      : `<path d="M-12 0 V-24 Q-12 -30 -6 -32 V-38 H6 V-32 Q12 -30 12 -24 V0 Z" fill="${MILK}" ${O(3)}/><rect x="-8" y="-44" width="16" height="7" rx="3" fill="${PINK}" ${O(2.4)}/><path d="M-4 -18 q-4 -4 0 -7 q4 3 5 0 q2 3 -5 7" fill="${PINK}" stroke="${INK}" stroke-width="1.4"/>`;
+    return { food: FOOD, potion };
+  });
+})();
+
+} catch (e) { console.error('[стили] styles/cats/goods.js не загрузился:', e); }
+
+/* ───── стиль «cats»: styles/cats/hero.js ───── */
+try {
+/* Стиль «Котики» — карточки героя (модуль «Легионер»): карточки как страница детской книжки: тёплая бумага, коричневая обводка, розовые лапки.
+   Разметка и анимации — в modules/legionary/client/widget.js; здесь только вид. Основа — CSS «Легиона», ниже — правила этого стиля
+   (последние перекрывают основу). Договор — styles/README.md, раздел «Карточки героя». */
+(function () {
+  'use strict';
+  if (!window.MDDoodle || !window.MDDoodle.addPart) return;
+  window.MDDoodle.addPart('cats', 'hero', function () {
+    const css = `/* «Легионер»: карточка героя, сумка, смерть / воскрешение / новый уровень */
+.lg-box { position: absolute; inset: 0; pointer-events: none; font-family: 'Golos Text', 'Segoe UI', sans-serif; }
+.lg-box .jl-doodle { width: 120px; height: 170px; overflow: visible; }
+.lg-box .jl-doodle .ln { fill: none; stroke: #f5f2ff; stroke-width: 4.5; stroke-linecap: round; stroke-linejoin: round; }
+.lg-box .jl-doodle .body { stroke: #f5f2ff; stroke-width: 4.5; stroke-linejoin: round; }
+.lg-box .jl-doodle .face:not([fill]) { fill: none; }
+.lg-box .jl-doodle .face { stroke: #15122e; stroke-width: 3.5; stroke-linecap: round; }
+.lg-box .jl-doodle .eye { fill: #15122e; }
+.lg-box .jl-doodle .tear { opacity: 0; }
+
+/* ---------- карточка: боевая — тёмное железо, кровь и угли ---------- */
+.lg-card { position: absolute; left: 0; bottom: 0; width: 540px; display: flex; gap: 14px; padding: 16px 18px 16px 10px; border-radius: 10px;
+  background:
+    repeating-linear-gradient(115deg, rgba(255,255,255,.018) 0 2px, transparent 2px 9px),
+    radial-gradient(ellipse at 18% 110%, rgba(190,40,20,.38), transparent 55%),
+    linear-gradient(165deg, #2a2a2e 0%, #17161a 45%, #0d0c0f 100%);
+  border: 3px solid #050506;
+  box-shadow: 0 0 0 2px #5b4a3a, 0 0 0 5px #141215, inset 0 1px 0 rgba(255,255,255,.08), inset 0 -30px 50px rgba(0,0,0,.55), 0 10px 22px rgba(0,0,0,.6);
+  color: #e8e2d6; opacity: 0; transform: translateY(40px) scale(.94); transition: opacity .3s, transform .45s cubic-bezier(.3,1.4,.5,1); }
+/* заклёпки по углам */
+.lg-card::before, .lg-card::after { content: ''; position: absolute; top: 7px; width: 9px; height: 9px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #b9a88f, #4a3e31 70%); box-shadow: 0 1px 0 rgba(0,0,0,.8), 0 calc(100% + 0px) 0 transparent; }
+.lg-card::before { left: 7px; } .lg-card::after { right: 7px; }
+.lg-card.on { opacity: 1; transform: none; }
+.lg-card.off { opacity: 0; transform: translateY(20px) scale(.97); transition: opacity .35s, transform .35s; }
+/* призрак — холодная сталь, без огня */
+.lg-card.ghost { background:
+    repeating-linear-gradient(115deg, rgba(255,255,255,.02) 0 2px, transparent 2px 9px),
+    radial-gradient(ellipse at 18% 110%, rgba(110,140,220,.28), transparent 55%),
+    linear-gradient(165deg, #23283a 0%, #12141f 50%, #090a10 100%);
+  box-shadow: 0 0 0 2px #4b5577, 0 0 0 5px #10121a, 0 0 26px rgba(140,165,255,.3), inset 0 -30px 50px rgba(0,0,0,.55), 0 10px 22px rgba(0,0,0,.6); }
+.lg-card .pic { flex: none; width: 150px; display: flex; align-items: flex-end; justify-content: center; position: relative; border-radius: 6px;
+  background: radial-gradient(ellipse at 50% 100%, rgba(220,70,30,.35), transparent 65%), linear-gradient(#0b0a0c, #19151a); box-shadow: inset 0 0 0 2px #050506, inset 0 0 18px rgba(0,0,0,.8); overflow: hidden; }
+.lg-card.ghost .pic { background: radial-gradient(ellipse at 50% 100%, rgba(140,165,255,.3), transparent 65%), linear-gradient(#090a10, #151826); }
+.lg-card .pic { justify-content: flex-start; padding-left: 10px; align-items: center; min-height: 188px; }   /* человечек всегда целиком и по центру, даже если сумка пустая */
+.lg-card .info { justify-content: center; }
+.lg-card .pic .jl-doodle { width: 120px; height: 170px; margin-bottom: 4px; }   /* справа — место под оружие в руке */
+.lg-card .info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.lg-card .nm { font: 400 30px 'Russo One', sans-serif; line-height: 1.05; color: #efe6d2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-shadow: 0 2px 0 #000, 0 0 12px rgba(200,50,30,.35); letter-spacing: .01em; }
+.lg-card.ghost .nm { color: #cfd8f2; text-shadow: 0 2px 0 #000, 0 0 12px rgba(140,165,255,.4); }
+.lg-card .role { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; color: #a89a86; text-transform: uppercase; letter-spacing: .08em; }
+.lg-card .lvl { font: 400 14px 'Russo One', sans-serif; padding: 3px 10px 3px; color: #f3e2c4; letter-spacing: .04em;
+  background: linear-gradient(#8e1b1b, #4f0c0c); border: 1.5px solid #050506; box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 0 0 1px #6d5a45;
+  clip-path: polygon(8% 0, 92% 0, 100% 50%, 92% 100%, 8% 100%, 0 50%); }
+.lg-card .xp { height: 8px; border-radius: 2px; background: #050506; box-shadow: inset 0 0 0 1px #3a3128; overflow: hidden; }
+.lg-card .xp i { display: block; height: 100%; background: linear-gradient(90deg, #6e1010, #d2491d 70%, #ffb054); box-shadow: 0 0 8px rgba(255,120,40,.6); }
+.lg-card.ghost .xp i { background: linear-gradient(90deg, #2c3970, #7d95e6); box-shadow: none; }
+.lg-card .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 8px; margin-top: 2px; }
+.lg-card .stats div { display: flex; align-items: center; gap: 7px; font-size: 15px; color: #b8ab98; padding: 5px 10px; border-radius: 4px;
+  background: linear-gradient(#232026, #141217); box-shadow: inset 0 0 0 1px #050506, inset 0 1px 0 rgba(255,255,255,.06); }
+.lg-card .stats b { font: 400 21px 'Russo One', sans-serif; margin-left: auto; color: #efe6d2; text-shadow: 0 2px 0 #000; }
+.lg-card .gear { display: flex; flex-wrap: wrap; gap: 5px; font-size: 13px; color: #cfc4b2; }
+.lg-card .gear span { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 3px; background: #0f0e11; border: 1px solid #3a3128; }
+/* редкость: обычное — сталь, редкое — синее, эпическое — фиолетовое, легендарное — золото с переливом */
+.lg-box .gem { display: inline-block; width: 8px; height: 8px; transform: rotate(45deg); flex: none; background: #8d867b; box-shadow: 0 0 0 1px #050506; }
+.lg-box .r-common { color: #d6cdbd; }
+.lg-box .r-uncommon { color: #a8eeb0; } .lg-box .r-uncommon .gem { background: #4cc95a; box-shadow: 0 0 0 1px #050506, 0 0 6px #4cc95a; }
+.lg-box .r-rare { color: #9ccaff; } .lg-box .r-rare .gem { background: #4aa3ff; box-shadow: 0 0 0 1px #050506, 0 0 6px #4aa3ff; }
+.lg-box .r-epic { color: #dcbcff; } .lg-box .r-epic .gem { background: #b06bff; box-shadow: 0 0 0 1px #050506, 0 0 7px #b06bff; }
+.lg-box .r-legendary { color: #ffd27a; } .lg-box .r-legendary .gem { background: #ffb83d; box-shadow: 0 0 0 1px #050506, 0 0 9px #ffb83d; animation: lgGem 1.4s ease-in-out infinite alternate; }
+@keyframes lgGem { to { box-shadow: 0 0 0 1px #050506, 0 0 16px #ffd76a; } }
+.lg-card .gear span.r-uncommon { border-color: #3f9a4c; box-shadow: inset 0 0 10px rgba(76,201,90,.16); }
+.lg-card .gear span.r-rare { border-color: #3d7fc7; box-shadow: inset 0 0 10px rgba(74,163,255,.18); }
+.lg-card .gear span.r-epic { border-color: #8b55c9; box-shadow: inset 0 0 12px rgba(176,107,255,.25), 0 0 8px rgba(176,107,255,.35); }
+.lg-card .gear span.r-legendary { border-color: #d29a2e; position: relative; overflow: hidden; box-shadow: inset 0 0 12px rgba(255,184,61,.3), 0 0 12px rgba(255,184,61,.5); }
+.lg-card .gear span.r-legendary::after { content: ''; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 30%, rgba(255,240,190,.45) 50%, transparent 70%); background-size: 250% 100%; animation: lgShine 2.4s linear infinite; }
+@keyframes lgShine { from { background-position: 150% 0; } to { background-position: -100% 0; } }
+.lg-card .bag .it { display: inline-flex; align-items: center; gap: 6px; }
+.lg-card .gear em { opacity: .5; font-style: normal; }
+.lg-card .bag { display: flex; flex-direction: column; gap: 3px; font-size: 15px; color: #d8cfbf; }
+.lg-card .bag div { display: flex; gap: 8px; align-items: baseline; }
+.lg-card .bag .n { font: 400 15px 'Russo One', sans-serif; color: #c9472a; width: 22px; text-align: right; }
+.lg-card .bag .on { color: #8fbf6a; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+.lg-card .hint { font-size: 12.5px; color: #85796a; }
+.lg-card .note { font-weight: 700; font-size: 15px; color: #f3e2c4; background: linear-gradient(#7d1717, #4a0b0b); border: 1px solid #050506; box-shadow: 0 0 0 1px #6d5a45; border-radius: 3px; padding: 4px 10px; align-self: flex-start; }
+.lg-card .ghostline { font-weight: 700; font-size: 14px; color: #9fb0e6; }
+
+/* ---------- сцены: смерть, воскрешение, новый уровень ---------- */
+.lg-scene { position: absolute; left: 0; bottom: 0; width: 540px; height: 440px; }
+.lg-scene .guy { position: absolute; left: 195px; bottom: 30px; width: 150px; height: 212px; transform-origin: 75px 200px; }
+.lg-scene .guy .jl-doodle { width: 150px; height: 212px; }
+.lg-scene .ttl { position: absolute; left: 0; right: 0; top: 0; text-align: center; opacity: 0; transform: scale(.4); transition: opacity .3s, transform .55s cubic-bezier(.3,1.6,.5,1); }
+.lg-scene .ttl.on { opacity: 1; transform: none; }
+.lg-scene .ttl b { display: block; font: 400 46px 'Russo One', sans-serif; letter-spacing: .03em; -webkit-text-stroke: 2.5px #15122e; paint-order: stroke fill; text-shadow: 0 5px 0 rgba(0,0,0,.35); }
+.lg-scene .ttl span { display: inline-block; margin-top: 4px; font: 400 26px 'Russo One', sans-serif; color: #fff; -webkit-text-stroke: 1.5px #15122e; paint-order: stroke fill; max-width: 520px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lg-scene .sub { position: absolute; left: 0; right: 0; bottom: 0; text-align: center; font-weight: 700; font-size: 16px; color: #fff; opacity: 0; transition: opacity .4s; }
+.lg-scene .sub.on { opacity: 1; }
+.lg-scene .sub i { display: inline-block; font-style: normal; background: rgba(21,18,46,.82); border-radius: 9px; padding: 4px 10px; margin: 2px; }
+.lg-scene canvas { position: absolute; left: -100px; top: -100px; width: 740px; height: 640px; pointer-events: none; }
+.lg-scene .beam { position: absolute; left: 170px; top: -60px; width: 200px; height: 470px; opacity: 0; background: linear-gradient(180deg, rgba(255,246,200,.9), rgba(255,220,120,.15) 85%, transparent); clip-path: polygon(30% 0, 70% 0, 100% 100%, 0 100%); filter: blur(2px); transition: opacity .6s; }
+.lg-scene .beam.on { opacity: 1; }
+.lg-scene .flash { position: absolute; inset: -40px; background: radial-gradient(circle at 50% 70%, rgba(232,69,92,.75), transparent 60%); opacity: 0; }
+.lg-scene .flash.go { animation: lgFlash .5s ease-out; }
+@keyframes lgFlash { 0% { opacity: 1; } 100% { opacity: 0; } }
+.lg-scene .ring { position: absolute; left: 270px; bottom: 120px; width: 10px; height: 10px; margin: -5px; border-radius: 50%; border: 6px solid #ffc94d; opacity: 0; }
+.lg-scene .ring.go { animation: lgRing .9s ease-out forwards; }
+@keyframes lgRing { 0% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(34); border-width: 1px; } }
+.lg-scene .shake { animation: lgShake .45s linear; }
+@keyframes lgShake { 15% { transform: translate(-8px, 2px); } 35% { transform: translate(7px, -3px); } 55% { transform: translate(-5px, 1px); } 75% { transform: translate(3px, 0); } }
+
+/* текущее здоровье: число / максимум и полоска под ним */
+.lg-card .stats .hpc { position: relative; }
+.lg-card .stats .hpc small { font-size: 13px; color: #8f8474; margin-left: 1px; }
+.lg-card .stats .hpbar { position: absolute; left: 8px; right: 8px; bottom: 2px; height: 3px; background: #050506; border-radius: 2px; overflow: hidden; }
+.lg-card .stats .hpbar i { display: block; height: 100%; background: linear-gradient(90deg, #8e1b1b, #e8455c); }
+.lg-card .woundline { font-weight: 700; font-size: 14px; color: #e88a7a; }
+
+/* удар по герою: карточка дёргается и вспыхивает красным */
+.lg-card.on.hit { animation: lgHit .55s ease-out; }
+@keyframes lgHit { 0% { transform: translate(0,0); box-shadow: 0 0 0 2px #e8455c, 0 0 0 5px #141215, 0 0 40px rgba(232,69,92,.9), 0 10px 22px rgba(0,0,0,.6); }
+  20% { transform: translate(-9px, 3px); } 40% { transform: translate(7px, -2px); } 60% { transform: translate(-4px, 1px); } 80% { transform: translate(2px, 0); } 100% { transform: none; } }
+
+/* временные баффы (например, «Закалка кузнеца» с Ярмарки) */
+.lg-card .buffline { font-weight: 700; font-size: 14px; color: #ffb36b; }
+
+/* ===== «Котики»: страница детской книжки — тёплая бумага, коричневая обводка, розовые лапки ===== */
+.lg-card { border-radius: 20px; padding: 16px 18px 16px 12px;
+  background: radial-gradient(ellipse at 16% 112%, rgba(255,143,163,.35), transparent 55%), linear-gradient(170deg, #fff8ec 0%, #fbe9cf 100%);
+  border: 3px solid #2b1d18; box-shadow: 0 0 0 4px #ffd9a8, 0 0 0 7px #2b1d18, 0 10px 22px rgba(43,29,24,.45); color: #3a271e; }
+.lg-card::before, .lg-card::after { top: 9px; width: 12px; height: 11px; border-radius: 50% 50% 45% 45%;
+  background: radial-gradient(circle at 50% 70%, #ff8fa3 45%, transparent 47%), radial-gradient(circle at 15% 20%, #ff8fa3 22%, transparent 24%), radial-gradient(circle at 50% 8%, #ff8fa3 22%, transparent 24%), radial-gradient(circle at 85% 20%, #ff8fa3 22%, transparent 24%); box-shadow: none; }
+.lg-card.ghost { background: radial-gradient(ellipse at 16% 112%, rgba(182,166,201,.45), transparent 55%), linear-gradient(170deg, #f4f0fb 0%, #e3dcf0 100%);
+  box-shadow: 0 0 0 4px #cfc4e6, 0 0 0 7px #2b1d18, 0 0 24px rgba(182,166,201,.6), 0 10px 22px rgba(43,29,24,.45); }
+.lg-card .pic { border-radius: 14px; background: radial-gradient(ellipse at 50% 105%, rgba(255,210,63,.55), transparent 65%), linear-gradient(#ffe7c2, #ffd29a); box-shadow: inset 0 0 0 3px #2b1d18; }
+.lg-card.ghost .pic { background: radial-gradient(ellipse at 50% 105%, rgba(182,166,201,.6), transparent 65%), linear-gradient(#efe9f8, #d9cfee); }
+.lg-card .nm { color: #2b1d18; text-shadow: 0 2px 0 #ffd9a8; }
+.lg-card.ghost .nm { color: #5a4a7a; text-shadow: 0 2px 0 #fff; }
+.lg-card .role { color: #a0703a; }
+.lg-card .lvl { color: #fff; background: linear-gradient(#ff9fb2, #e8607a); border: 2px solid #2b1d18; box-shadow: none; clip-path: none; border-radius: 999px; }
+.lg-card .xp { height: 10px; border-radius: 6px; background: #f1dcc0; box-shadow: inset 0 0 0 2px #2b1d18; }
+.lg-card .xp i { background: linear-gradient(90deg, #ff8fa3, #ffb84a); box-shadow: none; border-radius: 6px; }
+.lg-card.ghost .xp i { background: linear-gradient(90deg, #b6a6c9, #e3dcf0); }
+.lg-card .stats div { color: #8a5a3a; border-radius: 10px; background: #fffaf2; box-shadow: inset 0 0 0 2px #e8cfae; }
+.lg-card .stats b { color: #2b1d18; text-shadow: none; }
+.lg-card .stats .hpc small { color: #a0805a; }
+.lg-card .stats .hpbar { background: #f1dcc0; }
+.lg-card .stats .hpbar i { background: linear-gradient(90deg, #e8607a, #ff8fa3); }
+.lg-card .gear { color: #5a3a2a; }
+.lg-card .gear span { border-radius: 8px; background: #fff3e0; border: 1.5px solid #e8cfae; }
+.lg-box .gem { box-shadow: 0 0 0 1px #2b1d18; }
+.lg-box .r-common { color: #5a3a2a; } .lg-box .r-uncommon { color: #2f8a3c; } .lg-box .r-rare { color: #2a7fc7; } .lg-box .r-epic { color: #8a45d0; } .lg-box .r-legendary { color: #c07a10; }
+.lg-card .bag { color: #3a271e; } .lg-card .bag .n { color: #e8607a; } .lg-card .bag .on { color: #4a9a3a; }
+.lg-card .hint { color: #a0805a; }
+.lg-card .note { color: #fff; background: linear-gradient(#ff8fa3, #e8607a); border: 2px solid #2b1d18; box-shadow: none; border-radius: 10px; }
+.lg-card .ghostline { color: #6a5a9a; } .lg-card .woundline { color: #c0404a; } .lg-card .buffline { color: #c07a10; }
+.lg-scene .ttl b { -webkit-text-stroke: 2.5px #2b1d18; }
+.lg-scene .ttl span { -webkit-text-stroke: 1.5px #2b1d18; }
+.lg-scene .sub i { background: rgba(43,29,24,.85); border-radius: 12px; }
+.lg-scene .flash { background: radial-gradient(circle at 50% 70%, rgba(255,143,163,.75), transparent 60%); }
+.lg-scene .ring { border-color: #ff8fa3; }
+.lg-scene .beam { background: linear-gradient(180deg, rgba(255,240,210,.9), rgba(255,210,150,.15) 85%, transparent); }
+`;
+    return {
+      css,
+      slotIcons: { weapon: '🐟', armor: '🧶', shield: '🥣', helmet: '⛑', trinket: '🔔' },
+      stats: { hp: { label: '💗 Мур-ХП', icon: '💗' }, def: { label: '🧶 Пушистость', icon: '🧶' }, atk: { label: '🐾 Царапки', icon: '🐾' }, mag: { label: '✨ Мяу-магия', icon: '✨' } },
+      texts: { recruit: 'Котёнок', ghost: '👻 Призрак-кот', nothing: 'Ничего не надето — только шёрстка', level: 'УР.', buff: '✨' },
+      scenes: { death: { title: '😿 МИНУС ЖИЗНЬ', color: '#e8607a' }, revive: { title: '😺 ЕЩЁ ОДНА ЖИЗНЬ', color: '#ffd23f' }, level: { title: (n) => `🐾 УРОВЕНЬ ${n}`, color: '#ffb84a' } },
+    };
+  });
+  // монеты стиля «Котики»: чешуйка (бронза), серебряная рыбка, золотая рыбка. 100 : 1, как у всех
+  window.MDDoodle.addPart('cats', 'coins', function () {
+    const fish = (c1, c2) => `<path d="M2 21 Q14 2 29 21 Q14 38 2 21 Z" fill="${c1}" stroke="#2a2236" stroke-width="2.6"/><path d="M27 21 L39 9 L38 33 Z" fill="${c1}" stroke="#2a2236" stroke-width="2.6" stroke-linejoin="round"/><circle cx="9" cy="18" r="2.6" fill="#2a2236"/><path d="M14 13 Q19 21 14 29 M20 12 Q25 21 20 30" stroke="${c2}" stroke-width="2.2" fill="none"/>`;
+    const ART = {
+      b: '<path d="M20 5 Q34 18 20 35 Q6 18 20 5 Z" fill="#c07a44" stroke="#2a2236" stroke-width="2.4"/><path d="M12 18 Q20 24 28 18 M13 25 Q20 30 27 25" stroke="#7a4420" stroke-width="1.8" fill="none"/>',
+      s: fish('#d4d8e4', '#8a90a4'),
+      g: fish('#f2c14e', '#b8862a') + '<path d="M6 9 L8 2 L11 7 L14 1 L17 7 L20 2 L21 10 Z" fill="#ffd76a" stroke="#2a2236" stroke-width="1.8" stroke-linejoin="round"/>',
+    };
+    return {
+      b: { name: 'чешуйка', forms: ['чешуйка', 'чешуйки', 'чешуек'], color: '#c07a44', emoji: '🟤' },
+      s: { name: 'серебряная рыбка', forms: ['серебряная рыбка', 'серебряные рыбки', 'серебряных рыбок'], color: '#c8ccd8', emoji: '⚪' },
+      g: { name: 'золотая рыбка', forms: ['золотая рыбка', 'золотые рыбки', 'золотых рыбок'], color: '#f2c14e', emoji: '🟡' },
+      svg: (k, size = 22) => `<svg class="coin coin-${k}" viewBox="0 0 40 40" width="${size}" height="${size}">${ART[k] || ART.b}</svg>`,
+    };
+  });
+})();
+
+} catch (e) { console.error('[стили] styles/cats/hero.js не загрузился:', e); }
+
+/* ───── стиль «cats»: styles/cats/legend.js ───── */
+try {
+/* Стиль «Котики» - своя рамка легендарки с босса (часть 'legend'): подушка с ушками, кольцо следов лап, искорки-сердечки.
+   Раскладка, рамка вида и эмблема ауры - общие (styles/legion/legend.js → MDDoodle.legendKit); без фильтров, движение - SVG animate. */
+(function () {
+  'use strict';
+  const D = window.MDDoodle;
+  if (!D || !D.addPart || !D.legendKit) return;
+  D.addPart('cats', 'legend', () => D.legendKit.make({
+    glow: ['#ffe9f0', '#ff8fa3'], item: '#ffd6e0',
+    back: (cx, cy, R, f) => `<path d="M${f(cx - R * 0.78)} ${f(cy - R * 0.6)} l${f(R * 0.12)} ${f(-R * 0.55)} l${f(R * 0.4)} ${f(R * 0.32)} Z M${f(cx + R * 0.78)} ${f(cy - R * 0.6)} l${f(-R * 0.12)} ${f(-R * 0.55)} l${f(-R * 0.4)} ${f(R * 0.32)} Z" fill="#ff9fb2" stroke="#2b1d18" stroke-width="${f(R * 0.035)}" stroke-linejoin="round"/>`
+      + `<circle cx="${f(cx)}" cy="${f(cy)}" r="${f(R * 0.98)}" fill="#ff9fb2" stroke="#2b1d18" stroke-width="${f(R * 0.04)}"/><circle cx="${f(cx)}" cy="${f(cy)}" r="${f(R * 0.82)}" fill="#ffd6e0" stroke="#e86a8a" stroke-width="${f(R * 0.025)}" stroke-dasharray="${f(R * 0.06)} ${f(R * 0.05)}"/>`,
+    ring: (cx, cy, R, f) => { let g = ''; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4, x = cx + Math.cos(a) * R * 1.16, y = cy + Math.sin(a) * R * 1.16, r = R * 0.07; g += `<g transform="rotate(${f(a * 180 / Math.PI + 90)} ${f(x)} ${f(y)})" fill="#e86a8a"><ellipse cx="${f(x)}" cy="${f(y + r * 0.6)}" rx="${f(r * 1.2)}" ry="${f(r)}"/>${[-1.2, -0.4, 0.4, 1.2].map((d) => `<circle cx="${f(x + d * r)}" cy="${f(y - r * (Math.abs(d) > 1 ? 0.5 : 1))}" r="${f(r * 0.42)}"/>`).join('')}</g>`; } return g; },
+    spark: (x, y, r, f) => `<path d="M${f(x)} ${f(y + r)} C${f(x - r * 1.6)} ${f(y - r * 0.2)} ${f(x - r * 0.6)} ${f(y - r * 1.3)} ${f(x)} ${f(y - r * 0.4)} C${f(x + r * 0.6)} ${f(y - r * 1.3)} ${f(x + r * 1.6)} ${f(y - r * 0.2)} ${f(x)} ${f(y + r)} Z" fill="#ff5f8a"/>`,
+  }));
+})();
+
+} catch (e) { console.error('[стили] styles/cats/legend.js не загрузился:', e); }
+
+if (window.MDDoodle && window.MDDoodle.addNames) window.MDDoodle.addNames("cats", {"items":{"dagger":{"name":"Коготок","chat":["коготь","коготок"]},"rusty_sword":{"name":"Сушёная вобла","chat":["вобла","рыба"]},"wood_club":{"name":"Колбаса-дубинка","chat":["колбаса"]},"pitchfork":{"name":"Расчёска-вилы","chat":["расчёска","расческа"]},"hatchet":{"name":"Открывашка","chat":["открывашка"]},"wood_spear":{"name":"Дразнилка","chat":["дразнилка","перо"]},"smith_hammer":{"name":"Молоток-пищалка","chat":["пищалка"]},"mace":{"name":"Клубок на спицах","chat":["клубок","спицы"]},"gladius":{"name":"Рыбья кость","chat":["кость"]},"hunting_bow":{"name":"Рогатка с кормом","chat":["рогатка"]},"bow":{"name":"Детская рогатка","chat":["детская"]},"crook":{"name":"Мышка на палочке","chat":["мышка"]},"walking_staff":{"name":"Указка-трость","chat":["указка"]},"staff":{"name":"Лазерная указка","chat":["лазер"]},"copper_censer":{"name":"Чашка валерьянки","chat":["валерьянка"]},"censer":{"name":"Кадило-валерьянка","chat":["кадило"]},"war_axe":{"name":"Боевая открывашка","chat":["боевая"]},"spatha":{"name":"Копчёная скумбрия","chat":["скумбрия"]},"storm_staff":{"name":"Указка бури","chat":["бури"]},"aquila_blade":{"name":"Золотая рыбка","chat":["рыбка"]},"barrel_lid":{"name":"Лежанка-пончик","chat":["лежанка","пончик"]},"buckler":{"name":"Крышка консервы","chat":["крышка"]},"wood_shield":{"name":"Миска с кормом","chat":["миска"]},"scutum":{"name":"Когтеточка","chat":["когтеточка"]},"centurion_shield":{"name":"Когтеточка-сотник","chat":["когтеточка-сотник"]},"lorica":{"name":"Вязаный свитер","chat":["свитер"]},"robe":{"name":"Плед колдуна","chat":["плед"]},"galea":{"name":"Шлем кото-легиона","chat":["шлем"]},"laurel":{"name":"Венок из мяты","chat":["венок","мята"]},"spark_charm":{"name":"Бубенчик искр","chat":["бубенчик"]},"frost_amulet":{"name":"Ошейник вьюги","chat":["ошейник"]},"shadow_amulet":{"name":"Ошейник тьмы","chat":["тьмы"]},"aquila_amulet":{"name":"Золотой ошейник","chat":["золотой"]},"saint_halo":{"name":"Нимб 9-й жизни","chat":["нимб"]},"potion_small":{"name":"Малое молочко здоровья","chat":["молочко","малое"]},"potion_hp":{"name":"Большое молочко здоровья","chat":["большое"]},"apple":{"name":"Килька","chat":["килька"]},"pear":{"name":"Корюшка","chat":["корюшка"]},"pretzel":{"name":"Хрустящий корм","chat":["корм"]},"bread":{"name":"Миска сметаны","chat":["сметана","сметаны"]},"kvass":{"name":"Блюдце молока","chat":["блюдце"]},"cheese":{"name":"Сыр с дырками","chat":["сыр"]},"pie":{"name":"Рыбный пирог","chat":["пирог"]},"ham":{"name":"Копчёная колбаска","chat":["колбаска"]},"roast":{"name":"Целый лосось","chat":["лосось"]},"honey_cake":{"name":"Пучок кошачьей мяты","chat":["мята","мяты"]},"sage_tea":{"name":"Тёплое молоко с мёдом","chat":["молоко","мёдом","медом"]},"spicy_stew":{"name":"Бойцовая уха","chat":["уха","уху"]},"hadrian_wall":{"name":"Великая когтеточка","chat":["когтеточка","великая когтеточка"]},"storm_heart":{"name":"Указка-молния","chat":["указка","молния"]},"vesta_breath":{"name":"Священная валерьянка","chat":["валерьянка"]},"diana_bow":{"name":"Рогатка Луны","chat":["рогатка"]},"rog_shiv":{"name":"Рыболовный крючок","chat":["крючок"]},"rog_dirk":{"name":"Коготь форточника","chat":["форточника"]},"rog_kris":{"name":"Кривой коготь","chat":["кривой"]},"rog_twin":{"name":"Тихая лапка","chat":["лапка"]},"rog_viper":{"name":"Жало осы","chat":["жало"]},"mercury_fang":{"name":"Клык Мурркурия","chat":["мурркурия","клык"]},"nec_bone_wand":{"name":"Рыбий скелетик","chat":["скелетик"]},"nec_old_book":{"name":"Погрызенная книжка","chat":["книжка"]},"nec_skull_staff":{"name":"Посох с мышиным черепком","chat":["черепок"]},"nec_grimoire":{"name":"Гримуар девяти жизней","chat":["гримуар"]},"nec_crypt_staff":{"name":"Посох подвального кота","chat":["подвального"]},"nec_black_book":{"name":"Книга чёрного кота","chat":["чёрного","черного"]},"orcus_scepter":{"name":"Скипетр Мурка","chat":["скипетр"]},"pal_novice_mace":{"name":"Колотушка послушника","chat":["колотушка"]},"pal_mace":{"name":"Освящённая колотушка","chat":["освящённая","освященная"]},"pal_war_hammer":{"name":"Молоток кошачьего храма","chat":["молоток"]},"pal_sun_mace":{"name":"Булава солнечного зайчика","chat":["зайчика"]},"pal_guard_hammer":{"name":"Молот защитника миски","chat":["миски"]},"sol_hammer":{"name":"Молот Непобедимого Солнышка","chat":["солнышка"]},"dragon_scale":{"name":"Свитер из драконьей шерсти","chat":["свитер"]},"star_mantle":{"name":"Звёздный плед","chat":["плед"]},"triumph_galea":{"name":"Корона Котоцезаря","chat":["корона"]},"phoenix_tear":{"name":"Девятая жизнь","chat":["девятая жизнь","жизнь"]},"mars_horn":{"name":"Боевое мурчало","chat":["мурчало"]},"lucky_coin":{"name":"Блестящая пуговка","chat":["пуговка"]},"wolf_tooth":{"name":"Мышиный хвостик","chat":["хвостик"]},"clay_charm":{"name":"Колокольчик на ленте","chat":["колокольчик"]},"river_pearl":{"name":"Рыбья чешуйка","chat":["чешуйка"]},"iron_sword":{"name":"Вяленая вобла","chat":["вяленая"]},"sharp_gladius":{"name":"Острая рыбья кость","chat":["острая кость"]},"stiletto":{"name":"Острый коготок","chat":["острый коготок"]},"bearded_axe":{"name":"Стальная открывашка","chat":["стальная открывашка"]},"pilum":{"name":"Дразнилка с бубенцом","chat":["дразнилка с бубенцом"]},"flanged_mace":{"name":"Клубок мохера","chat":["мохер"]},"composite_bow":{"name":"Рогатка из вилки","chat":["вилка"]},"yew_bow":{"name":"Рогатка с резинкой","chat":["резинка"]},"oak_staff":{"name":"Указка с батарейкой","chat":["батарейка"]},"druid_crook":{"name":"Мышка на удочке","chat":["удочка"]},"silver_censer":{"name":"Серебряная валерьянка","chat":["серебряная"]},"iron_buckler":{"name":"Крышка от сметаны","chat":["крышка от сметаны"]},"oak_shield":{"name":"Миска с косточками","chat":["косточки"]},"veteran_scutum":{"name":"Когтеточка-ветеран","chat":["ветеран"]},"chainmail":{"name":"Свитер с узорами","chat":["узоры","узорами"]},"leather_armor":{"name":"Пушистая жилетка","chat":["жилетка"]},"adept_robe":{"name":"Плед с кисточками","chat":["кисточки"]},"iron_galea":{"name":"Шлем-кастрюлька","chat":["кастрюлька"]},"hunter_cap":{"name":"Кепка рыбака","chat":["кепка"]},"wizard_hat":{"name":"Колпак кота-колдуна","chat":["колпак"]},"legion_charm":{"name":"Бубенчик котолегиона","chat":["бубенчик котолегиона"]},"healer_beads":{"name":"Ошейник с мятой","chat":["ошейник с мятой"]},"legate_gladius":{"name":"Хребет осетра","chat":["хребет","осетр"]},"champion_mace":{"name":"Клубок чемпиона","chat":["клубок чемпиона"]},"warhammer":{"name":"Молоток-громыхалка","chat":["громыхалка"]},"triarius_hasta":{"name":"Дразнилка с перьями павлина","chat":["павлин","павлина"]},"assassin_dagger":{"name":"Коготь ночного кота","chat":["ночного"]},"retiarius_trident":{"name":"Расчёска-трезубец","chat":["трезубец"]},"barbarian_club":{"name":"Батон докторской","chat":["докторская","батон"]},"longbow":{"name":"Большая рогатка","chat":["большая рогатка"]},"sagittarius_bow":{"name":"Рогатка снайпера","chat":["снайпер","снайпера"]},"ember_staff":{"name":"Указка-уголёк","chat":["уголёк","уголек"]},"elder_crook":{"name":"Мышь-старейшина","chat":["мышь-старейшина"]},"gold_censer":{"name":"Золотая валерьянка","chat":["золотая валерьянка"]},"tower_shield":{"name":"Когтеточка-башня","chat":["башня"]},"hoplite_shield":{"name":"Бронзовая миска","chat":["бронзовая"]},"spiked_buckler":{"name":"Крышка с шипами","chat":["с шипами"]},"segmentata":{"name":"Свитер в полоску","chat":["полоску","полоска"]},"scale_armor":{"name":"Свитер-чешуя","chat":["чешуя"]},"stargazer_robe":{"name":"Плед звездочёта","chat":["звездочёт","звездочет"]},"crested_helm":{"name":"Шлем с хохолком","chat":["хохолок","хохолком"]},"horned_helm":{"name":"Шлем с рожками","chat":["рожки"]},"priest_tiara":{"name":"Нимб из мяты","chat":["нимб из мяты"]},"wolfpack_amulet":{"name":"Ошейник уличного кота","chat":["уличного"]},"frost_bead":{"name":"Льдинка на ленте","chat":["льдинка"]},"praetorian_spatha":{"name":"Королевская сёмга","chat":["сёмга","семга"]},"apollo_bow":{"name":"Солнечная рогатка","chat":["солнечная"]},"pontifex_censer":{"name":"Кадило кошачьего папы","chat":["папы","папа"]},"praetorian_armor":{"name":"Свитер преторианца","chat":["свитер преторианца"]},"golden_crown":{"name":"Корона с бантиком","chat":["корона"]},"quilted_jacket":{"name":"Стёганая жилетка","chat":["жилетка"]},"ranger_jacket":{"name":"Куртка кота-следопыта","chat":["куртка"]},"hunter_armor":{"name":"Доспех ловца мышей","chat":["доспех ловца","ловец"]},"novice_cassock":{"name":"Плед послушника","chat":["плед послушника"]},"archmage_robe":{"name":"Плед архикота","chat":["плед архикота","архикот"]},"archer_hood":{"name":"Капюшон с ушками","chat":["капюшон"]},"marksman_hood":{"name":"Берет кота-стрелка","chat":["берет"]},"novice_hat":{"name":"Колпачок котёнка","chat":["колпачок"]},"archer_charm":{"name":"Бубенчик стрелка","chat":["бубенчик стрелка"]},"sage_charm":{"name":"Бубенчик мудреца","chat":["бубенчик мудреца"]},"stone_charm":{"name":"Каменный бубенчик","chat":["каменный бубенчик"]},"scroll_revive":{"name":"Свиток 10-й жизни","chat":["свиток","жизни"]},"metamorph_seal":{"name":"Печать Мурморфозы","chat":["мурморфозы","печать мурморфозы"]},"enchant_star":{"name":"Звёздочка удачи","chat":["звёздочка","звездочка"]},"enchant_sphere":{"name":"Стеклянный шарик","chat":["шарик"]},"rog_jerkin":{"name":"Жилетка форточника","chat":["жилетка форточника"]},"rog_leathers":{"name":"Кожанка домушника","chat":["домушника"]},"rog_night_coat":{"name":"Плащ ночного кота","chat":["плащ ночного"]},"rog_shadow_cloak":{"name":"Тень чёрной кошки","chat":["тень"]},"rog_laverna_cloak":{"name":"Плащ Мурверны","chat":["плащ мурверны"]},"rog_hood":{"name":"Капюшон дворового","chat":["дворового"]},"rog_mask":{"name":"Маска енота","chat":["енота"]},"rog_cowl":{"name":"Ушки полуночника","chat":["полуночника","ушки"]},"rog_faceless":{"name":"Маска безусого","chat":["безусого"]},"rog_laverna_mask":{"name":"Маска Мурверны","chat":["маска мурверны"]},"rog_lockpick":{"name":"Скрепка на шнурке","chat":["скрепка"]},"rog_viper_vial":{"name":"Пузырёк гадюки","chat":["пузырёк","пузырек"]},"rog_cat_eye":{"name":"Глаз ночной Мурки","chat":["глаз","мурки"]},"nec_shroud":{"name":"Подвальный саван","chat":["саван"]},"nec_undertaker_robe":{"name":"Ряса Некромурра","chat":["ряса"]},"nec_bone_mantle":{"name":"Мантия из косточек","chat":["косточек"]},"nec_lich_robe":{"name":"Плед кота-лича","chat":["плед кота-лича"]},"nec_proserpina_mantle":{"name":"Мантия Прозермурры","chat":["прозермурры"]},"nec_hood":{"name":"Пыльный капюшон","chat":["пыльный"]},"nec_skull_hood":{"name":"Капюшон с черепком","chat":["капюшон с черепком"]},"nec_bone_crown":{"name":"Рыбий венец","chat":["рыбий венец"]},"nec_lich_crown":{"name":"Корона кота-лича","chat":["корона кота-лича"]},"nec_dis_crown":{"name":"Венец Дис Мяутера","chat":["мяутера"]},"nec_dead_finger":{"name":"Мышиная косточка","chat":["мышиная"]},"nec_soul_jar":{"name":"Баночка с душой","chat":["баночка"]},"nec_phylactery":{"name":"Шкатулка 9 жизней","chat":["шкатулка"]},"pal_cuirass":{"name":"Кираса котёнка","chat":["кираса"]},"pal_templar_plate":{"name":"Латы храма Мурр","chat":["латы храма"]},"pal_blessed_plate":{"name":"Латы с солнышком","chat":["латы с солнышком"]},"pal_dawn_plate":{"name":"Латы подоконника","chat":["подоконника"]},"pal_apollo_plate":{"name":"Доспех Аполмура","chat":["доспех аполмура"]},"pal_helm":{"name":"Шлем котёнка","chat":["шлем котёнка","шлем котенка"]},"pal_great_helm":{"name":"Шлем с ушками","chat":["шлем с ушками"]},"pal_winged_helm":{"name":"Шлем с крылышками","chat":["крылышками"]},"pal_halo_helm":{"name":"Шлем 9-й жизни","chat":["шлем 9-й"]},"pal_apollo_helm":{"name":"Шлем Аполмура","chat":["шлем аполмура"]},"pal_ladanka":{"name":"Ладанка с мятой","chat":["ладанка"]},"pal_sun_medal":{"name":"Медалька-солнышко","chat":["медалька"]},"pal_dawn_sign":{"name":"Бубенчик рассвета","chat":["бубенчик рассвета"]},"miner_helmet":{"name":"Каска с фонариком","chat":["каска","фонарик"]},"aurus_seal_5":{"name":"Печать Мурруса 5","chat":["мурруса","печать"]},"aurus_seal_6":{"name":"Печать Мурруса 6","chat":["мурруса","печать"]},"aurus_seal_7":{"name":"Печать Мурруса 7","chat":["мурруса","печать"]},"aurus_seal_8":{"name":"Печать Мурруса 8","chat":["мурруса","печать"]},"aurus_seal_9":{"name":"Печать Мурруса 9","chat":["мурруса","печать"]},"aurus_seal_10":{"name":"Печать Мурруса 10","chat":["мурруса","печать"]},"aurus_seal_11":{"name":"Печать Мурруса 11","chat":["мурруса","печать"]},"aurus_seal_12":{"name":"Печать Мурруса 12","chat":["мурруса","печать"]},"aurus_seal_13":{"name":"Печать Мурруса 13","chat":["мурруса","печать"]},"aurus_seal_14":{"name":"Печать Мурруса 14","chat":["мурруса","печать"]},"aurus_seal_15":{"name":"Печать Мурруса 15","chat":["мурруса","печать"]}},"roles":{"recruit":"Котёнок","legionary":"Котоармеец","archer":"Рогаточник","mage":"Кот-колдун","priest":"Мурлыка-жрец","rogue":"Кот-форточник","necromancer":"Некромурр","paladin":"Котопаладин"},"looks":{"shapes":{"bean":"Обычный котик","box":"Кот-коробка","ball":"Толстый пушистик","tall":"Длинный кот","ghost":"Кот-привидение","cone":"Кот-груша","egg":"Кот-батон"},"eyes":{"dots":"Сонные глазки","big":"Глаза-блюдца","happy":"Довольный прищур","cyclops":"Одноглазый мурзик","stars":"Глаза-звёздочки","jack":"Глаза Джека","void":"Пустые глазницы"},"mouths":{"open":"Мяу!","grin":"Чеширская улыбка","tongue":"Бе-бе язычок"},"hats":{"none":"Без шапки","tuft":"Вихор","cap":"Кепка с козырьком","bow":"Бантик на ушке","horns":"Рожки-чертёнок","crown":"Корона короля мышей","tophat":"Цилиндр котофея","party":"Праздничный колпак","wizard":"Шляпа кота-колдуна","antenna":"Усик-антенна","antenna2":"Две антенны","cat":"Ещё одни ушки","bunny":"Заячьи уши","halo":"Нимб мурлыки","sprout":"Росток кошачьей мяты","bandana":"Бандана кота-пирата","legion":"Шлем кото-легиона","laurel":"Венок из мяты","beret":"Берет кота-художника","headphones":"Наушники мурчания","cowboy":"Шляпа кота в сапогах","chef":"Колпак повара-рыбника","pumpkin":"Тыквенный котелок","witch":"Шляпа кошки-ведьмы","batears":"Уши летучей мыши","skull":"Черепок-шлем","reaper":"Капюшон Мурчащего жнеца","scarehat":"Шляпа огородного пугала"},"acc":{"bowtie":"Бабочка","tie":"Галстук кота-офисного","scarf":"Вязаный шарфик","glasses":"Очки кота-учёного","shades":"Очки крутого кота","monocle":"Монокль","mustache":"Пышные усищи","cape":"Плащ супер-кота","fangs":"Вампирские клычки","vampcape":"Плащ кота-вампира","candybag":"Ведёрко с вкусняшками","bolts":"Болты Котостейна","cobweb":"Паутинка на плече"},"auras":{"gold":"Сияние сметаны","sparks":"Искры статики","halo":"Святой нимб","shadow":"Чёрный кот","frost":"Холодный нос","wisps":"Блуждающие огоньки","bats":"Стайка нетопырей","jackglow":"Тыквенное мурчание","haunt":"Проклятый туман","leaves":"Осенний листопад"},"colors":{"#ff9fb2":"Розовый нос","#ffb27a":"Рыжик","#ffe27a":"Сливочный","#9fe39a":"Мятный","#7fd6e6":"Голубой русский","#8fb6ff":"Небесный","#b9a2ff":"Лавандовый","#e6e6ee":"Белый пушок","#ffc94d":"Золотистый","#5a5470":"Серый дымчатый","#ff8a1f":"Рыжий тыквенный","#9fffd0":"Призрачный","#7b3fe4":"Ведьмин"}},"places":{"camp":{"name":"Кошачий привал","sub":"лагерь новобранцев Легиона"}}});

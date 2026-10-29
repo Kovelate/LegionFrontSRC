@@ -107,7 +107,11 @@
     if (nd.enc) return `${close}<div class="ac-dt"><span class="ac-m enc big" aria-hidden="true"><span class="ac-g">${X.esc(scramble(nd.id, 3))}</span></span><div><h4 class="ac-enc-t">${X.esc(scramble(nd.id, 14))}</h4><p>Откроется позже · ${X.esc((CAT.sys && CAT.sys[nd.d.sys]) || 'новая система')}</p></div></div>`;
     if (nd.hid) return `${close}<div class="ac-dt"><span class="ac-m hid big" aria-hidden="true"><span class="ac-q">?</span></span><div><h4>???</h4><p>Скрытое достижение — откроется, когда случится. Название и условие узнаешь, когда получишь.</p></div></div>`;
     const steps = nd.d.tiers || (nd.d.need ? [nd.d.need] : null);
-    const prog = steps && nd.p != null && !nd.got ? `<div class="ac-pr"><div class="bar"><i style="width:${Math.max(0, Math.min(100, nd.p / nd.goal * 100)).toFixed(1)}%"></i></div><span>${nd.p} / ${nd.goal}${nd.d.unit ? ' ' + X.esc(nd.d.unit) : ''}</span></div>` : '';
+    // 29.10: полоска - честная: порог уже пройден, а ступень ещё не выдана - «засчитается при следующей проверке» (сайт её и
+    // запускает), а не «276 / 50»
+    const unit = nd.d.unit ? ' ' + X.esc(nd.d.unit) : '';
+    const prog = steps && nd.p != null && !nd.got ? (nd.p >= nd.goal ? `<div class="ac-pr"><div class="bar"><i style="width:100%"></i></div><span>${nd.p}${unit} - выполнено, засчитается при следующей проверке</span></div>`
+      : `<div class="ac-pr"><div class="bar"><i style="width:${Math.max(0, Math.min(100, nd.p / nd.goal * 100)).toFixed(1)}%"></i></div><span>${nd.p} / ${nd.goal}${unit}</span></div>`) : '';
     const tiers = nd.tw ? `<ol class="ac-ts">${nd.d.tiers.map((t, i) => `<li class="${((ac.g && ac.g[nd.id]) || []).includes(i) ? 'on' : ''}${i === nd.t ? ' cur' : ''}" data-r="${RCOL[nd.d.rar[i]] || 'common'}">${X.esc(nd.d.tn ? nd.d.tn[i] : TIER[i])} · ${t}</li>`).join('')}</ol>` : '';
     const shown = (ac.sh || []).includes(nd.id);
     return `${close}<div class="ac-dt"><span class="ac-m big ${nd.got ? 'got' : 'next'}" data-r="${RCOL[nd.rar] || 'common'}" aria-hidden="true"><span class="ac-e">${X.esc(nd.icon || '🏅')}</span></span>

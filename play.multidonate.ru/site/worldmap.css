@@ -44,7 +44,7 @@
 .wm-home.btn:hover { background: #ffe7a8; }
 .wm-home.btn:disabled { opacity: .55; }
 .wm-card { position: absolute; right: 10px; top: 10px; z-index: 3; width: 310px; max-width: calc(100% - 20px); max-height: calc(100% - 20px); overflow: auto; box-sizing: border-box;
-  padding: 14px 16px; border-radius: 12px; background: #f6ecd2; color: #2a2236; border: 3px solid #2a2236; box-shadow: 0 6px 0 rgba(42, 34, 54, .35); cursor: auto;
+  --sbt: rgba(42, 34, 54, .32); padding: 14px 16px; border-radius: 12px; background: #f6ecd2; color: #2a2236; border: 3px solid #2a2236; box-shadow: 0 6px 0 rgba(42, 34, 54, .35); cursor: auto;
   font: 500 14px/1.4 'Golos Text', system-ui, sans-serif; user-select: text; -webkit-user-select: text; }
 .wm-card[hidden] { display: none; }
 .wm-card h3 { margin: 0 34px 2px 0; font: 800 20px/1.15 'Golos Text', system-ui, sans-serif; color: #2a2236; text-transform: none; letter-spacing: 0; }

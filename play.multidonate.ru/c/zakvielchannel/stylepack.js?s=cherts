@@ -1,0 +1,770 @@
+/* ───── стиль «cherts»: styles/cherts/characters.js ───── */
+try {
+/* Стиль «Чертики» — озорные чертята с крыльями. Цвет человечка = цвет кожи (Костюмерная тоже красит кожу).
+   Форма тела = вид чертёнка со своими крыльями: бесёнок, громила, пухлик, франт, огненный дух, нетопырь, вылупыш.
+   Разные по нику: рога (рожки, козлиные, бараньи завитки, бычьи, крохотные, отломанный), длинный хвост 6 форм (S-волна, завиток, петля, крючок, волна, до земли) с наконечником (стрелка, сердечко, огонёк, кисточка), пузико,
+   веснушки, козлиная бородка, клыки, цвет рогов. Внизу — копытца (у духа их нет, вылупыш сидит в скорлупе).
+   Крылья и хвост рисуются вместе с руками (слой за телом), поэтому они и у призрака, и за плащом не теряются.
+   Устроен как образец styles/legion/characters.js, договор — styles/README.md.
+   Холст 120×170, ноги на y = 168, центр по x = 60. Каждая функция возвращает строку SVG.
+   Классы body/ln/face/eye не используются: все цвета заданы прямо в SVG. */
+(function () {
+  'use strict';
+  const D = window.MDDoodle;
+  if (!D) return;
+
+  // ── цвета стиля ──
+  const INK = '#2a0d14';
+  const RIM = 'rgba(255,236,230,.5)';
+  const GOLD = '#ffc83d';
+  const FIRE = ['#ffe27a', '#ff9a2a', '#ff4a1a'];
+  const WS = `stroke="${INK}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"`;
+  const S3 = `stroke="${INK}" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"`;
+  const FS = `fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"`;
+  const FSW = (w) => `fill="none" stroke="${INK}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"`;
+  const RARITY = { common: null, uncommon: '#5bd36a', rare: '#4fc3ff', epic: '#c77dff', legendary: '#ffcf3a' };
+  const METAL = { common: '#b7bec4', uncommon: '#cdeec4', rare: '#bfe3ff', epic: '#e0c8ff', legendary: '#ffd76a' };
+  const f1 = (v) => +(+v).toFixed(1);
+
+  // кожа «по нику»: больше всего красных
+  const SKINS = ['#e83a3a', '#d42a3a', '#ff5a5a', '#c8102e', '#e83a3a', '#ff7a3d', '#ff8fb0', '#b33a8a', '#7a3ab3', '#3a3346', '#d94a1a', '#9a1a3a', '#5aae6a', '#ff5a5a'];
+  const HORN = ['#f3e6c8', '#f3e6c8', '#2a1a22', GOLD, '#7a1a2a'];
+  // смешать цвет #rrggbb с другим (t — доля второго)
+  function mix(c, d, t) {
+    const m = /^#([0-9a-f]{6})$/i.exec(String(c)); if (!m) return c;
+    const a = parseInt(m[1], 16), b = parseInt(d.slice(1), 16);
+    const ch = (s) => Math.round(((a >> s) & 255) * (1 - t) + ((b >> s) & 255) * t);
+    return '#' + [16, 8, 0].map((s) => ch(s).toString(16).padStart(2, '0')).join('');
+  }
+  const dark = (c, t) => mix(c, '#1a0408', t);
+  const light = (c, t) => mix(c, '#fff4ec', t);
+
+  // черты по нику — из seed, без r()
+  function T(k) {
+    const s = (k && k.seed) >>> 0, h = Math.imul(s ^ 0x6a09e667, 2654435761) >>> 0;
+    return {
+      horn: ['cone', 'cone', 'goat', 'ram', 'bull', 'nub', 'broken'][h % 7],
+      hornCol: HORN[(h >>> 3) % HORN.length],
+      tail: ['arrow', 'arrow', 'heart', 'flame', 'tuft'][(h >>> 9) % 5],
+      tshape: ['scurve', 'curl', 'loop', 'hook', 'wave', 'ground'][(h >>> 21) % 6],
+      belly: (h >>> 12) % 2 === 0,
+      freckles: (h >>> 13) % 4 === 0,
+      goatee: (h >>> 15) % 4 === 0,
+      fang: (h >>> 17) % 3 !== 0,
+      brows: (h >>> 19) % 3 !== 0,
+    };
+  }
+
+  /* ── тела: каждая форма — свой вид чертёнка (и свои крылья) ──
+     bean — бесёнок (капелька с острой макушкой), box — черт-громила (широкие плечи), ball — пухлик,
+     tall — демон-франт, ghost — огненный дух (тело-пламя, парит), cone — нетопырь-черт (большие уши), egg — вылупыш в скорлупе */
+  const bodies = {
+    bean(r) { const w = 25 + Math.floor(r() * 8), L = 60 - w, R = 60 + w, top = 72; return { kind: 'imp', L, R, top, hw: f1(w * 0.62), eyeY: top + 32, armY: top + 44, d: `M${L} 166 C${L - 4} 126 ${L + 4} 98 54 ${top + 12} Q60 ${top - 6} 66 ${top + 12} C${R - 4} 98 ${R + 4} 126 ${R} 166 Z` }; },
+    box(r) { const w = 31 + Math.floor(r() * 6), L = 60 - w, R = 60 + w, top = 84 + Math.floor(r() * 6); return { kind: 'brute', L, R, top, hw: w - 9, eyeY: top + 22, armY: top + 18, square: true, d: `M${L + 9} 166 L${L} ${top + 14} Q${L} ${top} ${L + 12} ${top} H${R - 12} Q${R} ${top} ${R} ${top + 14} L${R - 9} 166 Z` }; },
+    ball(r) { const w = 34 + Math.floor(r() * 6), L = 60 - w, R = 60 + w, top = 100; return { kind: 'chubby', L, R, top, hw: f1(w * 0.6), eyeY: 124, armY: 132, d: `M${L + 6} 166 C${L - 8} 152 ${L - 4} ${top} 60 ${top} C${R + 4} ${top} ${R + 8} 152 ${R - 6} 166 Z` }; },
+    tall(r) { const w = 18 + Math.floor(r() * 4), L = 60 - w, R = 60 + w, top = 56; return { kind: 'dandy', L, R, top, hw: f1(w * 0.82), eyeY: 82, armY: 100, narrow: true, d: `M${L + 2} 166 C${L + 4} 136 ${L - 3} 116 ${L} 96 C${L - 1} 70 ${L + 6} ${top} 60 ${top} C${R - 6} ${top} ${R + 1} 70 ${R} 96 C${R + 3} 116 ${R - 4} 136 ${R - 2} 166 Z` }; },
+    ghost(r) { const w = 26 + Math.floor(r() * 6), L = 60 - w, R = 60 + w, top = 80, s = f1((2 * w) / 3); return { kind: 'wisp', L, R, top, hw: f1(w * 0.66), eyeY: top + 34, armY: top + 46, ghosty: true, d: `M${L} 158 C${L - 2} 128 ${L + 2} ${top + 30} ${L + 8} ${top + 18} Q${L + 6} ${top + 4} ${L + 14} ${top - 4} Q${L + 16} ${top + 8} 52 ${top + 6} Q53 ${top - 8} 60 ${top - 16} Q66 ${top - 4} 68 ${top + 6} Q${R - 16} ${top + 8} ${R - 14} ${top - 4} Q${R - 6} ${top + 4} ${R - 8} ${top + 18} C${R - 2} ${top + 30} ${R + 2} 128 ${R} 158 q${-s / 2} 10 ${-s} 0 q${-s / 2} 10 ${-s} 0 q${-s / 2} 10 ${-s} 0 Z` }; },
+    cone(r) { const w = 28 + Math.floor(r() * 6), L = 60 - w, R = 60 + w, top = 80; return { kind: 'bat', L, R, top, hw: 14, eyeY: top + 30, armY: top + 44, narrow: true, d: `M${L} 166 C${L + 4} 140 ${L + 16} 94 60 ${top} C${R - 16} 94 ${R - 4} 140 ${R} 166 Z` }; },
+    egg(r) { const w = 26 + Math.floor(r() * 5), L = 60 - w, R = 60 + w, top = 76; return { kind: 'hatch', L, R, top, hw: f1(w * 0.6), eyeY: top + 30, armY: top + 46, d: `M60 ${top} C${R - 4} ${top} ${R + 6} 130 ${R - 2} 158 Q60 172 ${L + 2} 158 C${L - 6} 130 ${L + 4} ${top} 60 ${top} Z` }; },
+  };
+
+  /* ── рога: сидят по краям макушки, шапки садятся между ними ── */
+  function horns(k, t) {
+    const b = k.b, top = b.square ? b.top + 2 : b.top + 6, dx = f1(Math.max(8, b.hw * 0.55)), c = t.hornCol, ln = c === '#2a1a22' ? '#6a5a62' : 'rgba(0,0,0,.18)';
+    const one = (side, kind) => {
+      const x = 60 + side * dx, sd = side;
+      let p;
+      switch (kind) {
+        case 'goat': p = `M${x - 4 * sd} ${top + 2} C${x - 2 * sd} ${top - 14} ${x + 8 * sd} ${top - 24} ${x + 18 * sd} ${top - 22} C${x + 10 * sd} ${top - 18} ${x + 6 * sd} ${top - 8} ${x + 6 * sd} ${top + 2} Z`; break;
+        case 'ram': p = `M${x - 2 * sd} ${top + 4} C${x - 2 * sd} ${top - 8} ${x + 14 * sd} ${top - 12} ${x + 16 * sd} ${top} C${x + 17 * sd} ${top + 10} ${x + 6 * sd} ${top + 12} ${x + 6 * sd} ${top + 4} C${x + 6 * sd} ${top} ${x + 10 * sd} ${top} ${x + 10 * sd} ${top + 3} L${x + 6 * sd} ${top + 6} Z`; break;
+        case 'bull': p = `M${x - 3 * sd} ${top + 3} C${x + 10 * sd} ${top} ${x + 18 * sd} ${top - 8} ${x + 16 * sd} ${top - 20} C${x + 24 * sd} ${top - 8} ${x + 18 * sd} ${top + 8} ${x + 5 * sd} ${top + 6} Z`; break;
+        case 'nub': p = `M${x - 4 * sd} ${top + 3} Q${x} ${top - 8} ${x + 4 * sd} ${top + 3} Z`; break;
+        case 'stub': p = `M${x - 4 * sd} ${top + 3} L${x - 2 * sd} ${top - 5} L${x + 1 * sd} ${top - 3} L${x + 3 * sd} ${top - 7} L${x + 5 * sd} ${top + 3} Z`; break;   // отломанный
+        default: p = `M${x - 5 * sd} ${top + 3} C${x - 4 * sd} ${top - 8} ${x + 2 * sd} ${top - 16} ${x + 8 * sd} ${top - 18} C${x + 5 * sd} ${top - 10} ${x + 6 * sd} ${top - 2} ${x + 5 * sd} ${top + 3} Z`;   // рожки
+      }
+      return `<path d="${p}" fill="${c}" ${WS}/>` + (kind === 'goat' || kind === 'cone' || kind === 'bull' ? `<path d="M${x} ${top - 3} l${3 * sd} -1 M${x + 2 * sd} ${top - 8} l${3 * sd} -1" stroke="${ln}" stroke-width="1.4"/>` : '');
+    };
+    if (t.horn === 'broken') return one(-1, 'cone') + one(1, 'stub');
+    return one(-1, t.horn) + one(1, t.horn);
+  }
+
+  /* ── крылья (за телом и руками): якорь — спина на уровне плеч ── */
+  function wings(k, t) {
+    const b = k.b, tiny = b.kind === 'chubby' || b.kind === 'hatch', off = tiny ? 1.02 : 0.75;
+    const y = b.armY - (tiny ? 22 : 14), mem = dark(k.fill, 0.38), rib = dark(k.fill, 0.62), xs = f1(60 - b.hw * off), xe = f1(60 + b.hw * off);
+    const side = (sd, x0, kind, sc) => {
+      const X = (dx) => f1(x0 + sd * dx * sc), Y = (dy) => f1(y + dy * sc);
+      if (kind === 'feather') {   // перьевые, тёмные — «падший ангел»
+        let f = ''; for (let i = 0; i < 6; i++) { const a = (-70 + i * 22) * Math.PI / 180, len = 20 - Math.abs(i - 2) * 2; f += `<ellipse cx="${X(10 + Math.cos(a) * len * 0.6 + 8)}" cy="${Y(Math.sin(a) * len * 0.6 - 4)}" rx="${f1(10 * sc)}" ry="${f1(3.6 * sc)}" transform="rotate(${f1(sd * (a * 180 / Math.PI))} ${X(10 + Math.cos(a) * len * 0.6 + 8)} ${Y(Math.sin(a) * len * 0.6 - 4)})"/>`; }
+        return `<g fill="#5a4a56" ${WS}>${f}</g><g fill="none" stroke="#9a8a96" stroke-width="1.2" opacity=".8">${f.replace(/rx="[0-9.]+"/g, (m) => 'rx="' + f1(parseFloat(m.slice(4)) * 0.55) + '"').replace(/ry="[0-9.]+"/g, 'ry="0.6"')}</g>`;   // серые перья с прожилкой
+      }
+      const tat = kind === 'tattered';
+      const edge = tat ? `L${X(34)} ${Y(-6)} L${X(28)} ${Y(0)} L${X(30)} ${Y(8)} L${X(22)} ${Y(6)} L${X(18)} ${Y(14)} L${X(12)} ${Y(8)}`
+        : `Q${X(32)} ${Y(-4)} ${X(30)} ${Y(4)} Q${X(24)} ${Y(2)} ${X(20)} ${Y(10)} Q${X(14)} ${Y(6)} ${X(6)} ${Y(10)}`;
+      return `<path d="M${X(0)} ${Y(4)} L${X(6)} ${Y(-14)} Q${X(22)} ${Y(-26)} ${X(38)} ${Y(-20)} ${edge} Z" fill="${mem}" ${WS}/>`
+        + `<path d="M${X(6)} ${Y(-14)} L${X(30)} ${Y(4)} M${X(6)} ${Y(-14)} L${X(20)} ${Y(10)} M${X(6)} ${Y(-14)} L${X(38)} ${Y(-20)}" fill="none" stroke="${rib}" stroke-width="${f1(1.8 * sc)}" stroke-linecap="round"/>`
+        + `<circle cx="${X(6)}" cy="${Y(-14)}" r="${f1(2.2 * sc)}" fill="${rib}"/>`
+        + (tat ? `<circle cx="${X(18)}" cy="${Y(-8)}" r="${f1(2.4 * sc)}" fill="${INK}" opacity=".7"/>` : '');
+    };
+    const flameW = (sd, x0) => { const X = (dx) => f1(x0 + sd * dx), Y = (dy) => f1(y + dy);
+      return `<path d="M${X(0)} ${Y(6)} Q${X(10)} ${Y(-6)} ${X(20)} ${Y(-28)} Q${X(22)} ${Y(-14)} ${X(28)} ${Y(-20)} Q${X(30)} ${Y(-6)} ${X(40)} ${Y(-12)} Q${X(36)} ${Y(4)} ${X(42)} ${Y(8)} Q${X(28)} ${Y(8)} ${X(24)} ${Y(16)} Q${X(14)} ${Y(8)} ${X(0)} ${Y(12)} Z" fill="${FIRE[1]}" ${WS}/>`
+        + `<path d="M${X(4)} ${Y(6)} Q${X(14)} ${Y(-2)} ${X(20)} ${Y(-16)} Q${X(24)} ${Y(-4)} ${X(32)} ${Y(-4)} Q${X(24)} ${Y(4)} ${X(4)} ${Y(8)} Z" fill="${FIRE[0]}"/>`; };
+    const babyW = (sd, x0) => { const X = (dx) => f1(x0 + sd * dx * 1.2), Y = (dy) => f1(y + 4 + dy * 1.2);
+      return `<path d="M${X(0)} ${Y(4)} Q${X(6)} ${Y(-14)} ${X(20)} ${Y(-12)} Q${X(24)} ${Y(-6)} ${X(18)} ${Y(-2)} Q${X(22)} ${Y(4)} ${X(14)} ${Y(6)} Q${X(10)} ${Y(10)} ${X(0)} ${Y(8)} Z" fill="${light(k.fill, 0.35)}" ${WS}/><path d="M${X(8)} ${Y(-4)} q4 2 8 0 M${X(6)} ${Y(2)} q4 2 7 1" fill="none" stroke="${dark(k.fill, 0.3)}" stroke-width="1.4"/>`; };
+    switch (b.kind) {
+      case 'brute': return side(-1, xs, 'tattered', 1.55) + side(1, xe, 'tattered', 1.55);   // громила — огромные рваные
+      case 'chubby': return side(-1, xs, 'bat', 0.78) + side(1, xe, 'bat', 0.78);             // пухлик — крохотные
+      case 'dandy': return side(-1, xs, 'feather', 1.3) + side(1, xe, 'feather', 1.3);       // франт — перья падшего ангела
+      case 'wisp': return flameW(-1, xs) + flameW(1, xe);                                     // огненный дух — крылья из огня
+      case 'bat': return `<g transform="translate(0 16)">${side(-1, xs, 'bat', 0.75) + side(1, xe, 'bat', 0.75)}</g>` + side(-1, xs, 'bat', 1.15) + side(1, xe, 'bat', 1.15);   // нетопырь — две пары
+      case 'hatch': return babyW(-1, xs) + babyW(1, xe);                                      // вылупыш — детские крылышки
+      default: return side(-1, xs, 'bat', 1.3) + side(1, xe, 'bat', 1.3);                     // бесёнок — перепончатые
+    }
+  }
+
+  /* ── хвост: длинный, плавный, 6 форм; наконечник поворачивается по направлению кончика ──
+     форма — по нику: S-волна, завиток, петля, крючок-«вопросик», волнистый, свисающий до земли */
+  const TAILS = {
+    //            путь от (0,0) — точки выхода из-за тела; последняя пара — [контрольная точка, конец] для направления наконечника
+    scurve: ['C24 8 36 -12 28 -34 S30 -62 44 -70', [30, -62], [44, -70]],
+    curl: ['C26 8 44 -16 38 -40 C34 -58 14 -60 12 -46 C10 -34 24 -30 28 -40', [24, -30], [28, -40]],
+    loop: ['C30 2 38 -26 24 -34 C8 -40 4 -18 20 -16 C40 -14 48 -36 44 -60', [48, -36], [44, -60]],
+    hook: ['C22 6 34 -8 34 -32 C34 -56 54 -64 62 -48', [54, -64], [62, -48]],
+    wave: ['C12 10 20 -8 30 0 C40 8 46 -10 52 -4 C60 4 66 -12 62 -28', [66, -12], [62, -28]],
+    ground: ['C8 14 28 16 42 10 C54 4 58 -12 50 -28', [58, -12], [50, -28]],
+  };
+  function tail(k, t) {
+    const b = k.b, x0 = b.R - 8, y0 = 154, c = k.fill, T0 = TAILS[t.tshape] || TAILS.scurve;
+    const [cpx, cpy] = T0[1], [ex, ey] = T0[2], ang = f1(Math.atan2(ey - cpy, ex - cpx) * 180 / Math.PI + 90);
+    const d = `M${x0} ${y0} ${T0[0].replace(/(-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)/g, (m, x, y) => `${f1(x0 + +x)} ${f1(y0 + +y)}`)}`;
+    // наконечник в своих координатах: основание в (0,0), острие вверх (−y)
+    let tip;
+    switch (t.tail) {
+      case 'heart': tip = `<path d="M0 -17 C-10 -11 -9 -1 0 -4 C9 -1 10 -11 0 -17 Z" fill="${dark(c, 0.3)}" ${WS}/>`; break;
+      case 'flame': tip = `<path d="M-6 0 Q-9 -9 -2 -18 Q0 -10 3 -13 Q9 -6 6 0 Q0 3 -6 0 Z" fill="${FIRE[1]}" ${WS}/><path d="M-2.4 -1 Q-4 -6 -0.6 -10 Q2.6 -5 1.6 -1 Z" fill="${FIRE[0]}"/>`; break;
+      case 'tuft': tip = `<g fill="${dark(c, 0.45)}" ${WS}><circle cx="-4" cy="-4" r="4.4"/><circle cx="4" cy="-4" r="4.4"/><circle cx="0" cy="-9" r="5"/></g>`; break;
+      default: tip = `<path d="M0 -15 Q9 -6 7 1 Q3 -1 0 3 Q-3 -1 -7 1 Q-9 -6 0 -15 Z" fill="${dark(c, 0.3)}" ${WS}/>`;   // закруглённая стрелка-пика
+    }
+    return `<path d="${d}" fill="none" stroke="${INK}" stroke-width="7.4" stroke-linecap="round" stroke-linejoin="round"/><path d="${d}" fill="none" stroke="${c}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>`
+      + `<g transform="translate(${f1(x0 + ex)} ${f1(y0 + ey)}) rotate(${ang})">${tip}</g>`;
+  }
+
+  // копытца
+  const hoof = (x) => `<path d="M${x - 7} 172 Q${x - 7} 163 ${x} 163 Q${x + 7} 163 ${x + 7} 172 Z" fill="#2a1a22" ${WS}/><path d="M${x} 165 V172" stroke="#8a7a82" stroke-width="1.6"/>`;
+
+  /* Тело: копытца → кожа → пузико/веснушки → контур → рога → бородка */
+  function body(k) {
+    const b = k.b, t = T(k), d = b.d, u = k.uid('jlB');
+    let s = `<defs><clipPath id="${u}"><path d="${d}"/></clipPath></defs><path d="${d}" fill="${k.fill}"/><g clip-path="url(#${u})">`;
+    if (t.belly) s += `<ellipse cx="60" cy="${f1((k.my + 170) / 2 + 6)}" rx="${f1((b.R - b.L) * 0.3)}" ry="${f1((170 - k.my) * 0.38)}" fill="${light(k.fill, 0.45)}"/>`;
+    if (t.freckles) s += `<g fill="${dark(k.fill, 0.3)}"><circle cx="${60 - k.ex - 6}" cy="${k.ey + 8}" r="1.2"/><circle cx="${60 - k.ex - 2}" cy="${k.ey + 10}" r="1.2"/><circle cx="${60 - k.ex - 8}" cy="${k.ey + 11}" r="1.1"/><circle cx="${60 + k.ex + 6}" cy="${k.ey + 8}" r="1.2"/><circle cx="${60 + k.ex + 2}" cy="${k.ey + 10}" r="1.2"/><circle cx="${60 + k.ex + 8}" cy="${k.ey + 11}" r="1.1"/></g>`;
+    if (b.kind === 'brute') s += `<path d="M${b.L + 10} ${b.armY + 22} Q60 ${b.armY + 30} ${b.R - 10} ${b.armY + 22} M60 ${b.armY + 26} V160 M${60 - 14} ${b.armY + 40} q7 4 14 0 q7 4 14 0" fill="none" stroke="${dark(k.fill, 0.3)}" stroke-width="2.2" stroke-linecap="round"/>`;   // грудь и пресс громилы
+    if (b.kind === 'wisp') s += `<path d="M${b.L + 12} 160 C${b.L + 8} 130 ${60 - 8} ${b.top + 40} 60 ${b.top + 20} C${60 + 8} ${b.top + 40} ${b.R - 8} 130 ${b.R - 12} 160 Z" fill="${FIRE[1]}" opacity=".55"/><path d="M${60 - 10} 160 C${60 - 12} 140 ${60 - 4} 128 60 ${b.top + 52} C${60 + 4} 128 ${60 + 12} 140 ${60 + 10} 160 Z" fill="${FIRE[0]}" opacity=".6"/>`;   // огненная сердцевина
+    if (b.kind === 'dandy') s += `<path d="M${60 - 10} ${k.my + 12} L60 ${k.my + 22} L${60 + 10} ${k.my + 12}" fill="none" stroke="${dark(k.fill, 0.4)}" stroke-width="2.4" stroke-linecap="round"/>`;   // острый воротничок
+    s += `<path d="M${b.L + 8} ${b.top + 30} q2 -12 12 -16" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".25"/>`;
+    s += '</g>';
+    s += `<path d="${d}" fill="none" stroke="${RIM}" stroke-width="6" stroke-linejoin="round"/><path d="${d}" fill="none" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>`;
+    if (b.kind === 'bat') s += `<path d="M${60 - 10} ${b.top + 10} L${60 - 26} ${b.top - 14} L${60 - 18} ${b.top + 18} Z M${60 + 10} ${b.top + 10} L${60 + 26} ${b.top - 14} L${60 + 18} ${b.top + 18} Z" fill="${k.fill}" ${WS}/><path d="M${60 - 14} ${b.top + 10} L${60 - 23} ${b.top - 8} L${60 - 18} ${b.top + 13} Z M${60 + 14} ${b.top + 10} L${60 + 23} ${b.top - 8} L${60 + 18} ${b.top + 13} Z" fill="${light(k.fill, 0.4)}"/>`;   // уши нетопыря
+    if (b.kind === 'hatch') {   // скорлупа: нижняя половинка яйца с зубчатым краем
+      let z = `M${b.L - 4} 136`; for (let i = 1; i <= 8; i++) z += ` L${f1(b.L - 4 + (b.R - b.L + 8) * i / 8)} ${i % 2 ? 128 : 138}`;
+      s += `<path d="${z} C${b.R + 6} 152 ${b.R} 170 60 171 C${b.L} 170 ${b.L - 6} 152 ${b.L - 4} 136 Z" fill="#fbf6ea" ${S3}/><g fill="#e8dcc0"><circle cx="${b.L + 6}" cy="150" r="2.4"/><circle cx="${b.R - 10}" cy="156" r="3"/><circle cx="62" cy="162" r="2"/></g><path d="M${b.R - 6} 140 l-4 6 l3 4" fill="none" stroke="${INK}" stroke-width="1.4"/>`;
+    } else if (!b.ghosty) s += hoof(47) + hoof(73);   // копытца — перед телом
+    s += horns(k, t);
+    if (t.goatee) s += `<path d="M55 ${k.my + 7} Q60 ${k.my + 22} 65 ${k.my + 7} Z" fill="${dark(k.fill, 0.6)}" ${WS}/>`;
+    return s;
+  }
+
+  /* ── лицо ── */
+  const brows = (k, t) => (t.brows ? `<path d="M${60 - k.ex - 6} ${k.ey - 10} l9 3 M${60 + k.ex + 6} ${k.ey - 10} l-9 3" ${FSW(2.4)}/>` : '');
+  function eyes(kind, k) {
+    const { ex, ey } = k, t = T(k);
+    if (kind === 'big') return `<circle cx="${60 - ex}" cy="${ey}" r="7" fill="#fff" stroke="${INK}" stroke-width="2.4"/><circle cx="${60 + ex}" cy="${ey}" r="7" fill="#fff" stroke="${INK}" stroke-width="2.4"/><circle cx="${60 - ex + 1}" cy="${ey + 1}" r="3" fill="${INK}"/><circle cx="${60 + ex + 1}" cy="${ey + 1}" r="3" fill="${INK}"/>` + brows(k, t);
+    if (kind === 'cyclops') return `<circle cx="60" cy="${ey}" r="10" fill="${FIRE[0]}" stroke="${INK}" stroke-width="2.6"/><ellipse cx="60" cy="${ey}" rx="2.4" ry="7" fill="${INK}"/>`;
+    if (kind === 'stars') return [60 - ex, 60 + ex].map((x) => `<path d="M${x} ${ey - 6} L${x + 1.8} ${ey - 1.8} L${x + 6} ${ey} L${x + 1.8} ${ey + 1.8} L${x} ${ey + 6} L${x - 1.8} ${ey + 1.8} L${x - 6} ${ey} L${x - 1.8} ${ey - 1.8} Z" fill="${GOLD}" stroke="${INK}" stroke-width="1.4"/>`).join('');
+    if (kind === 'happy') return `<path d="M${60 - ex - 4} ${ey + 1} q4 -6 8 0 M${60 + ex - 4} ${ey + 1} q4 -6 8 0" ${FS}/>`;
+    if (kind === 'slit')   // жёлтые глаза со зрачком-щёлкой
+      return [60 - ex, 60 + ex].map((x) => `<ellipse cx="${x}" cy="${ey}" rx="5.4" ry="5" fill="${FIRE[0]}" stroke="${INK}" stroke-width="2.2"/><ellipse cx="${x}" cy="${ey}" rx="1.4" ry="4.4" fill="${INK}"/>`).join('') + brows(k, t);
+    if (kind === 'sly')   // хитрый прищур, одна бровь вверх
+      return `<path d="M${60 - ex - 5} ${ey} q5 -3 10 0" ${FS}/><circle cx="${60 + ex}" cy="${ey}" r="4" fill="${INK}"/><path d="M${60 - ex - 6} ${ey - 8} l10 2 M${60 + ex - 5} ${ey - 11} q5 -3 10 1" ${FSW(2.4)}/>`;
+    return `<circle cx="${60 - ex}" cy="${ey}" r="4" fill="${INK}"/><circle cx="${60 + ex}" cy="${ey}" r="4" fill="${INK}"/>` + brows(k, t);
+  }
+  function mouth(kind, k) {
+    const my = k.my, t = T(k);
+    const fang = (x) => `<path d="M${x - 2} ${my - 2.6} l2 5 l2 -5 z" fill="#fff" stroke="${INK}" stroke-width="1"/>`;
+    if (kind === 'open') return `<path d="M50 ${my - 2} q10 14 20 0 z" fill="#5a0a14" stroke="${INK}" stroke-width="2.6" stroke-linejoin="round"/>` + (t.fang ? fang(54) + fang(66) : '');
+    if (kind === 'grin') return `<path d="M48 ${my - 3} Q60 ${my + 2} 72 ${my - 5} Q66 ${my + 9} 58 ${my + 7} Q51 ${my + 6} 48 ${my - 3} Z" fill="#fff" stroke="${INK}" stroke-width="2.6" stroke-linejoin="round"/>` + (t.fang ? `<path d="M54 ${my + 1} l2 4 l2 -4 M63 ${my} l2 4 l2 -4" fill="none" stroke="${INK}" stroke-width="1.2"/>` : '');   // ухмылка набок
+    return `<path d="M50 ${my - 2} q10 10 20 0" ${FS}/><path d="M57 ${my + 2} q3 9 0 12 l3 -3 l3 3 q-3 -3 0 -12 z" fill="#ff4a6a" stroke="${INK}" stroke-width="1.2" stroke-linejoin="round"/>`;   // раздвоенный язык
+  }
+  const faces = {
+    sad(k) {
+      const { ex, ey, my } = k;
+      const e = k.cyc ? `<circle cx="60" cy="${ey}" r="10" fill="${FIRE[0]}" stroke="${INK}" stroke-width="2.6"/><ellipse cx="60" cy="${ey + 3}" rx="2.4" ry="6" fill="${INK}"/><path d="M48 ${ey - 13} q12 -8 24 0" ${FS}/>`
+        : `<circle cx="${60 - ex}" cy="${ey + 1}" r="4" fill="${INK}"/><circle cx="${60 + ex}" cy="${ey + 1}" r="4" fill="${INK}"/><path d="M${60 - ex - 6} ${ey - 7} l9 -4 M${60 + ex + 6} ${ey - 7} l-9 -4" ${FS}/>`;
+      return { eyes: e + `<path class="tear" d="M${60 + ex + 4} ${ey + 6} q-3 6 0 8 q3 -2 0 -8 z" fill="#7cc8ff" stroke="${INK}" stroke-width="1.4"/>`, mouth: `<path d="M51 ${my + 4} q9 -8 18 0" ${FS}/>` };
+    },
+    chill(k) {
+      const { ex, ey, my } = k;
+      return { eyes: k.cyc ? `<path d="M51 ${ey + 1} q9 -7 18 0" ${FS}/>` : `<path d="M${60 - ex - 5} ${ey + 1} q5 -5 10 0 M${60 + ex - 5} ${ey + 1} q5 -5 10 0" ${FS}/>`, mouth: `<path d="M50 ${my} q10 8 20 -2" ${FS}/>` };
+    },
+    stern(k) {
+      const { ex, ey, my } = k;
+      return { eyes: k.cyc ? `<circle cx="60" cy="${ey}" r="10" fill="${FIRE[0]}" stroke="${INK}" stroke-width="2.6"/><ellipse cx="60" cy="${ey + 1}" rx="2.4" ry="7" fill="${INK}"/><path d="M47 ${ey - 13} l13 5 l13 -5" ${FS}/>`
+        : [60 - ex, 60 + ex].map((x) => `<ellipse cx="${x}" cy="${ey + 1}" rx="5" ry="4.4" fill="${FIRE[0]}" stroke="${INK}" stroke-width="2"/><ellipse cx="${x}" cy="${ey + 1}" rx="1.4" ry="3.6" fill="${INK}"/>`).join('') + `<path d="M${60 - ex - 8} ${ey - 9} l11 5 M${60 + ex + 8} ${ey - 9} l-11 5" ${FS}/>`, mouth: `<path d="M51 ${my + 3} q9 -4 18 0" ${FS}/><path d="M54 ${my + 1} l2 4 l2 -4 z M62 ${my + 1} l2 4 l2 -4 z" fill="#fff" stroke="${INK}" stroke-width="1"/>` };
+    },
+    hurt(k) {
+      const { ex, ey, my } = k;
+      return { eyes: k.cyc ? `<circle cx="60" cy="${ey}" r="10" fill="${FIRE[0]}" stroke="${INK}" stroke-width="2.6"/><path d="M51 ${ey + 1} q9 -5 18 0" ${FS}/>`
+        : `<path d="M${60 - ex - 4} ${ey - 4} l8 8 M${60 - ex + 4} ${ey - 4} l-8 8" ${FS}/><circle cx="${60 + ex}" cy="${ey + 1}" r="3.4" fill="${INK}"/><path d="M${60 + ex + 7} ${ey - 7} l-9 -3" ${FS}/>`, mouth: `<path d="M50 ${my + 2} q5 -5 10 0 q5 5 10 0" ${FS}/>` };
+    },
+  };
+
+  /* ── шапки (только k.b, k.fill, k.c2) ── */
+  function hats(k) {
+    const b = k.b, c1 = k.fill, c2 = k.c2;
+    const t = b.square ? b.top - 6 : b.top, hw = b.hw, cx = 60, L = f1(cx - hw), R = f1(cx + hw);
+    const flame = (x, y, s) => `<path d="M${x} ${y} Q${f1(x - 9 * s)} ${f1(y - 8 * s)} ${f1(x - 3 * s)} ${f1(y - 20 * s)} Q${f1(x - 2 * s)} ${f1(y - 12 * s)} ${f1(x + 2 * s)} ${f1(y - 16 * s)} Q${f1(x + 8 * s)} ${f1(y - 8 * s)} ${x} ${y} Z" fill="${FIRE[1]}" ${WS}/><path d="M${x} ${f1(y - 2 * s)} Q${f1(x - 4 * s)} ${f1(y - 7 * s)} ${f1(x - 1 * s)} ${f1(y - 12 * s)} Q${f1(x + 3 * s)} ${f1(y - 7 * s)} ${x} ${f1(y - 2 * s)} Z" fill="${FIRE[0]}"/>`;
+    let thorns = ''; for (let i = -3; i <= 3; i++) { const x = f1(cx + i * hw * 0.3), y = f1(t + 3 - (3 - Math.abs(i)) * 2); thorns += `<path d="M${x - 4} ${y} L${x} ${f1(y - 7)} L${x + 4} ${y} Z"/>`; }
+    return {
+      none: '',
+      tuft: flame(cx, t + 4, 1),   // огонёк на макушке
+      cap: `<path d="M${L - 2} ${t + 12} q${f1(hw + 2)} -26 ${f1(2 * hw + 4)} 0 z" fill="${c2}" ${S3}/><path d="M${R} ${t + 10} l14 2" ${FS}/>`,
+      bow: `<path d="M${cx} ${t + 2} l-12 -8 l0 14 z M${cx} ${t + 2} l12 -8 l0 14 z" fill="${c2}" ${S3}/><circle cx="${cx}" cy="${t + 2}" r="2.6" fill="${INK}"/>`,
+      horns: `<path d="M${f1(cx - hw * 0.25)} ${t + 6} C${cx - 30} ${t} ${cx - 34} ${t - 22} ${cx - 22} ${t - 34} C${cx - 24} ${t - 18} ${cx - 16} ${t - 6} ${f1(cx - hw * 0.05)} ${t + 2} Z M${f1(cx + hw * 0.25)} ${t + 6} C${cx + 30} ${t} ${cx + 34} ${t - 22} ${cx + 22} ${t - 34} C${cx + 24} ${t - 18} ${cx + 16} ${t - 6} ${f1(cx + hw * 0.05)} ${t + 2} Z" fill="${GOLD}" ${S3}/>`,   // большие золотые рога
+      crown: `<path d="M${cx - 15} ${t + 6} l0 -18 l8 9 l7 -13 l7 13 l8 -9 l0 18 z" fill="${GOLD}" ${S3}/><circle cx="${cx}" cy="${t - 2}" r="2.6" fill="${FIRE[2]}"/>`,
+      tophat: `<path d="M${cx - 13} ${t + 4} v-28 h26 v28 z" fill="#2a1a22" ${S3}/><path d="M${cx - 22} ${t + 5} h44" ${FSW(3.6)}/><path d="M${cx - 13} ${t - 3} h26" stroke="${FIRE[2]}" stroke-width="4.4"/>`,   // цилиндр чёрта-джентльмена
+      party: `<path d="M${cx - 13} ${t + 6} L${cx} ${t - 30} L${cx + 13} ${t + 6} z" fill="${c2}" ${S3}/>${flame(cx, t - 28, 0.5)}`,
+      wizard: `<path d="M${L - 6} ${t + 10} L${cx + 6} ${t - 40} Q${cx + 14} ${t - 34} ${cx + 22} ${t - 30} L${R + 6} ${t + 10} z" fill="#2a1a22" ${S3}/><path d="M${L - 4} ${t + 4} H${R + 4}" stroke="${FIRE[1]}" stroke-width="3.6"/>`,   // шляпа ведьмы
+      antenna: `<path d="M${cx} ${t + 2} v-18" ${FS}/><path d="M${cx - 7} ${t - 16} v-8 M${cx} ${t - 16} v-11 M${cx + 7} ${t - 16} v-8 M${cx - 7} ${t - 16} h14" ${FS}/><path d="M${cx - 9} ${t - 24} l2 -4 l2 4 M${cx - 2} ${t - 27} l2 -4 l2 4 M${cx + 5} ${t - 24} l2 -4 l2 4" fill="${INK}" ${WS}/>`,   // трезубчик
+      antenna2: `<path d="M${cx - 6} ${t + 2} l-8 -20 M${cx + 6} ${t + 2} l8 -20" ${FS}/>${flame(cx - 14, t - 18, 0.45)}${flame(cx + 14, t - 18, 0.45)}`,
+      cat: `<path d="M${L} ${t + 12} l2 -24 l14 14 z M${R} ${t + 12} l-2 -24 l-14 14 z" fill="${c1}" ${S3}/>`,
+      bunny: `<ellipse cx="${cx - 9}" cy="${t - 16}" rx="7" ry="20" fill="${c1}" ${S3}/><ellipse cx="${cx + 9}" cy="${t - 16}" rx="7" ry="20" fill="${c1}" ${S3}/>`,
+      halo: `<g transform="rotate(-14 ${cx} ${t - 14})"><ellipse cx="${cx}" cy="${t - 14}" rx="17" ry="5" fill="none" stroke="#fff3b0" stroke-width="7" opacity=".35"/><path d="M${cx - 17} ${t - 14} A17 5 0 1 1 ${cx + 12} ${t - 10}" fill="none" stroke="#ffe27a" stroke-width="3.6"/></g>`,   // кривой треснувший нимб
+      sprout: `<path d="M${cx} ${t + 2} v-12" stroke="#3a7a2a" stroke-width="2.6"/>${flame(cx, t - 10, 0.55)}`,   // огненный цветок
+      bandana: `<path d="M${L - 2} ${t + 16} Q${cx} ${t - 6} ${R + 2} ${t + 16} Z" fill="#2a1a22" ${S3}/><path d="M${R} ${t + 14} l12 -2 l-4 10 z" fill="#2a1a22" ${S3}/><g fill="${FIRE[1]}"><circle cx="${cx - 8}" cy="${t + 6}" r="2"/><circle cx="${cx + 6}" cy="${t + 4}" r="2"/><circle cx="${cx}" cy="${t + 11}" r="2"/></g>`,
+      // только из Костюмерной
+      legion: `<path d="M${L - 5} ${t + 16} Q${L - 5} ${t - 15} ${cx} ${t - 15} Q${R + 5} ${t - 15} ${R + 5} ${t + 16} L${R - 2} ${t + 16} L${R - 2} ${t + 8} L${L + 2} ${t + 8} L${L + 2} ${t + 16} Z" fill="#d9b04a" ${S3}/><path d="M${cx - 18} ${t - 13} Q${cx - 14} ${t - 40} ${cx} ${t - 41} Q${cx + 14} ${t - 40} ${cx + 18} ${t - 13} Z" fill="#2a1a22" ${S3}/>`,
+      laurel: `<g fill="#3a2a2a" ${WS}>${thorns}</g>`,   // терновый венец
+      beret: `<ellipse cx="${cx - 4}" cy="${t + 2}" rx="${f1(hw + 8)}" ry="10" transform="rotate(-8 ${cx} ${t})" fill="${c2}" ${S3}/><path d="M${cx - 2} ${t - 8} l3 -8" ${FS}/>`,
+      headphones: `<path d="M${L - 6} ${b.eyeY - 4} Q${L - 6} ${t - 14} ${cx} ${t - 14} Q${R + 6} ${t - 14} ${R + 6} ${b.eyeY - 4}" fill="none" stroke="${INK}" stroke-width="5"/><rect x="${f1(L - 13)}" y="${b.eyeY - 14}" width="12" height="22" rx="5" fill="${c2}" ${S3}/><rect x="${f1(R + 1)}" y="${b.eyeY - 14}" width="12" height="22" rx="5" fill="${c2}" ${S3}/>`,
+      cowboy: `<path d="M${cx - 18} ${t + 5} q-4 -30 18 -34 q22 4 18 34 z" fill="#5a2a1a" ${S3}/><path d="M${cx - 38} ${t + 2} q38 18 76 0 q-8 12 -38 13 q-30 -1 -38 -13 z" fill="#4a2010" ${S3}/><path d="M${cx - 17} ${t - 3} h34" stroke="${FIRE[1]}" stroke-width="4"/>`,
+      chef: `<path d="M${cx - 14} ${t + 6} v-14 q-12 -2 -8 -14 q4 -10 14 -4 q4 -10 12 -2 q10 -4 12 6 q2 10 -10 14 v14 z" fill="#fff" ${S3}/>`,
+    };
+  }
+
+  /* ── руки ── */
+  const limb = (d, col) => `<path d="${d}" fill="none" stroke="${INK}" stroke-width="8.6" stroke-linecap="round"/><path d="${d}" fill="none" stroke="${col}" stroke-width="4.8" stroke-linecap="round"/>`;
+  const handAt = (k, x, y) => `<circle cx="${f1(x)}" cy="${f1(y)}" r="5.4" fill="${k.fill}" stroke="${INK}" stroke-width="2.2"/><path d="M${f1(x - 3)} ${f1(y - 4.6)} l-1 -2 M${f1(x)} ${f1(y - 5.4)} v-2 M${f1(x + 3)} ${f1(y - 4.6)} l1 -2" stroke="${INK}" stroke-width="1.4" stroke-linecap="round"/>`;   // коготки
+  const back = (k) => { const t = T(k); return wings(k, t) + tail(k, t); };   // крылья и хвост — за руками и телом
+
+  /* ── оружие: рукоять в (0,0), клинок вверх ── */
+  function weapon(kind, rar) {
+    const m = METAL[rar] || METAL.common, rich = rar && rar !== 'common', dw = '#3a1a1a';
+    const grip = (y0, y1) => `<rect x="-2.5" y="${y1}" width="5" height="${y0 - y1}" rx="2" fill="${dw}" ${WS}/>`;
+    const fl = (x, y, s) => `<path d="M${x} ${y} Q${f1(x - 6 * s)} ${f1(y - 6 * s)} ${f1(x - 2 * s)} ${f1(y - 14 * s)} Q${f1(x + 4 * s)} ${f1(y - 6 * s)} ${x} ${y} Z" fill="${FIRE[1]}" stroke="${INK}" stroke-width="1.4"/>`;
+    switch (kind) {
+      case 'sword': return `${grip(14, 0)}<path d="M-4 -2 V-48 L0 -58 L4 -48 V-2 Z" fill="${rich ? m : '#ff7a3d'}" ${WS}/><path d="M0 -6 V-50" stroke="${FIRE[0]}" stroke-width="1.6"/><rect x="-11" y="-4" width="22" height="6" rx="3" fill="#2a1a22" ${WS}/>${fl(-6, -30, 0.8)}${fl(6, -42, 0.7)}`;   // огненный меч
+      case 'gladius': return `${grip(13, 0)}<path d="M-5 -2 C-7 -18 -6 -32 0 -44 C6 -32 7 -18 5 -2 Z" fill="${m}" ${WS}/><rect x="-9" y="-4" width="18" height="6" rx="3" fill="#2a1a22" ${WS}/>`;
+      case 'dagger': return `${grip(12, 0)}<path d="M-3 -2 C-6 -12 -2 -24 4 -30 C2 -20 4 -10 3 -2 Z" fill="${m}" ${WS}/><rect x="-7" y="-4" width="14" height="5" rx="2.5" fill="#2a1a22" ${WS}/>`;   // кинжал-коготь
+      case 'axe': return `${grip(14, -50)}<path d="M2 -48 C18 -56 26 -42 24 -26 C18 -30 9 -32 2 -30 Z" fill="${m}" ${WS}/><path d="M-2 -48 l-8 -4" ${WS}/>`;
+      case 'club': return `${grip(14, -24)}<circle cy="-40" r="16" fill="#2a1a22" ${WS}/><circle cy="-40" r="11" fill="${rich ? m : '#4a3a42'}"/><path d="M-5 -46 a7 7 0 0 1 6 -3" fill="none" stroke="#fff" stroke-width="1.6" opacity=".5"/>`;   // адская сковородка
+      case 'mace': return `${grip(12, -34)}${[0, 60, 120, 180, 240, 300].map((a) => { const r2 = a * Math.PI / 180, x = f1(Math.sin(r2) * 13), y = f1(-42 - Math.cos(r2) * 13); return `<path d="M0 -42 L${x} ${y}" stroke="${INK}" stroke-width="4" stroke-linecap="round"/>`; }).join('')}<circle cy="-42" r="9" fill="${m}" ${WS}/>`;
+      case 'hammer': return `${grip(14, -40)}<rect x="-13" y="-54" width="26" height="15" rx="3" fill="${m}" ${WS}/>${fl(-8, -54, 0.6)}${fl(6, -54, 0.6)}`;
+      case 'spear': return `<rect x="-2.5" y="-68" width="5" height="100" rx="2" fill="${dw}" ${WS}/><path d="M-6 -64 L0 -86 L6 -64 Z" fill="${m}" ${WS}/>`;
+      case 'pitchfork': return `<rect x="-2.5" y="-54" width="5" height="86" rx="2" fill="${dw}" ${WS}/><path d="M-12 -54 H12 M-11 -54 V-72 M0 -54 V-80 M11 -54 V-72" fill="none" stroke="${INK}" stroke-width="6" stroke-linecap="round"/><path d="M-12 -54 H12 M-11 -54 V-72 M0 -54 V-80 M11 -54 V-72" fill="none" stroke="${rich ? m : '#ff4a1a'}" stroke-width="3" stroke-linecap="round"/><path d="M-14 -74 l3 -6 l3 6 M-3 -82 l3 -6 l3 6 M8 -74 l3 -6 l3 6" fill="${rich ? m : '#ff4a1a'}" ${WS}/>`;   // трезубец
+      case 'bow': return `<path d="M-2 -44 C16 -30 16 30 -2 44" fill="none" stroke="${INK}" stroke-width="8" stroke-linecap="round"/><path d="M-2 -44 C16 -30 16 30 -2 44" fill="none" stroke="${rich ? m : '#7a1a2a'}" stroke-width="4.4" stroke-linecap="round"/><path d="M-2 -44 L-6 0 L-2 44" fill="none" stroke="${FIRE[1]}" stroke-width="1.6"/>`;
+      case 'staff': return `<rect x="-2.5" y="-60" width="5" height="96" rx="2" fill="${dw}" ${WS}/><circle cy="-68" r="8" fill="${rich ? RARITY[rar] : FIRE[1]}" ${WS}/><circle cx="-2" cy="-70" r="3" fill="${FIRE[0]}"/>`;   // посох с огненным шаром
+      case 'crook': return `<path d="M0 34 V-48 C-3 -62 10 -68 13 -58 C15 -50 5 -47 5 -54" fill="none" stroke="${INK}" stroke-width="7" stroke-linecap="round"/><path d="M0 34 V-48 C-3 -62 10 -68 13 -58 C15 -50 5 -47 5 -54" fill="none" stroke="${rich ? m : '#7a1a2a'}" stroke-width="3.6" stroke-linecap="round"/>`;
+      case 'censer': return `<path d="M0 0 V18" stroke="${INK}" stroke-width="2" stroke-dasharray="3 1.6"/><path d="M-11 20 Q-12 36 0 38 Q12 36 11 20 Z" fill="#2a1a22" ${WS}/><path d="M-12 20 H12" ${WS}/>${fl(-4, 20, 0.6)}${fl(4, 20, 0.5)}`;   // котелок с огнём
+      default: return '';
+    }
+  }
+  function shield(kind, rar) {
+    const m = METAL[rar] || METAL.common;
+    switch (kind) {
+      case 'scutum': return `<rect x="-13" y="-21" width="26" height="42" rx="6" fill="#2a1a22" ${WS}/><rect x="-9" y="-17" width="18" height="34" rx="4" fill="none" stroke="${m}" stroke-width="2"/><path d="M0 8 Q-8 2 -4 -6 Q-2 0 0 -10 Q2 0 4 -6 Q8 2 0 8 Z" fill="${FIRE[1]}" stroke="${INK}" stroke-width="1.4"/>`;
+      case 'round': return `<circle r="15" fill="#7a1a2a" ${WS}/><circle r="12" fill="none" stroke="${m}" stroke-width="2.4"/><circle r="4" fill="${m}" stroke="${INK}" stroke-width="1.6"/>`;
+      case 'buckler': return `<circle r="10" fill="${m}" ${WS}/><path d="M-4 -2 l4 -5 l4 5 z" fill="${INK}"/>`;
+      case 'barrel': return `<path d="M-14 -10 Q-15 14 0 16 Q15 14 14 -10 Z" fill="#2a1a22" ${WS}/><path d="M-16 -10 H16" ${WS}/>${`<path d="M-6 -10 Q-10 -18 -4 -24 Q-2 -16 0 -20 Q4 -14 2 -10 Z" fill="${FIRE[1]}" stroke="${INK}" stroke-width="1.4"/>`}`;   // котёл
+      default: return '';
+    }
+  }
+
+  /* ── доспехи для Кузни: lorica — чёрный панцирь с шипами, robe — красная мантия с огненной каймой ── */
+  function armor(kind, rar) {
+    const tr = RARITY[rar] || FIRE[1];
+    if (kind === 'robe') return `<path d="M-22 -102 C-30 -70 -38 -30 -42 0 H42 C38 -30 30 -70 22 -102 Q0 -92 -22 -102 Z" fill="#9a1a2a" ${S3}/><path d="M-40 -8 Q-30 -16 -20 -8 Q-10 -16 0 -8 Q10 -16 20 -8 Q30 -16 40 -8" fill="none" stroke="${tr}" stroke-width="4"/><path d="M-8 -100 L0 -86 L8 -100" fill="none" stroke="${GOLD}" stroke-width="3"/>`;
+    const m = rar === 'common' || !rar ? '#3a2a32' : dark(RARITY[rar], 0.35);
+    return `<path d="M-32 -96 C-36 -70 -32 -40 -26 -20 H26 C32 -40 36 -70 32 -96 Q0 -86 -32 -96 Z" fill="${m}" ${S3}/>`
+      + `<path d="M-44 -98 Q-34 -112 -14 -102 L-16 -84 Q-34 -86 -44 -78 Z M44 -98 Q34 -112 14 -102 L16 -84 Q34 -86 44 -78 Z" fill="${m}" ${S3}/>`
+      + `<path d="M-40 -102 l-6 -10 l10 4 M40 -102 l6 -10 l-10 4" fill="${m}" ${WS}/><path d="M0 -80 Q-10 -60 0 -40 Q10 -60 0 -80 Z" fill="${tr}" stroke="${INK}" stroke-width="1.6"/>`;
+  }
+
+  /* ── ауры ── */
+  const AURA = { gold: ['#ffd76a', '#ffb83d'], sparks: ['#ffe27a', '#ff6a2a'], halo: ['#ffe27a', '#ffe27a'], shadow: ['#a24bff', '#3a0f66'], frost: ['#bfe8ff', '#6fb8ff'] };
+  function aura(kind, k) {
+    const b = k.b, seed = k.seed >>> 0;
+    const c = AURA[kind]; if (!c) return { back: '', front: '' };
+    const id = k.uid('jlA'), d0 = (seed % 997) / 997 * 2;
+    const cy = (b.top + 170) / 2 + 2, rx = (b.R - b.L) / 2 + 46, ry = (170 - b.top) / 2 + 42;
+    const glow = (op1, op2, dur) => `<defs><radialGradient id="${id}"><stop offset=".3" stop-color="${c[0]}"/><stop offset=".62" stop-color="${c[1]}" stop-opacity=".7"/><stop offset="1" stop-color="${c[1]}" stop-opacity="0"/></radialGradient></defs>`
+      + `<ellipse cx="60" cy="${f1(cy)}" rx="${f1(rx)}" ry="${f1(ry)}" fill="url(#${id})"><animate attributeName="opacity" values="${op1};${op2};${op1}" dur="${dur}s" begin="-${d0.toFixed(2)}s" repeatCount="indefinite"/></ellipse>`;
+    const motes = (n, col, shape, size) => Array.from({ length: n }, (_, i) => {
+      const x = b.L - 8 + ((i * 37 + (seed >>> (i % 8))) % (b.R - b.L + 16)), y0 = 168 - (i * 23) % 40, dur = 1.8 + (i % 4) * 0.45, beg = ((i * 0.53 + d0) % dur).toFixed(2);
+      const sh = shape === 'flame' ? `<path d="M0 ${size} Q${-size} 0 0 ${-size * 1.6} Q${size} 0 0 ${size} Z" fill="${col}"/>`
+        : shape === 'flake' ? `<path d="M0 ${-size} V${size} M${-size} 0 H${size} M${f1(-size * 0.7)} ${f1(-size * 0.7)} L${f1(size * 0.7)} ${f1(size * 0.7)} M${f1(size * 0.7)} ${f1(-size * 0.7)} L${f1(-size * 0.7)} ${f1(size * 0.7)}" stroke="${col}" stroke-width="1.6" stroke-linecap="round"/>`
+        : `<circle r="${size}" fill="${col}"/>`;
+      return `<g opacity="0"><animateTransform attributeName="transform" type="translate" values="${x} ${y0};${x + (i % 2 ? 6 : -6)} ${y0 - 70}" dur="${dur}s" begin="-${beg}s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.2;.7;1" dur="${dur}s" begin="-${beg}s" repeatCount="indefinite"/>${sh}</g>`;
+    }).join('');
+    let bk = '', front = '';
+    if (kind === 'gold') { bk = glow(0.7, 1, 2.4); front = motes(9, '#ffe9a0', 'dot', 2.6); }
+    else if (kind === 'sparks') { bk = glow(0.3, 0.55, 2); front = motes(12, '#ff9a2a', 'flame', 3.4); }   // угольки
+    else if (kind === 'shadow') { bk = glow(0.75, 1, 1.6); front = motes(11, '#c48bff', 'flame', 3.6); }   // тёмное пламя
+    else if (kind === 'frost') { bk = glow(0.6, 0.95, 2.8); front = motes(10, '#e6f7ff', 'flake', 4.4); }
+    else if (kind === 'halo') {
+      const t = (b.square ? b.top - 6 : b.top) - 36;
+      front = `<g><animateTransform attributeName="transform" type="translate" values="0 0;0 -3;0 0" dur="2.2s" begin="-${d0.toFixed(2)}s" repeatCount="indefinite"/>`
+        + `<ellipse cx="60" cy="${t}" rx="19" ry="5.5" fill="none" stroke="#fff3b0" stroke-width="9" opacity=".35"/><ellipse cx="60" cy="${t}" rx="19" ry="5.5" fill="none" stroke="#ffe27a" stroke-width="4"><animate attributeName="stroke-opacity" values=".75;1;.75" dur="1.6s" repeatCount="indefinite"/></ellipse></g>`;
+    }
+    return { back: bk, front };
+  }
+
+  const OUT = `stroke="${INK}" stroke-width="2.4" stroke-linejoin="round"`;
+
+  D.addStyle({
+    id: 'cherts',
+    name: 'Чертики',
+    css: '',
+
+    // ровно 2 вызова r(): цвет кожи и второй цвет
+    palette(r) {
+      const fill = SKINS[Math.floor(r() * SKINS.length)];
+      const c2 = `hsl(${Math.floor(r() * 360)} 75% 55%)`;
+      return { fill, c2 };
+    },
+    bodies,
+    frame(b) {
+      return { L: b.L, R: b.R, ex: b.narrow ? 8 : 10, ey: b.eyeY, my: b.eyeY + 14, sx: { l: b.L + (b.square ? 4 : 6), r: b.R - (b.square ? 4 : 6) } };
+    },
+    body,
+
+    eyePool: ['dots', 'dots', 'big', 'happy', 'slit', 'slit', 'sly', 'sly', 'cyclops', 'stars'],
+    eyes,
+    mouthPool: ['open', 'grin', 'grin', 'tongue'],
+    mouth,
+    faces,
+    blushChance: 0.35,
+    blush: (k) => `<circle cx="${60 - k.ex - 9}" cy="${k.ey + 9}" r="4" fill="#ffb0c0" opacity=".55"/><circle cx="${60 + k.ex + 9}" cy="${k.ey + 9}" r="4" fill="#ffb0c0" opacity=".55"/>`,
+    hurt(k) {   // пластырь и подпалина
+      const b = k.b, px = f1(60 + b.hw * 0.45), py = b.square ? b.top + 10 : b.top + 14;
+      return `<g transform="rotate(35 ${px} ${py})"><rect x="${f1(px - 10)}" y="${py - 3.5}" width="20" height="7" rx="2" fill="#f1d9b5" stroke="${INK}" stroke-width="1.6"/><rect x="${f1(px - 3.5)}" y="${py - 10}" width="7" height="20" rx="2" fill="#f1d9b5" stroke="${INK}" stroke-width="1.6"/></g>`
+        + `<circle cx="${60 - k.ex - 8}" cy="${k.ey + 10}" r="5" fill="#2a1a22" opacity=".35"/>`;
+    },
+
+    hatPool: ['none', 'tuft', 'cap', 'bow', 'horns', 'crown', 'tophat', 'party', 'wizard', 'antenna', 'antenna2', 'cat', 'bunny', 'halo', 'sprout', 'bandana'],
+    hatNoneChance: 0.4,   // рога и так есть — чаще без шапки
+    hats,
+
+    arms: {
+      up(k) {
+        const b = k.b, sx = k.sx, hy = 36 + (b.top > 90 ? 10 : 0);
+        const arm = (s, hx) => limb(`M${s} ${b.armY} C${f1(s + (hx - s) * 0.2)} ${b.armY - 30} ${hx} ${hy + 34} ${hx} ${hy}`, k.fill) + handAt(k, hx, hy);
+        return back(k) + `<g class="arm armL" style="transform-origin:${sx.l}px ${b.armY}px">${arm(sx.l, k.L - 16)}</g><g class="arm armR" style="transform-origin:${sx.r}px ${b.armY}px">${arm(sx.r, k.R + 16)}</g>`;
+      },
+      down(k) {
+        const b = k.b, sx = k.sx, ey = Math.min(160, b.armY + 42);
+        const arm = (s, dir) => limb(`M${s} ${b.armY} C${s + dir * 10} ${b.armY + 14} ${s + dir * 12} ${b.armY + 28} ${s + dir * 9} ${ey}`, k.fill) + handAt(k, s + dir * 9, ey + 3);
+        return back(k) + `<g class="arm sadL">${arm(sx.l, -1)}</g><g class="arm sadR">${arm(sx.r, 1)}</g>`;
+      },
+      armed(k) {
+        const b = k.b, sx = k.sx;
+        const hr = { x: k.R + 15, y: b.armY + 12 }, hl = { x: k.L - 7, y: b.armY + 20 };
+        const svg = back(k) + `<g class="arm batL">${limb(`M${sx.l} ${b.armY} C${sx.l - 8} ${b.armY + 6} ${hl.x + 2} ${hl.y - 8} ${hl.x} ${hl.y}`, k.fill)}</g><g class="arm batR">${limb(`M${sx.r} ${b.armY} C${sx.r + 8} ${b.armY + 4} ${hr.x - 2} ${hr.y - 8} ${hr.x} ${hr.y}`, k.fill)}</g>`;
+        return { svg, right: hr, left: hl };
+      },
+    },
+    hand: (k, x, y) => handAt(k, x, y),
+    hold: { weaponScale: 1.2, weaponRot: (kind) => (kind === 'bow' || kind === 'censer' || kind === 'grimoire' ? 0 : 12), shieldScale: 1.12, shieldDx: 6, shieldDy: 2 },
+    weapon,
+    shield,
+    armor,
+    wear: { line: INK, ink: INK },   // 19.10: обводка надетых доспехов и амулета (рисует скелет, doodle-core.js)
+    rarityGlow: RARITY,
+    gearGlow: (id, color) => `<filter id="${id}" x="-60%" y="-60%" width="220%" height="220%"><feDropShadow dx="0" dy="0" stdDeviation="3.4" flood-color="${color}" flood-opacity="1"/></filter>`,
+    held: {
+      // огненный коктейль
+      cocktail(k, rot) {
+        const hy = Math.min(160, k.b.armY + 42) + 3, hx = k.sx.r + 9;
+        return `<g transform="translate(${hx} ${hy}) rotate(${rot})"><g class="jd-cocktail">`
+          + `<path d="M-1.5 0 V-10 M-7 1 h11" stroke="${INK}" stroke-width="2.6" stroke-linecap="round"/>`
+          + `<path d="M-14 -26 L12 -26 L-1 -10 Z" fill="rgba(255,220,220,.5)" stroke="${INK}" stroke-width="2.2" stroke-linejoin="round"/><path d="M-11 -23 L9 -23 L-1 -12 Z" fill="#ff4a1a"/>`
+          + `<path d="M-4 -26 Q-8 -32 -3 -40 Q-2 -34 1 -36 Q5 -30 1 -26 Z" fill="${FIRE[1]}" stroke="${INK}" stroke-width="1.4"/><path d="M-2 -27 Q-4 -31 -1 -34 Q1 -30 -2 -27 Z" fill="${FIRE[0]}"/>`
+          + `</g></g>${handAt(k, hx, hy)}`;
+      },
+    },
+
+    capeColor: '#2a1a22',
+    acc: {
+      cape(k, col) {
+        const L = k.L, R = k.R, t = k.b.armY - 8;
+        return `<path d="M${L + 6} ${t} C${L - 12} ${t + 30} ${L - 20} 150 ${L - 18} 168 L${R + 18} 168 C${R + 20} 150 ${R + 12} ${t + 30} ${R - 6} ${t} Z" fill="${col}" ${S3}/><path d="M${L + 4} ${t + 2} Q60 ${t + 14} ${R - 4} ${t + 2}" fill="none" stroke="${FIRE[2]}" stroke-width="3.4" stroke-linecap="round"/>`;
+      },
+      bowtie(k, col) {
+        const y = k.my + 14;
+        return `<path d="M60 ${y} l-11 -7 l0 14 z M60 ${y} l11 -7 l0 14 z" fill="${col}" ${OUT}/><circle cx="60" cy="${y}" r="3" fill="${INK}"/>`;
+      },
+      glasses(k) {
+        const { ex, ey } = k;
+        return k.cyc ? `<circle cx="60" cy="${ey}" r="14" fill="rgba(255,255,255,.18)" stroke="${INK}" stroke-width="3"/>`
+          : `<circle cx="${60 - ex}" cy="${ey}" r="8.5" fill="rgba(255,255,255,.18)" stroke="${INK}" stroke-width="3"/><circle cx="${60 + ex}" cy="${ey}" r="8.5" fill="rgba(255,255,255,.18)" stroke="${INK}" stroke-width="3"/><path d="M${60 - ex + 8} ${ey - 1} q${ex - 8} -5 ${2 * ex - 16} 0" fill="none" stroke="${INK}" stroke-width="3"/>`;
+      },
+      shades(k) {   // тёмные очки-пламя
+        const { ex, ey } = k;
+        return k.cyc ? `<rect x="44" y="${ey - 8}" width="32" height="15" rx="6" fill="${INK}"/>`
+          : `<path d="M${60 - ex - 10} ${ey - 6} h${2 * ex + 20} v4 q0 9 -9 9 q-7 0 -${ex - 2} -8 h-2 q-${ex - 4} 8 -${ex - 2} 8 q-9 0 -9 -9 z" fill="${INK}"/><path d="M${60 - ex - 7} ${ey - 3} l4 0 M${60 + ex - 3} ${ey - 3} l4 0" stroke="${FIRE[1]}" stroke-width="2" opacity=".8"/>`;
+      },
+      monocle(k) {
+        const { ex, ey } = k, cyc = k.cyc, x = cyc ? 60 : 60 + ex;
+        return `<circle cx="${x}" cy="${ey}" r="${cyc ? 13 : 8.5}" fill="rgba(255,255,255,.2)" stroke="${GOLD}" stroke-width="3"/><path d="M${x + (cyc ? 9 : 6)} ${ey + (cyc ? 10 : 6)} q6 14 -2 30" fill="none" stroke="${GOLD}" stroke-width="1.8"/>`;
+      },
+      mustache(k) {   // подкрученные усики чёрта
+        const my = k.my;
+        return `<path d="M60 ${my - 4} c-4 -3 -10 -3 -14 0 c-3 2 -6 0 -6 -4 c-1 6 4 9 9 8 c5 -1 8 -3 11 -4 c3 1 6 3 11 4 c5 1 10 -2 9 -8 c0 4 -3 6 -6 4 c-4 -3 -10 -3 -14 0 z" fill="${INK}"/>`;
+      },
+      scarf(k, col) {
+        const L = k.L, R = k.R, y = k.my + 12;
+        return `<path d="M${L + 4} ${y - 3} Q60 ${y + 9} ${R - 4} ${y - 3} L${R - 3} ${y + 7} Q60 ${y + 19} ${L + 3} ${y + 7} Z" fill="${col}" ${OUT}/><path d="M${R - 16} ${y + 8} l3 26 l10 -2 l-3 -26 z" fill="${col}" ${OUT}/>`;
+      },
+      tie(k, col) {
+        const y = k.my + 11;
+        return `<path d="M55 ${y} h10 l-2 6 h-6 z" fill="${col}" ${OUT}/><path d="M57 ${y + 6} h6 l5 30 l-8 8 l-8 -8 z" fill="${col}" ${OUT}/>`;
+      },
+    },
+
+    event: {
+      crown(k, size) {
+        const b = k.b, kk = size === 'mini' ? 0.7 : 1, t = b.top + (b.square ? -1 : 4), w = 16 * kk, h = 20 * kk;
+        return `<path d="M${60 - w} ${t} l0 ${-h} l${w / 2} ${h * 0.45} l${w / 2} ${-h * 0.7} l${w / 2} ${h * 0.7} l${w / 2} ${-h * 0.45} l0 ${h} z" fill="${GOLD}" stroke="${INK}" stroke-width="${2.8 * kk}" stroke-linejoin="round"/>`
+          + `<circle cx="60" cy="${f1(t - h * 0.35)}" r="${3 * kk}" fill="${FIRE[2]}"/>`;
+      },
+      wig(k) {
+        const b = k.b, t = b.square ? b.top - 4 : b.top, hw = b.hw, cs = [];
+        for (let i = -3; i <= 3; i++) cs.push(`<circle cx="${f1(60 + i * hw / 3.1)}" cy="${f1(t + 3 - (3 - Math.abs(i)) * 2.2)}" r="9.5"/>`);
+        for (let j = 1; j <= 4; j++) { cs.push(`<circle cx="${f1(60 - hw - 7)}" cy="${t + 4 + j * 13}" r="9"/>`); cs.push(`<circle cx="${f1(60 + hw + 7)}" cy="${t + 4 + j * 13}" r="9"/>`); }
+        return `<g fill="#f4f1ea" stroke="#9a9488" stroke-width="2.5">${cs.join('')}</g>`;
+      },
+    },
+    uniform(k) {
+      const u = k.uid('jlU'), y0 = k.my + 11, d = k.b.d;
+      return `<defs><clipPath id="${u}c"><path d="${d}"/></clipPath><pattern id="${u}p" patternUnits="userSpaceOnUse" width="120" height="16" patternTransform="rotate(-4)"><rect width="120" height="16" fill="#f1efe8"/><rect y="8" width="120" height="8" fill="#23212b"/></pattern></defs>`
+        + `<g clip-path="url(#${u}c)"><rect y="${y0}" width="120" height="${170 - y0}" fill="url(#${u}p)"/><path d="M0 ${y0} H120" stroke="#23212b" stroke-width="4"/></g>`
+        + `<path fill="none" stroke="${INK}" stroke-width="3" stroke-linejoin="round" d="${d}"/>`;
+    },
+
+    ghost(k, parts) {   // призрак чертёнка: крылья и хвост на месте (они в parts.arms), рожки — тоже
+      const g = k.uid('jlG'), cyc = k.cyc, GI = '#2a2f55', { ex, ey, my } = k;
+      let wave = 'M-20 190 V160'; for (let x = -20; x < 140; x += 12) wave += ' q6 -9 12 0'; wave += ' V190 Z';
+      const gEyes = cyc ? `<ellipse cx="60" cy="${ey}" rx="7" ry="9" fill="${GI}"/>` : `<ellipse cx="${60 - ex}" cy="${ey}" rx="4.6" ry="6.6" fill="${GI}"/><ellipse cx="${60 + ex}" cy="${ey}" rx="4.6" ry="6.6" fill="${GI}"/>`;
+      const gMouth = `<ellipse cx="60" cy="${my + 1}" rx="4.2" ry="${k.sad ? 3 : 5.6}" fill="${GI}"/>`;
+      const fl = ((k.seed >>> 0) % 1000) / 1000 * 2.6;
+      return {
+        style: 'filter:grayscale(.6) drop-shadow(0 0 7px rgba(255,190,190,.7))',
+        inner: `<defs><mask id="${g}" maskUnits="userSpaceOnUse" x="-60" y="-80" width="240" height="280"><rect x="-60" y="-80" width="240" height="280" fill="#fff"/><path d="${wave}" fill="#000"/></mask></defs>`
+          + `<g opacity=".8"><animateTransform attributeName="transform" type="translate" values="0 0;0 -6;0 0" dur="2.6s" begin="-${fl.toFixed(2)}s" repeatCount="indefinite"/>`
+          + `<g mask="url(#${g})">${parts.arms}<path fill="rgba(255,228,232,.62)" stroke="#fff0f0" stroke-width="3" stroke-linejoin="round" d="${k.b.d}"/></g>${horns(k, T(k))}${gEyes}<g class="jd-mouth">${gMouth}</g>${parts.head}</g>`,
+      };
+    },
+
+    aura,
+  });
+})();
+
+} catch (e) { console.error('[стили] styles/cherts/characters.js не загрузился:', e); }
+
+/* ───── стиль «cherts»: styles/cherts/goods.js ───── */
+try {
+/* Стиль «Черти» — товары (часть 'goods'): адская кухня - печёное, жгучее, копчёное; «зелье жара» и обугленный пергамент.
+   Рисунки совпадают с названиями из names.json. Договор — styles/legion/goods.js: { food: { id: () => svg }, potion: (it) => svg, scroll: (it) => svg }.
+   Низ вещи — y = 0, ширина около 60–70. Обводка — тёмно-бордовая, как у самих чертят. */
+(function () {
+  'use strict';
+  if (!window.MDDoodle || !window.MDDoodle.addPart) return;
+  window.MDDoodle.addPart('cherts', 'goods', function () {
+    const INK = '#2a0d14', O = (w = 3) => `stroke="${INK}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"`;
+    const FIRE = ['#ffe27a', '#ff9a2a', '#ff4a1a'], GOLD = '#ffc83d';
+    // язычок пламени: x, y - низ, s - размер
+    const flame = (x, y, s = 1) => `<path d="M${x} ${y} C${x - 9 * s} ${y - 2 * s} ${x - 10 * s} ${y - 14 * s} ${x} ${y - 24 * s} C${x + 2 * s} ${y - 15 * s} ${x + 8 * s} ${y - 14 * s} ${x + 6 * s} ${y - 8 * s} C${x + 10 * s} ${y - 8 * s} ${x + 9 * s} ${y - 2 * s} ${x} ${y} Z" fill="${FIRE[1]}" ${O(2.2)}/>`
+      + `<path d="M${x} ${y - 2 * s} C${x - 4 * s} ${y - 4 * s} ${x - 4 * s} ${y - 10 * s} ${x} ${y - 14 * s} C${x + 3 * s} ${y - 9 * s} ${x + 4 * s} ${y - 4 * s} ${x} ${y - 2 * s} Z" fill="${FIRE[0]}"/>`;
+    const steam = (x = 0, y = -36) => `<path d="M${x - 6} ${y} q-5 -7 0 -13 M${x + 6} ${y} q-5 -7 0 -13" stroke="#ffd6c4" stroke-width="2.6" fill="none" opacity=".75" stroke-linecap="round"/>`;
+    // котелок на ножках: внутри - цвет варева
+    const pot = (soup, top = '') => `<path d="M-22 0 l-4 6 M22 0 l4 6" stroke="${INK}" stroke-width="4" stroke-linecap="round"/><path d="M-30 -24 H30 Q30 4 0 4 Q-30 4 -30 -24Z" fill="#3a3346" ${O(3.4)}/>`
+      + `<path d="M-24 -12 Q0 -4 24 -12" stroke="#5a5470" stroke-width="3" fill="none"/><ellipse cy="-24" rx="30" ry="6" fill="${soup}" ${O(2.6)}/>${top}`;
+    const FOOD = {
+      // Печёное яблоко: тёмно-красное, подпалина сверху, пар
+      apple: () => `<circle cy="-16" r="16" fill="#b8202e" ${O()}/><path d="M-10 -26 q10 -6 20 0 q-4 4 -10 3 q-6 1 -10 -3Z" fill="#5a1a1a"/><path d="M0 -31 q2 -8 7 -10" stroke="#3a2614" stroke-width="3.4" fill="none"/><circle cx="-7" cy="-17" r="3.6" fill="#ff8a7a" opacity=".6"/>` + steam(0, -38),
+      // Жгучий перчик: красный стручок с зелёным хвостиком
+      pear: () => `<path d="M-24 -26 C-14 -34 4 -30 14 -18 C22 -8 26 -2 30 0 C18 2 4 -2 -6 -10 C-16 -16 -24 -18 -24 -26 Z" fill="#e8202e" ${O(3)}/><path d="M-12 -24 C-2 -26 8 -20 14 -12" stroke="#ff8a7a" stroke-width="3" fill="none" stroke-linecap="round"/>`
+        + `<path d="M-24 -26 q-4 -6 -2 -12 q4 2 6 6Z" fill="#4caf50" ${O(2.4)}/><path d="M-26 -36 q-2 -6 2 -9" stroke="#3a7a2a" stroke-width="3" fill="none" stroke-linecap="round"/>` + flame(26, -4, 0.45),
+      // Угольный крендель: тёмный крендель с горячими крупинками
+      pretzel: () => `<path d="M0 -6 C-30 -4 -32 -36 -14 -38 C-2 -40 4 -26 0 -18 C-4 -26 2 -40 14 -38 C32 -36 30 -4 0 -6 Z" fill="none" stroke="${INK}" stroke-width="13" stroke-linejoin="round"/>`
+        + `<path d="M0 -6 C-30 -4 -32 -36 -14 -38 C-2 -40 4 -26 0 -18 C-4 -26 2 -40 14 -38 C32 -36 30 -4 0 -6 Z" fill="none" stroke="#4a2a22" stroke-width="7.5" stroke-linejoin="round"/>`
+        + [[-18, -30], [-24, -18], [16, -32], [22, -16], [-6, -8], [8, -9]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2" fill="${FIRE[1]}"/>`).join(''),
+      // Горелая корка: хлеб с чёрной подгоревшей коркой
+      bread: () => `<path d="M-32 0 C-36 -30 36 -30 32 0 Z" fill="#a0602a" ${O(3.4)}/><path d="M-30 -10 C-28 -26 28 -26 30 -10 C20 -16 8 -12 0 -16 C-10 -12 -20 -18 -30 -10 Z" fill="#2a1a1a"/>`
+        + `<path d="M-14 -18 l6 8 M2 -20 l6 8" stroke="${FIRE[1]}" stroke-width="2.6" stroke-linecap="round"/>` + `<path d="M-6 -30 q-4 -6 0 -11 M6 -30 q-4 -6 0 -11" stroke="#7a6a6a" stroke-width="2.6" fill="none" opacity=".8" stroke-linecap="round"/>`,
+      // Серная газировка: жёлто-зелёная бутылка с пузырьками
+      kvass: () => `<path d="M-14 0 V-30 Q-14 -36 -6 -38 V-48 H6 V-38 Q14 -36 14 -30 V0 Z" fill="#d8e83a" ${O(3)}/><rect x="-8" y="-54" width="16" height="7" rx="2" fill="#c8102e" ${O(2.4)}/>`
+        + `<rect x="-14" y="-24" width="28" height="12" fill="#2a0d14"/><path d="M-10 -18 h20" stroke="${GOLD}" stroke-width="2.4"/>` + [[-6, -32], [4, -28], [-2, -40]].map(([x, y], i) => `<circle cx="${x}" cy="${y}" r="${2 + i % 2}" fill="#fffbd0"/>`).join(''),
+      // Плавленый сыр: клин, который стекает каплями
+      cheese: () => `<path d="M-30 0 H30 V-28 L-30 -12 Z" fill="#ffc83d" ${O(3.4)}/><path d="M-30 -12 L30 -28 V-20 Q24 -12 20 -18 Q16 -8 10 -14 Q4 -4 -2 -10 Q-10 -2 -14 -8 Q-22 -4 -30 -8 Z" fill="#ff9a2a"/><circle cx="-6" cy="-6" r="3.6" fill="#d48a10"/><circle cx="16" cy="-6" r="2.6" fill="#d48a10"/>`,
+      // Пирожок из пекла: румяный пирожок с язычками огня
+      pie: () => `<path d="M-32 0 C-34 -22 34 -22 32 0 Z" fill="#d97a2a" ${O(3.4)}/><path d="M-26 -10 l4 -4 l4 4 l4 -4 l4 4 l4 -4 l4 4 l4 -4 l4 4 l4 -4 l4 4 l4 -4" stroke="#8a3a10" stroke-width="2.4" fill="none" stroke-linejoin="round"/>` + flame(-10, -18, 0.6) + flame(8, -19, 0.75),
+      // Копчёный окорок: тёмный, с косточкой и дымком
+      ham: () => `<path d="M-30 0 C-38 -34 12 -44 28 -16 C32 -6 22 4 -30 0 Z" fill="#8a2a1a" ${O(3.4)}/><path d="M-20 -8 C-20 -24 4 -30 16 -16" fill="none" stroke="#c8523a" stroke-width="3"/>`
+        + `<path d="M24 -14 l16 -12" stroke="${INK}" stroke-width="10" stroke-linecap="round"/><path d="M24 -14 l16 -12" stroke="#f3e6c8" stroke-width="5" stroke-linecap="round"/>` + `<path d="M-8 -40 q-4 -6 0 -11" stroke="#9a8a8a" stroke-width="2.6" fill="none" stroke-linecap="round"/>`,
+      // Шашлык на вилах: куски мяса на чёртовых вилах
+      roast: () => `<path d="M-34 -6 L30 -26" stroke="${INK}" stroke-width="6" stroke-linecap="round"/><path d="M-34 -6 L30 -26" stroke="#5a4048" stroke-width="2.6" stroke-linecap="round"/>`
+        + `<path d="M28 -32 L38 -29 M30 -25 L40 -22 M32 -19 L42 -16 M26 -33 L33 -12" stroke="${INK}" stroke-width="3.4" stroke-linecap="round"/>`
+        + [[-18, -10, '#a0402a'], [-4, -15, '#c8742a'], [10, -19, '#a0402a']].map(([x, y, c]) => `<rect x="${x - 7}" y="${y - 9}" width="14" height="16" rx="4" fill="${c}" ${O(2.6)} transform="rotate(-17 ${x} ${y})"/>`).join('') + flame(-4, 0, 0.5),
+      // Пряник с перцем: пряник-чертёнок с глазурью и перчиком
+      honey_cake: () => `<path d="M-22 0 V-26 Q-22 -36 -14 -38 L-12 -46 L-6 -38 H6 L12 -46 L14 -38 Q22 -36 22 -26 V0 Z" fill="#c8742a" ${O(3)}/><path d="M-18 -4 V-26 Q-18 -32 -12 -33 M18 -4 V-26 Q18 -32 12 -33" stroke="#fff3ea" stroke-width="2.4" fill="none" stroke-dasharray="4 3"/>`
+        + `<circle cx="-7" cy="-26" r="2.6" fill="${INK}"/><circle cx="7" cy="-26" r="2.6" fill="${INK}"/><path d="M-7 -16 q7 6 14 0" stroke="${INK}" stroke-width="2.4" fill="none" stroke-linecap="round"/><path d="M-2 -8 q6 -4 10 2 q-6 2 -10 -2Z" fill="#e8202e" ${O(1.6)}/>`,
+      // Чай из котла: маленький котелок-кружка, пар
+      sage_tea: () => `<path d="M-18 -30 H16 L13 -2 Q0 3 -15 -2 Z" fill="#3a3346" ${O(3)}/><ellipse cx="-1" cy="-30" rx="17" ry="5" fill="#b8702a" ${O(2.4)}/><path d="M16 -24 q12 2 8 12 q-3 6 -11 4" fill="none" stroke="${INK}" stroke-width="3.4"/>`
+        + `<path d="M-10 -14 h18" stroke="${FIRE[1]}" stroke-width="2.4" stroke-dasharray="3 3"/>` + steam(0, -38),
+      // Адская похлёбка: котелок с кипящим красным варевом и косточкой
+      spicy_stew: () => pot('#e8402a', `<circle cx="-12" cy="-27" r="4" fill="${FIRE[1]}" ${O(1.6)}/><circle cx="10" cy="-28" r="3" fill="${FIRE[0]}" ${O(1.4)}/><path d="M2 -26 l10 -14" stroke="${INK}" stroke-width="7" stroke-linecap="round"/><path d="M2 -26 l10 -14" stroke="#f3e6c8" stroke-width="3.4" stroke-linecap="round"/>`) + flame(-22, 8, 0.4) + flame(22, 8, 0.4),
+    };
+    // Зелье жара: малое - пузырёк с рожками-пробкой, большое - пузатая колба с пламенем внутри
+    const potion = (big, c) => big
+      ? `<path d="M-6 -50 V-40 C-26 -32 -26 0 0 0 C26 0 26 -32 6 -40 V-50 Z" fill="${c}" ${O(3.4)}/><path d="M-8 -50 H8 V-56 H-8 Z" fill="#3a3346" ${O(2.6)}/><path d="M-8 -56 q-6 -4 -6 -10 q4 2 8 6 M8 -56 q6 -4 6 -10 q-4 2 -8 6" fill="#f3e6c8" ${O(2)}/>`
+        + flame(0, -6, 0.75) + `<path d="M-14 -24 q4 -8 9 -5" stroke="#fff" stroke-width="3" fill="none" opacity=".55" stroke-linecap="round"/>`
+      : `<path d="M-5 -36 V-28 L-14 -18 V0 H14 V-18 L5 -28 V-36 Z" fill="${c}" ${O(3.2)}/><rect x="-7" y="-42" width="14" height="7" rx="2" fill="#3a3346" ${O(2.4)}/><path d="M-6 -42 q-5 -3 -5 -8 q3 2 7 5 M6 -42 q5 -3 5 -8 q-3 2 -7 5" fill="#f3e6c8" ${O(1.8)}/>`
+        + flame(0, -4, 0.45) + `<path d="M-9 -14 v6" stroke="#fff" stroke-width="3" opacity=".5" stroke-linecap="round"/>`;
+    // Обугленный пергамент: свиток с обгорелыми краями и печатью-трезубцем
+    const scroll = () => `<path d="M-26 -40 H26 L24 -34 L27 -28 L24 -20 L27 -12 L24 -6 H-26 L-23 -12 L-27 -20 L-23 -28 L-27 -34 Z" fill="#e8c890" ${O(3)}/><path d="M-26 -40 H26 L24 -34 L27 -28 L24 -20 L27 -12 L24 -6 H-26" fill="none" stroke="#5a2a10" stroke-width="2"/>`
+      + `<path d="M-16 -32 H12 M-16 -25 H6 M-16 -18 H10" stroke="#7a3a1a" stroke-width="2.4"/>`
+      + `<rect x="-32" y="-46" width="10" height="46" rx="5" fill="#3a2a22" ${O(3)}/><rect x="22" y="-46" width="10" height="46" rx="5" fill="#3a2a22" ${O(3)}/>`
+      + `<circle cx="12" cy="-12" r="8" fill="#c8102e" ${O(2.2)}/><path d="M12 -7 V-17 M8.5 -17 V-13 Q12 -10 15.5 -13 V-17" stroke="${GOLD}" stroke-width="1.8" fill="none" stroke-linecap="round"/>`;
+    return {
+      food: FOOD,
+      potion: (it) => potion(/hp|big|больш/i.test(String(it.id) + (it.name || '')), /mana|ман/i.test(String(it.id)) ? '#4ab0ff' : '#ff4a1a'),
+      scroll: () => scroll(),
+    };
+  });
+})();
+
+} catch (e) { console.error('[стили] styles/cherts/goods.js не загрузился:', e); }
+
+/* ───── стиль «cherts»: styles/cherts/hero.js ───── */
+try {
+/* Стиль «Черти» — карточки героя (модуль «Легионер»): карточка из обугленного камня с трещинами лавы, раскалённая рамка и золотые заклёпки
+   Разметка и анимации — в modules/legionary/client/widget.js; здесь только вид. Основа — CSS «Легиона», ниже — правила этого стиля
+   (последние перекрывают основу). Договор — styles/README.md, раздел «Карточки героя». */
+(function () {
+  'use strict';
+  if (!window.MDDoodle || !window.MDDoodle.addPart) return;
+  window.MDDoodle.addPart('cherts', 'hero', function () {
+    const css = `/* «Легионер»: карточка героя, сумка, смерть / воскрешение / новый уровень */
+.lg-box { position: absolute; inset: 0; pointer-events: none; font-family: 'Golos Text', 'Segoe UI', sans-serif; }
+.lg-box .jl-doodle { width: 120px; height: 170px; overflow: visible; }
+.lg-box .jl-doodle .ln { fill: none; stroke: #f5f2ff; stroke-width: 4.5; stroke-linecap: round; stroke-linejoin: round; }
+.lg-box .jl-doodle .body { stroke: #f5f2ff; stroke-width: 4.5; stroke-linejoin: round; }
+.lg-box .jl-doodle .face:not([fill]) { fill: none; }
+.lg-box .jl-doodle .face { stroke: #15122e; stroke-width: 3.5; stroke-linecap: round; }
+.lg-box .jl-doodle .eye { fill: #15122e; }
+.lg-box .jl-doodle .tear { opacity: 0; }
+
+/* ---------- карточка: боевая — тёмное железо, кровь и угли ---------- */
+.lg-card { position: absolute; left: 0; bottom: 0; width: 540px; display: flex; gap: 14px; padding: 16px 18px 16px 10px; border-radius: 10px;
+  background:
+    repeating-linear-gradient(115deg, rgba(255,255,255,.018) 0 2px, transparent 2px 9px),
+    radial-gradient(ellipse at 18% 110%, rgba(190,40,20,.38), transparent 55%),
+    linear-gradient(165deg, #2a2a2e 0%, #17161a 45%, #0d0c0f 100%);
+  border: 3px solid #050506;
+  box-shadow: 0 0 0 2px #5b4a3a, 0 0 0 5px #141215, inset 0 1px 0 rgba(255,255,255,.08), inset 0 -30px 50px rgba(0,0,0,.55), 0 10px 22px rgba(0,0,0,.6);
+  color: #e8e2d6; opacity: 0; transform: translateY(40px) scale(.94); transition: opacity .3s, transform .45s cubic-bezier(.3,1.4,.5,1); }
+/* заклёпки по углам */
+.lg-card::before, .lg-card::after { content: ''; position: absolute; top: 7px; width: 9px; height: 9px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #b9a88f, #4a3e31 70%); box-shadow: 0 1px 0 rgba(0,0,0,.8), 0 calc(100% + 0px) 0 transparent; }
+.lg-card::before { left: 7px; } .lg-card::after { right: 7px; }
+.lg-card.on { opacity: 1; transform: none; }
+.lg-card.off { opacity: 0; transform: translateY(20px) scale(.97); transition: opacity .35s, transform .35s; }
+/* призрак — холодная сталь, без огня */
+.lg-card.ghost { background:
+    repeating-linear-gradient(115deg, rgba(255,255,255,.02) 0 2px, transparent 2px 9px),
+    radial-gradient(ellipse at 18% 110%, rgba(110,140,220,.28), transparent 55%),
+    linear-gradient(165deg, #23283a 0%, #12141f 50%, #090a10 100%);
+  box-shadow: 0 0 0 2px #4b5577, 0 0 0 5px #10121a, 0 0 26px rgba(140,165,255,.3), inset 0 -30px 50px rgba(0,0,0,.55), 0 10px 22px rgba(0,0,0,.6); }
+.lg-card .pic { flex: none; width: 150px; display: flex; align-items: flex-end; justify-content: center; position: relative; border-radius: 6px;
+  background: radial-gradient(ellipse at 50% 100%, rgba(220,70,30,.35), transparent 65%), linear-gradient(#0b0a0c, #19151a); box-shadow: inset 0 0 0 2px #050506, inset 0 0 18px rgba(0,0,0,.8); overflow: hidden; }
+.lg-card.ghost .pic { background: radial-gradient(ellipse at 50% 100%, rgba(140,165,255,.3), transparent 65%), linear-gradient(#090a10, #151826); }
+.lg-card .pic { justify-content: flex-start; padding-left: 10px; align-items: center; min-height: 188px; }   /* человечек всегда целиком и по центру, даже если сумка пустая */
+.lg-card .info { justify-content: center; }
+.lg-card .pic .jl-doodle { width: 120px; height: 170px; margin-bottom: 4px; }   /* справа — место под оружие в руке */
+.lg-card .info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.lg-card .nm { font: 400 30px 'Russo One', sans-serif; line-height: 1.05; color: #efe6d2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-shadow: 0 2px 0 #000, 0 0 12px rgba(200,50,30,.35); letter-spacing: .01em; }
+.lg-card.ghost .nm { color: #cfd8f2; text-shadow: 0 2px 0 #000, 0 0 12px rgba(140,165,255,.4); }
+.lg-card .role { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; color: #a89a86; text-transform: uppercase; letter-spacing: .08em; }
+.lg-card .lvl { font: 400 14px 'Russo One', sans-serif; padding: 3px 10px 3px; color: #f3e2c4; letter-spacing: .04em;
+  background: linear-gradient(#8e1b1b, #4f0c0c); border: 1.5px solid #050506; box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 0 0 1px #6d5a45;
+  clip-path: polygon(8% 0, 92% 0, 100% 50%, 92% 100%, 8% 100%, 0 50%); }
+.lg-card .xp { height: 8px; border-radius: 2px; background: #050506; box-shadow: inset 0 0 0 1px #3a3128; overflow: hidden; }
+.lg-card .xp i { display: block; height: 100%; background: linear-gradient(90deg, #6e1010, #d2491d 70%, #ffb054); box-shadow: 0 0 8px rgba(255,120,40,.6); }
+.lg-card.ghost .xp i { background: linear-gradient(90deg, #2c3970, #7d95e6); box-shadow: none; }
+.lg-card .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 8px; margin-top: 2px; }
+.lg-card .stats div { display: flex; align-items: center; gap: 7px; font-size: 15px; color: #b8ab98; padding: 5px 10px; border-radius: 4px;
+  background: linear-gradient(#232026, #141217); box-shadow: inset 0 0 0 1px #050506, inset 0 1px 0 rgba(255,255,255,.06); }
+.lg-card .stats b { font: 400 21px 'Russo One', sans-serif; margin-left: auto; color: #efe6d2; text-shadow: 0 2px 0 #000; }
+.lg-card .gear { display: flex; flex-wrap: wrap; gap: 5px; font-size: 13px; color: #cfc4b2; }
+.lg-card .gear span { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 3px; background: #0f0e11; border: 1px solid #3a3128; }
+/* редкость: обычное — сталь, редкое — синее, эпическое — фиолетовое, легендарное — золото с переливом */
+.lg-box .gem { display: inline-block; width: 8px; height: 8px; transform: rotate(45deg); flex: none; background: #8d867b; box-shadow: 0 0 0 1px #050506; }
+.lg-box .r-common { color: #d6cdbd; }
+.lg-box .r-uncommon { color: #a8eeb0; } .lg-box .r-uncommon .gem { background: #4cc95a; box-shadow: 0 0 0 1px #050506, 0 0 6px #4cc95a; }
+.lg-box .r-rare { color: #9ccaff; } .lg-box .r-rare .gem { background: #4aa3ff; box-shadow: 0 0 0 1px #050506, 0 0 6px #4aa3ff; }
+.lg-box .r-epic { color: #dcbcff; } .lg-box .r-epic .gem { background: #b06bff; box-shadow: 0 0 0 1px #050506, 0 0 7px #b06bff; }
+.lg-box .r-legendary { color: #ffd27a; } .lg-box .r-legendary .gem { background: #ffb83d; box-shadow: 0 0 0 1px #050506, 0 0 9px #ffb83d; animation: lgGem 1.4s ease-in-out infinite alternate; }
+@keyframes lgGem { to { box-shadow: 0 0 0 1px #050506, 0 0 16px #ffd76a; } }
+.lg-card .gear span.r-uncommon { border-color: #3f9a4c; box-shadow: inset 0 0 10px rgba(76,201,90,.16); }
+.lg-card .gear span.r-rare { border-color: #3d7fc7; box-shadow: inset 0 0 10px rgba(74,163,255,.18); }
+.lg-card .gear span.r-epic { border-color: #8b55c9; box-shadow: inset 0 0 12px rgba(176,107,255,.25), 0 0 8px rgba(176,107,255,.35); }
+.lg-card .gear span.r-legendary { border-color: #d29a2e; position: relative; overflow: hidden; box-shadow: inset 0 0 12px rgba(255,184,61,.3), 0 0 12px rgba(255,184,61,.5); }
+.lg-card .gear span.r-legendary::after { content: ''; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 30%, rgba(255,240,190,.45) 50%, transparent 70%); background-size: 250% 100%; animation: lgShine 2.4s linear infinite; }
+@keyframes lgShine { from { background-position: 150% 0; } to { background-position: -100% 0; } }
+.lg-card .bag .it { display: inline-flex; align-items: center; gap: 6px; }
+.lg-card .gear em { opacity: .5; font-style: normal; }
+.lg-card .bag { display: flex; flex-direction: column; gap: 3px; font-size: 15px; color: #d8cfbf; }
+.lg-card .bag div { display: flex; gap: 8px; align-items: baseline; }
+.lg-card .bag .n { font: 400 15px 'Russo One', sans-serif; color: #c9472a; width: 22px; text-align: right; }
+.lg-card .bag .on { color: #8fbf6a; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+.lg-card .hint { font-size: 12.5px; color: #85796a; }
+.lg-card .note { font-weight: 700; font-size: 15px; color: #f3e2c4; background: linear-gradient(#7d1717, #4a0b0b); border: 1px solid #050506; box-shadow: 0 0 0 1px #6d5a45; border-radius: 3px; padding: 4px 10px; align-self: flex-start; }
+.lg-card .ghostline { font-weight: 700; font-size: 14px; color: #9fb0e6; }
+
+/* ---------- сцены: смерть, воскрешение, новый уровень ---------- */
+.lg-scene { position: absolute; left: 0; bottom: 0; width: 540px; height: 440px; }
+.lg-scene .guy { position: absolute; left: 195px; bottom: 30px; width: 150px; height: 212px; transform-origin: 75px 200px; }
+.lg-scene .guy .jl-doodle { width: 150px; height: 212px; }
+.lg-scene .ttl { position: absolute; left: 0; right: 0; top: 0; text-align: center; opacity: 0; transform: scale(.4); transition: opacity .3s, transform .55s cubic-bezier(.3,1.6,.5,1); }
+.lg-scene .ttl.on { opacity: 1; transform: none; }
+.lg-scene .ttl b { display: block; font: 400 46px 'Russo One', sans-serif; letter-spacing: .03em; -webkit-text-stroke: 2.5px #15122e; paint-order: stroke fill; text-shadow: 0 5px 0 rgba(0,0,0,.35); }
+.lg-scene .ttl span { display: inline-block; margin-top: 4px; font: 400 26px 'Russo One', sans-serif; color: #fff; -webkit-text-stroke: 1.5px #15122e; paint-order: stroke fill; max-width: 520px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lg-scene .sub { position: absolute; left: 0; right: 0; bottom: 0; text-align: center; font-weight: 700; font-size: 16px; color: #fff; opacity: 0; transition: opacity .4s; }
+.lg-scene .sub.on { opacity: 1; }
+.lg-scene .sub i { display: inline-block; font-style: normal; background: rgba(21,18,46,.82); border-radius: 9px; padding: 4px 10px; margin: 2px; }
+.lg-scene canvas { position: absolute; left: -100px; top: -100px; width: 740px; height: 640px; pointer-events: none; }
+.lg-scene .beam { position: absolute; left: 170px; top: -60px; width: 200px; height: 470px; opacity: 0; background: linear-gradient(180deg, rgba(255,246,200,.9), rgba(255,220,120,.15) 85%, transparent); clip-path: polygon(30% 0, 70% 0, 100% 100%, 0 100%); filter: blur(2px); transition: opacity .6s; }
+.lg-scene .beam.on { opacity: 1; }
+.lg-scene .flash { position: absolute; inset: -40px; background: radial-gradient(circle at 50% 70%, rgba(232,69,92,.75), transparent 60%); opacity: 0; }
+.lg-scene .flash.go { animation: lgFlash .5s ease-out; }
+@keyframes lgFlash { 0% { opacity: 1; } 100% { opacity: 0; } }
+.lg-scene .ring { position: absolute; left: 270px; bottom: 120px; width: 10px; height: 10px; margin: -5px; border-radius: 50%; border: 6px solid #ffc94d; opacity: 0; }
+.lg-scene .ring.go { animation: lgRing .9s ease-out forwards; }
+@keyframes lgRing { 0% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(34); border-width: 1px; } }
+.lg-scene .shake { animation: lgShake .45s linear; }
+@keyframes lgShake { 15% { transform: translate(-8px, 2px); } 35% { transform: translate(7px, -3px); } 55% { transform: translate(-5px, 1px); } 75% { transform: translate(3px, 0); } }
+
+/* текущее здоровье: число / максимум и полоска под ним */
+.lg-card .stats .hpc { position: relative; }
+.lg-card .stats .hpc small { font-size: 13px; color: #8f8474; margin-left: 1px; }
+.lg-card .stats .hpbar { position: absolute; left: 8px; right: 8px; bottom: 2px; height: 3px; background: #050506; border-radius: 2px; overflow: hidden; }
+.lg-card .stats .hpbar i { display: block; height: 100%; background: linear-gradient(90deg, #8e1b1b, #e8455c); }
+.lg-card .woundline { font-weight: 700; font-size: 14px; color: #e88a7a; }
+
+/* удар по герою: карточка дёргается и вспыхивает красным */
+.lg-card.on.hit { animation: lgHit .55s ease-out; }
+@keyframes lgHit { 0% { transform: translate(0,0); box-shadow: 0 0 0 2px #e8455c, 0 0 0 5px #141215, 0 0 40px rgba(232,69,92,.9), 0 10px 22px rgba(0,0,0,.6); }
+  20% { transform: translate(-9px, 3px); } 40% { transform: translate(7px, -2px); } 60% { transform: translate(-4px, 1px); } 80% { transform: translate(2px, 0); } 100% { transform: none; } }
+
+/* временные баффы (например, «Закалка кузнеца» с Ярмарки) */
+.lg-card .buffline { font-weight: 700; font-size: 14px; color: #ffb36b; }
+
+/* ===== «Черти»: карточка из обугленного камня с трещинами лавы, рамка - раскалённое железо с золотыми заклёпками ===== */
+.lg-card { border-radius: 12px; padding: 18px 18px 16px 10px;
+  background:
+    linear-gradient(115deg, transparent 0 18%, rgba(255,106,26,.55) 18.4% 18.9%, transparent 19.3% 61%, rgba(255,106,26,.45) 61.3% 61.7%, transparent 62.1%) ,
+    radial-gradient(ellipse at 20% 115%, rgba(255,90,20,.55), transparent 55%),
+    radial-gradient(ellipse at 95% -10%, rgba(200,16,46,.35), transparent 50%),
+    linear-gradient(165deg, #3a1218 0%, #22090e 50%, #140407 100%);
+  border: 3px solid #2a0d14; box-shadow: 0 0 0 3px #c8102e, 0 0 0 6px #2a0d14, 0 0 22px rgba(255,74,26,.45), inset 0 -30px 50px rgba(0,0,0,.5), 0 10px 22px rgba(0,0,0,.6); color: #ffe6d6; }
+.lg-card::before, .lg-card::after { width: 11px; height: 11px; background: radial-gradient(circle at 35% 35%, #fff1a8, #ffc83d 45%, #8a5a10); box-shadow: 0 1px 0 #2a0d14; }
+.lg-card.ghost { background: radial-gradient(ellipse at 20% 115%, rgba(120,200,160,.35), transparent 55%), linear-gradient(165deg, #2a2a34 0%, #16161e 50%, #0c0c12 100%);
+  box-shadow: 0 0 0 3px #6a8a80, 0 0 0 6px #2a0d14, 0 0 24px rgba(140,255,200,.3), inset 0 -30px 50px rgba(0,0,0,.5), 0 10px 22px rgba(0,0,0,.6); }
+.lg-card .pic { border-radius: 10px; background: radial-gradient(ellipse at 50% 105%, rgba(255,154,42,.75), rgba(200,16,46,.3) 45%, transparent 70%), linear-gradient(#1a0508, #3a0d14); box-shadow: inset 0 0 0 3px #2a0d14, inset 0 0 0 5px #7a1a2a; }
+.lg-card.ghost .pic { background: radial-gradient(ellipse at 50% 105%, rgba(140,255,200,.35), transparent 65%), linear-gradient(#0c0c12, #1e2028); }
+.lg-card .nm { color: #ffe27a; text-shadow: 0 2px 0 #2a0d14, 0 0 14px rgba(255,90,20,.7); }
+.lg-card.ghost .nm { color: #c8f0e0; text-shadow: 0 2px 0 #000, 0 0 12px rgba(140,255,200,.45); }
+.lg-card .role { color: #ff9a6a; }
+.lg-card .lvl { color: #2a0d14; background: linear-gradient(#fff1a8, #ffc83d 55%, #d48a10); border: 2px solid #2a0d14; box-shadow: none; clip-path: polygon(0 0, 100% 0, 92% 50%, 100% 100%, 0 100%, 8% 50%); }
+.lg-card .xp { height: 9px; border-radius: 5px; background: #140407; box-shadow: inset 0 0 0 2px #5a1a24; }
+.lg-card .xp i { background: linear-gradient(90deg, #c8102e, #ff4a1a 55%, #ffe27a); box-shadow: 0 0 10px rgba(255,120,40,.8); border-radius: 5px; }
+.lg-card.ghost .xp i { background: linear-gradient(90deg, #3a6a5a, #9fffd0); box-shadow: none; }
+.lg-card .stats div { color: #ffb89a; border-radius: 7px; background: linear-gradient(#3a1218, #200709); box-shadow: inset 0 0 0 2px #5a1a24, inset 0 1px 0 rgba(255,200,150,.12); }
+.lg-card .stats b { color: #ffe27a; text-shadow: 0 2px 0 #2a0d14; }
+.lg-card .stats .hpc small { color: #c88a7a; }
+.lg-card .stats .hpbar { background: #140407; } .lg-card .stats .hpbar i { background: linear-gradient(90deg, #c8102e, #ff7a3d); }
+.lg-card .gear { color: #ffd6c4; }
+.lg-card .gear span { border-radius: 6px; background: #1a0508; border: 1.5px solid #7a1a2a; }
+.lg-box .gem { transform: rotate(45deg) scale(1.05); box-shadow: 0 0 0 1px #2a0d14; }
+.lg-box .r-common { color: #ffd6c4; }
+.lg-card .bag { color: #ffd6c4; } .lg-card .bag .n { color: #ff7a3d; } .lg-card .bag .on { color: #ffc83d; }
+.lg-card .hint { color: #b8867a; }
+.lg-card .note { color: #2a0d14; background: linear-gradient(#ffe27a, #ff9a2a); border: 2px solid #2a0d14; box-shadow: none; border-radius: 6px; }
+.lg-card .ghostline { color: #9fffd0; } .lg-card .woundline { color: #ff8a7a; } .lg-card .buffline { color: #ffc83d; }
+.lg-scene .ttl b { -webkit-text-stroke: 2.5px #2a0d14; }
+.lg-scene .ttl span { -webkit-text-stroke: 1.5px #2a0d14; }
+.lg-scene .sub i { background: rgba(42,13,20,.88); border-radius: 8px; box-shadow: 0 0 0 1px #7a1a2a; }
+.lg-scene .flash { background: radial-gradient(circle at 50% 70%, rgba(255,90,20,.8), transparent 60%); }
+.lg-scene .ring { border-color: #ff4a1a; }
+.lg-scene .beam { background: linear-gradient(180deg, rgba(255,240,180,.9), rgba(255,120,40,.18) 85%, transparent); }
+`;
+    return {
+      css,
+      slotIcons: { weapon: '🔱', armor: '🦇', shield: '🍳', helmet: '😈', trinket: '🔥' },
+      stats: { hp: { label: '❤️ ХП', icon: '❤️' }, def: { label: '🍳 Шкура', icon: '🍳' }, atk: { label: '🔱 Вилы', icon: '🔱' }, mag: { label: '🔥 Пекло', icon: '🔥' } },
+      texts: { recruit: 'Бесёнок', ghost: '👻 Призрак-бес', nothing: 'Ничего не надето — голый чёрт', level: 'УР.', buff: '🌶' },
+      scenes: { death: { title: '🔥 В КОТЁЛ!', color: '#ff4a1a' }, revive: { title: '😈 ВОСКРЕС', color: '#ffc83d' }, level: { title: (n) => `🔱 УРОВЕНЬ ${n}`, color: '#ff7a3d' } },
+    };
+  });
+  // монеты стиля «Черти»: уголёк (бронза), серебряный рожок, золотой трезубец. 100 : 1, как у всех
+  window.MDDoodle.addPart('cherts', 'coins', function () {
+    // крупные простые формы: читаются и в 16 px
+    const ART = {
+      b: '<path d="M7 26 L10 13 L20 7 L31 11 L34 24 L27 33 L13 34 Z" fill="#2a1a22" stroke="#140407" stroke-width="2.6" stroke-linejoin="round"/><path d="M12 15 L20 10 L27 13" stroke="#5a4048" stroke-width="2.4" fill="none" stroke-linecap="round"/><path d="M14 30 L19 22 L16 17 M19 22 L27 24 L30 19" stroke="#ff7a1a" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M19 22 L27 24" stroke="#ffe27a" stroke-width="1.4"/>',
+      s: '<path d="M6 35 C6 21 13 8 33 3 C25 12 24 21 26 35 Z" fill="#d6dbe4" stroke="#2a0d14" stroke-width="2.6" stroke-linejoin="round"/><path d="M13 31 C14 22 18 14 25 9" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round"/><path d="M11 28 H22 M12 22 H22 M15 16 H23" stroke="#8e97a4" stroke-width="2" stroke-linecap="round"/><rect x="7" y="33" width="18" height="4" rx="2" fill="#8e97a4" stroke="#2a0d14" stroke-width="2"/>',
+      g: '<circle cx="20" cy="20" r="17" fill="#ffc83d" stroke="#2a0d14" stroke-width="2.6"/><circle cx="20" cy="20" r="13" fill="none" stroke="#d48a10" stroke-width="2"/><path d="M20 32 V12 M13 11 V17 Q13 22 20 22 Q27 22 27 17 V11 M13 11 L11 14 M27 11 L29 14 M20 12 L18 15 M20 12 L22 15" stroke="#5a2a08" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 14 A12 12 0 0 1 16 8" stroke="#fff3c0" stroke-width="2.4" fill="none" stroke-linecap="round"/>',
+    };
+    return {
+      b: { name: 'уголёк', forms: ['уголёк', 'уголька', 'угольков'], color: '#ff7a1a', emoji: '⚫' },
+      s: { name: 'серебряный рожок', forms: ['серебряный рожок', 'серебряных рожка', 'серебряных рожков'], color: '#d6dbe4', emoji: '⚪' },
+      g: { name: 'золотой трезубец', forms: ['золотой трезубец', 'золотых трезубца', 'золотых трезубцев'], color: '#ffc83d', emoji: '🟡' },
+      svg: (k, size = 22) => `<svg class="coin coin-${k}" viewBox="0 0 40 40" width="${size}" height="${size}">${ART[k] || ART.b}</svg>`,
+    };
+  });
+})();
+
+} catch (e) { console.error('[стили] styles/cherts/hero.js не загрузился:', e); }
+
+/* ───── стиль «cherts»: styles/cherts/legend.js ───── */
+try {
+/* Стиль «Черти» - своя рамка легендарки с босса (часть 'legend'): чугунное кольцо на заклёпках, огненный венец, рожки, искорки-угольки.
+   Раскладка, рамка вида и эмблема ауры - общие (styles/legion/legend.js → MDDoodle.legendKit); без фильтров, движение - SVG animate. */
+(function () {
+  'use strict';
+  const D = window.MDDoodle;
+  if (!D || !D.addPart || !D.legendKit) return;
+  D.addPart('cherts', 'legend', () => D.legendKit.make({
+    glow: ['#ffe27a', '#ff5a1a'], item: '#ffb347',
+    back: (cx, cy, R, f) => `<circle cx="${f(cx)}" cy="${f(cy)}" r="${f(R * 1.0)}" fill="none" stroke="#2a0d14" stroke-width="${f(R * 0.2)}"/><circle cx="${f(cx)}" cy="${f(cy)}" r="${f(R * 1.0)}" fill="none" stroke="#4a4458" stroke-width="${f(R * 0.13)}"/>`
+      + Array.from({ length: 12 }, (_, i) => { const a = i * Math.PI / 6; return `<circle cx="${f(cx + Math.cos(a) * R)}" cy="${f(cy + Math.sin(a) * R)}" r="${f(R * 0.035)}" fill="#ffc83d"/>`; }).join(''),
+    ring: (cx, cy, R, f) => { let g = ''; for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6, ca = Math.cos(a), sa = Math.sin(a), px = -sa, py = ca, p = (d, o) => `${f(cx + ca * R * d + px * R * o)} ${f(cy + sa * R * d + py * R * o)}`;
+      g += `<path d="M${p(1.1, -0.1)} Q${p(1.3, -0.12)} ${p(1.42, 0)} Q${p(1.28, 0.08)} ${p(1.1, 0.1)} Z" fill="${i % 2 ? '#ff9a2a' : '#ffc83d'}" stroke="#2a0d14" stroke-width="${f(R * 0.018)}" stroke-linejoin="round"/>`; } return g; },
+    top: (cx, cy, R, f) => [-1, 1].map((d) => `<path d="M${f(cx + d * R * 0.32)} ${f(cy - R * 0.92)} q${f(d * R * 0.34)} ${f(-R * 0.04)} ${f(d * R * 0.34)} ${f(-R * 0.46)} q${f(-d * R * 0.06)} ${f(R * 0.24)} ${f(-d * R * 0.24)} ${f(R * 0.42)} Z" fill="#e8d8b8" stroke="#2a0d14" stroke-width="${f(R * 0.025)}" stroke-linejoin="round"/>`).join(''),
+    spark: (x, y, r, f, i) => `<circle cx="${f(x)}" cy="${f(y)}" r="${f(r * 0.7)}" fill="${i % 2 ? '#ffc83d' : '#ff5a1a'}"/>`,
+  }));
+})();
+
+} catch (e) { console.error('[стили] styles/cherts/legend.js не загрузился:', e); }
+
+if (window.MDDoodle && window.MDDoodle.addNames) window.MDDoodle.addNames("cherts", {"items":{"dagger":{"name":"Чёртов коготок","chat":["коготок"]},"rusty_sword":{"name":"Ржавая кочерга","chat":["кочерга"]},"wood_club":{"name":"Обугленная головня","chat":["головня"]},"pitchfork":{"name":"Чёртова вилочка","chat":["вилочка","вилы"]},"hatchet":{"name":"Топорик кочегара","chat":["кочегара"]},"wood_spear":{"name":"Шампур","chat":["шампур"]},"smith_hammer":{"name":"Молоток котельщика","chat":["котельщика"]},"mace":{"name":"Шипастый уголь","chat":["уголь"]},"gladius":{"name":"Огненный тесак","chat":["тесак"]},"hunting_bow":{"name":"Лук из рога","chat":["из рога"]},"bow":{"name":"Рогатка бесёнка","chat":["рогатка"]},"crook":{"name":"Кривой ухват","chat":["ухват"]},"walking_staff":{"name":"Кочерга-трость","chat":["трость"]},"staff":{"name":"Посох с огоньком","chat":["огоньком"]},"copper_censer":{"name":"Медная курильница","chat":["курильница"]},"censer":{"name":"Серное кадило","chat":["серное","кадило"]},"war_axe":{"name":"Боевой тесак ада","chat":["боевой"]},"spatha":{"name":"Раскалённый клинок","chat":["раскалённый","раскаленный"]},"storm_staff":{"name":"Посох серной бури","chat":["бури"]},"aquila_blade":{"name":"Клинок Люцифера","chat":["люцифера"]},"barrel_lid":{"name":"Крышка котла","chat":["крышка"]},"buckler":{"name":"Сковородка","chat":["сковородка","сковорода"]},"wood_shield":{"name":"Заслонка печи","chat":["заслонка"]},"scutum":{"name":"Чугунная дверца","chat":["дверца"]},"centurion_shield":{"name":"Щит сотника ада","chat":["сотника"]},"lorica":{"name":"Чёрный панцирь","chat":["панцирь"]},"robe":{"name":"Мантия с каймой","chat":["мантия"]},"galea":{"name":"Шлем с рогами","chat":["шлем"]},"laurel":{"name":"Терновый венец","chat":["терновый"]},"spark_charm":{"name":"Искра из пекла","chat":["искра"]},"frost_amulet":{"name":"Ледяной уголёк","chat":["ледяной"]},"shadow_amulet":{"name":"Амулет тьмы","chat":["тьмы"]},"aquila_amulet":{"name":"Золотой трезубчик","chat":["трезубчик"]},"saint_halo":{"name":"Нимб наоборот","chat":["нимб"]},"potion_small":{"name":"Малое зелье жара","chat":["малое"]},"potion_hp":{"name":"Большое зелье жара","chat":["большое"]},"apple":{"name":"Печёное яблоко","chat":["яблоко"]},"pear":{"name":"Жгучий перчик","chat":["перчик"]},"pretzel":{"name":"Угольный крендель","chat":["крендель"]},"bread":{"name":"Горелая корка","chat":["корка"]},"kvass":{"name":"Серная газировка","chat":["газировка"]},"cheese":{"name":"Плавленый сыр","chat":["сыр"]},"pie":{"name":"Пирожок из пекла","chat":["пирожок"]},"ham":{"name":"Копчёный окорок","chat":["окорок"]},"roast":{"name":"Шашлык на вилах","chat":["шашлык"]},"honey_cake":{"name":"Пряник с перцем","chat":["пряник"]},"sage_tea":{"name":"Чай из котла","chat":["чай"]},"spicy_stew":{"name":"Адская похлёбка","chat":["похлёбка","похлебка"]},"hadrian_wall":{"name":"Врата Преисподней","chat":["врата"]},"storm_heart":{"name":"Сердце вулкана","chat":["вулкана"]},"vesta_breath":{"name":"Дыхание горнила","chat":["горнила"]},"diana_bow":{"name":"Лук Лунной ведьмы","chat":["ведьмы"]},"rog_shiv":{"name":"Заточка из рога","chat":["заточка"]},"rog_dirk":{"name":"Нож шулера","chat":["шулера"]},"rog_kris":{"name":"Кривой коготь","chat":["кривой"]},"rog_twin":{"name":"Парные коготки","chat":["парные"]},"rog_viper":{"name":"Жало скорпиона","chat":["жало"]},"mercury_fang":{"name":"Клык Мамоны","chat":["мамоны"]},"nec_bone_wand":{"name":"Косточка-указка","chat":["косточка"]},"nec_old_book":{"name":"Обугленная книжка","chat":["книжка"]},"nec_skull_staff":{"name":"Посох с черепком","chat":["черепком"]},"nec_grimoire":{"name":"Чёрный договор","chat":["договор"]},"nec_crypt_staff":{"name":"Посох из котельной","chat":["котельной"]},"nec_black_book":{"name":"Книга должников","chat":["должников"]},"orcus_scepter":{"name":"Скипетр Вельзевула","chat":["вельзевула"]},"pal_novice_mace":{"name":"Палица истопника","chat":["истопника"]},"pal_mace":{"name":"Палица из чугуна","chat":["чугуна"]},"pal_war_hammer":{"name":"Молот кочегара","chat":["молот"]},"pal_sun_mace":{"name":"Палица пекла","chat":["палица"]},"pal_guard_hammer":{"name":"Молот привратника","chat":["привратника"]},"sol_hammer":{"name":"Молот Сатаны","chat":["сатаны"]},"dragon_scale":{"name":"Чешуя дракона","chat":["дракона"]},"star_mantle":{"name":"Мантия звездопада","chat":["звездопада"]},"triumph_galea":{"name":"Корона Князя тьмы","chat":["князя"]},"phoenix_tear":{"name":"Перо феникса","chat":["феникса"]},"mars_horn":{"name":"Боевой рог","chat":["рог"]},"lucky_coin":{"name":"Счастливый уголёк","chat":["счастливый"]},"wolf_tooth":{"name":"Клык цербера","chat":["цербера"]},"clay_charm":{"name":"Глиняный чертик","chat":["глиняный"]},"river_pearl":{"name":"Жемчуг из Стикса","chat":["стикса"]},"iron_sword":{"name":"Чугунная кочерга","chat":["чугунная"]},"sharp_gladius":{"name":"Острый тесак","chat":["острый"]},"stiletto":{"name":"Шило из рога","chat":["шило"]},"bearded_axe":{"name":"Топор палача","chat":["палача"]},"pilum":{"name":"Метательный шампур","chat":["метательный"]},"flanged_mace":{"name":"Ребристый уголь","chat":["ребристый"]},"composite_bow":{"name":"Лук из костей","chat":["костей"]},"yew_bow":{"name":"Лук из горелой ивы","chat":["ивы"]},"oak_staff":{"name":"Посох из угля","chat":["из угля"]},"druid_crook":{"name":"Ухват болотника","chat":["болотника"]},"silver_censer":{"name":"Серебряное кадило","chat":["серебряное"]},"iron_buckler":{"name":"Чугунная сковорода","chat":["чугунная сковорода"]},"oak_shield":{"name":"Печная заслонка","chat":["печная"]},"veteran_scutum":{"name":"Дверца старой печи","chat":["старой печи"]},"chainmail":{"name":"Кольчуга из цепей","chat":["кольчуга"]},"leather_armor":{"name":"Кожанка байкера","chat":["кожанка"]},"adept_robe":{"name":"Мантия с искрами","chat":["искрами"]},"iron_galea":{"name":"Чугунный котелок","chat":["котелок"]},"hunter_cap":{"name":"Шапка-ушанка ада","chat":["ушанка"]},"wizard_hat":{"name":"Колпак колдуна","chat":["колпак"]},"legion_charm":{"name":"Оберег рогатых","chat":["рогатых"]},"healer_beads":{"name":"Чётки из углей","chat":["чётки","четки"]},"legate_gladius":{"name":"Клинок легата ада","chat":["легата"]},"champion_mace":{"name":"Палица силача","chat":["силача"]},"warhammer":{"name":"Кузнечный молот","chat":["кузнечный"]},"triarius_hasta":{"name":"Огненное копьё","chat":["копьё","копье"]},"assassin_dagger":{"name":"Кинжал тени","chat":["кинжал"]},"retiarius_trident":{"name":"Трезубец","chat":["трезубец"]},"barbarian_club":{"name":"Дубина громилы","chat":["громилы"]},"longbow":{"name":"Длинный лук","chat":["длинный"]},"sagittarius_bow":{"name":"Лук меткого беса","chat":["меткого"]},"ember_staff":{"name":"Посох тлеющий","chat":["тлеющий"]},"elder_crook":{"name":"Ухват старейшины","chat":["старейшины"]},"gold_censer":{"name":"Золотая кадильня","chat":["золотая"]},"tower_shield":{"name":"Ворота котельной","chat":["ворота"]},"hoplite_shield":{"name":"Медный таз","chat":["таз"]},"spiked_buckler":{"name":"Сковорода с шипами","chat":["шипами"]},"segmentata":{"name":"Латы кочегара","chat":["латы"]},"scale_armor":{"name":"Чешуйчатый панцирь","chat":["чешуйчатый"]},"stargazer_robe":{"name":"Мантия звездочёта","chat":["звездочёта","звездочета"]},"crested_helm":{"name":"Шлем с гребнем","chat":["гребнем"]},"horned_helm":{"name":"Рогатый шлем","chat":["рогатый"]},"priest_tiara":{"name":"Тиара грешника","chat":["тиара"]},"wolfpack_amulet":{"name":"Ошейник цербера","chat":["ошейник"]},"frost_bead":{"name":"Ледяная бусина","chat":["бусина"]},"praetorian_spatha":{"name":"Клинок стражи ада","chat":["стражи"]},"apollo_bow":{"name":"Солнечный лук","chat":["солнечный"]},"pontifex_censer":{"name":"Кадило архичерта","chat":["архичерта"]},"praetorian_armor":{"name":"Доспех стражи ада","chat":["доспех стражи"]},"golden_crown":{"name":"Золотая корона","chat":["корона"]},"quilted_jacket":{"name":"Стёганый ватник","chat":["ватник"]},"ranger_jacket":{"name":"Куртка следопыта","chat":["следопыта"]},"hunter_armor":{"name":"Доспех охотника","chat":["охотника"]},"novice_cassock":{"name":"Ряса послушника","chat":["ряса"]},"archmage_robe":{"name":"Мантия архибеса","chat":["архибеса"]},"archer_hood":{"name":"Капюшон с рожками","chat":["капюшон"]},"marksman_hood":{"name":"Капюшон стрелка","chat":["стрелка"]},"novice_hat":{"name":"Колпачок бесёнка","chat":["колпачок"]},"archer_charm":{"name":"Оберег стрелка","chat":["оберег стрелка"]},"sage_charm":{"name":"Оберег мудреца","chat":["мудреца"]},"stone_charm":{"name":"Оберег из лавы","chat":["лавы"]},"scroll_revive":{"name":"Договор на возврат","chat":["договор на возврат","возврат","свиток"]},"metamorph_seal":{"name":"Печать Оборотня","chat":["оборотня","печать оборотня"]},"enchant_star":{"name":"Упавшая звезда","chat":["звезда","упавшая"]},"enchant_sphere":{"name":"Капля смолы","chat":["смолы","капля"]},"rog_jerkin":{"name":"Жилет шулера","chat":["жилет шулера"]},"rog_leathers":{"name":"Кожанка с картами","chat":["с картами"]},"rog_night_coat":{"name":"Фрак ночного беса","chat":["фрак"]},"rog_shadow_cloak":{"name":"Покров дыма","chat":["дыма","покров"]},"rog_laverna_cloak":{"name":"Плащ Лилит","chat":["плащ лилит"]},"rog_hood":{"name":"Колпак бродяги","chat":["бродяги"]},"rog_mask":{"name":"Маска шулера","chat":["маска шулера"]},"rog_cowl":{"name":"Капюшон полуночи","chat":["полуночи"]},"rog_faceless":{"name":"Маска без рыла","chat":["без рыла"]},"rog_laverna_mask":{"name":"Маска Лилит","chat":["маска лилит"]},"rog_lockpick":{"name":"Крючок-отмычка","chat":["отмычка"]},"rog_viper_vial":{"name":"Флакон чёртова яда","chat":["флакон"]},"rog_cat_eye":{"name":"Глаз чёрной кошки","chat":["кошки"]},"nec_shroud":{"name":"Саван из сажи","chat":["сажи","саван"]},"nec_undertaker_robe":{"name":"Ряса писаря ада","chat":["писаря"]},"nec_bone_mantle":{"name":"Мантия из костей","chat":["мантия из костей"]},"nec_lich_robe":{"name":"Облачение пепла","chat":["пепла"]},"nec_proserpina_mantle":{"name":"Мантия Персефоны","chat":["персефоны"]},"nec_hood":{"name":"Капюшон кочегара","chat":["капюшон кочегара"]},"nec_skull_hood":{"name":"Капюшон-череп","chat":["капюшон-череп"]},"nec_bone_crown":{"name":"Венец из рогов","chat":["рогов"]},"nec_lich_crown":{"name":"Корона из пепла","chat":["корона из пепла"]},"nec_dis_crown":{"name":"Венец града Дит","chat":["дит","града"]},"nec_dead_finger":{"name":"Палец грешника","chat":["палец"]},"nec_soul_jar":{"name":"Душа в склянке","chat":["душа","склянке"]},"nec_phylactery":{"name":"Ларец с договором","chat":["ларец"]},"pal_cuirass":{"name":"Кираса истопника","chat":["кираса"]},"pal_templar_plate":{"name":"Латы котельной","chat":["латы котельной"]},"pal_blessed_plate":{"name":"Калёные латы","chat":["калёные","каленые"]},"pal_dawn_plate":{"name":"Латы зарева","chat":["латы зарева"]},"pal_apollo_plate":{"name":"Доспех Денницы","chat":["доспех денницы"]},"pal_helm":{"name":"Шлем истопника","chat":["шлем истопника"]},"pal_great_helm":{"name":"Глухой котелок","chat":["глухой"]},"pal_winged_helm":{"name":"Шлем с перепонками","chat":["перепонками"]},"pal_halo_helm":{"name":"Шлем с ореолом","chat":["ореолом"]},"pal_apollo_helm":{"name":"Шлем Денницы","chat":["шлем денницы"]},"pal_ladanka":{"name":"Ладанка с золой","chat":["ладанка"]},"pal_sun_medal":{"name":"Медальон зарева","chat":["медальон"]},"pal_dawn_sign":{"name":"Знак Денницы","chat":["знак денницы"]},"miner_helmet":{"name":"Каска с угольком","chat":["каска"]},"aurus_seal_5":{"name":"Клеймо пекла 5","chat":["клеймо","пекла"]},"aurus_seal_6":{"name":"Клеймо пекла 6","chat":["клеймо","пекла"]},"aurus_seal_7":{"name":"Клеймо пекла 7","chat":["клеймо","пекла"]},"aurus_seal_8":{"name":"Клеймо пекла 8","chat":["клеймо","пекла"]},"aurus_seal_9":{"name":"Клеймо пекла 9","chat":["клеймо","пекла"]},"aurus_seal_10":{"name":"Клеймо пекла 10","chat":["клеймо","пекла"]},"aurus_seal_11":{"name":"Клеймо пекла 11","chat":["клеймо","пекла"]},"aurus_seal_12":{"name":"Клеймо пекла 12","chat":["клеймо","пекла"]},"aurus_seal_13":{"name":"Клеймо пекла 13","chat":["клеймо","пекла"]},"aurus_seal_14":{"name":"Клеймо пекла 14","chat":["клеймо","пекла"]},"aurus_seal_15":{"name":"Клеймо пекла 15","chat":["клеймо","пекла"]}},"roles":{"recruit":"Бесёнок","legionary":"Чёрт-вояка","archer":"Чёрт-стрелок","mage":"Чёрт-колдун","priest":"Исповедник","rogue":"Чёрт-шулер","necromancer":"Чернокнижник","paladin":"Страж котла"},"looks":{"shapes":{"bean":"Бесёнок","box":"Чёрт-громила","ball":"Пухлик","tall":"Демон-франт","ghost":"Огненный дух","cone":"Нетопырь","egg":"Вылупыш"},"eyes":{"dots":"Хитрые точки","big":"Глаза-угли","happy":"Довольный прищур","cyclops":"Циклоп из пекла","stars":"Искры в глазах","jack":"Тыквенный взгляд","void":"Пустые глазницы"},"mouths":{"open":"Хо-хо!","grin":"Чёртова ухмылка","tongue":"Раздвоенный язык"},"hats":{"none":"Только рожки","tuft":"Огонёк на макушке","cap":"Кепка кочегара","bow":"Бантик-бабочка","horns":"Большие рога","crown":"Корона князька","tophat":"Цилиндр франта","party":"Колпак с огоньком","wizard":"Шляпа колдуна","antenna":"Вилы-антенна","antenna2":"Два огонька","cat":"Кошачьи ушки","bunny":"Заячьи уши","halo":"Краденый нимб","sprout":"Огненный цветок","bandana":"Бандана с искрами","legion":"Шлем легиона","laurel":"Терновый венец","beret":"Берет художника","headphones":"Наушники","cowboy":"Шляпа ковбоя","chef":"Колпак повара","pumpkin":"Тыква-фонарь","witch":"Шляпа ведьмы","batears":"Уши нетопыря","skull":"Черепок-шлем","reaper":"Капюшон жнеца","scarehat":"Шляпа пугала"},"acc":{"bowtie":"Бабочка","tie":"Галстук юриста","scarf":"Шарф из дыма","glasses":"Очки счетовода","shades":"Тёмные очки","monocle":"Монокль","mustache":"Подкрученные усы","cape":"Плащ с подкладкой","fangs":"Клыки","vampcape":"Плащ вампира","candybag":"Мешок конфет","bolts":"Болты в шее","cobweb":"Паутина на плече"},"auras":{"gold":"Золотой жар","sparks":"Угольки","halo":"Святой нимб","shadow":"Тёмное пламя","frost":"Иней ада","wisps":"Блуждающие огни","bats":"Стайка нетопырей","jackglow":"Тыквенный жар","haunt":"Серный туман","leaves":"Пепел и листья"},"colors":{"#ff9fb2":"Розовый бес","#ffb27a":"Рыжий жар","#ffe27a":"Сера","#9fe39a":"Болотный","#7fd6e6":"Голубое пламя","#8fb6ff":"Ледяной","#b9a2ff":"Сиреневый дым","#e6e6ee":"Пепельный","#ffc94d":"Золотой","#5a5470":"Копоть","#ff8a1f":"Лава","#9fffd0":"Призрачный","#7b3fe4":"Фиолетовый огонь"}},"places":{"camp":{"name":"Чёртов привал","sub":"лагерь новобранцев Легиона"}}});

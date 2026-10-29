@@ -252,6 +252,7 @@
     return {
       root, el, L, map, st, gl: G, ol, street, sky, qprops, glide: null, inFrame: false, q: { lv: qForced() ?? 0, fixed: qForced() != null, iv: [], at: 0, up: 0, lock: false, lodAt: 0, drawAt: 0 }, camMoved: false, view: el.querySelector('.cy-view'), cam: el.querySelector('.cy-cam'), walk: el.querySelector('.cy-walk'), names: el.querySelector('.cy-names'), room: el.querySelector('.cy-room'), panel: null, hud: el.querySelector('.cy-on'), capV: capGet(),
       z: 0.6, camX: inTown() ? 0 : M.QW + 300, camY: TOP, town: TOWN.id, qpfx: inTown() ? 'cyt-' : 'cyq-', camT: null, drag: null, follow: true, freeUntil: 0,
+      kw: { keys: new Set(), on: false, last: null, at: 0, dirty: false, t: 0 },
       me: null, others: new Map(), hidden: hideGet(), ghosts: new Map(), n: 0, inCity: false, entering: null, goQ: null, goAt: 0, goT: 0, raf: 0, last: 0, timer: 0, tick: 0, panelId: null, arrive: null,
     };
   }
@@ -285,26 +286,19 @@
     WD = { W: TL.W, H: TL.H, QW: 0, AREA: TL.AREA, BUILDINGS: TL.BUILDINGS, town: TL };
     const map = window.LGCampMap.map(TL), sky = A.sky;
     const layers = A.layers.map((l) => ({ x: l.x, y: l.y || 0, w: l.w, h: l.h || TL.H, svg: scopeIds(l.svg, 'cyt-') }));
-    const props = A.props.map((p) => ({ x: p.x, y: p.y, w: p.w, h: p.h, z: p.z, dx: 0, svg: scopeIds(A.defs + p.svg(), 'cyt-') }));
+    const props = A.props.map((p) => ({ x: p.x, y: p.y, w: p.w, h: p.h, z: p.z, dx: 0, ...(p.flick ? { flick: p.flick } : {}), svg: scopeIds(A.defs + p.svg(), 'cyt-') }));   // flick - живое пламя костра
     root.innerHTML = shellHtml(st, gl ? '' : `<div class="cy-art" style="background:${esc(sky)}">
             ${layers.map((l) => `<svg class="cy-tl" style="left:${l.x}px;top:${l.y}px" width="${l.w}" height="${l.h}" viewBox="${l.x} ${l.y} ${l.w} ${l.h}" overflow="visible" aria-hidden="true">${l.svg.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '')}</svg>`).join('')}
           </div>
           <div class="cy-walk">
-            ${props.map((p) => `<svg class="cy-prop" style="left:${p.x}px;top:${p.y}px;z-index:${p.z}" width="${p.w}" height="${p.h}" viewBox="${p.x} ${p.y} ${p.w} ${p.h}" overflow="visible" aria-hidden="true">${p.svg}</svg>`).join('')}
+            ${props.map((p) => `<svg class="cy-prop${p.flick ? ' cy-camp-fl' : ''}" style="left:${p.x}px;top:${p.y}px;z-index:${p.z}" width="${p.w}" height="${p.h}" viewBox="${p.x} ${p.y} ${p.w} ${p.h}" overflow="visible" aria-hidden="true">${p.svg}</svg>`).join('')}
           </div>
           <div class="cy-names"></div>`);
     const el = root.querySelector('.cy');
     el.classList.toggle('cy-pixi', !!gl);
     el.dataset.town = CAMP; el.dataset.bio = 'camp';
     fxLayer(el, A.fx);
-    // пламя костра - одна лёгкая CSS-анимация поверх запечённой сцены (transform/opacity; «меньше движения» - нет): в SVG-версии - в слое
-    // предметов по глубине (над костром), в Pixi - поверх сцены в камере
-    if (!reduce()) for (const a of A.anim || []) {
-      const d = document.createElement('div'); d.className = 'cy-camp-fl'; d.setAttribute('aria-hidden', 'true');
-      d.style.cssText = `left:${a.x - a.w / 2}px;top:${a.y - a.h}px;width:${a.w}px;height:${a.h}px;z-index:${a.z || Math.round(a.y + 21)}`;
-      d.innerHTML = `<svg viewBox="${-a.w / 2} ${-a.h} ${a.w} ${a.h}" width="${a.w}" height="${a.h}" overflow="visible">${scopeIds(a.svg, 'cyfl-')}</svg>`;
-      (el.querySelector('.cy-walk') || el.querySelector('.cy-cam')).appendChild(d);
-    }
+    // 29.10: пламя костра - предмет с глубиной (campart.js, flick): в Pixi качается в сцене (citygl), в SVG-версии - CSS cy-camp-fl на предмете
     return finish(root, el, gl, { L, map, st, street: layers.map((l) => l.svg), sky, qprops: A.props.map((p) => ({ ...p, svg: () => A.defs + p.svg() })), layers, props });
   }
   // кузнец у наковальни города: тот же человечек и тот же удар, что у Ярмарки (styles/<стиль>/fair.js guy, anim 'smith' — streetBg ищет этот удар)
@@ -505,6 +499,8 @@
     if (on || w.shown) place(w);
     w.shown = on;
     if (!w.path) { setMoving(w, false); if (w.mine && S.arrive) { const f = S.arrive; S.arrive = null; f(); } }
+    // 29.10 (city-wasd): дошёл кликом до двери - подсказка «E - войти» (только у тех, кто уже нажимал клавиши)
+    if (w.mine && S && S.kbd) kwHint();
   }
   const onScreen = (x, y) => x > S.camX - 160 && x < S.camX + viewW() + 160 && (y == null || (y > S.camY - 100 && y < S.camY + viewH() + 300));
   function frame(t) {
@@ -513,7 +509,8 @@
     // 22.10: частота кадров — по делу и по уровню качества (QL): свой герой идёт или камера едет — плавнее, идут только другие — реже
     // (раньше: 60 или 30, и только при 6+ идущих — 30). В canvas каждый кадр — копия всего окна процессором: это главная цена толпы
     const Q = QL[S.q.lv], mode = S.gl ? (S.gl.mode === 'webgl' ? 'webgl' : 'canvas') : 'svg';
-    const fast = !!((S.me && S.me.path) || S.glide || S.camMoved || (S.drag && S.drag.moved));
+    // 29.10 (city-wasd): идёт клавишами - как свой путь (плавнее)
+    const fast = !!((S.me && S.me.path) || (S.kw && S.kw.on) || S.glide || S.camMoved || (S.drag && S.drag.moved));
     const gap = 1000 / Q[mode][fast ? 0 : 1];
     if (S.last && t - S.last < gap - 4) { S.raf = requestAnimationFrame(frame); return; }
     S.camMoved = false;
@@ -522,6 +519,8 @@
     // и при медленных кадрах (слабый ПК/телефон, нижний уровень качества) чужие шли медленнее себя, отставали — и потом прыгали
     const real = Math.min(2, (t - (S.last || t)) / 1000), dt = Math.min(0.1, real); S.last = t;
     let any = false;
+    // 29.10 (city-wasd): свой герой - клавишами (путь кликом при этом отменён)
+    if (S.kw && S.kw.on) any = kwStep(Math.min(0.25, real)) || any;
     for (const w of [S.me, ...S.others.values()]) if (w && w.path) { advance(w, real); any = any || !!w.path; }
     if (t - S.q.lodAt > 1000) lodPick(t);   // кого рисовать и подписывать (ближайших) — раз в секунду
     for (const w of S.others.values()) if (w.fadeT) {   // проявление (после большого расхождения, новенький, вернулся в ближние)
@@ -626,8 +625,11 @@
     S.others.clear(); S.ghosts.clear(); S.n = 0; hud();
   }
   // свой шаг — на сервер (цель и где стою); чаще 300 мс — последний ждёт
-  function sendGo(tx, ty) {
-    S.goQ = { x: Math.round(tx), y: Math.round(ty) };
+  // 29.10 (city-wasd): from - [x, y] «откуда» (ходьба клавишами: прошлая отправленная точка); нет - где герой сейчас
+  function sendGo(tx, ty, from) {
+    S.goQ = { x: Math.round(tx), y: Math.round(ty), f: from || null };
+    // шаг кликом (или E): отложенный шаг остановки клавишами больше не нужен - иначе он «остановил» бы героя посреди пути
+    if (!from && S.kw) { clearTimeout(S.kw.t); S.kw.t = 0; S.kw.dirty = false; }
     if (!S.inCity) return;
     const wait = 300 - (Date.now() - S.goAt);
     if (wait > 0) { clearTimeout(S.goT); S.goT = setTimeout(flushGo, wait); return; }
@@ -636,7 +638,7 @@
   async function flushGo() {
     if (!S || !S.goQ || !S.inCity) return;
     const q = S.goQ; S.goQ = null; S.goAt = Date.now();
-    const r = await X.api('/api/city/go', { x: q.x, y: q.y, fx: Math.round(S.me.x), fy: Math.round(S.me.y) });
+    const r = await X.api('/api/city/go', { x: q.x, y: q.y, fx: Math.round(q.f ? q.f[0] : S.me.x), fy: Math.round(q.f ? q.f[1] : S.me.y) });
     if (!S) return;
     if (r && r.ok === false && /не в городе/.test(r.error || '')) { S.inCity = false; S.goQ = q; enter(); }
     else if (r && r.ok === false && /быстро|часто/.test(r.error || '')) { S.goQ = S.goQ || q; clearTimeout(S.goT); S.goT = setTimeout(flushGo, 1500); }
@@ -927,6 +929,125 @@
     sendGo(end[0], end[1]);
     if (!S.me.path) openPanel(id); else { closePanel(); S.arrive = () => openPanel(id); }
   }
+  /* ===================== 29.10 (city-wasd): ходьба клавишами WASD, E - войти ===================== */
+  // Решение стримера: на компьютере - W A S D (по диагонали - две сразу, скорость та же, M.SPEED), E у двери - войти (как клик по
+  // зданию: goBuilding). На телефонах ничего не меняется: клавиш нет, подсказка «E - войти» - только после первого нажатия.
+  // Открыто героям с kw (cityWasdPublic или тестер). Стрелки по-прежнему двигают вид. Сквозь стены и воду не идёт: шаг - только
+  // по свободному (S.map.free / clear - та же проходимость, что у пути кликом), упёрся - скользит вдоль (по одной оси).
+  // Сервер: шаг (откуда - прошлая отправленная точка, куда - где герой сейчас) раз в KW_GO мс, пока идёт, и сразу при остановке
+  // (не чаще KW_STOP мс после прошлого) - до 80 в минуту при лимите сервера 90 (CITY.GO_PER_MIN); другие видят его «ступеньками».
+  const KW = { KeyW: [0, -1], KeyA: [-1, 0], KeyS: [0, 1], KeyD: [1, 0] };
+  const KW_GO = 800, KW_STOP = 750, KW_DOOR = 120;
+  const kwOn = () => !!(X && X.hero() && X.hero().kw);
+  // поверх «Города» открыто окно, меню или поле ввода - клавиши ему, а не герою
+  const KW_OWN = '[role="dialog"], [role="alertdialog"], [role="menu"], [aria-modal="true"]';
+  function kwBusy(e) {
+    if (!S || !S.me || !S.root || !S.root.isConnected || !S.root.classList.contains('on') || S.panelId || document.hidden) return true;
+    if (e && (e.ctrlKey || e.metaKey || e.altKey)) return true;
+    const t = e && e.target;
+    if (t && t.closest && (t.closest('input, textarea, select, [contenteditable]') || t.isContentEditable)) return true;
+    for (const d of document.querySelectorAll(KW_OWN)) if (d.getClientRects().length) return true;
+    return false;
+  }
+  // ближайшее здание, у двери которого стоит герой (не дальше KW_DOOR px), - его открывает E
+  function kwNear() {
+    if (!S || !S.me) return null;
+    let best = null, bd = KW_DOOR;
+    for (const b of WD.BUILDINGS) {
+      if (!b.door || !bOk(b)) continue;
+      const d = Math.hypot(b.door.x - S.me.x, b.door.y - S.me.y);
+      if (d <= bd) { bd = d; best = b; }
+    }
+    return best;
+  }
+  // подсказка «E - войти» у двери ближайшего здания: слой камеры, двигается transform, появляется opacity
+  function kwHint() {
+    if (!S || !S.cam) return;
+    const b = S.kbd && !S.panelId ? kwNear() : null, id = b ? b.id : '';
+    if (id === (S.ehK || '')) return;
+    S.ehK = id;
+    let el = S.cam.querySelector('.cy-ekey');
+    if (!el) { el = document.createElement('div'); el.className = 'cy-ekey'; el.setAttribute('aria-hidden', 'true'); el.innerHTML = '<kbd>E</kbd> - войти'; S.cam.appendChild(el); }
+    if (b) el.style.transform = `translate(${Math.round(b.door.x)}px,${Math.round(b.door.y)}px) translate(-50%, 40px)`;
+    el.classList.toggle('on', !!b);
+  }
+  // шаг клавишами за dt с; false - стоит (отпустил клавиши)
+  function kwStep(dt) {
+    const k = S.kw, w = S.me;
+    if (!w || S.panelId) { kwHalt(); return false; }
+    let dx = 0, dy = 0;
+    for (const c of k.keys) { const v = KW[c]; if (v) { dx += v[0]; dy += v[1]; } }
+    const len = Math.hypot(dx, dy);
+    if (!len) { setMoving(w, false); return true; }
+    const s = M.SPEED * dt, vx = dx / len * s, vy = dy / len * s, x = w.x, y = w.y;
+    const ok = (a, b) => S.map.free(a, b) && S.map.clear([x, y], [a, b]);
+    let nx = x, ny = y;
+    if (ok(x + vx, y + vy)) { nx = x + vx; ny = y + vy; }
+    // упёрся - вдоль стены: по той оси, по которой можно
+    else if (vx && ok(x + vx, y)) nx = x + vx;
+    else if (vy && ok(x, y + vy)) ny = y + vy;
+    w.path = null; w.lag = 0; S.arrive = null;
+    if (nx !== x || ny !== y) {
+      if (nx !== x) w.face = nx < x ? 1 : -1;
+      w.x = nx; w.y = ny; k.dirty = true;
+      setMoving(w, true); place(w); w.shown = true;
+      kwSync(false); kwHint();
+    } else setMoving(w, false);
+    return true;
+  }
+  function kwHalt() {
+    if (!S || !S.kw) return;
+    const k = S.kw;
+    k.keys.clear();
+    if (!k.on) return;
+    k.on = false;
+    if (S.me && !S.me.path) setMoving(S.me, false);
+    kwSync(true); kwHint();
+  }
+  // свой шаг клавишами - на сервер: откуда (прошлая отправленная точка) → где сейчас
+  function kwSync(stop) {
+    const k = S && S.kw; if (!k || !k.dirty || !S.me) return;
+    const wait = (stop ? KW_STOP : KW_GO) - (Date.now() - k.at);
+    if (wait > 0) {
+      if (stop && !k.t) k.t = setTimeout(() => { k.t = 0; if (S && S.kw === k && !k.on) kwSync(true); }, wait);
+      return;
+    }
+    clearTimeout(k.t); k.t = 0;
+    const from = k.last, x = Math.round(S.me.x), y = Math.round(S.me.y);
+    k.last = [x, y]; k.at = Date.now(); k.dirty = false;
+    sendGo(x, y, from);
+  }
+  function kwDown(e) {
+    const v = KW[e.code];
+    if ((!v && e.code !== 'KeyE') || !kwOn() || kwBusy(e)) return;
+    e.preventDefault();
+    S.kbd = true;
+    if (e.code === 'KeyE') {
+      if (e.repeat) return;
+      const b = kwNear(); if (b) goBuilding(b.id);
+      return;
+    }
+    const k = S.kw;
+    if (!k.on) {
+      // первая клавиша: путь кликом отменён, камера снова ведёт героя
+      k.on = true; S.me.path = null; S.me.lag = 0; S.arrive = null; S.freeUntil = 0;
+      if (!k.dirty) k.last = [Math.round(S.me.x), Math.round(S.me.y)];
+      S.el.classList.add('went');
+    }
+    k.keys.add(e.code);
+    kick();
+  }
+  function kwUp(e) {
+    if (!S || !S.kw || !KW[e.code]) return;
+    S.kw.keys.delete(e.code);
+    if (!S.kw.keys.size) kwHalt();
+  }
+  document.addEventListener('keydown', kwDown);
+  document.addEventListener('keyup', kwUp);
+  // окно потеряло фокус (Alt+Tab) - keyup не придёт: остановиться
+  window.addEventListener('blur', () => kwHalt());
+  document.addEventListener('visibilitychange', () => { if (document.hidden) kwHalt(); });
+
   // кружок там, куда идём (CSS-анимация один раз)
   function ripple(x, y) {
     if (S.gl) { S.gl.ripple(x, y); kick(); return; }
@@ -1328,7 +1449,8 @@
         if (S.gl) { S.gl.relook(S.me, svg, labOf(X.login(), v, true)); kick(); } else { S.me.body.innerHTML = svg; place(S.me); }
       }
     }
-    if (S.panelId === 'tent' || S.panelId === 'shop' || S.panelId === 'storage') rerenderUi(S.panelId);
+    // 29.10: все лавки с кошельком (FULL: Кузня, Магическая лавка, шатёр, ряды) - после покупки «у тебя N» было старым в Кузне и Магической лавке
+    if (FULL[S.panelId] || S.panelId === 'storage') rerenderUi(S.panelId);
     if (S.panelId === 'anvil') forgeList(h);
     if (S.panelId === 'auction' && window.LGAuction) window.LGAuction.update(h);
   }
@@ -1356,7 +1478,9 @@
     const r = await X.api('/api/mine/hall?c=' + encodeURIComponent(c));
     if (!S || S.panelId !== 'hall' || !box.isConnected) return;
     box.removeAttribute('aria-busy');
-    box.innerHTML = hallHtml(r && r.ok ? r : null);
+    if (!(box.contains(document.activeElement) && /^(INPUT|SELECT)$/.test(document.activeElement.tagName))) { box.innerHTML = hallHtml(r && r.ok ? r : null); hallBind(box); }
+    // 29.10 (Шахта 3.0): Ратуша уже не заглушка - старые «потратить можно будет позже» и «скоро» убираем
+    if (r && r.hall) { const nx = box.nextElementSibling; if (nx && nx.classList.contains('note')) nx.hidden = true; const pv = box.previousElementSibling; if (pv && !pv.dataset.h3) { pv.dataset.h3 = '1'; const t = pv.querySelector('p') || pv; t.textContent = 'Ратуша: казна канала, мэр и стройки города. Казну пополняют скупщик, сборы на лифт и буровые и взносы зрителей.'; } }   // 29.10: поле ника / лимита в фокусе - не перерисовываем
     hallT = setTimeout(() => { if (S && S.panelId === 'hall') hallLoad(); }, 30000);
   }
   function hallHtml(r) {
@@ -1365,7 +1489,55 @@
     const group = (kind, title) => { const a = r.res.filter((x) => x.kind === kind); return a.length ? `<h4>${esc(title)}</h4><ul class="cy-hres">${a.map((x) => `<li class="${kind}" data-res="${esc(x.id)}"><i style="background:${esc(RES[x.id] || '#a89c88')}"></i><span>${esc(x.name)}</span><b>${x.q}</b></li>`).join('')}</ul>` : ''; };
     const res = r.res.length ? group('gem', 'Самоцветы') + group('rare', 'Редкое') + group('ore', 'Руда и камень') : '<p class="note">Склад пока пуст: сдай руду скупщику в шахте этого города - она приедет сюда.</p>';
     const top = r.gv.length ? `<h4>Больше всех сдали</h4><ol class="cy-hgv">${r.gv.slice(0, 50).map(([l, n], i) => `<li class="${l === me ? 'me' : ''}"><span>${i + 1}</span><b>${esc(l === me ? l + ' (ты)' : l)}</b><em>${n}</em></li>`).join('')}</ol>` : '';
+    if (r.hall) return hall3Html(r, RES, top, res);   // 29.10 (Шахта 3.0, шаг 5): казна канала, мэр, улучшения зданий, склад на 100 ячеек
     return `<h3 class="h3">Склад города</h3>${res}${top}`;
+  }
+  /* ----- 29.10 (Шахта 3.0, шаг 5): Ратуша - казна канала (одна на все города, не сбрасывается), склад на 100 ячеек, мэр (назначает
+     стример; нет мэра - стример), улучшения зданий 1-5 (цена - из казны, рудой по ценам скупщика), лимит мэра в сутки (ставит стример).
+     Склад и траты - только стримеру и мэру; остальным - что в казне и кто сколько сдал. Действия - /api/mineHall, комната проверяет права. ----- */
+  const BLD_NAMES = { gate: 'Ворота', hall: 'Ратуша', auction: 'Аукцион', trainer: 'Тренер', board: 'Доска объявлений', storage: 'Склад', anvil: 'Наковальня', forge: 'Кузня', tent: 'Шатёр', shop: 'Лавка', magic: 'Магическая лавка' };
+  function hall3Html(r, RES, top, resList) {
+    const H = r.hall, role = r.role || '', M = (n) => (X.money ? X.money(n) : String(n)), can = !!role, now = Date.now();
+    const cells = []; for (const x of r.res) { let q = x.q; while (q > 0 && cells.length < 400) { const n = Math.min(q, H.stack); cells.push([x, n]); q -= n; } }
+    const used = cells.length, grid = Array.from({ length: Math.max(Math.min(H.slots, 20), used) }, (_, i) => { const c = cells[i]; return c ? `<li class="cy-hs ${c[0].kind}${i >= H.slots ? ' over' : ''}" title="${esc(c[0].name)} ×${c[1]}"><i style="background:${esc(RES[c[0].id] || '#c8b89a')}"></i><b>${c[1]}</b>${can ? `<button type="button" class="cy-htk" data-htake="${esc(c[0].id)}" data-q="${c[1]}" aria-label="Забрать ${esc(c[0].name)} в сумку">↓</button>` : ''}</li>` : '<li class="cy-hs empty"></li>'; }).join('');
+    const who = H.mayor ? `Мэр - <b>${esc(H.mayor)}</b>` : `Мэра нет - казной управляет стример <b>${esc(H.ch || '')}</b>`;
+    let mayorBox = `<p>${who}.${H.mayor ? ` Лимит мэра - ${M(H.lim)} ${H.per === 'week' ? 'в неделю, на этой неделе' : 'в сутки, сегодня'} потрачено ${M(H.sp)}` : ''}</p>`;
+    if (role === 'streamer') mayorBox += `<div class="cy-hrow"><input class="input" data-hmayor placeholder="ник мэра" maxlength="25" value="${esc(H.mayor)}"><button type="button" class="btn primary sm" data-hset>Назначить</button>${H.mayor ? '<button type="button" class="btn ghost sm" data-hunset>Снять</button>' : ''}</div>
+      <div class="cy-hrow"><label>Лимит мэра <input class="input" data-hlim type="number" min="0" step="100" value="${H.lim}"></label><select class="input" data-hper><option value="day"${H.per !== 'week' ? ' selected' : ''}>в сутки</option><option value="week"${H.per === 'week' ? ' selected' : ''}>в неделю</option></select><button type="button" class="btn ghost sm" data-hlimset>Сохранить</button></div>`;
+    let bld = '';
+    if (H.town) bld = `<h4>Здания города</h4><ul class="cy-hbld">${Object.keys(BLD_NAMES).filter((k) => H.lv[k]).map((k) => { const lv = H.lv[k], b = H.b[k], to = lv + 1, cost = H.cost[to - 2];
+      const st = b && b.until > now ? `стройка до ур. ${b.to}: ${Math.ceil((b.until - now) / 3600e3)} ч` : lv >= 5 ? 'ур. 5 - лучше не бывает' : `ур. ${lv} → ${to}: ${M(cost)}, ${H.hours[to - 2]} ч`;
+      return `<li><span><b>${esc(BLD_NAMES[k])}</b> · ур. ${lv}</span><em>${st}</em>${can && !(b && b.until > now) && lv < 5 ? `<button type="button" class="btn ghost sm" data-hup="${k}"${cost > H.val ? ' disabled title="в казне не хватает"' : ''}>Улучшить</button>` : ''}</li>`; }).join('')}</ul>
+      <p class="note">Лучше здание - лучше товар: на ур. 5 в лавках появляются эпические вещи.</p>`;
+    const ore = can ? (X.hero().items || []).filter((it) => it && it.qty && it.q > 0 && it.res) : [];
+    // взнос в казну - всем: руда из сумки вместо продажи скупщику (по ценам скупщика), доска почёта
+    const P = r.bp || {}, mine = (X.hero().items || []).filter((it) => it && it.qty && it.q > 0 && it.res && +P[it.res] > 0);
+    const give = mine.length ? `<h4>Взнос в казну</h4><p class="note">Отдай руду городу вместо продажи скупщику - попадёшь на доску почёта.</p><ul class="cy-hput">${mine.slice(0, 10).map((it) => `<li><span>${esc(it.name)}</span><button type="button" class="btn ghost sm" data-hgive="${esc(it.uid)}" data-q="${it.q}">Отдать ≈${M(Math.floor(it.q * P[it.res] / 100))}</button></li>`).join('')}</ul>` : '';
+    const me0 = X.login(), board = (H.donors || []).length ? `<h4>Доска почёта казны</h4><ol class="cy-hgv">${H.donors.map(([l, v], i) => `<li class="${l === me0 ? 'me' : ''}"><span>${i + 1}</span><b>${esc(l === me0 ? l + ' (ты)' : l)}</b><em>${M(v)}</em></li>`).join('')}</ol>` : '';
+    const put = can && ore.length ? `<h4>Положить из сумки</h4><ul class="cy-hput">${ore.slice(0, 12).map((it) => `<li><span>${esc(it.name)}</span><button type="button" class="btn ghost sm" data-hput="${esc(it.uid)}" data-q="${it.q}">Положить</button></li>`).join('')}</ul>` : '';
+    const log = (H.log || []).length ? `<details class="cy-hlog"><summary>Журнал Ратуши</summary><ul>${H.log.map((e) => `<li>${esc(e.t)}</li>`).join('')}</ul></details>` : '';
+    return `<h3 class="h3">Казна канала</h3><p class="note">Одна на все города канала, не сбрасывается. Сюда - то, что сдают скупщику, руда со сборов на лифт и буровые, доля буровых. В казне руды на ${M(H.val)}</p>
+      <div class="m2-k">Склад Ратуши <small>${used} из ${H.slots} ячеек${used > H.slots ? ' - склад полон, лишнее лежит во дворе' : ''}${can ? ' · ↓ - забрать в сумку' : ''}</small></div><ul class="cy-hgrid">${grid}</ul>
+      ${can ? '' : '<p class="note">Брать со склада и тратить казну могут стример и мэр.</p>'}
+      <details class="cy-hlist"><summary>Склад города по видам</summary>${resList}</details>
+      <h4>Мэр</h4>${mayorBox}${bld}${put}${give}${board}${log}${top}`;
+  }
+  async function hallAct(b) {
+    const c = inTown() ? TOWN.id : 'home';
+    const r = await X.api('/api/mineHall', { c, ...b });
+    const tell = (t, bad) => { if (X.toast) X.toast(t, bad); };   // say() здесь - разметка реплики, не сообщение
+    if (!r || !r.ok) { tell((r && r.error) || 'Не получилось', true); return; }
+    tell((r.x && r.x.t) || 'Готово - Ратуша обновится через пару секунд'); setTimeout(() => { if (S && S.panelId === 'hall') hallLoad(); }, 2500);
+  }
+  function hallBind(box) {
+    const q = (sel) => box.querySelector(sel);
+    box.querySelectorAll('[data-htake]').forEach((b) => { b.onclick = () => hallAct({ a: 'take', item: b.dataset.htake, n: +b.dataset.q }); });   // ↓ - ячейка целиком
+    box.querySelectorAll('[data-hup]').forEach((b) => { b.onclick = () => hallAct({ a: 'up', item: b.dataset.hup }); });
+    box.querySelectorAll('[data-hput]').forEach((b) => { b.onclick = () => hallAct({ a: 'put', lines: [[b.dataset.hput, +b.dataset.q]] }); });
+    box.querySelectorAll('[data-hgive]').forEach((b) => { b.onclick = () => hallAct({ a: 'give', lines: [[b.dataset.hgive, +b.dataset.q]] }); });
+    const st = q('[data-hset]'); if (st) st.onclick = () => hallAct({ a: 'mayor', item: (q('[data-hmayor]') || {}).value || '' });
+    const un = q('[data-hunset]'); if (un) un.onclick = () => hallAct({ a: 'mayor', item: '' });
+    const lm = q('[data-hlimset]'); if (lm) lm.onclick = () => hallAct({ a: 'lim', n: +((q('[data-hlim]') || {}).value || 0), item: (q('[data-hper]') || {}).value || 'day' });
   }
   /* ----- Доска объявлений: последние новости игры (то же, что вкладка «Новости») ----- */
   /* ----- Доска объявлений (22.10, решение стримера): на доске — короткие листки (тема, дата, пара строк), по нажатию —
@@ -1490,7 +1662,18 @@
   // одна дорога и для кнопок, и для перетаскивания: /api/stPut · /api/stTake (uid + сколько из стопки)
   function stMove(from, uid, n, btn) {
     const toSt = from === 'b'; STSEL = null;
-    return X.act(toSt ? '/api/stPut' : '/api/stTake', { uid, n }, toSt ? 'Положено на склад' : 'Забрано в сумку', btn);
+    return stAct(toSt ? '/api/stPut' : '/api/stTake', { uid, n }, toSt ? 'Положено на склад' : 'Забрано в сумку', btn);
+  }
+  /* 29.10 (баг: «с телефона двойное касание на вещи Склада - перенос не виден, пока не закроешь окно»): ответ игры (X.act) обновляет
+     героя и вкладку «Персонаж», но окно Города перерисовывалось только живым обновлением героя (heroChanged из SSE) - а на телефоне
+     канал часто закрыт (вкладка в фоне, сеть). Теперь окно Склада перерисовывается само, когда ответ пришёл: и при успехе, и при ошибке
+     (вещь остаётся на месте, причина - в уведомлении act) */
+  function stSync() { if (S && S.panelId === 'storage') rerenderUi('storage'); }
+  function stAct(path, body, ok, btn) {
+    return Promise.resolve(X.act(path, body, ok, btn)).then(stSync, (e) => {
+      stSync(); stResShow('Не получилось - попробуй ещё раз', true);
+      console.warn('[склад]', e);
+    });
   }
   // 24.10: сколько одинаковых на этой стороне (снаряжение — одна) и «половина» (не меньше 1)
   function stAllOf(h, from, c) {
@@ -1642,15 +1825,15 @@
     if (stInv2(h)) stMount2(h, P); else { stInvOff(); stBind(P); }
     const f = stTipOn(); if (f && !f.isConnected) stTipHide();
     P.querySelectorAll('[data-stgo]').forEach((b) => b.onclick = () => { if (!STSEL) return; stMove(STSEL.from, STSEL.uid, +b.dataset.stgo || 1, b); });
-    P.querySelectorAll('[data-stall]').forEach((b) => b.onclick = () => { const put = b.dataset.stall === 'put'; stResShow('', false); X.act(put ? '/api/stPutAll' : '/api/stTakeAll', {}, put ? 'Кладовщик относит всё на склад' : 'Кладовщик несёт всё в сумку', b); });
-    P.querySelectorAll('[data-stsort]').forEach((b) => b.onclick = () => X.act('/api/stSort', { box: b.dataset.stsort }, b.dataset.stsort === 'b' ? 'Сумка разложена' : 'Склад разложен', b));
+    P.querySelectorAll('[data-stall]').forEach((b) => b.onclick = () => { const put = b.dataset.stall === 'put'; stResShow('', false); stAct(put ? '/api/stPutAll' : '/api/stTakeAll', {}, put ? 'Кладовщик относит всё на склад' : 'Кладовщик несёт всё в сумку', b); });
+    P.querySelectorAll('[data-stsort]').forEach((b) => b.onclick = () => stAct('/api/stSort', { box: b.dataset.stsort }, b.dataset.stsort === 'b' ? 'Сумка разложена' : 'Склад разложен', b));
     // 24.10 (баг тестера): «Точно?» помним вне кнопки (STX) — склад перерисовывается на каждое обновление героя, и второе нажатие
     // попадало в новую кнопку без пометки. Через 4 с без ответа — снова «+N ячеек»
     const x = P.querySelector('[data-stx]'); if (x) x.onclick = () => {
       const H = X.hero(), G = H && H.sg; if (!G || !G.price) return;
       if (!stxSure(G)) { STX = { until: Date.now() + 4000, price: G.price }; clearTimeout(STX_T); STX_T = setTimeout(() => { STX = null; rerenderUi('storage'); }, 4000); rerenderUi('storage'); const b = S && S.panel && S.panel.querySelector('[data-stx]'); if (b) b.focus(); return; }
       STX = null; clearTimeout(STX_T);
-      X.act('/api/stExpand', { price: G.price }, `Склад расширен: +${G.step} ячеек`, x);
+      stAct('/api/stExpand', { price: G.price }, `Склад расширен: +${G.step} ячеек`, x);
     };
     // на телефоне подсказка — по нажатию: выбранная ячейка показывает карточку вещи
     if (STTAP && STTAP !== 'mouse' && STSEL) { const el = P.querySelector(`[data-st="${STSEL.from}:${CSS.escape(STSEL.uid)}"]`); if (el) stTipShow(el); }
@@ -1716,7 +1899,10 @@
     if (!st || !csOn()) return st;
     const h = X.hero(), conv = (it) => { if (it && it.out) return { ...it, priceText: 'Закончились' };   // 27.10: звёзды и сферы закончились (enchantMatsOut)
       if (lockedHere(it)) return { ...it, priceText: '🔒' }; const c = coinsFor(it, h); return c ? { ...it, price: c, priceText: shortMoney(c) } : it; };
-    const L2 = (a) => (a || []).map(conv);
+    // 29.10 (Шахта 3.0, шаг 5): в городе с Ратушей нового образца товар - по уровню здания (towngen.goodsOk): лучше здание - больше вещей, эпик - на ур. 5
+    const lvB = inTown() && TOWN.meta && TOWN.meta.lv3 && window.LGTownGen && window.LGTownGen.goodsOk ? +((TOWN.meta.levels || {})[id] || 1) : 0;
+    const keep = (it) => !lvB || !it || it.mat || window.LGTownGen.goodsOk(it.id, it.rarity, lvB);
+    const L2 = (a) => (a || []).filter(keep).map(conv);
     return { ...st, stands: (st.stands || []).map((x) => ({ ...x, top: L2(x.top), mid: L2(x.mid), case: L2(x.case) })), shelf1: L2(st.shelf1), shelf2: L2(st.shelf2), case: L2(st.case), mats: L2(st.mats), amulets: L2(st.amulets) };
   }
   // 25.10: названия редкостей и слотов - из данных игры (packages/game-data), как в сумке сайта (было своё «Броня» вместо «Доспех»)
@@ -1877,15 +2063,19 @@
     }
     const mb = matBase || (it.mat ? matCoins(it) : 0), c = it.mat ? (h && h.ef && mb ? TH.price(h, mb) : 0) : coinsFor(it, h);
     const can = it.look !== true && !!h && (it.mat ? !!(h.ef && c) : csOn() && c > 0);   // облик (кабинки Шатра) — только за баллы на стриме
+    // 29.10: расходники (еда, зелья) - сразу N штук, если открыто (h.bq - предел за раз); не больше, чем хватает монет
+    const qmax = !it.mat && h && +h.bq > 1 && c > 0 && (b === 'shop' || it.slot === 'food' || it.slot === 'potion') ? Math.max(1, Math.min(+h.bq, Math.floor((+h.money || 0) / c))) : 1;
+    let qn = 1;
     const q = document.createElement('div'); q.className = 'cy-buyq'; q.setAttribute('role', 'dialog'); q.setAttribute('aria-modal', 'true'); q.setAttribute('aria-label', 'Покупка');
     // 24.10 (баг тестера): не хватает — две строки обычным текстом: «У тебя: …» и «Не хватает: …» (единицы — как у цены)
     const poor = !!h && !h.ghost && (+h.money || 0) < c;
     const why = !h ? 'Героя пока нет.' : h.ghost ? 'Призраку не продают.' : poor ? 'Не хватает монет' : '';
     q.innerHTML = `<div class="cy-buyb panel">${can
-      ? `<p class="lead">Купить «${esc(nm)}» за ${X.money(c)}?</p>${TH.k(h) > 1 ? `<p class="note thiefl">Для тебя за воровство цена ×${String(TH.k(h)).replace('.', ',')}.</p>` : ''}${why && !poor ? `<p class="note cy-warn">${why}</p>` : h && X.bal ? X.bal(c, h.money, 'cy-lack') : poor ? `<p class="note cy-warn">${why}</p>` : ''}<div class="cy-buyr"><button type="button" class="btn primary" data-yes${why ? ' disabled' : ''}>Да</button><button type="button" class="btn ghost" data-no>Нет</button></div>`
+      ? `<p class="lead">Купить «${esc(nm)}» за <span data-qt>${X.money(c)}</span>?</p>${qmax > 1 ? `<div class="cy-qty" role="group" aria-label="Сколько штук"><button type="button" class="btn ghost" data-q="-1" aria-label="Меньше">−</button><b data-qn aria-live="polite">1</b><button type="button" class="btn ghost" data-q="1" aria-label="Больше">+</button><small>шт., до ${qmax}</small></div>` : ''}${TH.k(h) > 1 ? `<p class="note thiefl">Для тебя за воровство цена ×${String(TH.k(h)).replace('.', ',')}.</p>` : ''}${why && !poor ? `<p class="note cy-warn">${why}</p>` : h && X.bal ? X.bal(c, h.money, 'cy-lack') : poor ? `<p class="note cy-warn">${why}</p>` : ''}<div class="cy-buyr"><button type="button" class="btn primary" data-yes${why ? ' disabled' : ''}>Да</button><button type="button" class="btn ghost" data-no>Нет</button></div>`
       : `<p class="lead">«${esc(nm)}» — купить можно на стриме</p><p class="note">${it.look === true ? `Облик — только за баллы канала: на стриме, в Шатре, ${(+it.price || 0).toLocaleString('ru-RU')} баллов.` : it.price && !it.mat ? `В ${esc(placeName(b))} на Ярмарке за ${(+it.price).toLocaleString('ru-RU')} баллов канала.` : it.mat ? 'На стриме — за баллы канала; за монеты — когда откроется заточка.' : 'На Ярмарке во время стрима.'}</p><div class="cy-buyr"><button type="button" class="btn primary" data-no>Понятно</button></div>`}</div>`;
     S.room.appendChild(q);
     const no = q.querySelector('[data-no]'), yes = q.querySelector('[data-yes]');
+    q.querySelectorAll('[data-q]').forEach((bt) => bt.onclick = () => { qn = Math.max(1, Math.min(qmax, qn + +bt.dataset.q)); q.querySelector('[data-qn]').textContent = String(qn); q.querySelector('[data-qt]').innerHTML = X.money(c * qn); });
     q.addEventListener('click', (e) => { if (e.target === q) unselect(); });
     q.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.stopPropagation(); unselect(); try { from && from.focus(); } catch {} } });
     no.onclick = () => { unselect(); try { from && from.focus(); } catch {} };
@@ -1893,7 +2083,7 @@
       buyClose(); cardDrop(); GSEL = null;
       const btn = from && from.classList && from.classList.contains('btn') ? from : null;   // кнопка товара на полке — без «Секунду…» в ней
       if (it.mat) X.act('/api/buymat', { mat: it.mat, ...(TH.k(h) > 1 ? { ack: 1 } : {}) }, `Заказано: «${nm}» — принесут через пару секунд`, btn);
-      else X.act('/api/cityBuy', { item: it.id, price: c, ...(inTown() ? { town: TOWN.id } : {}) }, `Куплено: «${nm}» — сейчас будет в сумке`, btn);
+      else X.act('/api/cityBuy', { item: it.id, price: c, ...(qn > 1 ? { n: qn } : {}), ...(inTown() ? { town: TOWN.id } : {}) }, `Куплено: «${nm}»${qn > 1 ? ` ×${qn}` : ''} — сейчас будет в сумке`, btn);
     };
     try { (yes || no).focus(); } catch {}
   }
@@ -1980,6 +2170,7 @@
     const L = IGW(), can = (it) => X.canEnch(it), drag = (it) => can(it) && !h.ghost && !h.busy;
     const put = (sel, html) => { const e = box.querySelector(sel); if (e && e.dataset.k !== html) { e.innerHTML = html; e.dataset.k = html; } };
     put('.cyf-anvbox', anvilHtml(h));
+    box.classList.toggle('cyf-i2', fgInv2(h));   // 29.10: новая сумка - кукла внутри сумки (.cyf-bagbox): сетка без пустой области «doll»
     if (fgInv2(h)) { put('.cyf-dollbox', ''); fgMount2(h, box, P); put('.cyf-matbox', matsHtml(h)); forgeAway(box); return; }   // 25.10: новая сумка (inv2)
     put('.cyf-dollbox', !X.doll ? '' : X.doll(h, { forge: true, sel: FX.uid, can, still: true, kit: 'battle' }));
     const cs = L.cells(h.items || [], h.sg ? h.sg.bs : 20);
@@ -2134,7 +2325,8 @@
     const say = (m) => { hud(m); if (X.toast) X.toast(m); clearTimeout(S.bmT); S.bmT = setTimeout(() => S && hud(), 4000); };
     if (!mnOn() || !X.openMine) { say('Шахта пока закрыта - откроется скоро'); return; }
     const c = inTown() ? TOWN.id : 'home', mn = X.hero().mn || {};
-    if (!mn[c]) { say('Шахта этого города откроется, когда округ станет нашим'); return; }
+    // 29.10: шахты городов закрыты настройкой (mn.home.tc) - копать можно только в домашней шахте (Ярмарка)
+    if (!mn[c]) { say(mn.home && mn.home.tc ? 'Шахты городов пока закрыты - копать можно в домашней шахте, в Ярмарке' : 'Шахта этого города откроется, когда округ станет нашим'); return; }
     X.openMine(c);
   }
   /* ===================== 23.10 (стройка): улучшение здания мэром — 6/12/24/36/48 ч ===================== */
@@ -2364,6 +2556,8 @@
     debug: () => S && { me: S.me && [S.me.x, S.me.y], others: [...S.others.keys()], hidden: S.hidden, ghosts: S.ghosts.size, n: S.n, camX: S.camX, camY: S.camY, z: S.z, inCity: S.inCity, render: S.gl ? (S.gl.mode || 'pixi…') : 'svg', fail: GLFAIL, lod: { lv: S.q.lv, r: S.q.r && +S.q.r.toFixed(2), lock: S.q.lock, res: S.gl && S.gl.res ? S.gl.res() : null, cull: [...S.others.values()].filter((w) => w.cull).length, nolab: [...S.others.values()].filter((w) => w.nolab).length }, gl: S.gl && S.gl.stats(), ol: S.ol && S.ol.stats(), npc: WD.BUILDINGS.filter((b) => b.hw).map((b) => b.id) },   // HW-NPC: npc - хэллоуинские НПС на улице
     // 23.10: для замера плавности — где сейчас другие (после кадра): ник, x, y, идёт, убран качеством, нарисован, прозрачность; nf — номер кадра Pixi
     peek: () => S && { nf: S.gl ? (S.gl.nf || 0) : -1, z: S.z, w: [...S.others.values()].map((w) => [w.l, w.x, w.y, w.path ? 1 : 0, w.cull ? 1 : 0, w.gl ? (w.gl.root.visible ? 1 : 0) : (w.shown ? 1 : 0), w.gl ? w.gl.root.alpha : 1]) },
+    // 29.10 (city-wasd): для проверок - можно ли стоять в точке (карта города), какое здание откроет E, открыто ли здание
+    kw: () => S && { free: S.me ? S.map.free(S.me.x, S.me.y) : null, near: (kwNear() || {}).id || null, panel: S.panelId, on: !!(S.kw && S.kw.on), hint: S.ehK || null },
     hideOthers: (on) => S && setHidden(!!on),
     // 23.10: для проверок и снимков — где на экране значок звания у ника (Pixi: ник — картинка; SVG — элемент .awb)
     awb: (l, i = 0) => { if (!S) return null; const w = l === X.login() ? S.me : S.others.get(l); if (!w) return null;

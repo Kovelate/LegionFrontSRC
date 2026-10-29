@@ -78,6 +78,9 @@ html.nwm-open .style-switch { display: none; }
 .nwm code { padding: 0 4px; border-radius: 4px; background: var(--surface2); color: var(--accent); }
 .nwm input[type=text], .nwm textarea { padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface2); color: var(--ink); font: inherit; }
 .nwm textarea { resize: vertical; }
+/* полоса самого окна лежит на тёмной подложке - светлая; внутри карточки (поля ввода) - цвет темы */
+.nwm { --sbt: rgba(255, 255, 255, .3); }
+.nwm textarea, .nwm input { --sbt: color-mix(in srgb, var(--ink) 26%, transparent); }
 .nwm input:focus, .nwm textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
 .nwm button:not(.nwm-x):not(.nwe-sw) { min-height: 40px; padding: 0 var(--s4); border: 1px solid var(--line); border-radius: 8px; background: var(--surface2); color: var(--ink); font-weight: 700;
   touch-action: manipulation; transition: background .2s var(--ease), border-color .2s var(--ease), color .2s var(--ease); }

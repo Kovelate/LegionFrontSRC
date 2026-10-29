@@ -1249,7 +1249,8 @@
         const ba = bOn('anvil'), bf = bOn('forge');
         if (bf) b += scaffold(L.fr.forge, 'forge');
         const a2 = a + smith + (ba ? scaffold(L.fr.anvil, 'anvil') : '');
-        P(lot.x0 - pad, lot.x1 + pad, a2 + b);
+        // 29.10: кузнец - после Кузни: он ниже её основания (ноги 830 > 795), а правым краем заходит на её стену (Рябиново: fx0 = 580)
+        P(lot.x0 - pad, lot.x1 + pad, a + (ba ? scaffold(L.fr.anvil, 'anvil') : '') + b + smith);
         blds.anvil = { x0: lot.x0 - 60, x1: lot.fx0 + 60, svg: a2, lv: L.fr.anvil.lv, build: !!ba }; blds.forge = { x0: lot.fx0 - 20, x1: lot.x1 + 60, svg: b, lv: L.fr.forge.lv, build: !!bf };
       } else {
         SIGN_ID = ART[lot.k] ? lot.k : null; let svg = f(lot); SIGN_ID = null;
@@ -1285,7 +1286,7 @@
       if (lot.k === 'forge') {
         const smith = o.guy ? '<g data-ol="anvil smith">' + o.guy('кузнец ' + L.id, 830, lot.anvil + 76, 1.1, 'stern', { armed: true, gear: { w: 'hammer', wr: 'common' } }, { hat: 'bandana', acc: ['mustache'], shape: 'box', color: '#e88a7a' }, 'smith') + '</g>' : '';
         const a = one('anvil'), b = one('forge');
-        P(lot.x0 - 120, lot.x1 + 120, a + smith + b);
+        P(lot.x0 - 120, lot.x1 + 120, a + b + smith);   // 29.10: кузнец поверх Кузни - он перед ней (ноги 830 > основания 795); в Рябиново стена Кузни срезала ему бок
       } else {
         const g = one(lot.k);
         if (g && lot.B) { const f = L.fr[lot.k]; kit.prop(lot.x0 - 140, f.top - 160, lot.x1 - lot.x0 + 280, lot.B - f.top + 200, lot.B, g); }

@@ -170,7 +170,7 @@
       s += `<circle cx="${ex}" cy="${TOP - 170}" r="150" fill="url(#cwLift)"/>`;
       s += `<path d="M${ex - 90} ${TOP - 30} V${TOP - 300} H${ex + 90} V${TOP - 30}" fill="#0c0910" ${O(5)}/><path d="M${ex - 90} ${TOP - 30} V${TOP - 300} M${ex + 90} ${TOP - 30} V${TOP - 300} M${ex - 120} ${TOP - 300} H${ex + 120}" stroke="${TIMBER}" stroke-width="20"/>`;
       s += `<path d="M${ex} ${TOP - 300} V${TOP - 150}" stroke="#9a9aa6" stroke-width="5"/><rect x="${ex - 56}" y="${TOP - 156}" width="112" height="106" fill="#2a2632" ${O(5)}/><path d="M${ex - 56} ${TOP - 156} l112 106 M${ex + 56} ${TOP - 156} l-112 106" stroke="${TIMBER_D}" stroke-width="5"/>`;
-      s += `<circle cx="${ex + 110}" cy="${TOP - 270}" r="14" fill="${F.done ? '#7ff07a' : '#e8455c'}" ${O(4)}/><text x="${ex}" y="${TOP - 318}" text-anchor="middle" font-family="Russo One, Arial Black, sans-serif" font-size="26" fill="#ffc94d" stroke="${INK}" stroke-width="5" paint-order="stroke">ЭТАЖ ${F.n + 1} ↑</text>`;
+      s += `<circle cx="${ex + 110}" cy="${TOP - 270}" r="14" fill="${F.done ? '#7ff07a' : '#e8455c'}" ${O(4)}/><text x="${ex}" y="${TOP - 318}" text-anchor="middle" font-family="Russo One, Arial Black, sans-serif" font-size="26" fill="#ffc94d" stroke="${INK}" stroke-width="5" paint-order="stroke">ЭТАЖ ${F.n + 1} ↓</text>`;
     }
     // внизу — вход: вывеска, подъёмник в город, лавка скупщика, вагонетка, доска поручений
     const yb = Y0 + GRID_H;
@@ -184,7 +184,7 @@
     // название шахты и этаж — в шапке локации (mine.js), на полу не пишем: там стоят те, кто копает нижний ряд
     // подъёмник в город (слева внизу)
     const lx = 150, ly = H - 70;
-    out.push({ obj: 'lift', x: lx, y: ly, svg: `<path d="M${lx - 80} ${ly} V${ly - 220} M${lx + 80} ${ly} V${ly - 220} M${lx - 104} ${ly - 220} H${lx + 104}" stroke="${TIMBER}" stroke-width="16"/><rect x="${lx - 66}" y="${ly - 120}" width="132" height="110" fill="#3a3442" ${O(5)}/><path d="M${lx - 66} ${ly - 65} H${lx + 66}" stroke="${TIMBER_D}" stroke-width="5"/><path d="M${lx} ${ly - 220} V${ly - 120}" stroke="#9a9aa6" stroke-width="4"/><text x="${lx}" y="${ly - 236}" text-anchor="middle" font-family="Russo One, Arial Black, sans-serif" font-size="22" fill="#ffc94d" stroke="${INK}" stroke-width="5" paint-order="stroke">В ГОРОД ↓</text>` });
+    out.push({ obj: 'lift', x: lx, y: ly, svg: `<path d="M${lx - 80} ${ly} V${ly - 220} M${lx + 80} ${ly} V${ly - 220} M${lx - 104} ${ly - 220} H${lx + 104}" stroke="${TIMBER}" stroke-width="16"/><rect x="${lx - 66}" y="${ly - 120}" width="132" height="110" fill="#3a3442" ${O(5)}/><path d="M${lx - 66} ${ly - 65} H${lx + 66}" stroke="${TIMBER_D}" stroke-width="5"/><path d="M${lx} ${ly - 220} V${ly - 120}" stroke="#9a9aa6" stroke-width="4"/><text x="${lx}" y="${ly - 236}" text-anchor="middle" font-family="Russo One, Arial Black, sans-serif" font-size="22" fill="#ffc94d" stroke="${INK}" stroke-width="5" paint-order="stroke">В ГОРОД ↑</text>` });
     // лавка скупщика (справа внизу): прилавок, весы, ящики с рудой; сам NPC рисуется отдельно (npc)
     const nx = W - 210, ny = H - 120;
     out.push({ obj: 'buyer', x: nx, y: ny + 34, svg: `<rect x="${nx - 120}" y="${ny - 40}" width="240" height="74" rx="8" fill="${TIMBER}" ${O(5)}/><rect x="${nx - 132}" y="${ny - 56}" width="264" height="22" rx="6" fill="${TIMBER_D}" ${O(4)}/>`
