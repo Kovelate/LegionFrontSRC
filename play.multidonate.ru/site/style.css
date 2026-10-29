@@ -94,6 +94,8 @@ main { max-width: 1320px; margin: 0 auto; padding: var(--s5) var(--s5) var(--s7)
 .coins { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); font-size: var(--t-sm); color: var(--mute); }
 .coins .m { margin-left: auto; color: var(--ink); }
 .coins .m b { font-variant-numeric: tabular-nums; }
+.coins.cnd .cnd-i { font-size: 1.1em; line-height: 1; }
+.coins.cnd .m b { color: #ff9a3a; }
 
 /* сумка */
 .bag-h { display: flex; align-items: baseline; gap: var(--s3); flex-wrap: wrap; margin-bottom: var(--s4); }

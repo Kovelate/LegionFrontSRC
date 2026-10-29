@@ -196,6 +196,7 @@
   const LINES = {
     shopHi: ['Ох, свеженький! Конфеты принёс? Меняю на чудеса!', 'Заходи, не бойся - ступа не кусается. Почти.', 'Конфеты - мне, обновки - тебе. Честный обмен, хи-хи!', 'Тыквенная Луна взошла - самое время приодеться!'],
     shopBuy: ['Ах, какой выбор! Носи на здоровье, хи-хи!', 'Отличный глаз! Это я сама шила при свете Луны.', 'Забирай, пока Джек не увидел!'],
+    shopSwap: ['Монетки звенят, конфетки тают - хи-хи!', 'Менять конфеты на звонкую монету? Давай-давай!', 'Монеты - они скучные, но кошельку нравятся.'],
     shopNo: ['Ой, конфет маловато: нужно ещё {n}. Загляни в Изнанку!', 'Не-не, в долг не меняю. Не хватает: {n}.', 'Карманы пустоваты - принеси ещё {n}.'],
     passHi: ['Добрый вечер! Каждая конфета из Изнанки - искра для моих огоньков.', 'Собирай конфеты - а я зажгу тебе огонёк за огоньком.', 'Двадцать огней на моей гирлянде. Сколько зажжёшь ты?'],
     passNext: ['Ещё {n} - и зажгу {lv}-й огонёк. Там тебя ждёт {r}.', 'До награды {r} осталось собрать {n}. Огонь уже на кончике шеста!'],
@@ -204,12 +205,22 @@
   };
   const plural = (n, a, b, c) => { const m = Math.abs(n) % 100, k = m % 10; return m > 10 && m < 20 ? c : k === 1 ? a : k > 1 && k < 5 ? b : c; };
   const cnd = (n) => `${n} ${plural(n, 'конфета', 'конфеты', 'конфет')}`;
+  const cnm = (n) => `${n} ${plural(n, 'монета', 'монеты', 'монет')}`;
+  // 29.10: курс обмена конфет на монеты (монет за конфету) может быть дробным (1,5): меняется кратное шагу число конфет (шаг - наименьшее число
+  // конфет, дающее целые монеты: курс 1,5 - шаг 2, «2 🍬 = 3 монеты»); остаток остаётся у игрока. Та же арифметика, что у сервера (halloween/index.js swapPlan)
+  const swapStep = (rate) => { for (let s = 1; s <= 100; s++) { const c = s * rate; if (Math.abs(c - Math.round(c)) < 1e-9) return s; } return 1; };
+  const swapPlan = (n, rate) => { const st = swapStep(rate), spend = Math.floor(Math.max(0, n) / st) * st; return { step: st, spend, coins: Math.floor(spend * rate + 1e-9) }; };
   const fill = (t, o) => String(t).replace(/\{(\w+)\}/g, (m, k) => (o[k] != null ? o[k] : m));
   // маленькие рисунки наград (viewBox -50 -50 100 100); символы и градиенты - один раз на окно (svg.hwn-defs)
   const art = {
     candy: (n) => `<svg viewBox="-50 -50 100 100" aria-hidden="true">${candy(-18, 8, C.candy[0], -20, 1.25)}${candy(18, 12, C.candy[1], 16, 1.25)}${candy(0, -14, C.candy[2], 4, 1.35)}${n > 5 ? candy(-4, 28, C.candy[3], -8, 1.2) : ''}</svg>`,
     candy_apple: () => `<svg viewBox="-50 -50 100 100" aria-hidden="true"><path d="M2 -14 L10 -46" stroke="${INK}" stroke-width="8" stroke-linecap="round"/><path d="M2 -14 L10 -46" stroke="${C.woodL}" stroke-width="4" stroke-linecap="round"/><path d="M-30 6 Q-34 -22 -8 -20 Q0 -16 8 -20 Q34 -22 30 6 Q26 32 0 34 Q-26 32 -30 6 Z" fill="#e8344a" ${O(3.4)}/><path d="M-30 6 Q-26 18 -20 14 Q-12 22 -4 14 Q4 24 12 14 Q20 22 30 6 Q26 32 0 34 Q-26 32 -30 6 Z" fill="#a8641a" ${O(2.6)}/><path d="M-20 -10 q4 -6 12 -6" stroke="#fff" stroke-width="4" fill="none" opacity=".7" stroke-linecap="round"/></svg>`,
     witch_brew: () => `<svg viewBox="-50 -50 100 100" aria-hidden="true"><rect x="-9" y="-44" width="18" height="12" rx="3" fill="${C.woodL}" ${O(2.6)}/><path d="M-7 -32 V-18 Q-30 -8 -30 14 Q-30 40 0 40 Q30 40 30 14 Q30 -8 7 -18 V-32 Z" fill="#dff6ff" fill-opacity=".4" ${O(3.4)}/><path d="M-26 8 Q0 0 26 8 Q28 36 0 36 Q-28 36 -26 8 Z" fill="${'#6dffb0'}"/><circle cx="-8" cy="18" r="4" fill="#c8ffe4"/><circle cx="8" cy="10" r="3" fill="#c8ffe4"/><path d="M-20 -2 q-4 14 0 26" stroke="#fff" stroke-width="4" fill="none" opacity=".6" stroke-linecap="round"/></svg>`,
+    // 29.10 (feat/hw-candy): картинки остальных вещей обменника
+    hw_potion: () => `<svg viewBox="-50 -50 100 100" aria-hidden="true"><rect x="-9" y="-44" width="18" height="12" rx="3" fill="${C.woodL}" ${O(2.6)}/><path d="M-7 -32 V-18 Q-30 -8 -30 14 Q-30 40 0 40 Q30 40 30 14 Q30 -8 7 -18 V-32 Z" fill="#dff6ff" fill-opacity=".4" ${O(3.4)}/><path d="M-26 8 Q0 0 26 8 Q28 36 0 36 Q-28 36 -26 8 Z" fill="#b98aff"/><circle cx="-8" cy="18" r="4" fill="#e6d4ff"/><circle cx="8" cy="10" r="3" fill="#e6d4ff"/><path d="M0 -4 q6 -8 0 -14 q-6 -6 0 -12" stroke="#b98aff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".8"/></svg>`,
+    scarecrow_fork: () => `<svg viewBox="-50 -50 100 100" aria-hidden="true"><path d="M0 44 V-6" stroke="${INK}" stroke-width="9" stroke-linecap="round"/><path d="M0 44 V-6" stroke="${C.woodL}" stroke-width="5" stroke-linecap="round"/><path d="M-20 -40 V-14 Q-20 -4 0 -4 Q20 -4 20 -14 V-40 M0 -44 V-4" fill="none" stroke="${INK}" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/><path d="M-20 -40 V-14 Q-20 -4 0 -4 Q20 -4 20 -14 V-40 M0 -44 V-4" fill="none" stroke="#c8c2d8" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M-6 6 l-10 8 M-4 12 l-12 4 M6 6 l10 8" stroke="#e8c85a" stroke-width="3" stroke-linecap="round"/></svg>`,
+    bat_cloak: () => `<svg viewBox="-50 -50 100 100" aria-hidden="true"><path d="M-12 -34 Q-44 -30 -46 -6 L-34 -10 L-28 8 L-20 0 L-14 20 L0 36 L14 20 L20 0 L28 8 L34 -10 L46 -6 Q44 -30 12 -34 Q0 -28 -12 -34 Z" fill="${C.vio}" ${O(3.4)}/><path d="M-12 -34 Q0 -28 12 -34 Q0 -22 -12 -34 Z" fill="${C.vioL}" ${O(2.4)}/><circle cx="-5" cy="-24" r="3" fill="${C.gold}" ${O(1.6)}/><circle cx="5" cy="-24" r="3" fill="${C.gold}" ${O(1.6)}/><path d="M0 -20 V30" stroke="${C.vioD}" stroke-width="3" opacity=".7"/></svg>`,
+    witch_broom: () => `<svg viewBox="-50 -50 100 100" aria-hidden="true"><path d="M-40 -30 L18 22" stroke="${INK}" stroke-width="9" stroke-linecap="round"/><path d="M-40 -30 L18 22" stroke="${C.woodL}" stroke-width="5" stroke-linecap="round"/><path d="M12 10 L38 4 L46 30 L22 40 Z" fill="${C.gold}" ${O(3.2)}/><path d="M20 16 L40 12 M24 26 L44 22 M27 34 L45 30" stroke="${C.goldD}" stroke-width="2.6" stroke-linecap="round"/><path d="M10 14 L24 30" stroke="${C.wood}" stroke-width="5" stroke-linecap="round"/></svg>`,
     lock: `<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="9" width="14" height="10" rx="2" fill="#5a5470" stroke="${INK}" stroke-width="1.6"/><path d="M6 9 V6 a4 4 0 0 1 8 0 V9" fill="none" stroke="#5a5470" stroke-width="2.6"/></svg>`,
     candyIco: `<svg viewBox="-24 -14 48 28" aria-hidden="true">${candy(0, 0, C.candy[0], -10, 1)}</svg>`,
     lampOn: `<svg viewBox="-16 -10 32 40" aria-hidden="true"><use href="#hnLampOn"/></svg>`,
@@ -239,6 +250,15 @@
 
   // --- окно «Ступы сладостей» ---
   function witchHead() { return `<svg class="hwn-wt" viewBox="-80 -330 175 340" aria-hidden="true">${witch(0, 0, 1)}</svg>`; }
+  // 29.10 (feat/hw-candy): пункт «Обмен конфет на монеты» - 100 / 500 / все и своё число; курс (монет за конфету) шлёт сервер (раздел fair.hw.swap)
+  function swapHtml(W, have) {
+    const sw = W.data && W.data.swap, rate = sw && +sw.rate > 0 ? +sw.rate : 0; if (!rate) return '';
+    const steps = (sw.steps && sw.steps.length ? sw.steps : [100, 500]).map((n) => +n).filter((n) => n > 0), st = swapStep(rate);
+    const b = (n, label) => `<button type="button" class="hwn-xcb${have != null && n > have ? ' hwn-lack' : ''}" data-n="${n}"><span class="hwn-xcn">${label}</span><span class="hwn-xcc">${cnm(swapPlan(n, rate).coins)}</span></button>`;
+    return `<section class="hwn-xc" aria-label="Обмен конфет на монеты"><div class="hwn-xct"><b>Обмен конфет на монеты</b><span>${st} ${art.candyIco} = ${cnm(Math.round(st * rate))}. ${st > 1 ? 'Меняется чётное число конфет - лишняя остаётся у тебя. ' : ''}Уровень пропуска не падает - он считается по всем собранным конфетам.</span></div>`
+      + `<div class="hwn-xcr">${steps.map((n) => b(n, n)).join('')}<button type="button" class="hwn-xcb hwn-xcall${swapPlan(have || 0, rate).coins ? '' : ' hwn-lack'}" data-all="1"><span class="hwn-xcn">все</span><span class="hwn-xcc">${have == null ? '' : cnm(swapPlan(have, rate).coins)}</span></button>`
+      + `<label class="hwn-xcf"><input type="number" min="1" step="1" inputmode="numeric" class="hwn-xci" placeholder="сколько" aria-label="Сколько конфет обменять"><button type="button" class="hwn-xcb hwn-xcgo">Обменять</button></label></div></section>`;
+  }
   function shopHtml(W, title) {
     const hw = hwOf(W), have = hw ? +hw.c || 0 : null, list = (W.data && W.data.shop) || [];
     const cards = list.map((it) => {
@@ -249,6 +269,7 @@
     }).join('');
     return `<div class="hwn-hd hwn-shophd"><div class="hwn-por">${witchHead()}</div><div class="hwn-tt"><h2 class="hwn-title">${esc(title)}</h2><p class="hwn-say" aria-live="polite">${esc(pick(LINES.shopHi))}</p></div>`
       + `<div class="hwn-wallet"><span class="hwn-l">у тебя</span><span class="hwn-v">${art.candyIco}<b>${have == null ? '-' : have}</b></span><span class="hwn-s">${hw ? `собрано за ивент: ${+hw.x || 0}` : 'конфеты придут с сервера в дни ивента'}</span></div></div>`
+      + swapHtml(W, have)
       + (cards ? `<ul class="hwn-grid">${cards}</ul>` : `<p class="hwn-empty">Товар обменника появится в дни ивента.</p>`)
       + `<p class="hwn-foot">Конфеты собирают в Изнанке - походе «Ночи Тыквенной Луны». После ивента остаток конфет обменяется на монеты.</p>`;
   }
@@ -312,6 +333,18 @@
 .hwn-shophd .hwn-say::before{content:'';position:absolute;left:-12px;top:18px;border:8px solid transparent;border-right:12px solid #1c1424}
 .hwn-wallet{display:flex;flex-direction:column;align-items:center;gap:2px;padding:12px;border-radius:14px;background:#120e24;border:3px solid #ffc94d;box-shadow:0 0 22px rgba(255,201,77,.18)}
 .hwn-wallet .hwn-l{font-size:13px;color:#b8acd4}.hwn-wallet .hwn-v{display:flex;align-items:center;gap:6px}.hwn-wallet .hwn-v svg{width:44px;height:26px}.hwn-wallet b{font-family:'Russo One',sans-serif;font-size:34px;color:#ffc94d}.hwn-wallet .hwn-s{font-size:12px;color:#8f86aa;text-align:center}
+.hwn-xc{margin:14px 16px 0;padding:12px 14px;border-radius:14px;background:linear-gradient(180deg,#2d2250,#1d1734);border:2px solid #ffc94d;display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px}
+.hwn-xct{flex:1 1 260px;display:flex;flex-direction:column;gap:2px}.hwn-xct b{font-family:'Russo One',sans-serif;font-size:17px;color:#ffc94d}.hwn-xct span{font-size:12px;color:#b8acd4;line-height:1.3}.hwn-xct svg{width:22px;height:13px;vertical-align:-2px}
+.hwn-xcr{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch}.hwn-xcf{display:flex;gap:6px}
+.hwn-xcb{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:64px;min-height:44px;padding:6px 12px;border-radius:12px;border:2px solid #1c1424;background:linear-gradient(180deg,#ffd34d,#e8a61a);color:#1c1424;cursor:pointer;box-shadow:0 3px 0 #1c1424;font:inherit}
+.hwn-xcb:hover,.hwn-xcb:focus-visible{background:linear-gradient(180deg,#ffe07a,#f0b020);outline:2px solid #ffe08a;outline-offset:2px}.hwn-xcb:active{transform:translateY(2px);box-shadow:0 1px 0 #1c1424}
+.hwn-xcn{font-family:'Russo One',sans-serif;font-size:17px}.hwn-xcc{font-size:11px;font-weight:700}
+.hwn-cf{position:absolute;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(10,6,24,.72)}
+.hwn-cfb{width:min(420px,100%);padding:18px 18px 16px;border-radius:16px;background:linear-gradient(180deg,#2d2250,#1d1734);border:3px solid #ffc94d;color:#f3e6c8;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.6)}
+.hwn-cfb p{margin:0 0 14px;font-size:18px;line-height:1.35}.hwn-cfb svg{width:30px;height:18px;vertical-align:-3px}.hwn-cfb b{color:#ffc94d;font-family:'Russo One',sans-serif}
+.hwn-cfr{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}.hwn-cfr .hwn-xcb{min-width:120px;font-family:'Russo One',sans-serif;font-size:16px}.hwn-cfn{background:linear-gradient(180deg,#5a5278,#3a3450)!important;color:#f3e6c8!important}.hwn-xcb:disabled,.hwn-buy:disabled{opacity:.6;cursor:default}
+.hwn-xcb.hwn-lack{background:#3a3450;color:#a49cbc;box-shadow:0 3px 0 #120e24}
+.hwn-xci{width:128px;min-height:44px;box-sizing:border-box;padding:4px 8px;border-radius:12px;border:2px solid #3a2e66;background:#120e24;color:#f3e6c8;font:inherit;font-size:16px}.hwn-xci:focus-visible{outline:2px solid #ffe08a;outline-offset:2px}
 .hwn-grid{list-style:none;margin:0;padding:16px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
 .hwn-g{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 8px 10px;border-radius:14px;background:linear-gradient(180deg,#2a2148,#1d1734);border:2px solid #3a2e66}
 .hwn-g .hwn-n{position:absolute;left:8px;top:6px;font-family:'Russo One',sans-serif;font-size:13px;color:#ffb347}
@@ -358,6 +391,34 @@
 @media (prefers-reduced-motion:reduce){.hwn-gh,.hwn-ember{animation:none}}`;
   let WIN = null;
   function close() { if (!WIN) return; const w = WIN; WIN = null; try { document.removeEventListener('keydown', w.key, true); w.el.remove(); if (w.back && w.back.focus) w.back.focus(); } catch (e) { /* окна уже нет */ } }
+  const swapRateOf = (W) => { const sw = W.data && W.data.swap; return sw && +sw.rate > 0 ? +sw.rate : 0; };
+  // сколько конфет у зрителя сейчас: ответ комнаты (el._have) главнее данных героя
+  const haveOf = (el, W) => { if (el._have != null) return el._have; const hw = hwOf(W); return Math.max(0, (hw ? +hw.c || 0 : 0) - (el._spent || 0)); };
+  // новый остаток: кошелёк, кнопки покупки («не хватает N») и обмена
+  function setHave(el, W, v) {
+    v = Math.max(0, Math.floor(+v || 0)); el._have = v;
+    const wb = el.querySelector('.hwn-wallet b'); if (wb) wb.textContent = String(v);
+    for (const b of el.querySelectorAll('.hwn-buy')) { const lack = Math.max(0, (+b.dataset.p || 0) - v), t = b.querySelector('.hwn-t'); b.closest('.hwn-g').classList.toggle('hwn-lack', lack > 0); if (t && !b.disabled) t.textContent = lack ? `не хватает ${lack}` : 'Обменять'; }
+    const rate = swapRateOf(W);
+    for (const q of el.querySelectorAll('.hwn-xcb[data-n]')) q.classList.toggle('hwn-lack', +q.dataset.n > v);
+    const al = el.querySelector('.hwn-xcall'); if (al && rate) { al.classList.toggle('hwn-lack', !swapPlan(v, rate).coins); const c = al.querySelector('.hwn-xcc'); if (c) c.textContent = cnm(swapPlan(v, rate).coins); }
+  }
+  /** Ответ комнаты на обмен / покупку (app.js, ack hwBuy / hwSwap): обновляет открытое окно. x = { ok, error, x: { op, n, price, left, got, coins, test, fail } } */
+  function result(x) {
+    const w = WIN; if (!w || !w.el || !x || !x.x) return false;
+    const el = w.el, W = w.W, say = el.querySelector('.hwn-say'), r = x.x;
+    if (r.op === 'hwBuy') {
+      el._pend = 0;
+      if (!x.ok) { say.textContent = x.error || 'Не вышло.'; return true; }
+      if (r.test) { say.textContent = `Тест: «${r.got || 'вещь'}» - ничего не списано.`; return true; }
+      setHave(el, W, r.left); say.textContent = `Готово! «${r.got || 'вещь'}» теперь твоя. Осталось ${cnd(r.left)}.`;
+      const bt = el.querySelector(`.hwn-buy[data-n="${r.n}"]`);
+      if (bt && !/предмет/.test((bt.closest('.hwn-g').querySelector('.hwn-kd') || {}).textContent || '')) { bt.disabled = true; const t = bt.querySelector('.hwn-t'); if (t) t.textContent = 'уже есть'; }
+      return true;
+    }
+    if (r.op === 'hwSwap') { if (x.ok && r.left != null && !r.test) setHave(el, W, r.left); say.textContent = !x.ok ? (x.error || 'Не вышло.') : r.coins != null ? `Держи: ${cnm(r.coins)}!` : pick(LINES.shopSwap); return true; }
+    return false;
+  }
   /** Окно НПС: id 'hwshop' | 'hwpass'. */
   function open(id, W) {
     if (typeof document === 'undefined' || !META[id]) return null;
@@ -367,19 +428,48 @@
     const el = document.createElement('div'); el.className = 'hwn-back'; el.dataset.hwn = id;
     const title = id === 'hwshop' ? (W.shopTitle || META.hwshop.title) : META.hwpass.title;
     el.innerHTML = `<div class="hwn-win hwn-${id === 'hwshop' ? 'shop' : 'pass'}" role="dialog" aria-modal="true" aria-label="${esc(title)}"><svg class="hwn-defs" width="0" height="0" aria-hidden="true" focusable="false">${DEFS}</svg><button type="button" class="hwn-x" aria-label="Закрыть">×</button>${id === 'hwshop' ? shopHtml(W, title) : passHtml(W)}</div>`;
-    const back = document.activeElement, key = (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
+    const back = document.activeElement, key = (e) => { if (e.key === 'Escape') { e.stopPropagation(); const cf = el.querySelector('.hwn-cf'); if (cf) cf.remove(); else close(); } };
     el.addEventListener('click', (e) => {
       if (e.target === el || e.target.closest('.hwn-x')) { close(); return; }
+      const xb = e.target.closest('.hwn-xcb:not(.hwn-cfy):not(.hwn-cfn)');
+      if (xb) {   // 29.10: обмен конфет на монеты
+        const left = haveOf(el, W), say0 = el.querySelector('.hwn-say'), rate = swapRateOf(W);
+        const inp = el.querySelector('.hwn-xci'), all = !!xb.dataset.all, n0 = all ? left : xb.dataset.n ? +xb.dataset.n : Math.floor(+(inp && inp.value) || 0);
+        if (!(n0 >= 1)) { say0.textContent = left < 1 ? 'Конфет нет - нечего менять. Загляни в Изнанку!' : 'Сколько менять-то? Напиши число.'; return; }
+        if (n0 > left) { say0.textContent = fill(pick(LINES.shopNo), { n: cnd(n0 - left) }); return; }
+        const pl = swapPlan(n0, rate), n = pl.spend;
+        if (!(pl.coins >= 1)) { say0.textContent = `Мало: меняю от ${cnd(pl.step)}.`; return; }
+        if (!W.swap) { say0.textContent = 'Обмен с сайта пока не открыт - пиши в чат Ярмарки: «обмен монеты ' + n + '»'; return; }
+        Promise.resolve(W.swap(all ? { all: true } : { n }, xb)).then(() => {
+          say0.textContent = pick(LINES.shopSwap); setHave(el, W, left - n);   // сразу показываем; точное число придёт ответом комнаты (result)
+        }).catch(() => { /* ошибку показал сам сайт (toast) */ });
+        return;
+      }
+      const cfb = e.target.closest('.hwn-cfy, .hwn-cfn');   // 29.10: подтверждение покупки
+      if (cfb) {
+        const cf = el.querySelector('.hwn-cf'); if (!cf) return;
+        if (cfb.classList.contains('hwn-cfn')) { cf.remove(); return; }
+        const n = +cf.dataset.n, price = +cf.dataset.p, say1 = el.querySelector('.hwn-say');
+        if (!W.buy) { cf.remove(); say1.textContent = 'Обмен с сайта пока не открыт - пиши в чат Ярмарки: «обмен ' + n + '»'; return; }
+        for (const q of cf.querySelectorAll('button')) q.disabled = true;
+        say1.textContent = 'Ведьма колдует над твоим обменом...';
+        Promise.resolve(W.buy({ n, price }, cfb)).then(() => { cf.remove(); el._pend = n; }).catch(() => { cf.remove(); say1.textContent = 'Не вышло - попробуй ещё раз.'; });
+        return;
+      }
       const b = e.target.closest('.hwn-buy'); if (!b) return;
-      const hw = hwOf(W), have = hw ? +hw.c || 0 : 0, price = +b.dataset.p || 0, say = el.querySelector('.hwn-say');
+      const have = haveOf(el, W), price = +b.dataset.p || 0, say = el.querySelector('.hwn-say');
+      if (el._pend) { say.textContent = 'Подожди, ведьма ещё считает прошлый обмен.'; return; }
       if (have < price) { say.textContent = fill(pick(LINES.shopNo), { n: cnd(price - have) }); return; }
-      say.textContent = pick(LINES.shopBuy);
-      // HW-NPC: «Обменять» - заглушка: обмен с сайта ещё не подключён (сервер: ctx.bus.hollow.buy). Пока - словами ведьмы и подсказкой про чат Ярмарки
-      if (W.toast) W.toast(`Обмен с сайта скоро откроется. Пока - в чате стрима на Ярмарке: «обмен ${b.dataset.n}»`);
+      // 29.10: покупка кнопкой: подтверждение «Обменять N 🍬 на <вещь>?» → W.buy → ответ комнаты (result)
+      const nm = (b.closest('.hwn-g').querySelector('.hwn-nm') || {}).textContent || 'вещь', old = el.querySelector('.hwn-cf'); if (old) old.remove();
+      const cf = document.createElement('div'); cf.className = 'hwn-cf'; cf.dataset.n = b.dataset.n; cf.dataset.p = String(price);
+      cf.innerHTML = `<div class="hwn-cfb" role="alertdialog" aria-label="Подтверждение обмена"><p>Обменять <b>${price} ${art.candyIco}</b> на «${esc(nm)}»?</p><div class="hwn-cfr"><button type="button" class="hwn-xcb hwn-cfy">Обменять</button><button type="button" class="hwn-xcb hwn-cfn">Отмена</button></div></div>`;
+      el.appendChild(cf);
+      try { cf.querySelector('.hwn-cfy').focus({ preventScroll: true }); } catch (e2) { /* без фокуса */ }
     });
     document.addEventListener('keydown', key, true);
     document.body.appendChild(el);
-    WIN = { el, key, back };
+    WIN = { el, key, back, W };
     try { el.querySelector('.hwn-x').focus({ preventScroll: true }); } catch (e) { /* без фокуса */ }
     return el;
   }
@@ -395,5 +485,5 @@
 @keyframes hwnBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
 @media (prefers-reduced-motion:reduce){.hwn-live *{animation:none!important}}`;
 
-  return { C, INK, DEFS, META, SHAPE, S_BASE, WEBCAM, LINES, witch, stupaArt, archArt, ghostArt, ghostBody, garland, lampAt, geo, inWebcam, camView, open, close, shopHtml, passHtml, LIVE_CSS, WIN_CSS, esc, candy, jar, board, flame, pumpLamp };
+  return { C, INK, DEFS, META, SHAPE, S_BASE, WEBCAM, LINES, witch, stupaArt, archArt, ghostArt, ghostBody, garland, lampAt, geo, inWebcam, camView, open, close, result, swapStep, swapPlan, shopHtml, passHtml, LIVE_CSS, WIN_CSS, esc, candy, jar, board, flame, pumpLamp };
 });

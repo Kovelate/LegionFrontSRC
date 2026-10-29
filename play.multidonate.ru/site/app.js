@@ -905,6 +905,7 @@
         ${h.xs ? xsHtml(h.xs, h) : ''}
         ${gp ? `<p class="penl" role="note"><b>⚠ Надеты вещи другого класса — дебафф −${gp.pct}% ${esc(gp.statName || 'урон')}</b><span>${gp.parts.map((x) => `${esc(x.name)} (${esc(x.gearName)}, −${x.pct}%)`).join(' · ')}</span></p>` : ''}
         <div class="coins">${ico('coin')}<span>Монеты</span>${money(h.money)}</div>
+        ${h.hw ? `<div class="coins cnd" title="Конфеты Хэллоуина лежат отдельно - место в сумке не занимают. Их меняют у «Ступы сладостей» в городе или в чате Ярмарки"><span class="cnd-i" aria-hidden="true">🍬</span><span>Конфеты</span><span class="m"><b>${+h.hw.c || 0}</b></span></div>` : ''}
         ${h.debt > 0 ? `<p class="debtl" role="note"><b>Долг: −${money(h.debt)}</b><span>Пойман на краже в лавке. Пока долг не погашен, покупать нельзя — награды сначала идут в счёт долга.</span></p>` : ''}
         ${repAllHtml(h)}
         ${h.soc ? `<button type="button" class="socl${h.soc.bad ? ' bad' : ''}" data-gosoc title="Соц. рейтинг: место ${h.soc.place || '—'} из ${h.soc.total} — открыть рейтинг"><span class="sr-i" aria-hidden="true">${esc(h.soc.icon || '')}</span><span>Соц. рейтинг</span><b class="sr-r">${esc(h.soc.rankName || '')}</b><b class="sr-s">${h.soc.score}</b>${h.soc.place ? `<em>${h.soc.place} место</em>` : ''}</button>` : ''}
@@ -2362,6 +2363,8 @@
     for (const x of (ME && ME.results) || []) {
       if (shownRes.has(x.id)) continue;
       if (x.x && x.x.op === 'qact') { shownRes.add(x.id); if (window.LGQuest && window.LGQuest.result) window.LGQuest.result(x); else if (!x.ok) toast(x.error || 'Не вышло', true); continue; }   // 25.10: ответ игры на кнопку похода
+      if (x.x && x.x.op === 'hwSwap') { shownRes.add(x.id); try { window.LGHwNpc && window.LGHwNpc.result && window.LGHwNpc.result(x); } catch (e) { /* окно уже закрыто */ } toast(x.ok ? (x.x.coins != null ? `Обменяно ${x.x.n} конфет на монеты: +${x.x.coins}` : 'Конфеты обменяны на монеты') : 'Обмен не вышел: ' + (x.error || 'попробуй ещё раз'), !x.ok); continue; }   // 29.10: «Ступа сладостей» - обмен конфет на монеты
+      if (x.x && x.x.op === 'hwBuy') { shownRes.add(x.id); try { window.LGHwNpc && window.LGHwNpc.result && window.LGHwNpc.result(x); } catch (e) { /* окно уже закрыто */ } toast(x.ok ? (x.x.test ? `Тест: «${x.x.got || 'вещь'}» - ничего не списано` : `Обмен готов: «${x.x.got || 'вещь'}» - за ${x.x.price} конфет`) : 'Обмен не вышел: ' + (x.error || 'попробуй ещё раз'), !x.ok); continue; }   // 29.10: покупка в «Ступе сладостей» кнопкой
       if (x.x && x.x.op === 'seal') { shownRes.add(x.id); toast('Печать применена: у героя теперь свой стиль'); continue; }   // 26.10: Печать Метаморфозы
       if (x.x && /^(st|auc|note)/.test(x.x.op || '')) { shownRes.add(x.id); storeNote(x); continue; }
       if (x.x && /^mine/.test(x.x.op || '')) { shownRes.add(x.id); if (window.LGMine && window.LGMine.result) window.LGMine.result(x); else if (!x.ok) toast(x.error || 'Не вышло', true); continue; }   // 26.10: шахта (окно скупщика) — не в окно Кузни   // 22.10: склад, аукцион (вещь ушла на склад), сообщение без действия
