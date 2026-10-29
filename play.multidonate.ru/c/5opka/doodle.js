@@ -1494,8 +1494,38 @@ try {
     }
     // рамка для подгонки: эмблема шире вещи — вид берём с запасом (R × 1,4 вокруг центра)
     function viewBox(box) { const b = box && box.w > 0 ? box : { x: -30, y: -60, w: 60, h: 60 }; const cx = b.x + b.w / 2, cy = b.y + b.h / 2, R = Math.max(b.w, b.h) * 0.62 * 1.42; return `${f(cx - R)} ${f(cy - R)} ${f(R * 2)} ${f(R * 2)}`; }
-    return { wrap, viewBox, emblems: Object.keys(EMB) };
+    return { wrap, viewBox, emblems: Object.keys(EMB), emblem: (aid, cx, cy, R) => (EMB[aid] ? EMB[aid](cx, cy, R) : '') };   // 28.10: эмблема ауры - и для рамок других стилей
   });
+  /* 28.10 (art/styles-city-legend): своя рамка легендарки у каждого стиля (кроме Легиона) - styles/<стиль>/legend.js:
+       MDDoodle.addPart('<стиль>', 'legend', () => MDDoodle.legendKit.make({ glow, back, ring, top, spark, item }));
+     Раскладка, рамка вида (viewBox) и эмблема ауры - общие (эмблема - рисунок Легиона), стиль даёт только вид:
+       glow - [свет у центра, свет у края]; back(cx, cy, R, f) - подложка за эмблемой; ring(cx, cy, R, f) - кольцо (крутится медленно);
+       top(cx, cy, R, f) - поверх вещи (корона, рожки…); spark(x, y, r, f) - искорка (мерцает); item - [цвет обводки-ореола вещи].
+     Без фильтров: ореол вещи - мягкий круг; движение - SVG animate, как у Легиона (работает и в OBS). */
+  window.MDDoodle.legendKit = {
+    make(o) {
+      const f = (v) => Math.round(v * 10) / 10, D = window.MDDoodle;
+      let uid = 0, LG = null;
+      const emblem = (aid, cx, cy, R) => { try { LG = LG || D.drawLocation('legion', 'legend'); return LG.emblem(aid, cx, cy, R); } catch (e) { return ''; } };
+      const box0 = (box) => (box && box.w > 0 ? box : { x: -30, y: -60, w: 60, h: 60 });
+      function wrap(inner, it, box) {
+        const id = 'lgs' + (++uid), aid = it && it.aura && it.aura.id, b = box0(box);
+        const cx = b.x + b.w / 2, cy = b.y + b.h / 2, R = Math.max(b.w, b.h) * 0.62, G = o.glow || ['#fff2c0', '#ffd76a'];
+        let seed = 0; for (const ch of String(aid || it && it.id || 'x')) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
+        let rs = seed >>> 0; const rnd = () => { rs = (rs * 1664525 + 1013904223) >>> 0; return rs / 4294967296; };
+        let sp = '';
+        if (o.spark) for (let i = 0; i < 7; i++) { const a = rnd() * Math.PI * 2, d = R * 1.1 * (0.45 + rnd() * 0.75), r = R * (0.06 + rnd() * 0.06);
+          sp += `<g opacity="0">${o.spark(cx + Math.cos(a) * d, cy + Math.sin(a) * d, r, f, i)}<animate attributeName="opacity" values="0;1;0" dur="${(1.4 + rnd() * 1.6).toFixed(2)}s" begin="${(rnd() * 2).toFixed(2)}s" repeatCount="indefinite"/></g>`; }
+        return `<g class="lgd lgd-s"><defs><radialGradient id="${id}g"><stop offset="0" stop-color="${G[0]}" stop-opacity=".75"/><stop offset=".4" stop-color="${G[1]}" stop-opacity=".35"/><stop offset="1" stop-color="${G[1]}" stop-opacity="0"/></radialGradient></defs>`
+          + `<circle cx="${f(cx)}" cy="${f(cy)}" r="${f(R * 1.3)}" fill="url(#${id}g)"/>` + (o.back ? o.back(cx, cy, R, f) : '')
+          + (o.ring ? `<g>${o.ring(cx, cy, R, f)}<animateTransform attributeName="transform" type="rotate" from="0 ${f(cx)} ${f(cy)}" to="360 ${f(cx)} ${f(cy)}" dur="30s" repeatCount="indefinite"/></g>` : '')
+          + `<g opacity=".95">${emblem(aid, cx, cy, R)}</g>` + (o.item ? `<circle cx="${f(cx)}" cy="${f(cy)}" r="${f(R * 0.62)}" fill="${o.item}" opacity=".28"/>` : '')
+          + inner + (o.top ? o.top(cx, cy, R, f) : '') + sp + '</g>';
+      }
+      function viewBox(box) { const b = box0(box), cx = b.x + b.w / 2, cy = b.y + b.h / 2, R = Math.max(b.w, b.h) * 0.62 * 1.42; return `${f(cx - R)} ${f(cy - R)} ${f(R * 2)} ${f(R * 2)}`; }
+      return { wrap, viewBox, emblems: (() => { try { return D.drawLocation('legion', 'legend').emblems; } catch (e) { return []; } })(), emblem };
+    },
+  };
 })();
 
 } catch (e) { console.error('[стили] styles/legion/legend.js не загрузился:', e); }

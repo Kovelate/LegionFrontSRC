@@ -2219,6 +2219,7 @@
       const V = window.LG_CITYV || {};
       if (!window.LGTownGen) await townJs(`/site/towngen.js?v=${V.tg || ''}`);
       if (!window.LGTownArt) await townJs(`/site/townart.js?v=${V.ta || ''}`);
+      await window.LGTownGen.prep(want, (f) => townJs(`${f}?v=${V.vg || ''}`));   // 28.10 (art/district-towns): ручная деревня - её файл (нет - генератор)
       if (TOWN.id !== want) return;
       TOWN = { id: want, meta: t, acc: { own: !!t.own, k: +t.k || 2, why: t.why || '', ...(t.home ? { home: 1 } : {}) }, L: window.LGTownGen.generate(townMeta(t)) };   // 26.10: home - край канала
     } catch (e) {

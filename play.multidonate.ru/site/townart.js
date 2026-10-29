@@ -49,14 +49,19 @@
   function draw(L, o) {
     o = o || {};
     if ((!L.fr || o.levels) && root.LGTownGen) L = root.LGTownGen.relevel(L, o.levels || {});   // уровни зданий (towngen relevel): рамки и места клика
-    const K = BIO[L.biome] || BIO.meadow, W = L.W, H = L.H, TOPH = 1080;
+    // 28.10 (art/district-towns): ручная деревня - свой рисунок (packages/world/villages/<id>.js art): поправки природы, задний план, вода,
+    // здания, мелочи; набор деталей kit - эти же функции (стены, крыши, окна, двери, вывески по уровню, деревья, символы)
+    const HA = L.hand ? (root.LGVillages && root.LGVillages[L.hand] && root.LGVillages[L.hand].art) || {} : null;   // файла рисунка нет - здания генератора на местах ручной раскладки
+    const K = HA && HA.K ? { ...(BIO[L.biome] || BIO.meadow), ...HA.K } : BIO[L.biome] || BIO.meadow, W = L.W, H = L.H, TOPH = 1080;
     let R = rng(L.seed ^ 0x5eed);
     const V = L.size === 'village', CAP = !!L.capital, SNOW = K.snow || 0, RUIN = !!K.ruin;
     const pick = (a) => a[Math.floor(R() * a.length)];
     // { x0, x1, y0, y1, svg } — фон по порядку (что раньше — то дальше); y0…y1 — по высоте (по умолчанию — верх сцены 0…1080:
     // небо, задний ряд, главная улица). 24.10: город выше 1080 — фон режется на куски по x и по высоте (плитка Pixi разбирает только свои)
     const pieces = [];
-    const P = (x0, x1, svg, y0 = 0, y1 = TOPH) => { pieces.push({ x0: x0 - 4, x1: x1 + 4, y0, y1, svg }); };
+    let SLOT = null;   // 28.10: место в порядке рисования для рисунка ручной деревни (задний план, земля, здания) - заполняется позже, когда готов kit
+    const P = (x0, x1, svg, y0 = 0, y1 = TOPH) => { (SLOT || pieces).push({ x0: x0 - 4, x1: x1 + 4, y0, y1, svg }); };
+    const slots = {}, slot = (name) => { const q = { slot: name, list: [] }; slots[name] = q; pieces.push(q); };
     let defs = `<defs><radialGradient id="tgGlow"><stop offset="0" stop-color="#ffe59a" stop-opacity=".9"/><stop offset="1" stop-color="#ffbe5a" stop-opacity="0"/></radialGradient>`
       + `<radialGradient id="tgFire"><stop offset="0" stop-color="#ffd76a"/><stop offset=".5" stop-color="#ff7a2a" stop-opacity=".8"/><stop offset="1" stop-color="#ff3a1a" stop-opacity="0"/></radialGradient>`
       + `<linearGradient id="tgShade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#14112a" stop-opacity=".42"/><stop offset="1" stop-color="#14112a" stop-opacity="0"/></linearGradient>`
@@ -67,7 +72,8 @@
     /* ================= задний план: дали, ориентир особого места, земля за домами ================= */
     { // дальние холмы / горы / дюны / лес
       const [c1, c2] = K.far;
-      if (K.back === 'mountains' || K.back === 'snowpeaks' || K.back === 'volcano' || K.back === 'spires') {
+      if (HA && HA.far === false) { /* ручная деревня рисует дали сама (back) */ }
+      else if (K.back === 'mountains' || K.back === 'snowpeaks' || K.back === 'volcano' || K.back === 'spires') {
         for (let x = -100; x < W + 200;) { const w = 260 + R() * 320, h = 180 + R() * 220, b = 640; const peak = x + w / 2 + (R() - 0.5) * 60;
           let g = `<path d="M${f1(x)} ${b} L${f1(peak)} ${f1(b - h)} L${f1(x + w)} ${b} Z" fill="${c1}"/>`;
           if (K.back === 'spires') g = `<path d="M${f1(peak - 30)} ${b} L${f1(peak - 12)} ${f1(b - h * 1.2)} L${f1(peak)} ${f1(b - h * 1.35)} L${f1(peak + 12)} ${f1(b - h * 1.2)} L${f1(peak + 30)} ${b} Z" fill="${c1}"/>`;
@@ -87,11 +93,12 @@
         }
       }
       // ориентир особого места (за городом): чёрная башня, Древо мира, пирамиды, кости великана
-      const sp = L.special;
+      const sp = HA && HA.landmark === false ? null : L.special;   // 28.10: ручная деревня может рисовать ориентир сама (art.landmark = false)
       if (sp === 'blacktower') { const tx = W * 0.62; P(tx - 160, tx + 160, `<path d="M${tx - 90} 660 L${tx - 60} 120 L${tx - 90} 120 L${tx - 40} 40 L${tx} 0 L${tx + 40} 40 L${tx + 90} 120 L${tx + 60} 120 L${tx + 90} 660 Z" fill="#141018"/><rect x="${tx - 12}" y="200" width="24" height="40" fill="#b06aff" opacity=".8"/><rect x="${tx - 30}" y="360" width="16" height="30" fill="#b06aff" opacity=".6"/><ellipse cx="${tx}" cy="60" rx="70" ry="30" fill="#b06aff" opacity=".18"/>`); }
       if (sp === 'worldtree') { const tx = W * 0.55; P(tx - 900, tx + 900, `<path d="M${tx - 70} 680 Q${tx - 50} 420 ${tx - 150} 300 M${tx + 70} 680 Q${tx + 40} 440 ${tx + 170} 310 M${tx} 680 V260" stroke="#4a3626" stroke-width="80" fill="none" stroke-linecap="round"/>` + Array.from({ length: 14 }, (_, i) => `<ellipse cx="${f1(tx - 800 + i * 123 + (R() - 0.5) * 60)}" cy="${f1(250 + (i % 3) * 40 + R() * 30)}" rx="${f1(150 + R() * 80)}" ry="${f1(80 + R() * 30)}" fill="${['#2f5a44', '#3e6a50', '#4a7a5a'][i % 3]}"/>`).join('') + Array.from({ length: 18 }, () => `<ellipse cx="${f1(tx - 760 + R() * 1520)}" cy="${f1(210 + R() * 120)}" rx="${f1(30 + R() * 30)}" ry="12" fill="#f4f8fc" opacity=".75"/>`).join('')); }
       if (sp === 'pyramids') for (const [px, ph] of [[W * 0.3, 360], [W * 0.5, 460], [W * 0.66, 300]]) P(px - ph, px + ph, `<path d="M${f1(px - ph)} 660 L${f1(px)} ${660 - ph} L${f1(px + ph)} 660 Z" fill="#d8a86a"/><path d="M${f1(px)} ${660 - ph} L${f1(px + ph)} 660 H${f1(px + ph * 0.25)} Z" fill="#b8884e"/>`);
       if (sp === 'bones') { const bx = W * 0.58; P(bx - 700, bx + 700, Array.from({ length: 9 }, (_, i) => { const x = bx - 560 + i * 140, h = 300 - Math.abs(i - 4) * 30; return `<path d="M${x} 660 Q${x - 60} ${660 - h} ${x + 40} ${660 - h * 1.1}" stroke="#efe4cc" stroke-width="26" fill="none" stroke-linecap="round"/>`; }).join('') + `<path d="M${bx - 640} 640 Q${bx} 560 ${bx + 640} 640" stroke="#e4d8bc" stroke-width="34" fill="none"/><ellipse cx="${bx + 720}" cy="600" rx="110" ry="80" fill="#efe4cc"/><circle cx="${bx + 700}" cy="590" r="22" fill="#3a2a20"/>`); }
+      if (HA) slot('back');   // 28.10: задний план ручной деревни (ориентир, свои дали) - перед землёй за домами
       // горные террасы за домами
       if (K.terraces) for (let i = 0; i < 2; i++) { const y = 600 + i * 60; P(0, W, `<rect x="0" y="${y}" width="${W}" height="56" fill="${i ? '#7a7684' : '#6a6676'}" ${O(4)}/>` + Array.from({ length: Math.round(W / 90) }, (_, k) => `<rect x="${k * 90 + (i % 2) * 45}" y="${y + 8}" width="80" height="40" rx="5" fill="none" stroke="${INK}" stroke-width="2" opacity=".25"/>`).join('')); }
       // земля за домами (между дальними холмами и полосой)
@@ -109,7 +116,8 @@
           + `<path d="M${f1(RV.x - RV.w - 4)} 708 q-2 -22 -8 -34 M${f1(RV.x - RV.w + 6)} 706 q2 -20 6 -30 M${f1(RV.x + RV.w)} 708 q2 -20 10 -30" stroke="${L.biome === 'swamp' ? '#6a7a3a' : K.grass2}" stroke-width="4" fill="none" stroke-linecap="round"/>`;
         P(rx0 - RV.w - 20, rx1 + RV.w + 20, g, 640, 780);
       }
-      if (V) {
+      if (HA && HA.fence === false) { /* у ручной деревни своя ограда (или её нет) */ }
+      else if (V) {
         for (let x = 0; x < W; x += 24) { if (RV && x + 22 > rx0 - 10 && x < rx1 + 10) continue; P(x, x + 22, `<path d="M${x + 2} 742 V${f1(690 + R() * 10)} l9 -12 l9 12 V742 Z" fill="${K.woodD}" stroke="${INK}" stroke-width="3" stroke-linejoin="round" opacity=".85"/>`); }
         const rails = RV ? [[0, rx0 - 14], [rx1 + 14, W]] : [[0, W]];
         for (const [a, b] of rails) P(a, b, `<rect x="${f1(a)}" y="716" width="${f1(b - a)}" height="8" fill="${K.wood}" stroke="${INK}" stroke-width="3" opacity=".85"/>`);
@@ -162,8 +170,9 @@
       }
       // скругления стыков: ветка (полуширина w) подходит к краю улицы ye с направления dir (−1 — сверху, +1 — снизу)
       const FR = 24, flares = [];
-      for (const sp of L.spurs) { const x = sp[1][0], ye = sp[1][1] - L.pathW.road + 2; flares.push({ x, ye, w: L.pathW.spur, dir: -1 }); }
-      for (const r of L.roads) if (r.k === 'cross') { const P0 = r.pts[0], P1 = r.pts[r.pts.length - 1]; flares.push({ x: P0[0], ye: P0[1] + L.pathW.road - 2, w: r.w, dir: 1 }, { x: P1[0], ye: P1[1] - L.pathW.boul + 2, w: r.w, dir: -1 }); }
+      if (L.flares) flares.push(...L.flares);   // 28.10: ручная деревня - стыки посчитаны в раскладке
+      else for (const sp of L.spurs) { const x = sp[1][0], ye = sp[1][1] - L.pathW.road + 2; flares.push({ x, ye, w: L.pathW.spur, dir: -1 }); }
+      if (!L.flares) for (const r of L.roads) if (r.k === 'cross') { const P0 = r.pts[0], P1 = r.pts[r.pts.length - 1]; flares.push({ x: P0[0], ye: P0[1] + L.pathW.road - 2, w: r.w, dir: 1 }, { x: P1[0], ye: P1[1] - L.pathW.boul + 2, w: r.w, dir: -1 }); }
       const flareD = (f) => { const { x, ye, w, dir } = f, e = ye - dir * 14; return `M${f1(x - w - FR)} ${f1(e)}V${f1(ye)}Q${f1(x - w)} ${f1(ye)} ${f1(x - w)} ${f1(ye + dir * FR)}H${f1(x + w)}Q${f1(x + w)} ${f1(ye)} ${f1(x + w + FR)} ${f1(ye)}V${f1(e)}Z`; };
       const paved = L.plazas.filter((p) => p.k !== 'green');
       const pshape = (p, d, fill, extra = '') => p.shape === 'rect' ? `<rect x="${f1(p.x - p.rx - d)}" y="${f1(p.y - p.ry - d)}" width="${f1((p.rx + d) * 2)}" height="${f1((p.ry + d) * 2)}" rx="${f1(Math.min(90, p.ry * 0.5) + d)}" fill="${fill}" ${extra}/>` : `<ellipse cx="${p.x}" cy="${p.y}" rx="${f1(p.rx + d)}" ry="${f1(p.ry + d)}" fill="${fill}" ${extra}/>`;
@@ -210,6 +219,7 @@
       if (SNOW >= 1) g += shape(-rx * 0.06, -ry * 0.06, 'none', 'stroke="#ffffff" stroke-width="9" opacity=".55"');
       P(x - rx - 20, x + rx + 20, g, y - ry - 12, y + ry + 12);
     }
+    if (HA) slot('ground');   // 28.10: вода, берега, своя земля ручной деревни - поверх улиц, под мостами и зданиями
     // ручей сверху донизу (вода — не ходят; мосты — там, где его пересекает улица)
     for (const w of L.water) if (w.k === 'brook') {
       const x0 = w.x - w.w / 2, x1 = w.x + w.w / 2;
@@ -222,6 +232,14 @@
         if (SNOW >= 1) g += `<path d="M${x0} ${b0} V${b1} M${x1} ${b0} V${b1}" stroke="#ffffff" stroke-width="10" opacity=".8"/>`;
         P(x0 - 10, x1 + 10, g, b0, b1);
       }
+    }
+    // 28.10: пруды и лужи ручной деревни (вода-эллипс; своя вода - art.water, у неё w.art)
+    if (L.hand) for (const w of L.water) if (w.e && !w.art) {
+      const [cx, cy, rx, ry] = w.e;
+      let g = `<ellipse cx="${cx}" cy="${cy}" rx="${rx + 10}" ry="${ry + 7}" fill="${K.dirtD}"/><ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="url(#tgWater)" ${O(3)}/><path d="M${f1(cx - rx * 0.4)} ${f1(cy - 4)} q14 -6 28 0 M${f1(cx + rx * 0.1)} ${f1(cy + ry * 0.3)} q12 -5 24 0" stroke="#e8f8ff" stroke-width="3" fill="none" opacity=".6"/>`;
+      if (L.biome === 'swamp') g += `<ellipse cx="${f1(cx + rx * 0.3)}" cy="${f1(cy + 4)}" rx="14" ry="5" fill="#5a8a3a"/><ellipse cx="${f1(cx - rx * 0.5)}" cy="${f1(cy + 2)}" rx="10" ry="4" fill="#6a9a44"/>`;
+      if (SNOW >= 1) g = g.replace('url(#tgWater)', '#cfe6f4');
+      P(cx - rx - 20, cx + rx + 20, g, cy - ry - 20, cy + ry + 20);
     }
     for (const b of L.bridges) {
       let g = `<rect x="${b.x0}" y="${b.y0 - 6}" width="${b.x1 - b.x0}" height="${b.y1 - b.y0 + 12}" rx="8" fill="${K.wood}" ${O(4)}/>`;
@@ -1212,7 +1230,15 @@
     const blds = {};
     const now = o.now != null ? +o.now : Date.now();
     const bOn = (id) => { const b = L.build && L.build[id]; return b && b.until > now ? b : null; };   // идёт стройка (до конца — рисуем в лесах)
-    for (const lot of L.lots) {
+    /* 28.10: набор деталей для рисунка ручной деревни (те же функции, что у генератора) */
+    const props = [];
+    const kit = HA ? { L, K, R: () => R(), P, f1, f2, O, txt, INK, GOLD, GOLDD, mix, LT, DK, hr, rng, sym, use, clipId, wall, roof, roofRows, body, edifice, bigDoor, signLv, winLv, winLit, door, sign, chimney, gutter, stoop,
+      turret, dome, banner, pennant, flag, orb, wallLamp, garland, tree, stilts, drift, putProp, snowCap, ART, scaffold, bOn: (id) => bOn(id), BAN, stoneMat, matLow, matUp, roofKind, roofCol, SNOW, RUIN, V, FLOWERS, blds,
+      signAt, signId: (id) => { SIGN_ID = id; }, depthK: (B) => (root.LGTownGen && root.LGTownGen.depthK ? root.LGTownGen.depthK(B) : 1), prop: (x, y, w, h, z, svg) => props.push({ x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h), z: Math.round(z), svg: () => svg }),
+      ell: (x, y, rx, ry) => `<ellipse cx="${f1(x)}" cy="${f1(y)}" rx="${f1(rx)}" ry="${f1(ry)}" fill="${INK}" opacity=".28"/>` } : null;
+    const fillSlot = (name, fn) => { if (!slots[name] || !fn) return; SLOT = slots[name].list; try { fn(kit); } finally { SLOT = null; } };
+    if (HA) { fillSlot('back', HA.back); fillSlot('ground', HA.water); }
+    for (const lot of HA ? [] : L.lots) {
       const f = ART[lot.k] || (lot.k === 'house' ? HOUSE : lot.k === 'grove' ? GROVE : null);
       if (!f) continue;
       const R0 = R; R = rng((L.seed ^ Math.imul(lot.x0 + 1, 40503) ^ (lot.k.length * 7919)) >>> 0);
@@ -1231,6 +1257,39 @@
         if (bs) svg += scaffold(L.fr[lot.k], lot.k);
         P(lot.x0 - pad, lot.x1 + pad, svg);
         if (ART[lot.k]) blds[lot.k] = { x0: lot.x0 - 50, x1: lot.x1 + 50, svg, lv: L.fr[lot.k].lv, build: !!bs };
+      }
+      R = R0;
+    }
+    if (HA) for (const lot of L.lots) handLot(lot);
+    if (HA && HA.decor) HA.decor(kit);
+    // ручная деревня: здание участка - рисунок деревни (art.building) или генератора (ART); ниже по улице - предмет с глубиной (кто за ним - закрыт)
+    function handLot(lot) {
+      const R0 = R; R = rng((L.seed ^ Math.imul(lot.x0 + 1, 40503) ^ (lot.k.length * 7919)) >>> 0);
+      // здание ниже по улице рисуется как в заднем ряду (участок шире в 1/s, основание 795) и переносится на своё место с масштабом s:
+      // рисунок деревни и генератора (ART) - одни и те же, крупнее по глубине
+      const one = (id) => {
+        const real = L.fr[id], s0 = lot.B ? lot.s || 1 : 1, cx = (lot.x0 + lot.x1) / 2;
+        let lt = lot;
+        if (lot.B) { const hw = (lot.x1 - lot.x0) / 2 / s0; lt = { ...lot, x0: cx - hw, x1: cx + hw }; delete lt.B; delete lt.s; L.fr[id] = root.LGTownGen.frame(L, lt, id, real.lv); }
+        const sg0 = SIGNS[id] ? SIGNS[id].length : 0;
+        SIGN_ID = id; let g = '';
+        try { g = (HA.building && HA.building(id, lt, L.fr[id], kit)) || (ART[id] ? ART[id](lt) : ''); if (g && bOn(id)) g += scaffold(L.fr[id], id); } finally { SIGN_ID = null; L.fr[id] = real; }
+        if (!g) return '';
+        if (lot.B) {
+          g = `<g transform="translate(${f1(cx)} ${lot.B}) scale(${s0}) translate(${f1(-cx)} -795)">${g}</g>`;
+          if (SIGNS[id]) SIGNS[id] = SIGNS[id].map((r, i) => (i < sg0 ? r : [cx + (r[0] - cx) * s0, lot.B + (r[1] - 795) * s0, cx + (r[2] - cx) * s0, lot.B + (r[3] - 795) * s0].map(f1)));
+        }
+        blds[id] = { x0: (id === 'forge' ? real.x0 : lot.x0) - 50, x1: (id === 'anvil' ? lot.fx0 : lot.x1) + 50, svg: g, lv: real.lv, build: !!bOn(id) };
+        return g;
+      };
+      if (lot.k === 'forge') {
+        const smith = o.guy ? '<g data-ol="anvil smith">' + o.guy('кузнец ' + L.id, 830, lot.anvil + 76, 1.1, 'stern', { armed: true, gear: { w: 'hammer', wr: 'common' } }, { hat: 'bandana', acc: ['mustache'], shape: 'box', color: '#e88a7a' }, 'smith') + '</g>' : '';
+        const a = one('anvil'), b = one('forge');
+        P(lot.x0 - 120, lot.x1 + 120, a + smith + b);
+      } else {
+        const g = one(lot.k);
+        if (g && lot.B) { const f = L.fr[lot.k]; kit.prop(lot.x0 - 140, f.top - 160, lot.x1 - lot.x0 + 280, lot.B - f.top + 200, lot.B, g); }
+        else if (g) P(lot.x0 - 120, lot.x1 + 120, g);
       }
       R = R0;
     }
@@ -1258,14 +1317,15 @@
     }
 
     /* ================= предметы с глубиной (в одном слое с человечками) ================= */
-    const props = [];
     const FLATP = { flowers: 1, flowerbed: 1, pool: 1, pond: 1, bones: 1, mushroom: 1, drift: 1, rubble: 1, stump: 1, bush: 1, bench: 1, hedge: 1, fence: 1, planter: 1, reeds: 1, rock: 1, barrel: 1, crate: 1, pot: 1, woodpile: 1 };
     const prop = (p, w, h, svg) => props.push({ x: Math.round(p.x - w / 2), y: Math.round(p.y - h), w: Math.round(w), h: Math.round(h + 30), z: p.y, svg: () => svg });
     const ell = (x, y, rx, ry) => `<ellipse cx="${f1(x)}" cy="${f1(y)}" rx="${f1(rx)}" ry="${f1(ry)}" fill="${INK}" opacity=".28"/>`;
     for (const p of L.props) {
       const { x, y } = p, s = p.s || 1;
-      let g = '', w = 140, h = 160;
-      switch (p.k) {
+      let g = '', w = 140, h = 160, flat = false;
+      const hp = HA && HA.prop ? HA.prop(p, kit) : null;   // 28.10: свои предметы ручной деревни (и свой вид общих)
+      if (hp) { g = hp.g; w = hp.w || w; h = hp.h || h; flat = !!hp.flat; }
+      else switch (p.k) {
         case 'tree': g = ell(x, y, 34 * s, 9) + tree(x, y, 1.05 * s); w = 180 * s; h = 220 * s; break;
         case 'pine': g = ell(x, y, 34 * s, 9) + tree(x, y, 1.1 * s, SNOW ? 'snowpine' : 'pine'); w = 160 * s; h = 260 * s; break;
         case 'palm': g = ell(x, y, 30 * s, 8) + tree(x, y, s, 'palm'); w = 220 * s; h = 240 * s; break;
@@ -1387,11 +1447,13 @@
       }
       // 24.10 (лёгкость): низкие предметы (скамейки, клумбы, кадки, ящики у стен, кочки, пруды…) — в фоне, а не отдельной картинкой
       // в слое человечков: за ними не встать (основание — препятствие), а печь каждую отдельно — дорого (бюджет запекания)
-      if (FLATP[p.k]) P(x - w / 2 - 20, x + w / 2 + 20, g, y - h - 10, y + 30); else prop(p, w, h, g);
+      if (hp ? flat : FLATP[p.k]) P(x - w / 2 - 20, x + w / 2 + 20, g, y - h - 10, y + 30); else prop(p, w, h, g);
     }
     // 24.10: домики вдоль бульвара (жилые, в них не заходят) — в одном слое с человечками (кто за домиком — закрыт им)
     for (const c of L.cottages || []) {
       const R0 = R; R = rng((L.seed ^ Math.imul(c.x0 + 7, 69069)) >>> 0);
+      const hc = HA && HA.cottage ? HA.cottage(c, kit) : null;   // 28.10: свои домики ручной деревни
+      if (hc) { props.push({ x: Math.round(c.x0 - 60), y: Math.round(c.base - (hc.h || 420)), w: Math.round(c.x1 - c.x0 + 120), h: Math.round((hc.h || 420) + 40), z: c.base, svg: () => hc.g }); R = R0; continue; }
       const B0 = c.base, cx = (c.x0 + c.x1) / 2, hh = (V ? 96 : 120) + (c.v % 40);
       const b = body(c.x0, c.x1, B0, hh, { roofH: 60 + (c.v % 30), roofC: c.v % 3 ? undefined : K.roof2, ruinHere: c.v % 2 === 0, noStilts: true, one: V });
       let g = ell(cx, B0 + 2, (c.x1 - c.x0) / 2 + 14, 10) + b.g + winLit(c.x0 + 16, b.top + 22, 30, 38, !RUIN && c.v % 4 !== 0) + door(cx + (c.x1 - c.x0) * 0.16, b.B, 38, 60);
@@ -1414,7 +1476,8 @@
     let cur = null;
     const flush = () => { if (!cur) return; const x = Math.floor(cur.x0 - M), y = Math.max(0, Math.floor(cur.y0 - M)), w = Math.ceil(cur.x1 + M) - x, h = Math.min(H, Math.ceil(cur.y1 + M)) - y;
       layers.push({ x, y, w, h, svg: `<svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="${x} ${y} ${w} ${h}" overflow="visible">${docDefs(cur.svg)}${cur.svg}</svg>` }); cur = null; };
-    for (const q of pieces) {
+    const flat0 = []; for (const q of pieces) { if (q.slot) flat0.push(...q.list); else flat0.push(q); }
+    for (const q of flat0) {
       const x0 = Math.max(-200, q.x0), x1 = Math.min(W + 200, q.x1);
       if (cur && (Math.max(cur.x1, x1) - Math.min(cur.x0, x0) > CH || Math.max(cur.y1, q.y1) - Math.min(cur.y0, q.y0) > 1200)) flush();
       if (!cur) cur = { x0, x1, y0: q.y0, y1: q.y1, svg: '' };

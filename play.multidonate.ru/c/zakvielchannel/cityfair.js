@@ -26,7 +26,10 @@ try {
     const AURA_C = { sparks: '#ffc94d', halo: '#fff4b0', shadow: '#b06bff', frost: '#9fe8ff', gold: '#ffc94d' };
     const DEF = { line: '#f5f2ff', ink: '#15122e', stone: '#5a5768', stoneD: '#46435a', roof: '#4b2a8a', roofD: '#33195f', gold: '#ffc94d',
       glass: '#ffd76a', wood: '#6b4423', woodD: '#4a2c14', wall: '#1d1838', wall2: '#2e2556', floor: '#3a2a4a', sign: '#3a1f6b',
-      seed: 'звездочёт', keeper: { hat: 'wizard', acc: ['glasses'], shape: 'tall', color: '#b9a2ff' }, artBg: '#1d1838' };
+      seed: 'звездочёт', keeper: { hat: 'wizard', acc: ['glasses'], shape: 'tall', color: '#b9a2ff' }, artBg: '#1d1838',
+      // 28.10 (art/styles-city-legend): полки, прилавок, витрины, бархат, небо в окне - тоже тема; top / face / inside - свои детали стиля
+      // (top(cx, top, peak, O) - над крышей башни, face(cx, B, top, O) - на фасаде, inside(O) - в интерьере поверх стены)
+      shelfL: '#7a5aa0', shelfD: '#4e3570', caseC: '#3a2556', panel: '#2a1a40', velvet: ['#1a1440', '#2e2470', '#3b2e88'], night: '#0d0b22' };
     // строки названия: одна или две (перенос по пробелу ближе к середине)
     function lines2(nm) {
       nm = String(nm || ''); if (nm.length <= 12) return [nm];
@@ -73,6 +76,7 @@ try {
         if (KT) s += KT.roof([[X0 - 34, top + 8], [cx, peak], [X1 + 34, top + 8], [cx, top + 21]], { pal: { a: T.roof, b: mixC(T.roof, '#ffffff', 0.1), c: T.roofD, edge: mixC(T.roofD, T.ink, 0.4) }, step: 15, scale: 0.7, id: id + 'Rf' });
         else s += `<path d="M${X0 - 34} ${top + 8} L${cx} ${peak} L${X1 + 34} ${top + 8} Q${cx} ${top + 34} ${X0 - 34} ${top + 8} Z" fill="url(#${id}R)" ${O()}/>`;
         [[cx - 60, top - 30, 11], [cx + 4, top - 92, 13], [cx + 58, top - 22, 9], [cx - 18, top - 4, 8], [cx + 30, top - 150 + 92, 7], [cx - 34, top - 110, 7]].forEach(([x, y, r], i) => { s += star5(x, y, r, T.gold, `stroke="${T.ink}" stroke-width="2"`).replace('/>', `><animate attributeName="opacity" values="1;.45;1" dur="${(2 + i * 0.4).toFixed(1)}s" repeatCount="indefinite"/></path>`); });
+        if (T.top) s += T.top(cx, top, peak, O);
         s += `<path d="M${cx} ${peak} V${peak - 44}" stroke="${T.gold}" stroke-width="6"/><path d="M${cx + 16} ${peak - 66} a20 20 0 1 1 -22 -22 a15 15 0 1 0 22 22 Z" fill="${T.gold}" ${O(3)}/>`;
         // круглое окно с хрустальным шаром
         s += `<circle cx="${cx}" cy="${top + 86}" r="44" fill="#1c1636" ${O(5)}/><circle cx="${cx}" cy="${top + 86}" r="34" fill="${T.glass}" opacity=".25"/>` + ball(cx, top + 82, 22, id);
@@ -88,6 +92,7 @@ try {
         // дверь (арка) со звездой
         s += (KT ? KT.door(cx, B, 72, 128, { c: T.roofD, step: false }) : `<path d="M${cx - 36} ${B} V${B - 92} A36 36 0 0 1 ${cx + 36} ${B - 92} V${B} Z" fill="${T.roofD}" ${O(4)}/><circle cx="${cx + 22}" cy="${B - 44}" r="4.5" fill="${T.gold}"/>`) + star5(cx, B - 86, 12, T.gold, `stroke="${T.ink}" stroke-width="2"`);
         s += `<path d="M${cx - 52} ${B + 2} H${cx + 52} L${cx + 64} ${B + 16} H${cx - 64} Z" fill="${T.stoneD}" ${O(3)}/>`;
+        if (T.face) s += T.face(cx, B, top, O);
         // искорки вокруг крыши
         for (let i = 0; i < 5; i++) { const x = cx - 100 + i * 50, y = top - 60 - (i % 2) * 70; s += `<path d="M${x} ${y - 8} q0 8 8 8 q-8 0 -8 8 q0 -8 -8 -8 q8 0 8 -8 Z" fill="#fff" opacity="0"><animate attributeName="opacity" values="0;1;0" dur="2.2s" begin="${(i * 0.45).toFixed(2)}s" repeatCount="indefinite"/></path>`; }
         s += '</g>';
@@ -167,7 +172,7 @@ try {
         const w = x1 - x0;
         let g = `<rect x="${x0 + 14}" y="${y + 18}" width="${w - 28}" height="30" fill="url(#mgShadow)"/>`;
         for (const bx of [x0 + 70, (x0 + x1) / 2, x1 - 70]) g += `<path d="M${f1(bx - 6)} ${y + 16} V${y + 56} Q${f1(bx - 6)} ${y + 62} ${f1(bx)} ${y + 58} L${f1(bx + 34)} ${y + 22} Q${f1(bx + 38)} ${y + 16} ${f1(bx + 30)} ${y + 16} Z" fill="#4a4a6a" ${O(3)}/><circle cx="${f1(bx + 14)}" cy="${y + 34}" r="5" fill="${T.gold}"/>`;
-        g += `<path d="M${x0} ${y} L${x0 + 12} ${y - 12} H${x1 - 12} L${x1} ${y} Z" fill="#7a5aa0"/><rect x="${x0}" y="${y}" width="${w}" height="18" fill="#4e3570"/><path d="M${x0} ${y} L${x0 + 12} ${y - 12} H${x1 - 12} L${x1} ${y} V${y + 18} H${x0} Z" fill="none" ${O(4)}/>`;
+        g += `<path d="M${x0} ${y} L${x0 + 12} ${y - 12} H${x1 - 12} L${x1} ${y} Z" fill="${T.shelfL}"/><rect x="${x0}" y="${y}" width="${w}" height="18" fill="${T.shelfD}"/><path d="M${x0} ${y} L${x0 + 12} ${y - 12} H${x1 - 12} L${x1} ${y} V${y + 18} H${x0} Z" fill="none" ${O(4)}/>`;
         for (let k = 0; k < 6; k++) g += star5(x0 + 30 + k * (w - 60) / 5, y + 9, 4, T.gold);
         return g;
       }
@@ -176,7 +181,7 @@ try {
         S = S || {}; itemPos = itemPos || {};
         let s = `<defs>${ballDefs('mgi')}<radialGradient id="mgWall" cx=".75" cy=".45" r=".85"><stop offset="0" stop-color="${T.wall2}"/><stop offset="1" stop-color="${T.wall}"/></radialGradient>
           <linearGradient id="mgShadow" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".45"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient>
-          <linearGradient id="mgVelvet" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1a1440"/><stop offset=".3" stop-color="#2e2470"/><stop offset="1" stop-color="#3b2e88"/></linearGradient>
+          <linearGradient id="mgVelvet" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${T.velvet[0]}"/><stop offset=".3" stop-color="${T.velvet[1]}"/><stop offset="1" stop-color="${T.velvet[2]}"/></linearGradient>
           <linearGradient id="mgGlass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#bfe6ff" stop-opacity=".28"/><stop offset="1" stop-color="#bfe6ff" stop-opacity=".08"/></linearGradient>
           ${['uncommon', 'rare', 'epic', 'legendary'].map((r) => `<radialGradient id="mgRar-${r}"><stop offset="0" stop-color="${RAR_C[r]}" stop-opacity=".85"/><stop offset=".5" stop-color="${RAR_C[r]}" stop-opacity=".35"/><stop offset="1" stop-color="${RAR_C[r]}" stop-opacity="0"/></radialGradient>`).join('')}</defs>`;
         // стена с нарисованными созвездиями, пол
@@ -187,9 +192,10 @@ try {
         s += `<rect x="0" y="930" width="1920" height="150" fill="${T.floor}"/><path d="M0 930 H1920" stroke="${T.line}" stroke-width="5"/>`;
         for (let i = 0; i < 12; i++) s += `<path d="M${i * 170} 930 V1080" stroke="${T.ink}" stroke-width="3" opacity=".5"/>`;
         // окно в звёздное небо с месяцем (справа сверху) и подзорная труба на треноге
-        s += `<path d="M1520 420 V170 A150 150 0 0 1 1820 170 V420 Z" fill="#0d0b22" ${O(6)}/><path d="M1670 20 V420 M1520 250 H1820" stroke="${T.wood}" stroke-width="8"/>`;
+        s += `<path d="M1520 420 V170 A150 150 0 0 1 1820 170 V420 Z" fill="${T.night}" ${O(6)}/><path d="M1670 20 V420 M1520 250 H1820" stroke="${T.wood}" stroke-width="8"/>`;
         s += `<path d="M1772 120 a34 34 0 1 1 -36 -36 a26 26 0 1 0 36 36 Z" fill="#f3efd8" ${O(3)}/>` + [[1560, 120], [1610, 200], [1700, 320], [1790, 280], [1580, 340]].map(([x, y]) => star5(x, y, 6, '#fff')).join('');
         s += `<g transform="translate(1470 560)"><path d="M0 0 L-40 190 M0 0 L40 190 M0 0 V190" stroke="${T.wood}" stroke-width="7" stroke-linecap="round"/><g transform="rotate(-32)"><rect x="-20" y="-14" width="150" height="28" rx="6" fill="${T.gold}" ${O(4)}/><rect x="118" y="-19" width="30" height="38" rx="6" fill="#c9a03a" ${O(4)}/></g></g>`;
+        if (T.inside) s += T.inside(O);
         // полки с зельями (над прилавком, справа)
         s += `<rect x="1520" y="470" width="380" height="16" rx="5" fill="${T.wood}" ${O(4)}/>` + [0, 1, 2, 3, 4, 5, 6].map((i) => potion(1548 + i * 52, 468, PCOL[i % 6], i % 2)).join('');
         // вывеска
@@ -215,15 +221,15 @@ try {
         s += tags;
         // звездочёт за прилавком (над окном вебки), хрустальный шар на прилавке
         s += guyOf(T.seed, 800, 1700, 2.1, 'chill', {}, T.keeper);
-        s += `<rect x="1480" y="752" width="430" height="80" fill="#4e3570" ${O(5)}/><rect x="1470" y="738" width="450" height="20" rx="6" fill="#3a2556" ${O(4)}/><path d="M1486 780 H1904 M1486 806 H1904" stroke="${T.ink}" stroke-width="3" opacity=".5"/>` + ball(1580, 700, 30, 'mgi') + potion(1840, 736, '#6fdc6f', true) + `<g transform="translate(1660 736)"><rect x="-34" y="-14" width="68" height="14" fill="#a3122a" ${O(2.5)}/><rect x="-30" y="-26" width="60" height="12" fill="#2f5a4a" ${O(2.5)}/></g>`;
+        s += `<rect x="1480" y="752" width="430" height="80" fill="${T.shelfD}" ${O(5)}/><rect x="1470" y="738" width="450" height="20" rx="6" fill="${T.caseC}" ${O(4)}/><path d="M1486 780 H1904 M1486 806 H1904" stroke="${T.ink}" stroke-width="3" opacity=".5"/>` + ball(1580, 700, 30, 'mgi') + potion(1840, 736, '#6fdc6f', true) + `<g transform="translate(1660 736)"><rect x="-34" y="-14" width="68" height="14" fill="#a3122a" ${O(2.5)}/><rect x="-30" y="-26" width="60" height="12" fill="#2f5a4a" ${O(2.5)}/></g>`;
         // витрины под стендами (материалы заточки — в витрине стенда «Амулеты», или в последней)
         const top = 800, bot = 986, glassTop = 812, gh = bot - glassTop - 82;
         for (let c = 0; c < n; c++) {
           const x = X0 + c * SW + 8, w = SW - 16, st = STD[c] || {};
           const items = [...(st.case || []), ...(c === matsAt ? S.mats || [] : [])], stp = (w - 24) / Math.max(1, items.length);
-          s += `<rect x="${f1(x)}" y="${top}" width="${f1(w)}" height="${bot - top}" rx="8" fill="#3a2556" ${O(5)}/>`;
+          s += `<rect x="${f1(x)}" y="${top}" width="${f1(w)}" height="${bot - top}" rx="8" fill="${T.caseC}" ${O(5)}/>`;
           const pw = (w - 48) / 2;
-          for (const px of [x + 16, x + 32 + pw]) s += `<rect x="${f1(px)}" y="${bot - 58}" width="${f1(pw)}" height="48" rx="5" fill="#2a1a40" stroke="${T.ink}" stroke-width="2"/>` + star5(px + pw / 2, bot - 34, 9, T.gold);
+          for (const px of [x + 16, x + 32 + pw]) s += `<rect x="${f1(px)}" y="${bot - 58}" width="${f1(pw)}" height="48" rx="5" fill="${T.panel}" stroke="${T.ink}" stroke-width="2"/>` + star5(px + pw / 2, bot - 34, 9, T.gold);
           s += `<rect x="${f1(x + 12)}" y="${glassTop}" width="${f1(w - 24)}" height="${gh}" rx="5" fill="url(#mgVelvet)"/>`;
           items.forEach((it, i) => { const ix = x + 12 + stp * (i + 0.5); itemPos[it.id] = { x: ix, y: glassTop + 40 }; s += itemArt(it, ix, glassTop + gh - 4, 'case'); });
           s += `<rect x="${f1(x + 12)}" y="${glassTop}" width="${f1(w - 24)}" height="${gh}" rx="5" fill="url(#mgGlass)" stroke="#bfe6ff" stroke-width="2" opacity=".9"/><path d="M${f1(x + 30)} ${glassTop + 10} l60 60 M${f1(x + 52)} ${glassTop + 8} l40 40" stroke="#fff" stroke-width="3" opacity=".22"/>`;
@@ -1503,7 +1509,7 @@ try {
       const AREA = { x0: 40, x1: WIDE - 40, y0: 800, y1: 1062 };
       const DOORS = { forge: { x: 582, y: 790 }, tent: { x: 1530, y: 800 }, rows: { x: 2705 + ROWS_DX, y: 975, spread: 520 }, leave: { x: 960, y: 735 }, magic: { x: 3565 + END_DX, y: 820, spread: 120 } };
       // 23.10: магическая лавка — тема рисунка и препятствие у башни (вместо тележки с сеном; дверь — над окном вебки)
-      const MAGIC = D.magicShop ? D.magicShop({ seed: 'звездочёт легиона' }) : null;
+      const MAGIC = D.magicShop ? D.magicShop(Object.assign({ seed: 'звездочёт легиона' }, env && env.magicT)) : null;   // 28.10: env.magicT - тема лавки стиля (fairRooms)
       const MAGIC_L = MAGIC ? { obstacle: { r: [3436 + END_DX, 3694 + END_DX, 806] }, room: { title: 'Лавка звездочёта', icon: '🔮', artBg: '#1d1838', bg: 'radial-gradient(ellipse at 50% 70%, #9fb6ff 0%, #4b2a8a 42%, #15122e 82%)', note: 'Посохи, мантии, амулеты, звёзды и сферы',
         svg: (S, itemPos) => MAGIC.interior(S, itemPos), hello: ['Звёзды сказали, что ты придёшь.', 'Заходи! Только не урони хрустальный шар.', 'Добро пожаловать в Лавку звездочёта!'],
         lines: ['Посох выбирает мага, а не наоборот.', 'Амулет на удачу — проверено звёздами.', 'Звезда для заточки — с неба, свежая!', 'Мантия к лицу. Звёзды подтверждают.', 'Сфера бережёт вещь. А я берегу сферы.', 'Кадило дымит — значит, работает.', 'Некромантам — скидка… шучу. Цены одни для всех.', 'Руками шар не трогать — предсказания сотрутся.'],
@@ -1794,14 +1800,17 @@ try {
        MDDoodle.fairRooms('<стиль>', (env, kit, base) => ({ rooms: { forge: {…}, tent: {…}, rows: {…} }, css: '…' }));
      kit - кирпичики Легиона (makeForge, makeTent, priceTag, itemArt, guy, rowsItem, goods…), base - Ярмарка Легиона.
      Каждое поле rooms.<место> накладывается поверх места Легиона: чего стиль не дал - останется легионским. */
-  window.MDDoodle.fairRooms = function (style, make) {
+  // 28.10 (art/styles-city-legend): magic - своя магическая лавка: { theme: тема MDDoodle.magicShop (цвета, продавец, top / face / inside),
+  // room: название, фон, реплики интерьера поверх легионских }. Башня стоит на том же месте, препятствие и дверь - как у Легиона
+  window.MDDoodle.fairRooms = function (style, make, magic) {
     const D = window.MDDoodle;
     D.addLocation(style, 'fair', function (env) {
-      const base = D.drawLocation('legion', 'fair', env);
+      const base = D.drawLocation('legion', 'fair', magic && magic.theme ? Object.assign({}, env, { magicT: magic.theme }) : env);
       const own = make(env || {}, base.kit, base) || {}, R = own.rooms || {}, rooms = {};
       for (const k of Object.keys(base.rooms)) rooms[k] = Object.assign({}, base.rooms[k], R[k] || {});
       for (const k of Object.keys(R)) if (!rooms[k]) rooms[k] = R[k];
-      return Object.assign({}, base, { rooms, css: (base.css || '') + (own.css || ''), kit: undefined });
+      const mg = magic && magic.room && base.magic ? { magic: Object.assign({}, base.magic, { room: Object.assign({}, base.magic.room, magic.room) }) } : {};
+      return Object.assign({}, base, { rooms, css: (base.css || '') + (own.css || ''), kit: undefined }, mg);
     });
   };
 })();

@@ -11,9 +11,11 @@
    Размеры: ★1 — деревня 4200×1500 (без Аукциона), ★2 — посёлок 5000×1600, столица — 6600×1700 (дворец лорда вместо Ратуши,
    больше площадей). Камера ходит по обеим осям, зум — city.js. Как устроена раскладка (для других генераторов) — CITY.md «Раскладка города». */
 (function (root, factory) {
-  if (typeof module === 'object' && module.exports) module.exports = factory(require('./citymap.js'), require('./index.js'));
-  else root.LGTownGen = factory(root.LGCityMap, root.LGWorldLib);   // 26.10: библиотека мира (/lib/world.js) - до towngen.js
-})(typeof self !== 'undefined' ? self : this, function (CM, WL) {
+  // 28.10 (art/district-towns): ручные деревни (packages/world/villages/<id>.js): сервер - require, страница - window.LGVillages (файл деревни грузит
+  // тот, кто строит город: city.js, dtown.js, ovcity.js - LGTownGen.prep); нет файла - генератор, как раньше
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./citymap.js'), require('./index.js'), require('./villages/index.js').get);
+  else root.LGTownGen = factory(root.LGCityMap, root.LGWorldLib, (id) => (root.LGVillages || {})[id] || null);   // 26.10: библиотека мира (/lib/world.js) - до towngen.js
+})(typeof self !== 'undefined' ? self : this, function (CM, WL, VG) {
   'use strict';
   const VER = 4;                                   // версия генератора: поменял раскладку — подними (у всех городов новое зерно)
   const Y0 = 800, BASE = 795;                      // верх полосы, где ходят (как у Ярмарки), низ стен зданий заднего ряда
@@ -72,12 +74,12 @@
   function frame(L, lot, id, lv) {
     const village = L.size === 'village', pal = id === 'hall' && L.capital, g = GEO[pal ? 'pal' : id], i = lv - 1;
     if (id === 'anvil') return { x0: lot.x0, x1: lot.fx0, B: BASE, wall: 0, up: 0, top: g.top[i], lv };
-    const st = STILTS[id] && !pal && L.biome === 'swamp' ? 54 : 0, B = BASE - st;
-    const wall = Math.round(g.wall[i] * (village ? 0.9 : 1)), up = g.up[i];
+    const sc = lot.s || 1, st = STILTS[id] && !pal && L.biome === 'swamp' ? Math.round(54 * (lot.B ? sc : 1)) : 0, B = (lot.B || BASE) - st;   // 28.10: здание ниже по улице - тоже на сваях (рисунок деревни), сваи крупнее по глубине   // 28.10: ручная деревня - своё основание и масштаб по глубине
+    const wall = Math.round(g.wall[i] * (village ? 0.9 : 1) * sc), up = Math.round(g.up[i] * sc);
     let x0, x1;
     if (id === 'forge') { const w = lot.x1 - lot.fx0; x0 = lot.fx0; x1 = Math.round(lot.fx0 + w * g.fr[i]); }
     else { const w = (lot.x1 - lot.x0) * g.fr[i], cx = (lot.x0 + lot.x1) / 2; x0 = Math.round(cx - w / 2); x1 = Math.round(cx + w / 2); }
-    return { x0, x1, B, wall, up, top: B - wall - up, lv };
+    return { x0, x1, B, wall, up, top: B - wall - up, lv, ...(lot.B ? { G: lot.B } : {}) };   // G - земля здания ниже по улице (B выше неё на сваи)
   }
   /** Тот же город с другими уровнями (раскладка та же — только рамки зданий и места клика). levels — { id: 1…5 } поверх прежних уровней. */
   function relevel(L, levels) {
@@ -94,7 +96,7 @@
     for (const b of L.BUILDINGS) {
       const f = L.fr[b.id]; if (!f) continue;
       b.lv = f.lv;
-      b.hit = b.id === 'anvil' ? [b.hit[0], b.hit[1], f.top, b.hit[3]] : [f.x0, f.x1, Math.max(150, f.top - 6), 800];
+      b.hit = b.id === 'anvil' ? [b.hit[0], b.hit[1], f.top, b.hit[3]] : [f.x0, f.x1, Math.max(150, f.top - 6), f.G ? f.G + 6 : 800];   // 28.10: здание ниже по улице - клик до его основания
     }
   }
   /* ---------- 23.10 (ночь; перенесено из town-tiers): стройка — улучшение здания мэром 6–48 ч (только отображение) ---------- */
@@ -174,6 +176,8 @@
    * Город округа. t — { id, name, town (название города), biome, danger, kind, levels?, building? } (как world.json: территория и её town).
    */
   function generate(t) {
+    const hv = HAND.includes(String(t.id)) && !t.gen ? VG(String(t.id)) : null;   // 28.10: ручная деревня (файл есть) - своя раскладка; t.gen - вид генератора (витрина «было»)
+    if (hv && typeof hv.layout === 'function') return buildHand(t, hv);
     const id = String(t.id), seed = seedOf(id), R = rng(seed);
     const pick = (a) => a[Math.floor(R() * a.length)];
     const danger = Math.max(1, Math.min(2, +t.danger || 1)), kind = String(t.kind || 'town');
@@ -426,6 +430,7 @@
   /** Проверка раскладки (тест и витрина): все здания, двери доступны от входа, предметы не на улицах, вода и памятники — не стоять,
    *  рисунки заднего ряда не задевают друг друга (и при L5), площади и улицы — в полосе. → список ошибок. */
   function check(L) {
+    if (L.hand) return checkHand(L);
     const err = [], m = map(L, { magic: true }), need = Object.keys(META).filter((k) => k !== 'auction' || L.size !== 'village').concat(['mine']);
     for (const k of need) if (!L.BUILDINGS.some((b) => b.id === k)) err.push('нет здания ' + k);
     if (L.size === 'village' && L.BUILDINGS.some((b) => b.id === 'auction')) err.push('аукцион в деревне');
@@ -481,6 +486,189 @@
     }
     return err;
   }
+
+  /* ===================== 28.10 (art/district-towns): РУЧНЫЕ ДЕРЕВНИ ★1 =====================
+     Решение стримера 28.10: деревни ★1 рисуются вручную - своя планировка, свои здания и мелочи (CITY.md «Ручные деревни»). Реестр - HAND:
+     для этих округов generate() берёт файл деревни packages/world/villages/<id>.js (раскладка layout() + рисунок art для townart.js) и строит ту же
+     раскладку L, что генератор (здания, двери, hit, рамки уровней, улицы, площади, вода, предметы, препятствия), - city.js, citygl.js, citymap.js,
+     присутствие и покупки не меняются. Нет файла (страница его не загрузила) - генератор, как раньше. Отличия от генератора: здания не только
+     в заднем ряду - ниже по улице (основание lot.B > 800, масштаб по глубине lot.s, сквозь здание не ходят - препятствие b), улицы - любые ломаные,
+     вода - любые прямоугольники и эллипсы, мосты - где их положил художник. Ворота, Кузня с навесом-Заточкой и Шахта - в заднем ряду (сцена
+     Заточки и рисунок шахты берут их место). Проверка - checkHand (те же правила, что check: двери, площади, вода, карманы, предметы не на улицах). */
+  const HAND = ['d02', 'd04', 'd141', 'd142', 'd143', 'd146', 'd148', 'd62', 'd65', 'd68', 'd70', 'd71', 'd76', 'd78', 'd79', 'd85', 'd88', 'd112', 'd113', 'd115', 'd124', 'd125', 'd21', 'd22', 'd26', 'd38', 'd12', 'd139', 'tree', 'tower'];   // id округов с ручной деревней (файл packages/world/villages/<id>.js) - добавляй по одной
+  /** Что загрузить странице до generate(): [] - город генератора; ['/site/villages/<id>.js'] - ручная деревня. */
+  const prepFiles = (id) => (HAND.includes(String(id)) && !VG(String(id)) ? [`/site/villages/${String(id)}.js`] : []);
+  /** Загрузить файл ручной деревни (если нужен): load(src) → Promise. Ошибка - не страшно: generate() возьмёт генератор. */
+  function prep(id, load) { return Promise.all(prepFiles(id).map((f) => Promise.resolve().then(() => load(f)).catch(() => null))); }
+  const HAND_SPEC = { W: 4400, H: 1500 };
+  // глубина: здание ниже по улице рисуется крупнее (человечек ниже полосы Ярмарки - в полный рост)
+  const depthK = (B) => (B <= 820 ? 1 : +(1 + 0.42 * Math.min(1, (B - 800) / 262)).toFixed(2));
+  function buildHand(t, hv) {
+    const id = String(t.id), R = rng(hash(`${id}:village:${hv.ver || 1}`));
+    const biome = NATURE[t.biome] ? t.biome : 'meadow', kind = String(t.kind || 'town'), special = SPECIAL[kind] ? kind : null;
+    const helpers = { R, roadY: (pts, x) => lineY(pts, x), variant: t.variant || hv.variant || null, depthK, biome };
+    const S = { ...HAND_SPEC, ...hv.layout(helpers) };
+    const W = S.W, HH = S.H, Y1 = HH - 34;
+    const L = { v: VER, hand: id, hver: hv.ver || 1, id, seed: hash(`${id}:village:${hv.ver || 1}`), lv: levelsOf(t, t.levels), build: buildOf(t.building), name: String(t.town || t.name || id), terr: String(t.name || ''),
+      biome, danger: 1, kind, size: 'village', capital: false, special, W, H: HH, AREA: { x0: 40, x1: W - 40, y0: Y0, y1: Y1 }, lots: [], props: [], water: [], bridges: [], plazas: [], cottages: [], BUILDINGS: [], HOT: [], OBST: [],
+      roads: [], road: [], boul: [], spurs: [], flares: [], river: null, pathW: { road: 46, boul: 40, cross: 32, spur: 28 }, hx: S.extra || {}, story: hv.story || '' };
+    const B = (bid, hit, door, extra) => { const m = META[bid] || (bid === 'mine' ? MINE : null); L.BUILDINGS.push({ id: bid, title: m.title, sub: m.sub, icon: m.icon, ...(m.soon ? { soon: true } : {}), ...(m.magic ? { magic: true } : {}), hit, door, ...(L.build[bid] ? { build: L.build[bid] } : {}), ...(extra || {}) }); };
+    // улицы (любые ломаные: { k, w, pts }), площади, вода, мосты
+    for (const r of S.roads || []) L.roads.push({ k: r.k || 'lane', w: r.w || 36, pts: r.pts.map((p) => [r1(p[0]), r1(p[1])]) });
+    const main = L.roads.find((r) => r.k === 'main') || L.roads[0];
+    L.road = main ? main.pts : [[40, 905], [W - 40, 905]]; L.boul = (L.roads.find((r) => r.k === 'boul') || main || { pts: L.road }).pts;
+    for (const p of S.plazas || []) L.plazas.push({ k: p.k, x: p.x, y: p.y, rx: p.rx, ry: p.ry, shape: p.shape || 'ell', mark: p.mark || null, ...(p.ms ? { ms: p.ms } : {}), ...(p.paved === false ? { green: true } : {}) });
+    for (const w of S.water || []) { L.water.push(w); L.OBST.push({ ...(w.e ? { e: w.e } : { b: w.b }), water: true }); }
+    for (const b of S.bridges || []) L.bridges.push({ ...b });
+    // (вода ручной деревни - S.water; L.river - только ручей генератора, его рисует townart)
+    // здания: участки (lot), рамки уровней, двери, места клика
+    const ORDER = ['gate', 'hall', 'trainer', 'board', 'storage', 'forge', 'tent', 'shop', 'magic', 'mine'];
+    for (const k of ORDER) {
+      const d = S.b && S.b[k]; if (!d) continue;
+      const Bb = d.B || BASE, lot = { k, x0: r1(d.x0), x1: r1(d.x1), base: Bb, v: r1(R() * 1000), ...(Bb > 800 ? { B: Bb, s: d.s || depthK(Bb) } : {}), ...(d.flip ? { flip: true } : {}), ...(d.art ? { art: d.art } : {}) };
+      const cx = r1(d.door != null ? d.door : (lot.x0 + lot.x1) / 2);
+      if (k === 'forge') { lot.anvil = d.anvil || lot.x0 + 120; lot.fx0 = d.fx0 || lot.x0 + 220; }
+      L.lots.push(lot);
+      const dy = Bb > 800 ? Bb + 26 : k === 'gate' ? 830 : k === 'mine' ? 826 : 822;
+      if (k === 'gate') { B('gate', [lot.x0, lot.x1, 260, 800], { x: cx, y: dy }); continue; }
+      if (k === 'forge') {
+        const ax = lot.anvil, fx0 = lot.fx0;
+        L.anvil = { x: ax, base: 810 };
+        B('anvil', [ax - 130, ax + 150, 600, 880], { x: ax + 100, y: d.anvilDoorY || 890 }, { tag: [ax - 20, 552] });
+        B('forge', [fx0, lot.x1, 300, 800], { x: r1(d.door != null ? d.door : (fx0 + lot.x1) / 2), y: 822 });
+        L.HOT.push({ b: 'anvil', what: 'Наковальня', ol: 'anv', r: [ax - 80, ax + 65, 728, 818] }, { b: 'anvil', what: 'Табличка', ol: 'sign', r: [ax - 116, ax + 76, 566, 666] }, { b: 'anvil', what: 'Кузнец', ol: 'smith', r: [ax + 15, ax + 140, 638, 836] });
+        L.OBST.push({ r: [ax - 120, ax + 150, 852] });
+        continue;
+      }
+      if (k === 'mine') { B('mine', [lot.x0, lot.x1, 554, 800], { x: cx, y: dy }); L.HOT.push({ b: 'mine', what: 'Вход в шахту', ol: 'mine', r: [cx - 70, cx + 70, 660, 800] }); L.mine = { x: cx, x0: lot.x0, x1: lot.x1, door: { x: cx, y: dy } }; continue; }
+      B(k, [lot.x0, lot.x1, 300, Bb > 800 ? Bb + 6 : 800], { x: cx, y: dy });
+      if (Bb > 800) L.OBST.push({ b: [lot.x0 + 6, r1(Bb - 58 * lot.s), lot.x1 - 6, Bb], bld: k });   // сквозь здание не ходят (за ним - можно: закрыт рисунком)
+    }
+    applyLevels(L);
+    // тропинки от дверей к ближайшей улице (вниз; spur: 'up' - вверх; spur: [[x, y], [x, y]] - своя), стыки со скруглением (L.flares)
+    const yOn = (r, x) => { const P = r.pts; for (let i = 1; i < P.length; i++) { const a = P[i - 1], b = P[i]; if ((x - a[0]) * (x - b[0]) <= 0 && a[0] !== b[0]) return a[1] + (b[1] - a[1]) * (x - a[0]) / (b[0] - a[0]); } return null; };
+    const spurTo = (x, y0, dir) => { let best = null; for (const r of L.roads) { const y = yOn(r, x); if (y == null) continue; const e = y - dir * r.w; if ((e - y0) * dir > -4 && (!best || Math.abs(e - y0) < Math.abs(best.e - y0))) best = { y, e, w: r.w }; } return best; };
+    for (const b of L.BUILDINGS) {
+      if (b.id === 'anvil') continue;
+      const d = (S.b && S.b[b.id]) || {}, x = b.door.x, y0 = b.door.y > 840 ? b.door.y - 18 : 806;
+      if (d.spur === false) continue;
+      if (Array.isArray(d.spur)) { L.spurs.push(d.spur.map((p) => [r1(p[0]), r1(p[1])])); continue; }
+      const dir = d.spur === 'up' ? -1 : 1, t2 = spurTo(x, y0, dir); if (!t2) continue;
+      L.spurs.push([[x, y0], [x, r1(t2.y)]]); L.flares.push({ x, ye: r1(t2.y - dir * t2.w + dir * 2), w: L.pathW.spur, dir: -dir });
+    }
+    // стыки улиц: конец улицы, что подходит к другой сверху или снизу, - со скруглением
+    for (const r of L.roads) for (const P of [r.pts[0], r.pts[r.pts.length - 1]]) for (const q of L.roads) {
+      if (q === r) continue; const y = yOn(q, P[0]); if (y == null || Math.abs(y - P[1]) > q.w + 6) continue;
+      const other = P === r.pts[0] ? r.pts[1] : r.pts[r.pts.length - 2]; if (Math.abs(other[1] - P[1]) < Math.abs(other[0] - P[0])) continue;   // подходит сбоку - без скругления
+      const dir = other[1] > P[1] ? 1 : -1; L.flares.push({ x: P[0], ye: r1(y + dir * q.w - dir * 2), w: r.w, dir });
+    }
+    // домики (жилые; в них не заходят) - препятствия
+    for (const c of S.houses || []) { const h = { x0: r1(c.x0), x1: r1(c.x1), base: r1(c.base), v: c.v != null ? c.v : r1(R() * 1000), ...(c.s ? { s: c.s } : {}), ...(c.kind ? { kind: c.kind } : {}) }; L.cottages.push(h); L.OBST.push({ b: [h.x0 + 6, h.base - 52, h.x1 - 6, h.base] }); }
+    if (!L.spawn) { const g = L.BUILDINGS.find((b) => b.id === 'gate'); L.spawn = S.spawn || (g ? [g.door.x + 120, r1(spurTo(g.door.x + 120, 806, 1) ? spurTo(g.door.x + 120, 806, 1).y : 900)] : [200, 900]); }
+    // предметы: памятники площадей, руками (props: [k, x, y, s]) и россыпью (fill: { k: [...], n, box: [x0, y0, x1, y1], s: [a, b] } - не на улицах, не у дверей)
+    const doors = L.BUILDINGS.map((b) => b.door).concat([{ x: L.spawn[0], y: L.spawn[1] + 40 }]);
+    // свои предметы деревни: kinds: { k: { foot: [rx, ry] (основание - препятствие), tall (высота рисунка), tree (крона - не над площадью), water } }
+    const KD = S.kinds || {}, footOf = (k) => FOOT[k] || (KD[k] && KD[k].foot) || null, tallOf = (k) => TALL[k] || (KD[k] && KD[k].tall) || 0, isTree = (k) => TREE[k] || (KD[k] && KD[k].tree);
+    const add = (k, x, y, s, extra) => { const f = footOf(k) || (extra && extra.foot), p = { k, x: r1(x), y: r1(y), s: +(s || 1).toFixed(2), v: r1(R() * 1000), ...(extra || {}) }; delete p.foot; if (!TALL[k] && tallOf(k)) p.tall = tallOf(k); if (f) p.ob = { e: [p.x, p.y, r1(f[0] * p.s), r1(f[1] * p.s)], ...(WATERK[k] || (KD[k] && KD[k].water) || (extra && extra.water) ? { water: true } : {}) }; L.props.push(p); return p; };
+    for (const p of L.plazas) if (p.mark) add(p.mark, p.x, p.y + 6, p.ms || 0.9);
+    for (const q of S.props || []) add(q[0], q[1], q[2], q[3], q[4]);
+    const busy = (k, x, y, s) => {
+      const f = footOf(k), rx = (f ? f[0] : 30) * s, ry = (f ? f[1] : 10) * s;
+      if (x - rx < 60 || x + rx > W - 60 || y > Y1 - 4 || y < 812) return true;
+      if (y > 1062 && tallOf(k) && y - tallOf(k) * s < 806) return true;
+      if (!footOff(L, [x, y, rx, ry], 18)) return true;
+      for (const p of L.plazas) if (inPlaza(p, x, y, 40 + rx) || (isTree(k) && inPlaza(p, x, y - 90 * s, 70))) return true;
+      for (const d of doors) if (Math.hypot(x - d.x, (y - d.y) * 1.6) < rx + 90) return true;
+      for (const p of L.props) { const g = (p.ob ? [p.ob.e[2] / (p.s || 1), p.ob.e[3] / (p.s || 1)] : [30, 10]), ps = p.s || 1; if (Math.abs(x - p.x) < rx + g[0] * ps + 24 && Math.abs(y - p.y) < ry + g[1] * ps + 30) return true; }
+      if (isTree(k)) for (const p of L.props) if (NEAR[p.k] && Math.abs(x - p.x) < 120 * s + 30 && y - p.y > -60 && y - p.y < 230 * s) return true;
+      for (const c of L.cottages) if (x + rx > c.x0 - 30 && x - rx < c.x1 + 30 && y > c.base - 90 && y - ry < c.base + 40) return true;
+      for (const lt of L.lots) if (lt.B && x + rx > lt.x0 - 30 && x - rx < lt.x1 + 30 && y > lt.B - 80 && y - ry < lt.B + 40) return true;
+      if (isTree(k)) for (const lt of L.lots) { const lb = lt.B || BASE; if (x + 60 * s > lt.x0 && x - 60 * s < lt.x1 && y > lb && y < lb + 330) return true; }   // крона не закрывает здание
+      for (const b of L.bridges) if (x + rx > b.x0 - 50 && x - rx < b.x1 + 50 && y + ry > b.y0 - 60 && y - ry < b.y1 + 60) return true;
+      for (const o of L.OBST) {
+        if (o.water && o.b && x + rx > o.b[0] - 40 && x - rx < o.b[2] + 40 && y + ry > o.b[1] - 30 && y - ry < o.b[3] + 30) return true;
+        if (o.water && o.e && Math.hypot((x - o.e[0]) / (o.e[2] + rx + 40), (y - o.e[1]) / (o.e[3] + ry + 30)) < 1) return true;
+        if (o.r && x + rx > o.r[0] - 30 && x - rx < o.r[1] + 30 && y - ry < o.r[2] + 30) return true;
+        if (o.b && !o.water && x + rx > o.b[0] - 30 && x - rx < o.b[2] + 30 && y > o.b[1] - 80 && y - ry < o.b[3] + 36) return true;
+      }
+      return false;
+    };
+    for (const F of S.fill || []) {
+      const ks = Array.isArray(F.k) ? F.k : [F.k], [x0, y0, x1, y1] = F.box || [80, 830, W - 80, Y1 - 6], [sa, sb] = F.s || [0.85, 1.15];
+      for (let i = 0, n = 0; i < F.n * 12 && n < F.n; i++) { const k = ks[Math.floor(R() * ks.length)], x = x0 + R() * (x1 - x0), y = y0 + R() * (y1 - y0), sc = +(sa + R() * (sb - sa)).toFixed(2); if (!busy(k, x, y, sc)) { add(k, x, y, sc, { f: 1 }); n++; } }
+    }
+    L.props.sort((a, b) => a.y - b.y || a.x - b.x);
+    const base = L.OBST.concat([{ r: [0, 60, HH] }, { r: [W - 60, W, HH] }]);
+    const rebuild = () => { L.OBST = base.concat(L.props.filter((p) => p.ob).map((p) => p.ob)); };
+    rebuild();
+    for (let it = 0; it < 12; it++) {   // карманы: только из россыпи (fill) убираем ближайший предмет; руками поставленные - ошибка проверки
+      const lost = pockets(L); if (!lost.length) break;
+      const drop = new Set();
+      for (const [x, y] of lost) { let best = null, bd = Infinity; for (const p of L.props) if (p.ob && p.f) { const d = Math.hypot(p.x - x, (p.y - y) * 1.5); if (d < bd) { bd = d; best = p; } } if (best) drop.add(best); }
+      if (!drop.size) break;
+      L.props = L.props.filter((p) => !drop.has(p)); rebuild();
+    }
+    return L;
+  }
+  /** Проверка ручной деревни: те же правила, что check (двери и площади доступны, вода и памятники - не стоять, карманов нет, предметы не на улицах,
+   *  рамки уровней), плюс: рисунки зданий одного ряда не задевают друг друга (и при L5), здание ниже по улице не закрывает задний ряд. */
+  function checkHand(L) {
+    const err = [], m = map(L, { magic: true }), need = Object.keys(META).filter((k) => k !== 'auction').concat(['mine']);
+    for (const k of need) if (!L.BUILDINGS.some((b) => b.id === k)) err.push('нет здания ' + k);
+    if (L.BUILDINGS.some((b) => b.id === 'auction')) err.push('аукцион в деревне');
+    const s = m.nearest(L.spawn[0], L.spawn[1]);
+    if (Math.hypot(s[0] - L.spawn[0], s[1] - L.spawn[1]) > 40) err.push('место появления в стене');
+    for (const b of L.BUILDINGS) {
+      const d = m.nearest(b.door.x, b.door.y);
+      if (Math.hypot(d[0] - b.door.x, d[1] - b.door.y) > 40) err.push(`дверь ${b.id}: там нельзя стоять`);
+      const p = m.path(s, [b.door.x, b.door.y]), e = p[p.length - 1];
+      if (Math.hypot(e[0] - d[0], e[1] - d[1]) > 24) err.push(`дверь ${b.id}: не дойти от входа`);
+      if (b.door.x < 60 || b.door.x > L.W - 60 || b.door.y < L.AREA.y0 || b.door.y > L.AREA.y1) err.push(`дверь ${b.id} за краем`);
+    }
+    for (const id of ['gate', 'forge', 'mine']) { const lot = L.lots.find((x) => x.k === id); if (lot && lot.B) err.push(`${id} - только в заднем ряду`); }
+    for (const p of L.props) { const f = p.ob ? p.ob.e : [p.x, p.y, 20, 8]; if (!footOff(L, f, 4, true)) err.push(`${p.k} на улице (${p.x}, ${p.y})`); }
+    for (const lt of L.lots) if (lt.x1 > L.W - 40 || lt.x0 < 40) err.push(`участок ${lt.k} за краем`);
+    for (const b of L.BUILDINGS) {
+      const f = L.fr && L.fr[b.id], lot = L.lots.find((x) => x.k === (b.id === 'anvil' ? 'forge' : b.id));
+      if (!f || !lot) { err.push(`нет рамки ${b.id}`); continue; }
+      if (!(f.lv >= LV_MIN && f.lv <= LV_MAX) || (f.lv !== L.lv[b.id] && !f.fixed)) err.push(`уровень ${b.id}: ${f.lv}`);
+      if (f.x0 < lot.x0 || f.x1 > lot.x1) err.push(`рамка ${b.id} шире участка`);
+      if (b.id !== 'anvil' && (b.door.x - 24 < f.x0 || b.door.x + 24 > f.x1)) err.push(`дверь ${b.id} вне рамки`);
+      if (f.top < 150 || [f.x0, f.x1, f.top, f.B].some((v) => !Number.isFinite(v))) err.push(`рамка ${b.id}: верх ${f.top}`);
+      if (b.hit[2] > f.top + 10 || b.hit[3] < 790) err.push(`место клика ${b.id} не по рамке`);
+    }
+    // рисунки зданий: ряд - по основанию; одного ряда - не пересекаются (при нынешних уровнях и при L5); ниже по улице - не закрывает задний ряд
+    const box5 = (lot) => { const k = lot.k; if (k === 'mine') return { x0: lot.x0 - ART_PAD, x1: lot.x1 + ART_PAD, top: 530 }; if (k === 'forge') { const g = frame(L, lot, 'forge', LV_MAX); return { x0: lot.x0 - ART_PAD, x1: g.x1 + ART_PAD, top: Math.min(g.top, GEO.anvil.top[LV_MAX - 1]) - 30 }; } const g = frame(L, lot, k, LV_MAX); return { x0: lot.x0 - ART_PAD, x1: lot.x1 + ART_PAD, top: g.top - 30 }; };
+    const rowOf = (lot) => (lot.B ? lot.B : BASE);
+    const A = L.lots.map((lot) => ({ lot, ...box5(lot), B: rowOf(lot) }));
+    for (let i = 0; i < A.length; i++) for (let j = i + 1; j < A.length; j++) {
+      const a = A[i], b = A[j]; if (!(a.x1 > b.x0 && b.x1 > a.x0)) continue;
+      if (Math.abs(a.B - b.B) < 60) err.push(`рисунок ${a.lot.k} задевает ${b.lot.k}`);
+      else { const lo = a.B > b.B ? a : b, hi = lo === a ? b : a; if (lo.top < hi.B + 6) err.push(`${lo.lot.k} закрывает ${hi.lot.k}`); }
+    }
+    for (const c of L.cottages) for (const a of A) {
+      if (!(c.x1 > a.x0 && c.x0 < a.x1)) continue;
+      if (Math.abs(c.base - a.B) < 70) err.push(`домик задевает ${a.lot.k}`);
+      else if (c.base > a.B && c.base - 300 * depthK(c.base) < a.B + 6) err.push(`домик закрывает ${a.lot.k}`);   // домик ниже по улице (рисунок до ~300 px × глубина)
+    }
+    for (const o of L.OBST) if (o.water && o.b) { const ya = Math.max(o.b[1], L.AREA.y0) + 8, yb = Math.min(o.b[3], L.AREA.y1) - 8; if (yb > ya && m.free((o.b[0] + o.b[2]) / 2, (ya + yb) / 2)) err.push(`вода: можно встать (${o.b[0]}, ${r1((ya + yb) / 2)})`); }
+    for (const o of L.OBST) if (o.water && o.e && o.e[1] > L.AREA.y0 && m.free(o.e[0], o.e[1])) err.push(`вода: можно встать (${o.e[0]}, ${o.e[1]})`);
+    for (const p of L.plazas) {
+      if (p.y - p.ry < L.AREA.y0 || p.y + p.ry > L.AREA.y1 || p.x - p.rx < 60 || p.x + p.rx > L.W - 60) err.push(`площадь ${p.k} за краем`);
+      if (p.mark && !L.props.some((q) => q.k === p.mark && Math.abs(q.x - p.x) < 2)) err.push(`площадь ${p.k}: нет памятника ${p.mark}`);
+      if (p.mark && m.free(p.x, p.y + 6)) err.push(`площадь ${p.k}: на памятник можно встать`);
+      const d = m.nearest(p.x, p.y + p.ry * 0.7), q = m.path(s, d), e = q[q.length - 1];
+      if (Math.hypot(e[0] - d[0], e[1] - d[1]) > 24) err.push(`площадь ${p.k}: не дойти`);
+    }
+    if (!L.plazas.some((p) => p.k === 'central')) err.push('нет центральной площади');
+    for (const r of L.roads) for (const p of r.pts) if (p[1] - r.w < L.AREA.y0 + 6 || p[1] + r.w > L.AREA.y1 + 40) err.push(`улица ${r.k} вне полосы (${p[0]}, ${p[1]})`);
+    for (const p of L.props) { const tl = TALL[p.k] || p.tall; if (p.y > 1062 && tl && p.y - tl * (p.s || 1) < 800) err.push(`${p.k} закрывает здания (${p.x}, ${p.y})`); }
+    for (const p of L.props) if (p.ob && !p.ob.water && !L.plazas.some((q) => q.mark === p.k)) for (const b of L.BUILDINGS) if (Math.hypot(p.x - b.door.x, (p.y - b.door.y) * 1.6) < (p.ob.e[2] || 20) + 40) err.push(`${p.k} у двери ${b.id}`);
+    if (pockets(L, m).length) err.push('есть места, куда не дойти от ворот');
+    // мосты: по воде под мостом можно пройти (мост - не препятствие), вода не заходит на улицы мимо мостов
+    for (const br of L.bridges) if (!m.free((br.x0 + br.x1) / 2, (br.y0 + br.y1) / 2)) err.push(`мост (${br.x0}, ${br.y0}): нельзя пройти`);
+    return err;
+  }
   return { VER, MINE, H, HEIGHTS, SIZES, CAPITAL_PLUS, MINGAP, ART_PAD, META, MARK, LV_IDS, LV_MIN, LV_MAX, GEO, FOOT, TALL, baseLevel, levelsOf, frame, relevel, seedOf, hash, generate, map, check, artBoxes, pockets,
-    offPaths, footOff, inPlaza, roadY, scaleAt, buildOf, buildLeft, buildMsg, buildClock };
+    offPaths, footOff, inPlaza, roadY, scaleAt, buildOf, buildLeft, buildMsg, buildClock, HAND, prep, prepFiles, depthK, checkHand };
 });
