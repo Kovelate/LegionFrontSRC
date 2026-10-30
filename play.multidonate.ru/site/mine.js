@@ -59,6 +59,14 @@
   document.addEventListener('fullscreenchange', rehost);
 
   /* ---------- этаж из вида шахты ---------- */
+  // 30.10: ключ раскладки этажа для опроса (?f=) - как mineFloorKey в src/site/site.ts: у большого этажа в ключе число выкопанных клеток (туман меняется с раскопками)
+  function floorKey(st) {
+    const base = st.seed + '.' + st.n;
+    if (!st.fl || !st.fl.v3) return base;
+    const d = typeof st.dug === 'string' ? st.dug : Array.isArray(st.dug) ? st.dug.join('') : '';
+    let n = 0; for (let i = d.indexOf('1'); i >= 0; i = d.indexOf('1', i + 1)) n++;
+    return base + '.' + n;
+  }
   function floorOf(st) {
     if (!st || !st.fl) return null;
     if (st.fl.v3) { const L3 = m3lib(); biome(); return L3 ? L3.floorOf(st) : null; }   // 29.10: большой этаж
@@ -207,7 +215,7 @@
     pollN++; if (!full && !force && X.live && X.live() && pollN % 10 && !S.lkWant.size) return;   // 25.10: облики копающих - не ждать 10-го опроса (минуты рисовались «чужие» коты)
     // 29.10: ключ вкладки, с которым ушёл опрос
     const sid0 = S.sid;
-    const st0 = S.st, have = !full && st0 ? `&v=${encodeURIComponent(st0.v)}&f=${encodeURIComponent(st0.seed + '.' + st0.n)}` : '';
+    const st0 = S.st, have = !full && st0 ? `&v=${encodeURIComponent(st0.v)}&f=${encodeURIComponent(floorKey(st0))}` : '';
     // 25.10: облик тех, кто копает, но не гуляет здесь (сайт у них закрыт) — спрашиваем только незнакомых
     const lk = [...S.lkWant].slice(0, 60); S.lkWant.clear(); if (lk.length) S.lkAt = Date.now();
     const mc = S.chat && S.chat.on && !(X.live && X.live()) ? `&mc=${S.chat.c || 0}` : '';   // 25.10: чат шахты без живого канала
@@ -1476,15 +1484,18 @@
   function fit3(reset) {
     const W = S.Wd, vw = S.view.clientWidth, vh = S.view.clientHeight, phone = vw < 720;
     const z0 = phone ? vw / (7.2 * W.CW) : Math.min(1, vw / (15 * W.CW), vh / (6.5 * W.RH));
-    S.z = Math.max(0.2, Math.min(1.6, z0 * (S.zk || 1)));
+    // 30.10: не отдаляем дальше, чем этаж заполняет экран (иначе по краям - пустой фон); внешняя половина поля вокруг этажа в кадр не попадает
+    const mg = m3Margin(), zmin = Math.min(1.6, Math.max(0.2, (vw / Math.max(1, W.W - 2 * mg)), ((vh - padB()) / Math.max(1, W.H - 2 * mg))));
+    S.z = Math.max(zmin, Math.min(1.6, z0 * (S.zk || 1)));
     if (reset === true || S.tx == null) { const p = S.pos || spawnPt(); S.tx = vw / 2 - p.x * S.z; S.ty = (vh - padB()) / 2 - (p.y - 60) * S.z; }
     clamp3(); apply();
     chatFit();
   }
+  const m3Margin = () => { const G3 = S.Wd && S.Wd.G; return G3 ? G3.PAD * G3.CW * 0.5 : 0; };
   function clamp3() {
-    const W = S.Wd, vw = S.view.clientWidth, vh = S.view.clientHeight - padB(), w = W.W * S.z, h = W.H * S.z;
-    S.tx = w <= vw ? (vw - w) / 2 : Math.min(0, Math.max(vw - w, S.tx));
-    S.ty = h <= vh ? (vh - h) / 2 : Math.min(S.topPad || 0, Math.max(vh - h, S.ty));
+    const W = S.Wd, vw = S.view.clientWidth, vh = S.view.clientHeight - padB(), mg = m3Margin() * S.z, w = W.W * S.z, h = W.H * S.z;
+    S.tx = w - 2 * mg <= vw ? (vw - w) / 2 : Math.min(-mg, Math.max(vw - w + mg, S.tx));
+    S.ty = h - 2 * mg <= vh ? (vh - h) / 2 : Math.min(-mg, Math.max(vh - h + mg, S.ty));
   }
   // смена камеры на большом этаже: дорисовать куски, вошедшие в кадр (раз за кадр браузера)
   function camMoved() { if (!V3() || !S.m3 || S.camRaf) return; S.camRaf = requestAnimationFrame(() => { if (!S) return; S.camRaf = 0; S.m3.ensure(); if (S.st && S.F) bars(); }); }

@@ -225,7 +225,19 @@
           if (!wl && c.r && (c.t === 'ore' || c.t === 'rare')) { const col = (A() && A().ORE && A().ORE[c.r]) ? A().ORE[c.r][0] : '#ffd27a'; for (let k = 0; k < (c.t === 'rare' ? 4 : 3); k++) { const sx = px + 26 + r() * 76, sy = py + 26 + r() * 70; tex += `<path d="M${f1(sx)} ${f1(sy - 7)}l6 7l-6 7l-6 -7Z" fill="${col}" stroke="${INK}" stroke-width="2"/>`; } }
         }
       }
+      /* 30.10 (стример: «сверху и снизу ровные бурые полосы»): поле вокруг этажа (PAD клеток) раньше было плоской заливкой цвета породы.
+         Теперь - та же кладка из камней, что в толще, и поверх - тёмная пелена (за краем этажа - глухая порода, ближе к туману). Один раз на кусок, без filter. */
+      let padD = '';
+      for (let y = Math.max(-G.PAD, y0 - 1); y < Math.min(F.h + G.PAD, y1 + 1); y++) for (let x = Math.max(-G.PAD, x0 - 1); x < Math.min(F.w + G.PAD, x1 + 1); x++) {
+        if (x >= 0 && y >= 0 && x < F.w && y < F.h) continue;
+        const px = G.X0 + x * CWp, py = G.Y0 + y * RHp, r = rngOf(((y + 9) * 977 + (x + 9)) * 613 + F.n * 31);
+        padD += `M${px} ${py}h${CWp}v${RHp}h${-CWp}Z`;
+        for (let k = 0; k < 3; k++) { const sx = px + 20 + ((k % 2) * 52) + r() * 34, sy = py + 22 + (k * 34) + r() * 14, rw = 22 + r() * 14, rh = 16 + r() * 10;
+          stones += `M${f1(sx - rw)} ${f1(sy)}Q${f1(sx - rw)} ${f1(sy - rh)} ${f1(sx)} ${f1(sy - rh)}Q${f1(sx + rw)} ${f1(sy - rh)} ${f1(sx + rw)} ${f1(sy)}Q${f1(sx + rw)} ${f1(sy + rh)} ${f1(sx)} ${f1(sy + rh)}Q${f1(sx - rw)} ${f1(sy + rh)} ${f1(sx - rw)} ${f1(sy)}Z`;
+          shine += `M${f1(sx - rw * 0.6)} ${f1(sy - rh * 0.35)}Q${f1(sx)} ${f1(sy - rh * 0.95)} ${f1(sx + rw * 0.6)} ${f1(sy - rh * 0.35)}`; }
+      }
       return `<rect x="${G.X0 + x0 * CWp - 300}" y="${G.Y0 + y0 * RHp - 300}" width="${(x1 - x0) * CWp + 600}" height="${(y1 - y0) * RHp + 600}" fill="${T.wallD}"/>` + (stones ? `<path d="${stones}" fill="${T.wall}" stroke="${INK}" stroke-width="3" stroke-opacity=".55"/><path d="${shine}" fill="none" stroke="${T.wallL}" stroke-width="4" stroke-linecap="round" opacity=".7"/>` : '') + tex
+        + (padD ? `<path d="${padD}" fill="#07060a" opacity=".5"/>` : '')
         + floorSvg(x0, y0, x1, y1)
         + (lakeOn ? lakeSvg(x0, y0, x1, y1, lakeL) : '')
         + (cryst ? `<path d="${cryst}" fill="#8fe3ff" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>` : '')
@@ -311,7 +323,7 @@
       root.style.cssText = `position:absolute;left:0;top:0;width:${G.W}px;height:${G.H}px;background:${T.wallD}`;
       const hallA = hallArt(G, T, o);
       ensure();
-      return { v3: 1, W: G.W, H: G.H, VX0: 0, VW: G.W, Y0: G.Y0, GRID_H: F.h * G.RH, CW: G.CW, RH: G.RH, rk, npc: hallA.npc, lampNpc: hallA.lampNpc, props: hallA.props, debris: [T.floorD, T.floorL], back: '', theme: T };
+      return { v3: 1, W: G.W, H: G.H, VX0: 0, VW: G.W, Y0: G.Y0, GRID_H: F.h * G.RH, CW: G.CW, RH: G.RH, rk, npc: hallA.npc, lampNpc: hallA.lampNpc, props: hallA.props, G, debris: [T.floorD, T.floorL], back: '', theme: T };
     }
     /** Мини-карта: выкопанное, видимое, лифт, ты, жилы, залы, шахта лифта (если видна). */
     function minimap(me) {
