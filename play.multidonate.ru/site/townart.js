@@ -1118,6 +1118,77 @@
        со светящимися швами, пустыня — песчаник слоями, лес и тайга — замшелый камень, остальное — серый камень. Портал из брёвен (стойки,
        перекладина, распорки), рельсы уходят в темноту, вагонетка, куча руды, фонарь на кронштейне, вывеска «ШАХТА». Пока модуля шахты нет —
        вход заколочен (o.mineOpen — без досок). ---- */
+    /* ---- 29.10: украшения входа в шахту по природе (поверх скалы и портала; плоские тона, светлый верх, толстый контур) ---- */
+    const mineDeco = (PK, P) => {
+      const { cx, B, ow, oy, lx, rx, ly, pw, x0, x1, w, top } = P; let g = '';
+      const arch = `M${f1(cx - ow / 2)} ${B} V${oy + 30} Q${f1(cx)} ${oy - 18} ${f1(cx + ow / 2)} ${oy + 30} V${B}`;
+      // травяная шапка на скале, цветы, ящик с цветами на перекладине
+      if (PK === 'meadow') {
+        g += `<path d="M${f1(x0 + w * 0.08)} ${f1(top + 70)} Q${f1(x0 + w * 0.3)} ${top - 4} ${f1(cx)} ${top - 10} Q${f1(x1 - w * 0.3)} ${top - 4} ${f1(x1 - w * 0.08)} ${f1(top + 74)} q-14 10 -30 2 q-20 10 -40 0 q-30 8 -60 -2 q-26 8 -50 0 q-30 8 -56 -2 Z" fill="${K.grass}" ${O(3)}/>`;
+        for (let i = 0; i < 9; i++) { const fx = x0 + w * 0.15 + hr(i, x0) * w * 0.7, fy = top + 16 + hr(x0, i) * 30; g += `<circle cx="${f1(fx)}" cy="${f1(fy)}" r="5" fill="${['#ff8fb2', '#ffe27a', '#ffffff', '#b9a2ff'][i % 4]}" ${O(2)}/>`; }
+        g += `<rect x="${f1(cx - 40)}" y="${f1(ly - 40)}" width="80" height="16" rx="3" fill="${K.woodD}" ${O(2.5)}/>` + [-28, -10, 8, 26].map((d, i) => `<circle cx="${f1(cx + d)}" cy="${f1(ly - 44)}" r="7" fill="${['#ff6f8f', '#ffd24a', '#ff9a5a', '#c98aff'][i]}" ${O(2)}/>`).join('');
+      } else if (PK === 'roots') {
+        // дерево на скале, корни обнимают вход, грибы у подножия
+        g += `<path d="M${f1(cx - 14)} ${top + 10} Q${f1(cx - 10)} ${top - 60} ${f1(cx - 4)} ${top - 110} H${f1(cx + 8)} Q${f1(cx + 12)} ${top - 60} ${f1(cx + 18)} ${top + 10} Z" fill="#6a4a30" ${O(3.5)}/>`;
+        for (const [dx, dy, r] of [[-60, -130, 48], [0, -160, 56], [58, -128, 46], [-26, -110, 40], [30, -104, 40]]) g += `<circle cx="${f1(cx + dx)}" cy="${f1(top + dy)}" r="${r}" fill="${dy < -150 ? '#5f8f3a' : '#4f7a32'}" ${O(3.5)}/>`;
+        g += `<path d="M${f1(cx - 8)} ${top + 6} C${f1(cx - 60)} ${top + 40} ${f1(lx - 30)} ${oy} ${f1(lx - 14)} ${B} M${f1(cx + 12)} ${top + 6} C${f1(cx + 70)} ${top + 40} ${f1(rx + 34)} ${oy} ${f1(rx + 18)} ${B} M${f1(cx)} ${top + 8} C${f1(cx - 20)} ${oy - 30} ${f1(lx + 10)} ${oy - 20} ${f1(lx - 4)} ${oy + 30}" stroke="${INK}" stroke-width="16" fill="none" stroke-linecap="round"/>`
+          + `<path d="M${f1(cx - 8)} ${top + 6} C${f1(cx - 60)} ${top + 40} ${f1(lx - 30)} ${oy} ${f1(lx - 14)} ${B} M${f1(cx + 12)} ${top + 6} C${f1(cx + 70)} ${top + 40} ${f1(rx + 34)} ${oy} ${f1(rx + 18)} ${B} M${f1(cx)} ${top + 8} C${f1(cx - 20)} ${oy - 30} ${f1(lx + 10)} ${oy - 20} ${f1(lx - 4)} ${oy + 30}" stroke="#7a5236" stroke-width="9" fill="none" stroke-linecap="round"/>`;
+        for (const [mx, s2] of [[lx - 40, 1], [rx + 44, 0.8], [rx + 64, 0.6]]) g += `<path d="M${f1(mx - 3 * s2)} ${B} v${f1(-14 * s2)} h${f1(6 * s2)} v${f1(14 * s2)}Z" fill="#f2e6cc" ${O(2)}/><path d="M${f1(mx - 13 * s2)} ${f1(B - 12 * s2)} q${f1(13 * s2)} ${f1(-20 * s2)} ${f1(26 * s2)} 0 Z" fill="#d8443a" ${O(2.5)}/><circle cx="${f1(mx - 4 * s2)}" cy="${f1(B - 18 * s2)}" r="${f1(2.5 * s2)}" fill="#fff"/>`;
+      } else if (PK === 'logs') {
+        // сруб: брёвна торцами по бокам, снег на перекладине и скале, сосульки
+        for (let k = 0; k < 6; k++) { const yy = ly + 14 + k * ((B - ly - 20) / 6); for (const xx of [lx - pw / 2 - 12, rx + pw / 2 + 12]) g += `<circle cx="${f1(xx)}" cy="${f1(yy)}" r="11" fill="${K.wood}" ${O(3)}/><circle cx="${f1(xx)}" cy="${f1(yy)}" r="5" fill="none" stroke="${K.woodD}" stroke-width="2"/>`; }
+        g += `<path d="M${f1(lx - 26)} ${f1(ly - 22)} q20 -14 40 -4 q24 -12 50 -2 q30 -12 56 0 q24 -10 ${f1(rx - lx - 94)} 4 v8 H${f1(lx - 26)} Z" fill="#f6fafd" ${O(2.5)}/>`;
+        for (let k = 0; k < 7; k++) { const xx = lx - 14 + k * (rx - lx + 28) / 6; g += `<path d="M${f1(xx - 4)} ${f1(ly + 2)} l4 ${14 + (k % 3) * 6} l4 ${-14 - (k % 3) * 6}Z" fill="#dff2ff" ${O(2)}/>`; }
+      } else if (PK === 'ice') {
+        // ледяная арка из глыб, сосульки, голубой свет изнутри, сугроб
+        g += `<ellipse cx="${f1(cx)}" cy="${f1(oy + 70)}" rx="${f1(ow * 0.36)}" ry="44" fill="#7fd0ff" opacity=".18"/>`;
+        const N = 9; for (let k = 0; k < N; k++) { const a0 = Math.PI * (1 - k / N), a1 = Math.PI * (1 - (k + 1) / N), R1 = ow / 2 + 6, R2 = ow / 2 + 34, ccy = oy + 48;
+          const P4 = [[cx + Math.cos(a0) * R1, ccy - Math.sin(a0) * R1 * 1.05], [cx + Math.cos(a0) * R2, ccy - Math.sin(a0) * R2 * 1.05], [cx + Math.cos(a1) * R2, ccy - Math.sin(a1) * R2 * 1.05], [cx + Math.cos(a1) * R1, ccy - Math.sin(a1) * R1 * 1.05]];
+          g += `<path d="M${P4.map((q) => `${f1(q[0])} ${f1(q[1])}`).join(' L')} Z" fill="${k % 2 ? '#bfe4fb' : '#d8f0ff'}" ${O(3)}/>`; }
+        for (const sd of [-1, 1]) g += `<path d="M${f1(cx + sd * (ow / 2 + 6))} ${oy + 48} V${B} H${f1(cx + sd * (ow / 2 + 34))} V${oy + 48} Z" fill="#cbe9fd" ${O(3)}/><path d="M${f1(cx + sd * (ow / 2 + 20))} ${oy + 60} V${B - 10}" stroke="#ffffff" stroke-width="4" opacity=".7"/>`;
+        for (let k = 0; k < 6; k++) { const xx = cx - ow / 2 + 8 + k * (ow - 16) / 5; g += `<path d="M${f1(xx - 5)} ${f1(oy + 14 + Math.abs(k - 2.5) * 6)} l5 ${18 + (k % 2) * 10} l5 ${-18 - (k % 2) * 10}Z" fill="#e8f8ff" ${O(2)}/>`; }
+        g += `<path d="M${f1(cx - ow / 2 - 50)} ${B + 4} q30 -22 60 -6 q20 -10 34 2 M${f1(cx + ow / 2 - 30)} ${B + 4} q30 -18 66 -4" fill="#f6fafd" ${O(2.5)}/>`;
+      } else if (PK === 'swamp') {
+        // свисающий мох, камыш, мостки из досок к входу
+        for (let k = 0; k < 6; k++) { const xx = lx - 10 + k * (rx - lx + 20) / 5, hh = 20 + (k % 3) * 12; g += `<path d="M${f1(xx)} ${f1(ly - 6)} q-6 ${f1(hh / 2)} 0 ${hh} q6 ${f1(hh / 2)} -2 ${f1(hh * 1.5)}" stroke="#5a7a2a" stroke-width="5" fill="none" stroke-linecap="round"/>`; }
+        for (let k = 0; k < 5; k++) { const yy = B + 6 + k * 9, hw = 40 + k * 10; g += `<path d="M${f1(cx - hw)} ${f1(yy)} h${f1(hw * 2)}" stroke="${INK}" stroke-width="9" stroke-linecap="round"/><path d="M${f1(cx - hw)} ${f1(yy)} h${f1(hw * 2)}" stroke="#7a6444" stroke-width="5" stroke-linecap="round"/>`; }
+        for (const xx of [x0 + 10, x0 + 24, x1 - 40, x1 - 22]) g += `<path d="M${f1(xx)} ${B} q-4 -40 4 -64" stroke="#6a7a3a" stroke-width="4" fill="none"/><rect x="${f1(xx)}" y="${B - 70}" width="7" height="18" rx="3" fill="#7a5a2a" ${O(2)}/>`;
+      } else if (PK === 'iron') {
+        // железная рама с заклёпками, лава по краю проёма и в трещинах
+        g += `<path d="${arch}" fill="none" stroke="#ff7a2a" stroke-width="6" opacity=".9"/>`;
+        g += `<rect x="${f1(lx - 13)}" y="${f1(ly - 4)}" width="22" height="${f1(B - ly + 4)}" fill="#3a3640" ${O(3.5)}/><rect x="${f1(rx - 9)}" y="${f1(ly - 4)}" width="22" height="${f1(B - ly + 4)}" fill="#3a3640" ${O(3.5)}/><rect x="${f1(lx - 26)}" y="${f1(ly - 26)}" width="${f1(rx - lx + 52)}" height="26" rx="3" fill="#4a4652" ${O(3.5)}/>`;
+        for (let k = 0; k < 5; k++) { g += `<circle cx="${f1(lx - 2)}" cy="${f1(ly + 14 + k * 24)}" r="3" fill="#8a8e9e"/><circle cx="${f1(rx + 2)}" cy="${f1(ly + 14 + k * 24)}" r="3" fill="#8a8e9e"/>`; }
+        for (let k = 0; k < 7; k++) g += `<circle cx="${f1(lx - 14 + k * (rx - lx + 28) / 6)}" cy="${f1(ly - 13)}" r="3" fill="#8a8e9e"/>`;
+        g += `<path d="M${f1(x0 + 26)} ${B - 4} q8 -30 -4 -50 q12 -24 4 -44 M${f1(x1 - 24)} ${B - 8} q-10 -26 2 -46" stroke="#ff9a3a" stroke-width="5" fill="none" stroke-linecap="round"/><ellipse cx="${f1(x0 + 34)}" cy="${B + 6}" rx="26" ry="7" fill="#ff7a2a" opacity=".8" ${O(2)}/>`;
+      } else if (PK === 'sand') {
+        // резной фасад из песчаника: ступенчатый верх, колонны, солнце, полосатый навес
+        const fx0 = lx - 40, fx1 = rx + 40, fy = ly - 50;
+        g += `<path d="M${f1(fx0)} ${B} V${f1(fy + 20)} H${f1(fx0 + 20)} V${f1(fy)} H${f1(fx1 - 20)} V${f1(fy + 20)} H${f1(fx1)} V${B} H${f1(cx + ow / 2)} V${oy + 30} Q${f1(cx)} ${oy - 18} ${f1(cx - ow / 2)} ${oy + 30} V${B} Z" fill="#e2b276" ${O(3.5)}/>`;
+        for (const xx of [fx0 + 16, fx1 - 16]) g += `<rect x="${f1(xx - 9)}" y="${f1(fy + 26)}" width="18" height="${f1(B - fy - 26)}" fill="#cf9a5c" ${O(3)}/><path d="M${f1(xx - 3)} ${f1(fy + 34)} V${B - 6} M${f1(xx + 3)} ${f1(fy + 34)} V${B - 6}" stroke="#a87440" stroke-width="2"/>`;
+        g += `<circle cx="${f1(cx)}" cy="${f1(fy + 22)}" r="13" fill="#ffd27a" ${O(3)}/>` + [0, 1, 2, 3, 4, 5, 6, 7].map((k) => { const a = k * Math.PI / 4; return `<path d="M${f1(cx + Math.cos(a) * 17)} ${f1(fy + 22 + Math.sin(a) * 17)} L${f1(cx + Math.cos(a) * 24)} ${f1(fy + 22 + Math.sin(a) * 24)}" stroke="${INK}" stroke-width="3"/>`; }).join('');
+        g += `<path d="M${f1(cx - ow / 2 - 10)} ${oy + 24} L${f1(cx + ow / 2 + 10)} ${oy + 24} L${f1(cx + ow / 2 + 24)} ${oy + 52} H${f1(cx - ow / 2 - 24)} Z" fill="#f4e4c4" ${O(3)}/>` + [0, 2, 4].map((k) => `<path d="M${f1(cx - ow / 2 - 10 + k * (ow + 20) / 6)} ${oy + 24} L${f1(cx - ow / 2 - 24 + k * (ow + 48) / 6)} ${oy + 52} H${f1(cx - ow / 2 - 24 + (k + 1) * (ow + 48) / 6)} L${f1(cx - ow / 2 - 10 + (k + 1) * (ow + 20) / 6)} ${oy + 24} Z" fill="#c8402a"/>`).join('');
+      } else if (PK === 'drift') {
+        // плавник, сеть на скале, канат, ракушки и морская звезда
+        g += `<path d="M${f1(x0 + w * 0.14)} ${top + 60} L${f1(x0 + w * 0.42)} ${top + 30} M${f1(x0 + w * 0.16)} ${top + 80} L${f1(x0 + w * 0.44)} ${top + 50} M${f1(x0 + w * 0.18)} ${top + 100} L${f1(x0 + w * 0.46)} ${top + 70} M${f1(x0 + w * 0.2)} ${top + 50} L${f1(x0 + w * 0.26)} ${top + 108} M${f1(x0 + w * 0.3)} ${top + 40} L${f1(x0 + w * 0.36)} ${top + 100} M${f1(x0 + w * 0.4)} ${top + 30} L${f1(x0 + w * 0.46)} ${top + 90}" stroke="#4a4436" stroke-width="2.5" opacity=".8"/>`;
+        // спасательный круг на скале, канат по перекладине, якорь у входа
+        g += `<circle cx="${f1(x1 - w * 0.2)}" cy="${f1(top + 96)}" r="20" fill="none" stroke="${INK}" stroke-width="14"/><circle cx="${f1(x1 - w * 0.2)}" cy="${f1(top + 96)}" r="20" fill="none" stroke="#f4f0e8" stroke-width="9" stroke-dasharray="15.7 15.7"/><circle cx="${f1(x1 - w * 0.2)}" cy="${f1(top + 96)}" r="20" fill="none" stroke="#e0402a" stroke-width="9" stroke-dasharray="15.7 15.7" stroke-dashoffset="15.7"/>`;
+        g += `<path d="M${f1(lx - 20)} ${f1(ly - 8)} q${f1((rx - lx + 40) / 4)} 14 ${f1((rx - lx + 40) / 2)} 0 q${f1((rx - lx + 40) / 4)} 14 ${f1((rx - lx + 40) / 2)} 0" stroke="#d8c08a" stroke-width="5" fill="none" stroke-linecap="round"/>`;
+        g += `<path d="M${f1(rx + 36)} ${B - 50} V${B - 8} M${f1(rx + 24)} ${B - 40} H${f1(rx + 48)} M${f1(rx + 18)} ${B - 18} Q${f1(rx + 36)} ${B} ${f1(rx + 54)} ${B - 18}" stroke="${INK}" stroke-width="9" fill="none" stroke-linecap="round"/><path d="M${f1(rx + 36)} ${B - 50} V${B - 8} M${f1(rx + 24)} ${B - 40} H${f1(rx + 48)} M${f1(rx + 18)} ${B - 18} Q${f1(rx + 36)} ${B} ${f1(rx + 54)} ${B - 18}" stroke="#6a7484" stroke-width="5" fill="none" stroke-linecap="round"/><circle cx="${f1(rx + 36)}" cy="${B - 54}" r="5" fill="none" stroke="#6a7484" stroke-width="3"/>`;
+        g += `<path d="M${f1(lx - 40)} ${B - 2} q6 -14 12 0 q6 -14 12 0 Z" fill="#f2c4b4" ${O(2)}/><path d="M${f1(x1 - 60)} ${B - 4} l4 -10 l4 10 l10 2 l-8 6 l2 10 l-8 -6 l-8 6 l2 -10 l-8 -6 Z" fill="#ff8a5a" ${O(2)}/>`;
+      } else if (PK === 'spore') {
+        // кривой тёмный камень, лиловые кристаллы, споры, лиловый свет изнутри
+        g += `<ellipse cx="${f1(cx)}" cy="${f1(oy + 70)}" rx="${f1(ow * 0.36)}" ry="44" fill="#b46aff" opacity=".2"/>`;
+        g += `<path d="M${f1(lx - 4)} ${B} C${f1(lx - 30)} ${f1(B - 60)} ${f1(lx + 10)} ${f1(oy + 30)} ${f1(lx - 18)} ${f1(ly - 20)} C${f1(cx - 20)} ${f1(ly - 50)} ${f1(cx + 30)} ${f1(ly - 10)} ${f1(rx + 20)} ${f1(ly - 24)} C${f1(rx - 6)} ${f1(oy + 40)} ${f1(rx + 30)} ${f1(B - 50)} ${f1(rx + 4)} ${B}" stroke="${INK}" stroke-width="20" fill="none" stroke-linecap="round"/><path d="M${f1(lx - 4)} ${B} C${f1(lx - 30)} ${f1(B - 60)} ${f1(lx + 10)} ${f1(oy + 30)} ${f1(lx - 18)} ${f1(ly - 20)} C${f1(cx - 20)} ${f1(ly - 50)} ${f1(cx + 30)} ${f1(ly - 10)} ${f1(rx + 20)} ${f1(ly - 24)} C${f1(rx - 6)} ${f1(oy + 40)} ${f1(rx + 30)} ${f1(B - 50)} ${f1(rx + 4)} ${B}" stroke="#4a3e52" stroke-width="12" fill="none" stroke-linecap="round"/>`;
+        for (const [qx, qy, s2] of [[x0 + w * 0.2, top + 40, 1], [x1 - w * 0.22, top + 60, 0.8], [x0 + 20, B - 20, 0.7]]) g += `<path d="M${f1(qx - 10 * s2)} ${f1(qy)} L${f1(qx - 4 * s2)} ${f1(qy - 34 * s2)} L${f1(qx + 2 * s2)} ${f1(qy)} Z M${f1(qx)} ${f1(qy)} L${f1(qx + 8 * s2)} ${f1(qy - 24 * s2)} L${f1(qx + 14 * s2)} ${f1(qy)} Z" fill="#b48aff" ${O(2.5)}/>`;
+        for (let k = 0; k < 10; k++) g += `<circle cx="${f1(x0 + hr(k, 7) * w)}" cy="${f1(top + 20 + hr(7, k) * 150)}" r="${f1(2 + hr(k, 3) * 3)}" fill="#e0c8ff" opacity=".8"/>`;
+      } else if (PK === 'gate') {
+        // древние врата: колонны с капителями, перемычка с руной, обломок
+        for (const xx of [lx - 8, rx + 8]) g += `<rect x="${f1(xx - 16)}" y="${f1(ly)}" width="32" height="${f1(B - ly)}" fill="#c8b896" ${O(3.5)}/><rect x="${f1(xx - 22)}" y="${f1(ly - 8)}" width="44" height="14" fill="#b4a482" ${O(3)}/><path d="M${f1(xx - 6)} ${f1(ly + 12)} V${B - 8} M${f1(xx + 6)} ${f1(ly + 12)} V${B - 8}" stroke="#9a8a6a" stroke-width="2.5"/>`;
+        g += `<rect x="${f1(lx - 40)}" y="${f1(ly - 40)}" width="${f1(rx - lx + 80)}" height="34" fill="#d6c6a4" ${O(3.5)}/><path d="M${f1(cx - 14)} ${f1(ly - 34)} l14 22 l14 -22 M${f1(cx)} ${f1(ly - 34)} v22" stroke="#6a5a3a" stroke-width="3.5" fill="none" stroke-linecap="round"/><path d="M${f1(lx - 36)} ${f1(ly - 24)} h40 M${f1(rx - 4)} ${f1(ly - 24)} h40" stroke="#9a8a6a" stroke-width="2"/>`;
+        g += `<path d="M${f1(x1 - 70)} ${B} l6 -22 l30 -4 l10 24 Z" fill="#b4a482" ${O(3)}/>`;
+      }
+      return g;
+    };
     ART.mine = (lot) => {
       const x0 = lot.x0, x1 = lot.x1, cx = (x0 + x1) / 2, B = 795, w = x1 - x0;
       const RK = L.biome === 'ice' ? ['#cfe6f6', '#9fc4e0', '#ffffff'] : L.biome === 'ash' ? ['#2e2a30', '#1e1a20', '#ff7a2a'] : L.biome === 'desert' ? ['#d8a86a', '#b8884e', '#f0c890']
@@ -1143,11 +1214,20 @@
       for (let i = 0; i < 6; i++) { const t = i / 5, y = oy + 80 + t * (B + 36 - oy - 80), hw = 22 + t * 28; g += `<path d="M${f1(cx - hw)} ${f1(y)} H${f1(cx + hw)}" stroke="${K.woodD}" stroke-width="${f1(4 + t * 3)}"/>`; }
       // портал из брёвен: стойки, перекладина, распорки
       const pw = 18, lx = cx - ow / 2 - 6, rx = cx + ow / 2 + 6, ly = oy + 8;
-      g += `<rect x="${f1(lx - pw / 2)}" y="${f1(ly)}" width="${pw}" height="${f1(B - ly)}" fill="${K.wood}" ${O(3.5)}/><rect x="${f1(rx - pw / 2)}" y="${f1(ly)}" width="${pw}" height="${f1(B - ly)}" fill="${K.wood}" ${O(3.5)}/>`
-        + `<rect x="${f1(lx - 22)}" y="${f1(ly - 22)}" width="${f1(rx - lx + 44)}" height="24" rx="4" fill="${K.wood}" ${O(3.5)}/><path d="M${f1(lx + 6)} ${f1(ly + 2)} L${f1(lx + 30)} ${f1(ly + 24)} M${f1(rx - 6)} ${f1(ly + 2)} L${f1(rx - 30)} ${f1(ly + 24)}" stroke="${K.woodD}" stroke-width="7" stroke-linecap="round"/>`;
-      g += `<path d="M${f1(lx - 3)} ${f1(ly + 10)} V${B - 6} M${f1(rx + 3)} ${f1(ly + 10)} V${B - 6} M${f1(lx - 14)} ${f1(ly - 14)} H${f1(rx + 14)}" stroke="${DK(K.wood, 0.3)}" stroke-width="1.8" stroke-dasharray="14 8" opacity=".7"/>`
-        + [ly + 40, B - 40].map((yy) => `<path d="M${f1(lx - pw / 2 - 1)} ${f1(yy)} h${pw + 2} M${f1(rx - pw / 2 - 1)} ${f1(yy)} h${pw + 2}" stroke="#3a3640" stroke-width="5"/>`).join('')
-        + `<g transform="translate(${f1(lx - 26)} ${B}) rotate(-14)"><path d="M0 0 V-54" stroke="${INK}" stroke-width="7" stroke-linecap="round"/><path d="M0 0 V-54" stroke="${K.wood}" stroke-width="3.5" stroke-linecap="round"/><path d="M-18 -50 Q0 -64 18 -50 Q0 -58 -18 -50 Z" fill="#8a8e9e" ${O(2.5)}/></g>`;   // 26.10: волокна и железные скобы портала, кирка у стойки
+      // 29.10 (стример: «разные входы в шахту для разных природ»): портал по природе - дерево (горы, луга), бревенчатый сруб в снегу
+      // (тайга), корни дерева (лес), ледяная арка (лёд), кривые сваи и мох (болото), железо и лава (пепел), резной песчаник (пустыня),
+      // плавник и сети (побережье), кривой камень и споры (порча), древние врата (руины). Остальное (рельсы, вагонетка, фонарь) - общее.
+      const PK = { forest: 'roots', taiga: 'logs', ice: 'ice', swamp: 'swamp', ash: 'iron', desert: 'sand', coast: 'drift', blight: 'spore', ruin: 'gate', meadow: 'meadow' }[L.biome] || 'wood';
+      const woodC = PK === 'drift' ? '#c8bca4' : PK === 'swamp' ? '#5e4a30' : K.wood, woodD = PK === 'drift' ? '#9a8e76' : K.woodD;
+      if (PK === 'wood' || PK === 'meadow' || PK === 'logs' || PK === 'swamp' || PK === 'drift' || PK === 'roots') {
+        g += `<rect x="${f1(lx - pw / 2)}" y="${f1(ly)}" width="${pw}" height="${f1(B - ly)}" fill="${woodC}" ${O(3.5)}/><rect x="${f1(rx - pw / 2)}" y="${f1(ly)}" width="${pw}" height="${f1(B - ly)}" fill="${woodC}" ${O(3.5)}/>`
+          + `<rect x="${f1(lx - 22)}" y="${f1(ly - 22)}" width="${f1(rx - lx + 44)}" height="24" rx="4" fill="${woodC}" ${O(3.5)}/><path d="M${f1(lx + 6)} ${f1(ly + 2)} L${f1(lx + 30)} ${f1(ly + 24)} M${f1(rx - 6)} ${f1(ly + 2)} L${f1(rx - 30)} ${f1(ly + 24)}" stroke="${woodD}" stroke-width="7" stroke-linecap="round"/>`;
+        g += `<path d="M${f1(lx - 3)} ${f1(ly + 10)} V${B - 6} M${f1(rx + 3)} ${f1(ly + 10)} V${B - 6} M${f1(lx - 14)} ${f1(ly - 14)} H${f1(rx + 14)}" stroke="${DK(K.wood, 0.3)}" stroke-width="1.8" stroke-dasharray="14 8" opacity=".7"/>`
+          + [ly + 40, B - 40].map((yy) => `<path d="M${f1(lx - pw / 2 - 1)} ${f1(yy)} h${pw + 2} M${f1(rx - pw / 2 - 1)} ${f1(yy)} h${pw + 2}" stroke="#3a3640" stroke-width="5"/>`).join('')
+          // 26.10: волокна и железные скобы портала, кирка у стойки
+          + `<g transform="translate(${f1(lx - 26)} ${B}) rotate(-14)"><path d="M0 0 V-54" stroke="${INK}" stroke-width="7" stroke-linecap="round"/><path d="M0 0 V-54" stroke="${woodC}" stroke-width="3.5" stroke-linecap="round"/><path d="M-18 -50 Q0 -64 18 -50 Q0 -58 -18 -50 Z" fill="#8a8e9e" ${O(2.5)}/></g>`;
+      }
+      g += mineDeco(PK, { cx, B, ow, oh, oy, lx, rx, ly, pw, x0, x1, w, top });
       if (!o.mineOpen) g += `<path d="M${f1(cx - ow / 2 + 4)} ${f1(oy + 60)} L${f1(cx + ow / 2 - 4)} ${f1(oy + 92)} M${f1(cx + ow / 2 - 4)} ${f1(oy + 56)} L${f1(cx - ow / 2 + 4)} ${f1(oy + 96)}" stroke="${INK}" stroke-width="16" stroke-linecap="round"/><path d="M${f1(cx - ow / 2 + 4)} ${f1(oy + 60)} L${f1(cx + ow / 2 - 4)} ${f1(oy + 92)} M${f1(cx + ow / 2 - 4)} ${f1(oy + 56)} L${f1(cx - ow / 2 + 4)} ${f1(oy + 96)}" stroke="${K.wood}" stroke-width="10" stroke-linecap="round"/>`;
       // вывеска на перекладине, фонарь на кронштейне у правой стойки
       g += signLv(cx, ly - 44, 150, 'ШАХТА', 2, 22, '#4a3a2a');

@@ -149,6 +149,17 @@
 .lgi-m-storage.lgi--full .lgi-side:empty { display: none; }
 .lgi-m-storage.lgi--full .lgi-main, .lgi-m-storage.lgi--compact, .lgi-m-storage.lgi--sheet { gap: 10px; }
 .lgi-m-storage .lgi-g { min-height: 80px; }
+/* 30.10: склад - обёртки столбцов. Узко (телефон, ждущая вкладка): «прозрачны», сетки идут столбиком, как раньше */
+.lgi-cols, .lgi-col { display: contents; }
+/* 30.10: широкое окно склада (по ширине самой сумки, а не экрана): «Сумка» + «Рудная сумка» слева, «Склад» справа; столбцы одной высоты,
+   каждый листается сам, если окно страницы ограничило высоту (city.css: .cy-store2) - иначе просто растут */
+@container (min-width: 800px) {
+  .lgi-m-storage.lgi--full .lgi-main { flex: 1 1 auto; min-height: 0; }
+  .lgi-m-storage.lgi--full .lgi-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: stretch; flex: 1 1 auto; min-height: 0; }
+  .lgi-m-storage.lgi--full .lgi-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 3px; scrollbar-width: thin; }
+  .lgi-m-storage.lgi--full .lgi-col > .lgi-g { flex: none; }
+  .lgi-m-storage.lgi--full .lgi-col > .lgi-ob { margin-top: 0; }
+}
 
 /* ---------- карточка вещи (встроенная: если у страницы своей нет) ---------- */
 .lgi-tip { position: fixed; left: 0; top: 0; z-index: 330; width: min(280px, calc(100vw - 16px)); padding: 10px 12px; border-radius: 12px; pointer-events: none;
@@ -204,6 +215,18 @@
 .lgi--compact.lgi-wob > .lgi-h, .lgi--sheet.lgi-wob > .lgi-h { position: sticky; top: -8px; z-index: 2; margin: -8px -10px 0; padding: 8px 10px 4px; background: rgb(29,22,32); }
 .lgi--compact.lgi-wob > .lgi-a, .lgi--sheet.lgi-wob > .lgi-a { position: sticky; bottom: -10px; z-index: 2; margin: 0 -10px -10px; padding: 4px 10px 10px; background: rgb(29,22,32); }
 .lgi-ob .lgi-gh b::before { content: "⛏ "; color: var(--gold, #ffcf6a); }
+/* 30.10: заголовок рудной сумки - кнопка «свернуть / развернуть»; свёрнута - видна только строка с числом (сетка скрыта, но заголовок остаётся целью броска) */
+.lgi-foldbt { appearance: none; width: calc(100% - 4px); min-height: 32px; margin: 0 2px; padding: 0 4px; border: 0; border-radius: 8px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; align-items: center; gap: 8px; }
+.lgi-foldbt b { flex: 1 1 auto; }
+.lgi-foldbt[aria-expanded="true"] { margin-bottom: 6px; }
+.lgi-foldbt:hover { background: rgba(255, 207, 106, .1); }
+.lgi-foldbt:focus-visible { outline: 2px solid var(--focus, #ffc94d); outline-offset: 1px; }
+.lgi-chev { flex: none; font-style: normal; line-height: 1; color: var(--gold, #ffcf6a); }
+.lgi-chev::before { content: "▾"; display: inline-block; }
+.lgi-foldbt[aria-expanded="false"] .lgi-chev { transform: rotate(-90deg); }
+.lgi-ob.lgi-fold { padding-top: 2px; padding-bottom: 2px; }
+.lgi .lgi-g.lgi-fold { min-height: 0; }
+.lgi-ob.lgi-fold .cy-grid { display: none; }
 
 /* 24.10: меню ячейки (LGInventory.menu): «1 / половина / всё / N…» Склада, 26.10 - и меню товара лавки похода («Купить», «Что даёт»); до 26.10 - city.css */
 .ig-menu { position: fixed; left: 0; top: 0; z-index: 320; min-width: 168px; display: grid; gap: 2px; padding: 6px; border-radius: 12px; background: var(--surface, #fff); color: var(--ink, #222);

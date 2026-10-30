@@ -6,7 +6,8 @@
           login, awb), base — адрес чата ('/api/city/chat'), say — куда писать ('/api/city/say'), key — ключ localStorage (открыт / свёрнут),
           name — заголовок, ph — подсказка в поле, where — «в чате города» (подтверждение бана), flags(hero) → { on, tr, dm },
           trade — пункт «Предложить обмен», here() / joining / rejoin() — хозяин на месте? (иначе — «подключаемся», войти заново),
-          onError(текст) — ошибка отправки, bubble(l, t, id) / unbubble(id) — облачко над героем (есть только в «Городе») }
+          onError(текст) — ошибка отправки, bubble(l, t, id) / unbubble(id) — облачко над героем (есть только в «Городе»),
+          log() - 30.10: вкладка «Журнал» (только чтение): события хозяина [{ t, at }] новыми сверху (есть только у шахты; в html(K) - log: подпись) }
    Сервер — src/site/citychat.ts (одна лента на чат) и SiteChannel.chat* (src/site/site.ts) с комнатой чата (город / шахта). */
 (function () {
   'use strict';
@@ -15,7 +16,7 @@
           <button type="button" class="cy-chat-t" aria-expanded="false"><span aria-hidden="true">💬</span> Чат<b class="cy-chat-n" hidden></b></button>
           <div class="cy-chat-b" hidden>
             <div class="cy-chat-h"><span>${esc(K.name || 'Чат')}</span><button type="button" class="cy-chat-sh" hidden aria-pressed="false" aria-label="Модерация чата" title="Модерация чата">⚙︎</button><button type="button" class="cy-chat-x" aria-label="Свернуть чат" title="Свернуть чат"><i aria-hidden="true"></i></button></div>
-            <div class="cy-chat-tabs" role="tablist" aria-label="Вкладки чата" hidden><button type="button" role="tab" data-tab="g" aria-selected="true">Общий<b class="cy-chat-tn" hidden></b></button><button type="button" role="tab" data-tab="tr" aria-selected="false" hidden>Торговля<b class="cy-chat-tn" hidden></b></button><button type="button" role="tab" data-tab="ev" aria-selected="false" hidden title="События игры: заточки, достижения">Достижения<b class="cy-chat-tn" hidden></b></button><button type="button" role="tab" data-tab="dm" aria-selected="false" hidden>Личные<b class="cy-chat-tn" hidden></b></button></div>
+            <div class="cy-chat-tabs" role="tablist" aria-label="Вкладки чата" hidden><button type="button" role="tab" data-tab="g" aria-selected="true">${K.one ? 'Город' : 'Общий'}<b class="cy-chat-tn" hidden></b></button><button type="button" role="tab" data-tab="tr" aria-selected="false" hidden>Торговля<b class="cy-chat-tn" hidden></b></button><button type="button" role="tab" data-tab="ev" aria-selected="false" hidden title="События игры: заточки, достижения">Достижения<b class="cy-chat-tn" hidden></b></button><button type="button" role="tab" data-tab="mn" aria-selected="false" hidden>Шахта<b class="cy-chat-tn" hidden></b></button><button type="button" role="tab" data-tab="dm" aria-selected="false" hidden>Личные<b class="cy-chat-tn" hidden></b></button>${K.log ? `<button type="button" role="tab" data-tab="lg" aria-selected="false" hidden title="События шахты">${esc(K.log)}<b class="cy-chat-tn" hidden></b></button>` : ''}</div>
             <div class="cy-chat-p" hidden></div>
             <ol class="cy-chat-l" role="log" aria-label="Сообщения"></ol>
             <div class="cy-chat-dmx" hidden></div>
@@ -36,23 +37,32 @@
     // 24.10: вкладки — «Общий» (g), «Торговля» (tr: ct у героя — chatTradePublic или тестер). Сообщение «Торговли» — с k: 'tr';
     // транспорт тот же (SSE «city» / state?c=), лента — одна с общим номером, страница раскладывает по вкладкам сама
     // «Личные» (dm: cd у героя — chatDmPublic или тестер): k: 'dm', to — кому; сервер отдаёт их только автору и адресату.
-    // «✉» у ника в ленте — открыть переписку с ним (C.peer); игнор (C.ign) — его не видно нигде, писать мне лично он не может
+    // меню ника в ленте → «Написать» - открыть переписку с ним (C.peer; 30.10: кнопки «✉» у ника больше нет); игнор (C.ign) — его не видно нигде, писать мне лично он не может
     // «Достижения» (ev): «Летопись» — события игры (ev: 1), только чтение; вкладка — вместе с «Торговлей» (ct), без вкладок — в «Общем»
-    const tabOf = (m) => m.tb || (m.ev ? (St().chat && St().chat.tr ? 'ev' : 'g') : m.k === 'tr' ? 'tr' : m.k === 'dm' ? 'dm' : 'g');
-    const TAB_EMPTY = { g: 'Здесь пока тихо - напиши первым.', tr: 'Здесь объявления: куплю, продам, меняю. Ссылки нельзя.', dm: 'Личных пока нет. Нажми «✉» у ника в ленте, чтобы написать лично.', ev: 'Здесь - громкие события игры: заточки +7 и выше, полученные достижения.' };
+    const tabOf = (m) => m.tb || (m.rm === 'mine' ? 'mn' : m.ev ? (St().chat && St().chat.tr ? 'ev' : 'g') : m.k === 'tr' ? 'tr' : m.k === 'dm' ? 'dm' : 'g');
+    const TAB_EMPTY = { g: 'Здесь пока тихо - напиши первым.', tr: 'Здесь объявления: куплю, продам, меняю. Ссылки нельзя.', dm: 'Личных пока нет. Нажми на ник правой кнопкой (на телефоне - подержи) → «Написать».', ev: 'Здесь - громкие события игры: заточки +7 и выше, полученные достижения.' };
     const TAB_PH = { g: K.ph || 'Написать в чат…', tr: 'Куплю / продам / меняю…', dm: 'Лично…' };
     const leftT = (ms) => { const m = Math.max(1, Math.ceil(ms / 60000)); return m < 60 ? `${m} мин` : m < 1440 ? `${Math.ceil(m / 60)} ч` : `${Math.ceil(m / 1440)} дн`; };
+    // 29.10 (единый чат, K.one): две ленты в одном окне - «Город» (g, tr, ev) и «Шахта» (mn: сообщения с rm: 'mine', id с «m:»);
+    // куда писать и чем модерировать - по вкладке / ленте сообщения (K.sayTo, K.baseFor); мут - свой у каждой ленты (C.mutes)
+    const tabRoom = (t) => (t === 'mn' ? 'mine' : 'city');
+    const baseOf = (rm) => (K.baseFor ? K.baseFor(rm || 'city') : K.base);
+    const setMuted = (rm, v) => { const C = St().chat; if (K.one) { C.mutes[rm || 'city'] = v; if (tabRoom(C.tab) === (rm || 'city')) C.muted = v; } else C.muted = v; };
     function chatInit() {
       if (!St()) return;
       const h = X.hero(), box = St().el.querySelector('.cy-chat'); if (!box) return;
       const F = K.flags(h) || {}, on = !!F.on;
       if (!St().chat) St().chat = { on, list: [], c: 0, mod: null, muted: null, open: chatPref(), unread: 0, panel: false, info: null, tab: K.lastTab || 'g',   // 29.10: выбранная вкладка чата - переживает пересоздание сцены
-        un: { g: 0, tr: 0, dm: 0, ev: 0 }, peer: null, ign: new Set() };
+        un: { g: 0, tr: 0, dm: 0, ev: 0, mn: 0 }, peer: null, ign: new Set(), mutes: { city: null, mine: null } };
       St().chat.on = on; box.hidden = !on;
       St().chat.tr = !!F.tr;
       St().chat.dm = !!F.dm;
       St().chat.ev = St().chat.tr;   // 24.10: «Достижения» — под тем же флагом, что «Торговля»
-      if (((St().chat.tab === 'tr' || St().chat.tab === 'ev') && !St().chat.tr) || (St().chat.tab === 'dm' && !St().chat.dm)) St().chat.tab = 'g';
+      // 29.10: единый чат - лента шахты; лента «Города» может быть закрыта
+      St().chat.mn = !!F.mn; St().chat.g = F.g !== false;
+      St().chat.lg = !!K.log;
+      if (((St().chat.tab === 'tr' || St().chat.tab === 'ev') && !St().chat.tr) || (St().chat.tab === 'dm' && !St().chat.dm) || (St().chat.tab === 'mn' && !St().chat.mn) || (St().chat.tab === 'lg' && !St().chat.lg)) St().chat.tab = 'g';
+      if (St().chat.tab === 'g' && !St().chat.g && St().chat.mn) St().chat.tab = 'mn';
       if (!on || box.dataset.bound) { if (on) chatRender(); return; }
       box.dataset.bound = '1';
       // 29.10: личка страницы (window.LGDm, packages/site-ui/dm.js) - живёт вне сцены: здесь только её место во вкладке «Личные»
@@ -110,10 +120,10 @@
         }
       });
       l.addEventListener('click', (e) => {
-        const m = e.target.closest('[data-cmod]'), a = e.target.closest('[data-cact]'), dm = e.target.closest('[data-dm]');
-        if (dm) { chatPeer(dm.dataset.dm); return; }
+        // 30.10 (стример): кнопка ✉ у сообщений убрана - написать лично можно из меню ника (правая кнопка или долгое нажатие)
+        const m = e.target.closest('[data-cmod]'), a = e.target.closest('[data-cact]');
         if (m) { const li = m.closest('li'), was = li.classList.contains('mm'); l.querySelectorAll('li.mm').forEach((x) => x.classList.remove('mm')); if (!was) li.classList.add('mm'); return; }
-        if (a) chatAct(a.dataset.cact, { id: a.dataset.id, login: a.dataset.l, min: +a.dataset.min || undefined, n: a.dataset.n });
+        if (a) chatAct(a.dataset.cact, { id: a.dataset.id, login: a.dataset.l, min: +a.dataset.min || undefined, n: a.dataset.n, rm: a.closest('li') && a.closest('li').dataset.rm });
       });
       pn.addEventListener('click', (e) => {
         const a = e.target.closest('[data-cact]'); if (a) chatAct(a.dataset.cact, { login: a.dataset.l, n: a.dataset.l });
@@ -184,12 +194,13 @@
     }
     function chatPeer(nk) { if (!St().chat.dm || !nk || nk === X.login()) return; if (window.LGDm) { window.LGDm.open(nk); chatTab('dm'); return; } St().chat.peer = nk; chatTab('dm'); }   // 29.10: вкладка собеседника - в LGDm
     async function chatIgnore(nk, on) {
-      const r = await X.api(K.base + '/ignore', { login: nk, on }); if (!St() || !St().chat) return;
+      const r = await X.api(baseOf('city') + '/ignore', { login: nk, on }); if (!St() || !St().chat) return;
       if (!r || !r.ok) { chatErr((r && (CHAT_ERR[r.error] || r.error)) || 'не вышло'); return; }
       St().chat.ign = new Set(r.ign || []); chatErr(on ? `${nk}: в игноре - не видно и не пишет тебе лично` : `${nk}: игнор снят`, true); St().chat.ren = null; chatRender(true);
     }
     function chatTab(t) {
-      const C = St().chat; if (((t === 'tr' || t === 'ev') && !C.tr) || (t === 'dm' && !C.dm)) t = 'g';
+      const C = St().chat; if (((t === 'tr' || t === 'ev') && !C.tr) || (t === 'dm' && !C.dm) || (t === 'mn' && !C.mn) || (t === 'lg' && !C.lg)) t = 'g';
+      if (K.one) C.muted = C.mutes[tabRoom(t)] || null;
       C.tab = t; K.lastTab = t; C.un[t] = 0; C.ren = null; chatRender(true);
       const i = St().el.querySelector(St().chat.tab === 'dm' && window.LGDm ? '.cy-chat-dmx .dm-f input' : '.cy-chat-f input'); if (i && !window.LGSiteUi.is('touch')) try { i.focus({ preventScroll: true }); } catch {}
     }
@@ -199,16 +210,21 @@
       chatRender(true);
       if (on && !St().chat.panel) { const i = St().el.querySelector(St().chat.tab === 'dm' && window.LGDm ? '.cy-chat-dmx .dm-f input' : '.cy-chat-f input'); if (i && !window.LGSiteUi.is('touch')) try { i.focus({ preventScroll: true }); } catch {} }
     }
-    function chatEnter(r) {
+    function chatEnter(r, rm) {
       if (!St().chat || !St().chat.on) return;
-      St().chat.mod = r.mod === 'own' || r.mod === 'mod' ? r.mod : null; St().chat.muted = r.muted || null;
+      St().chat.mod = r.mod === 'own' || r.mod === 'mod' ? r.mod : null; setMuted(rm, r.muted || null);
       if (!St().chat.mod) St().chat.panel = false;
-      if (Array.isArray(r.chat)) { St().chat.list = r.chat.filter((m) => !(m && m.k === 'dm' && window.LGDm)); chatTrim(); St().chat.unread = 0; St().chat.un = { g: 0, tr: 0, dm: 0, ev: 0 }; }
+      if (Array.isArray(r.chat)) {
+        const nw = r.chat.filter((m) => !(m && m.k === 'dm' && window.LGDm));
+        // 29.10: заменить только свою ленту
+        if (K.one) { const keep = St().chat.list.filter((m) => (m.rm || 'city') !== (rm || 'city')); St().chat.list = [...keep, ...nw].sort((a, b) => (a.at || 0) - (b.at || 0)); chatTrim(); }
+        else { St().chat.list = nw; chatTrim(); St().chat.unread = 0; St().chat.un = { g: 0, tr: 0, dm: 0, ev: 0, mn: 0 }; }
+      }
       if (Array.isArray(r.ign)) St().chat.ign = new Set(r.ign);
       if (r.c != null) St().chat.c = +r.c || 0;
       chatRender(true);
     }
-    function chatApply(d) {
+    function chatApply(d, rm) {
       if (!St().chat || !St().chat.on) return;
       let ch = false;
       for (const m of d.chat || []) {
@@ -227,7 +243,7 @@
       if (d.c != null) St().chat.c = Math.max(St().chat.c, +d.c || 0);
       // 22.10: мне дали мут / бан / сняли, назначили или сняли модератором (адресно, по SSE)
       if (d.chatMe) {
-        if ('muted' in d.chatMe) { St().chat.muted = d.chatMe.muted || null; if (St().chat.muted) chatErr(St().chat.muted.until ? `Модератор запретил тебе писать на ${leftT(St().chat.muted.until - Date.now())}` : 'Модератор запретил тебе писать в чат'); }
+        if ('muted' in d.chatMe) { setMuted(rm, d.chatMe.muted || null); if (d.chatMe.muted) chatErr(St().chat.muted.until ? `Модератор запретил тебе писать на ${leftT(St().chat.muted.until - Date.now())}` : 'Модератор запретил тебе писать в чат'); }
         if ('mod' in d.chatMe && St().chat.mod !== 'own') { St().chat.mod = d.chatMe.mod || null; if (!St().chat.mod) St().chat.panel = false; }
         ch = true;
       }
@@ -284,10 +300,10 @@
     function chatBadges(box, C) {
       const du = C.dm && window.LGDm ? window.LGDm.unread() : 0, nu = C.unread + (C.open ? 0 : du);   // 29.10: непрочитанные личные - из LGDm
       const n = box.querySelector('.cy-chat-n'); n.hidden = !nu; n.textContent = nu > 99 ? '99+' : String(nu);
-      const tabs = box.querySelector('.cy-chat-tabs'); tabs.hidden = !(C.tr || C.dm) || !!C.panel;
+      const tabs = box.querySelector('.cy-chat-tabs'); tabs.hidden = !(C.tr || C.dm || C.mn || C.lg) || !!C.panel;
       for (const tb of tabs.querySelectorAll('[data-tab]')) {
         const t = tb.dataset.tab, u = t === 'dm' && window.LGDm ? du : C.un[t] || 0, bn = tb.querySelector('.cy-chat-tn');
-        if (t !== 'g') tb.hidden = !C[t];
+        if (t !== 'g') tb.hidden = !C[t]; else if (K.one) tb.hidden = !C.g;
         tb.setAttribute('aria-selected', String(C.tab === t)); bn.hidden = !u || C.tab === t; bn.textContent = u > 99 ? '99+' : String(u);
       }
     }
@@ -296,15 +312,25 @@
       const C = St().chat, b = box.querySelector('.cy-chat-b'), n = box.querySelector('.cy-chat-n'), l = box.querySelector('.cy-chat-l'), inp = box.querySelector('.cy-chat-f input'), sh = box.querySelector('.cy-chat-sh');
       box.querySelector('.cy-chat-t').setAttribute('aria-expanded', String(C.open)); b.hidden = !C.open; box.classList.toggle('open', C.open);
       chatBadges(box, C); chatTo(box, C);
-      if (C.muted && C.muted.until && C.muted.until <= Date.now()) C.muted = null;   // мут истёк
+      if (K.one) C.muted = C.mutes[tabRoom(C.tab)] || null;
+      // мут истёк
+      if (C.muted && C.muted.until && C.muted.until <= Date.now()) { C.muted = null; if (K.one) C.mutes[tabRoom(C.tab)] = null; }
       clearTimeout(St().chatMuteT); if (C.muted && C.muted.until) St().chatMuteT = setTimeout(() => chatRender(), Math.min(C.muted.until - Date.now() + 500, 60000));
-      inp.disabled = !!C.muted || (C.tab === 'dm' && !C.peer); inp.placeholder = C.muted ? (C.muted.until ? `Мут ещё ${leftT(C.muted.until - Date.now())}` : 'Модератор запретил тебе писать') : (C.tab === 'dm' ? (C.peer ? `Лично для ${C.peer}…` : 'Выбери собеседника: «✉» у ника') : C.mod && C.tab === 'g' ? 'Написать… (/help — команды)' : TAB_PH[C.tab] || TAB_PH.g);
+      inp.disabled = !!C.muted || (C.tab === 'dm' && !C.peer); inp.placeholder = C.muted ? (C.muted.until ? `Мут ещё ${leftT(C.muted.until - Date.now())}` : 'Модератор запретил тебе писать') : (C.tab === 'dm' ? (C.peer ? `Лично для ${C.peer}…` : 'Выбери собеседника: меню ника → «Написать»') : C.mod && C.tab === 'g' ? 'Написать… (/help — команды)' : TAB_PH[C.tab] || TAB_PH.g);
       sh.hidden = !C.mod; sh.setAttribute('aria-pressed', String(!!C.panel)); box.classList.toggle('pnl', !!C.panel);
       const dmx = box.querySelector('.cy-chat-dmx'), dmOn = C.tab === 'dm' && !!window.LGDm && !!dmx;   // 29.10: «Личные» рисует LGDm
-      box.querySelector('.cy-chat-p').hidden = !C.panel; l.hidden = !!C.panel || dmOn; box.querySelector('.cy-chat-f').hidden = !!C.panel || C.tab === 'ev' || dmOn;   // 24.10: «Достижения» — только чтение
+      // 24.10: «Достижения» — только чтение
+      box.querySelector('.cy-chat-p').hidden = !C.panel; l.hidden = !!C.panel || dmOn; box.querySelector('.cy-chat-f').hidden = !!C.panel || C.tab === 'ev' || C.tab === 'lg' || dmOn;
       if (dmx) { dmx.hidden = !dmOn || !!C.panel; if (window.LGDm) window.LGDm.place(); }
       if (!C.open || C.panel || dmOn) return;
       const end = toEnd || l.scrollHeight - l.scrollTop - l.clientHeight < 40;
+      // 30.10: «Журнал» хозяина (шахта) - не сообщения чата: новыми снизу, перерисовка - только когда список поменялся
+      if (C.tab === 'lg') {
+        const L = (K.log() || []).slice().reverse(), h = L.length ? L.map((e) => `<li class="cy-chat-ev cy-chat-lg" title="${esc(hm(e.at))}">${esc(e.t)}</li>`).join('') : '<li class="cy-chat-0">Пока тихо.</li>';
+        if (C.lgH !== h || !l.firstChild) { C.lgH = h; l.innerHTML = h; }
+        C.ren = null; if (end) l.scrollTop = l.scrollHeight; return;
+      }
+      C.lgH = '';
       const V = chatVis();
       l.innerHTML = V.length ? V.map(chatLi).join('') : `<li class="cy-chat-0">${esc(TAB_EMPTY[C.tab] || TAB_EMPTY.g)}</li>`;
       C.ren = V.length ? V.map((m) => m.id) : null;
@@ -323,7 +349,7 @@
         + '</span>' : '';
       const me0 = String(X.login() || '').toLowerCase(), pinged = me0 && m.l !== me0 && new RegExp('(^|\\s)@' + me0 + '(\\b|$)', 'i').test(String(m.t || ''));
       const cls = [m.l === X.login() ? 'me' : '', m.l === chanLogin() ? 'st' : m.r ? 'md' : '', pinged ? 'ping' : ''].filter(Boolean).join(' ');
-      return `<li${cls ? ` class="${cls}"` : ''} title="${esc(hm(m.at))}">${role}${clsIco(m)}<b data-nick="${esc(m.l)}" tabindex="0" title="${m.k === 'dm' ? 'Переписка' : 'Ответить'} (правая кнопка или долгое нажатие - меню)" style="color:${nickColor(m.l)}">${nm}</b>${m.k === 'dm' && m.l === X.login() && m.to ? ` → <b data-nick="${esc(m.to)}" style="color:${nickColor(m.to)}">${esc(m.to)}</b>` : ''}${X.awb ? X.awb(m.aw) : ''}${C.dm && m.k !== 'dm' && m.l !== X.login() ? `<button type="button" class="cy-chat-dm" data-dm="${esc(m.l)}" title="Написать лично" aria-label="Написать лично: ${nm}">✉</button>` : ''} <span>${esc(m.t)}</span>${mod}</li>`;
+      return `<li${cls ? ` class="${cls}"` : ''}${m.rm ? ` data-rm="${esc(m.rm)}"` : ''} title="${esc(hm(m.at))}">${role}${clsIco(m)}<b data-nick="${esc(m.l)}" tabindex="0" title="${m.k === 'dm' ? 'Переписка' : 'Ответить'} (правая кнопка или долгое нажатие - меню)" style="color:${nickColor(m.l)}">${nm}</b>${m.k === 'dm' && m.l === X.login() && m.to ? ` → <b data-nick="${esc(m.to)}" style="color:${nickColor(m.to)}">${esc(m.to)}</b>` : ''}${X.awb ? X.awb(m.aw) : ''} <span>${esc(m.t)}</span>${mod}</li>`;
     }
     // окно модерации: ограничить по нику, кто в муте и бане (снять), модераторы (только владелец: назначить, снять)
     async function chatPanel(on) {
@@ -331,7 +357,7 @@
       if (!St().chat.panel) { chatRender(true); return; }
       const pn = St().el.querySelector('.cy-chat-p');
       pn.innerHTML = '<p class="cy-chat-pl">Загружаю…</p>';
-      const r = await X.api(K.base + '/mod');
+      const r = await X.api(baseOf(tabRoom(St().chat.tab)) + '/mod');
       if (!St() || !St().chat || !St().chat.panel) return;
       if (!r || !r.ok) { pn.innerHTML = `<p class="cy-chat-pl">${esc((r && (CHAT_ERR[r.error] || r.error)) || 'не загрузилось')}</p><button type="button" class="cy-chat-pb" data-pback>← К чату</button>`; return; }
       St().chat.info = r; if (r.role === 'own' || r.role === 'mod') St().chat.mod = r.role;
@@ -357,7 +383,7 @@
       if (cmd === 'help' || cmd === 'помощь') { chatSys(own ? `Команды: /mod ник · /unmod ник · /mods · ${CHAT_HELP}` : `Команды: ${CHAT_HELP}`); return true; }
       if (cmd === 'mods') {
         if (!own) { chatErr('список модераторов — у админа чата'); return false; }
-        const r = await X.api(K.base + '/mod'); if (!St() || !St().chat) return false;
+        const r = await X.api(baseOf('city') + '/mod'); if (!St() || !St().chat) return false;
         if (!r || !r.ok) { chatErr((r && (CHAT_ERR[r.error] || r.error)) || 'не вышло'); return false; }
         chatSys((r.mods || []).length ? `Модераторы чата (${r.mods.length}): ${r.mods.join(', ')}` : 'Модераторов чата пока нет. Назначить: /mod ник');
         return true;
@@ -373,25 +399,31 @@
       const t = inp.value.trim(); if (!t || !St().chat || St().chat.sending) return;
       if (t.startsWith('/') && St().chat.tab === 'g') { St().chat.sending = true; const ok = await chatCmd(t); if (!St() || !St().chat) return; St().chat.sending = false; if (ok) inp.value = ''; return; }
       if (K.here && !K.here()) { chatErr(K.joining || 'подключаемся…'); if (K.rejoin) K.rejoin(); return; }
-      if (St().chat.tab === 'dm' && !St().chat.peer) { chatErr('кому? нажми «✉» у ника в ленте'); return; }   // 26.10: до «отправляется» - иначе флаг залипал и дальше все отправки молча пропадали
+      // 26.10: до «отправляется» - иначе флаг залипал и дальше все отправки молча пропадали
+      if (St().chat.tab === 'dm' && !St().chat.peer) { chatErr('кому? меню ника в ленте → «Написать»'); return; }
       St().chat.sending = true;
-      const r = await X.api(K.say, { text: t, ...(St().chat.tab === 'tr' ? { k: 'tr' } : St().chat.tab === 'dm' ? { to: St().chat.peer } : {}) });
+      // 29.10: единый чат - куда писать, по вкладке
+      const tab0 = St().chat.tab, dest = K.sayTo ? K.sayTo(tab0) : null;
+      let r = await X.api(dest ? dest.url : K.say, { text: t, ...(dest ? dest.body : tab0 === 'tr' ? { k: 'tr' } : tab0 === 'dm' ? { to: St().chat.peer } : {}) });
+      if (r && r.ok && r.msg && K.tag) r = { ...r, msg: K.tag(r.msg, tabRoom(tab0)) };
       if (!St() || !St().chat) return;
       St().chat.sending = false;
       if (r && r.ok && r.msg) { inp.value = ''; chatApply({ chat: [r.msg] }); chatRender(true); return; }
       const er = (r && r.error) || 'не отправилось — нет связи';
-      if (/запретил/.test(er)) { St().chat.muted = St().chat.muted || { until: 0 }; chatRender(); }
+      if (/запретил/.test(er)) { setMuted(tabRoom(St().chat.tab), St().chat.muted || { until: 0 }); chatRender(); }
       if (K.onError) K.onError(er);
       chatErr(er);
     }
     // действие модератора: del | mute | ban | unban | mod | unmod
     async function chatAct(op, o, done) {
       if (op === 'ban' && !o.sure && !confirm(`Забанить «${o.n || o.login}» ${K.where || 'в чате'}? Все его сообщения пропадут у всех.`)) return false;
-      const r = await X.api(K.base + '/mod', { op, id: o.id, login: o.login, min: o.min });
+      const rm = o.rm || (K.one ? tabRoom(St().chat.tab) : 'city');
+      const r = await X.api(baseOf(rm) + '/mod', { op, id: o.id && rm === 'mine' ? String(o.id).replace(/^m:/, '') : o.id, login: o.login, min: o.min });
       if (!St() || !St().chat) return;
       if (!r || !r.ok) { chatErr((r && (CHAT_ERR[r.error] || r.error)) || 'не вышло'); return false; }
-      if (op === 'del') chatApply({ chatDel: [r.id] });
-      if (r.gone && r.gone.length) chatApply({ chatDel: r.gone });
+      const pre = (id) => (K.one && rm === 'mine' ? 'm:' + id : id);
+      if (op === 'del') chatApply({ chatDel: [pre(r.id)] });
+      if (r.gone && r.gone.length) chatApply({ chatDel: r.gone.map(pre) });
       const who = o.n || o.login || '';
       chatErr({ del: 'Сообщение удалено', mute: `${who}: мут ${(MUTES.find((x) => x[0] === o.min) || [0, leftT(o.min * 60000)])[1]}`, ban: `${who}: бан в чате`, unban: `${who}: снова может писать`, mod: `${who} — модератор чата`, unmod: `${who} больше не модератор` }[op] || 'Готово', true);
       if (op === 'mod' || op === 'unmod') for (const m of St().chat.list) if (m.l === r.login) m.r = op === 'mod' ? 'mod' : undefined;
@@ -399,7 +431,10 @@
       if (St().chat.panel) chatPanel(true); else chatRender();
       return true;
     }
-    return { init: () => { St(); chatInit(); }, enter: (r) => { St(); chatEnter(r); }, apply: (d) => { St(); chatApply(d); }, render: (e) => { St(); chatRender(e); }, open: (on) => { St(); chatOpen(on); }, menuClose: () => { St(); nickMenuClose(); } };
+    // 29.10: tab, unAdd - для единого чата (chatone.js)
+    return { init: () => { St(); chatInit(); }, enter: (r, rm) => { St(); chatEnter(r, rm); }, apply: (d, rm) => { St(); chatApply(d, rm); },
+      tab: (t) => { St(); if (St() && St().chat) chatTab(t); }, unAdd: (t, n) => { St(); const C = St() && St().chat; if (!C || !n) return; C.un[t] = (C.un[t] || 0) + n; C.unread += n; const box = St().el.querySelector('.cy-chat'); if (box) chatBadges(box, C); },
+      render: (e) => { St(); chatRender(e); }, open: (on) => { St(); chatOpen(on); }, menuClose: () => { St(); nickMenuClose(); } };
   }
   window.LGChat = { make, html };
 })();

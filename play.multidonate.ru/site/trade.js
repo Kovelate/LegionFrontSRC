@@ -1,5 +1,6 @@
 /* 23.10: обмен между игроками — лицом к лицу в «Городе» (решение стримера 23.10) — window.LGTrade. Сервер — src/site/trade.ts,
    проводит обмен комната (products/legion/modules/legionary/trade.js). Правила — legacy/md/docs/CITY.md.
+   30.10: в меню героя - ещё и друзья (window.LGFriends.menuItems/menuAct, как в меню ника в чате); обмен закрыт, а друзья открыты - только они.
    Нажал на героя другого игрока → меню «Предложить обмен» → у него приглашение (60 с) → окно обмена у обоих:
    «Ты отдаёшь» (до 6 вещей и монеты — из своей сумки перетаскиванием или нажатием; стопка — сколько штук) / «Тебе дают».
    Любое изменение снимает «Готово» у обоих и подсвечивает, что поменялось; оба «Готово» → 3 секунды → «Подтвердить обмен».
@@ -39,14 +40,20 @@
     const min = (h && +h.tml) || 0, myLv = (h && +h.level) || 1, low = min > 1 && myLv < min ? lowText(min, myLv) : min > 1 && v.lv && +v.lv < min ? lowText(min, +v.lv, v.n || l) : '';
     const m = document.createElement('div');
     m.className = 'tr-menu'; m.setAttribute('role', 'menu');
-    m.innerHTML = `<div class="tr-mh"><b>${esc(v.n || l)}</b>${v.lv ? `<small>ур. ${+v.lv}</small>` : ''}</div>
+    // 30.10: друзья (LGFriends есть только когда друзья открыты этому входу); обмен закрыт, а друзья есть - блока обмена нет вовсе
+    const fr = window.LGFriends ? window.LGFriends.menuItems(l) : [];
+    const trade = can || !fr.length ? `<div class="tr-mt">
       <button type="button" role="menuitem" class="btn primary sm" data-trinv${can && !busy && !low ? '' : ' disabled'}>Предложить обмен</button>
-      ${!can ? '<p class="note">Обмен пока закрыт.</p>' : low ? `<p class="note">${esc(low)}.</p>` : busy ? '<p class="note">Сначала закончи текущий обмен.</p>' : ''}`;
+      ${!can ? '<p class="note">Обмен пока закрыт.</p>' : low ? `<p class="note">${esc(low)}.</p>` : busy ? '<p class="note">Сначала закончи текущий обмен.</p>' : ''}</div>` : '';
+    const friends = fr.length ? `<div class="tr-mf">${fr.map(([k, t]) => `<button type="button" role="menuitem" class="btn ${k === 'fr-blk' || k === 'fr-unb' ? 'ghost ' : ''}sm" data-trfr="${esc(k)}">${esc(t)}</button>`).join('')}</div>` : '';
+    m.innerHTML = `<div class="tr-mh"><b>${esc(v.n || l)}</b>${v.lv ? `<small>ур. ${+v.lv}</small>` : ''}</div>${trade}${friends}`;
     document.body.appendChild(m);
     const r = m.getBoundingClientRect(), [x, y] = window.LGSiteUi.clampXY(m, cx - r.width / 2, cy - r.height - 14);   // 25.10: не за край экрана - packages/site-ui
     m.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
     T.menu = m;
-    m.querySelector('[data-trinv]').onclick = (e) => { closeMenu(); op({ op: 'invite', to: l }, e.currentTarget); };
+    const inv = m.querySelector('[data-trinv]');
+    if (inv) inv.onclick = (e) => { closeMenu(); op({ op: 'invite', to: l }, e.currentTarget); };
+    m.querySelectorAll('[data-trfr]').forEach((b) => { b.onclick = () => { const k = b.dataset.trfr; closeMenu(); if (window.LGFriends) window.LGFriends.menuAct(k, l); }; });
     setTimeout(() => { document.addEventListener('pointerdown', outMenu, true); document.addEventListener('keydown', escMenu); }, 0);
     try { m.querySelector('button:not([disabled])').focus({ preventScroll: true }); } catch {}
   }

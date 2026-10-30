@@ -1805,16 +1805,18 @@
     // стойки навеса и задник
     g += `<rect x="${x0 - 4}" y="${fy - 186}" width="10" height="${186}" rx="3" fill="#8a5a32" ${o(3)}/><rect x="${x1 - 6}" y="${fy - 186}" width="10" height="${186}" rx="3" fill="#8a5a32" ${o(3)}/>`;
     g += `<rect x="${x0 + 6}" y="${fy - 160}" width="${x1 - x0 - 12}" height="${108}" fill="#3a2a30"/>`;
-    // стойка с кирками на заднике (уровни снизу вверх цветом головки)
-    const heads = ['#a0703a', '#d8803a', '#6f7888', '#8aa2c0', '#ffcf3a', '#7a8cff'];
-    heads.forEach((c, i) => { const x = x0 + 18 + i * 19, y0 = fy - 66, y1 = fy - 146; g += `<path d="M${x} ${y0} L${x} ${y1}" stroke="${INK}" stroke-width="6" stroke-linecap="round"/><path d="M${x} ${y0} L${x} ${y1}" stroke="#b8864e" stroke-width="3" stroke-linecap="round"/><path d="M${x - 10} ${y1 + 6} Q${x} ${y1 - 8} ${x + 12} ${y1 + 8} Q${x + 2} ${y1 + 2} ${x - 10} ${y1 + 6}Z" fill="${c}" ${o(2.2)}/>`; });
+    // стойка с кирками на заднике: все 6 ступеней в ряд - рисунок LGPickArt.held (30.10, #2111: у каждой ступени свой облик);
+    // не загрузился - прежние палки с головкой своего цвета
+    const PAr = typeof window !== 'undefined' && window.LGPickArt;
+    if (PAr && PAr.held) { for (let lv = 0; lv < 6; lv++) g += `<g transform="translate(${x0 + 17 + lv * 19.4} ${fy - 94}) scale(.44)">${PAr.held(lv)}</g>`; }
+    else ['#a0703a', '#d8803a', '#6f7888', '#8aa2c0', '#ffcf3a', '#7a8cff'].forEach((c, i) => { const x = x0 + 18 + i * 19, y0 = fy - 66, y1 = fy - 146; g += `<path d="M${x} ${y0} L${x} ${y1}" stroke="${INK}" stroke-width="6" stroke-linecap="round"/><path d="M${x} ${y0} L${x} ${y1}" stroke="#b8864e" stroke-width="3" stroke-linecap="round"/><path d="M${x - 10} ${y1 + 6} Q${x} ${y1 - 8} ${x + 12} ${y1 + 8} Q${x + 2} ${y1 + 2} ${x - 10} ${y1 + 6}Z" fill="${c}" ${o(2.2)}/>`; });
     g += `<path d="M${x0 + 8} ${fy - 128} H${x1 - 8}" stroke="${INK}" stroke-width="5" stroke-linecap="round"/><path d="M${x0 + 8} ${fy - 128} H${x1 - 8}" stroke="#a0703a" stroke-width="2.4" stroke-linecap="round"/>`;
     // прилавок: доски, кромка, гвозди
     g += `<rect x="${x0}" y="${top}" width="${x1 - x0}" height="${fy - top}" fill="#a0703a" ${o(3.6)}/>` + [top + 17, top + 34].map((y) => `<path d="M${x0 + 4} ${y} H${x1 - 4}" stroke="#6b4423" stroke-width="2.2"/>`).join('')
       + `<rect x="${x0 - 8}" y="${top - 10}" width="${x1 - x0 + 16}" height="12" rx="4" fill="#6b4423" ${o(3)}/>` + [[x0 + 8, top + 8], [x1 - 8, top + 8], [x0 + 8, fy - 8], [x1 - 8, fy - 8]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2" fill="${INK}"/>`).join('');
     // на прилавке: две каски, кирка, рудная сумка
     for (const [hx, c] of [[x0 + 22, '#ffcf3a'], [x0 + 52, '#ff8a5c']]) g += `<path d="M${hx - 13} ${top - 10} Q${hx - 13} ${top - 30} ${hx} ${top - 30} Q${hx + 13} ${top - 30} ${hx + 13} ${top - 10}Z" fill="${c}" ${o(2.6)}/><rect x="${hx - 16}" y="${top - 13}" width="32" height="5" rx="2.5" fill="#c07a10" ${o(2)}/><circle cx="${hx}" cy="${top - 21}" r="4" fill="#fff6c0" ${o(1.8)}/>`;
-    g += `<path d="M${x0 + 70} ${top - 12} L${x0 + 98} ${top - 40}" stroke="${INK}" stroke-width="6" stroke-linecap="round"/><path d="M${x0 + 70} ${top - 12} L${x0 + 98} ${top - 40}" stroke="#9a6636" stroke-width="3" stroke-linecap="round"/><path d="M${x0 + 86} ${top - 46} Q${x0 + 104} ${top - 52} ${x0 + 112} ${top - 30} Q${x0 + 102} ${top - 40} ${x0 + 88} ${top - 40}Z" fill="#8aa2c0" ${o(2.4)}/>`;
+    if (!(PAr && PAr.held)) g += `<path d="M${x0 + 70} ${top - 12} L${x0 + 98} ${top - 40}" stroke="${INK}" stroke-width="6" stroke-linecap="round"/><path d="M${x0 + 70} ${top - 12} L${x0 + 98} ${top - 40}" stroke="#9a6636" stroke-width="3" stroke-linecap="round"/><path d="M${x0 + 86} ${top - 46} Q${x0 + 104} ${top - 52} ${x0 + 112} ${top - 30} Q${x0 + 102} ${top - 40} ${x0 + 88} ${top - 40}Z" fill="#8aa2c0" ${o(2.4)}/>`;
     const bx = x1 - 22, by = top - 10;
     g += `<path d="M${bx - 14} ${by - 18} Q${bx - 18} ${by - 4} ${bx - 14} ${by} Q${bx} ${by + 4} ${bx + 14} ${by} Q${bx + 18} ${by - 4} ${bx + 14} ${by - 18} Q${bx} ${by - 22} ${bx - 14} ${by - 18}Z" fill="#a8743f" ${o(2.6)}/><path d="M${bx - 12} ${by - 16} Q${bx} ${by - 12} ${bx + 12} ${by - 16}" stroke="#e8c88a" stroke-width="2.4" fill="none"/><path d="M${bx - 6} ${by - 20} l4 -6 6 1 2 5Z" fill="#3a7aff" ${o(1.8)}/>`;
     // навес: полосы, фестоны

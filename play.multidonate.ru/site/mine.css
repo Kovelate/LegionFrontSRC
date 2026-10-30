@@ -38,12 +38,8 @@ body.mn-on { overflow: hidden; }
 .mn-ttl b { font: 400 26px "Russo One", "Arial Black", sans-serif; color: #ffc94d; letter-spacing: .06em; text-shadow: 0 2px 0 #15122e; }
 .mn-ttl span { color: #e8dcc8; font-weight: 700; }
 .mn-reset { margin-left: auto; color: #cfc4b0; font-size: 14px; }
-.mn-exit { margin-left: 8px; }
 
-.mn-panel { position: absolute; right: 16px; top: 64px; z-index: 2; width: 330px; max-width: calc(100% - 32px); max-height: calc(100% - 84px); overflow: auto; overflow-x: hidden; padding: 0 !important; background: rgba(28,22,34,.94) !important; color: #f3efe6; border-radius: 14px; -webkit-user-select: text; user-select: text; }
 .mn-pb { overflow-wrap: anywhere; }
-.mn-ph { display: flex; align-items: center; gap: 8px; width: 100%; padding: 12px 14px; border: 0; background: none; color: #ffe27a; font: 800 15px Golos Text, Arial, sans-serif; text-align: left; cursor: pointer; }
-.mn-ph i { display: none; }
 .mn-pb { padding: 0 14px 14px; display: grid; gap: 12px; }
 .mn-row { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; }
 .mn-row span { color: #cfc4b0; }
@@ -69,13 +65,8 @@ body.mn-on { overflow: hidden; }
   .mn-top { padding: 8px 10px; flex-wrap: wrap; row-gap: 2px; }
   .mn-ttl b { font-size: 20px; }
   .mn-reset { order: 3; width: 100%; margin: 0; font-size: 12px; }
-  .mn-panel { left: 0; right: 0; top: auto; bottom: 0; width: auto; max-width: none; max-height: 55vh; max-height: 55dvh; border-radius: 16px 16px 0 0; }
-  .mn-panel[data-open="0"] .mn-pb { display: none; }
-  .mn-ph i { display: block; margin-left: auto; width: 10px; height: 10px; border-right: 2.5px solid currentColor; border-bottom: 2.5px solid currentColor; transform: rotate(-135deg) translate(-2px, -2px); }
-  .mn-panel[data-open="1"] .mn-ph i { transform: rotate(45deg); }
   .mn-tip { bottom: 70px; }
   .mn-tb { gap: 6px; }
-  .mn-tb .btn { padding-left: 10px; padding-right: 10px; }
   .mn-zoom { bottom: 64px; }
 }
 
@@ -176,10 +167,8 @@ body.mn-on { overflow: hidden; }
    шапка панели ложилась поверх «В город» (кнопка не нажималась). Здесь — ещё сильнее (html body …) */
 html body .mn .panel, html body .mn-board-w .panel { margin: 0; clip-path: none; outline: 0; }
 html body .mn .panel::before, html body .mn .panel::after, html body .mn-board-w .panel::before, html body .mn-board-w .panel::after { content: none !important; display: none !important; }
-html body .mn .mn-panel { position: absolute; transform: none; }
 html body .mn .mn-news { position: relative; left: auto; top: auto; transform: none; }
 html body .mn-board-w .mn-board { position: relative; }
-@media (max-width: 720px) { html body .mn .mn-panel { left: 0; right: 0; top: auto; bottom: 0; } }
 
 /* 25.10: «Ты» — поверх всех ников; очередь камней; масштаб; шахта в другой вкладке; доли монеты */
 .mn-menm { position: absolute; left: 0; top: 0; z-index: 100000; white-space: nowrap; font: 800 15px Golos Text, Arial, sans-serif; color: #ffe27a; text-shadow: 0 0 3px #15122e, 0 0 3px #15122e, 0 1px 2px #15122e; pointer-events: none; }
@@ -260,7 +249,6 @@ html body .mn-board-w .mn-board { position: relative; }
   .mn-ttl span { font-size: 12px; white-space: nowrap; }
   .mn-reset { display: none; }
   .mn-tb { flex: 0 0 auto; }
-  .mn-tb .btn { min-height: 36px; padding: 6px 10px; font-size: 13px; }
   html body .mn .mn-zoom { bottom: 64px; }
 }
 
@@ -273,53 +261,15 @@ html body .mn-board-w .mn-board { position: relative; }
 .mn[data-m2="1"] .mn-ttl span { font-size: 13px; color: var(--m2-mute); font-weight: 700; }
 .mn[data-m2="1"] .mn-reset { align-self: center; padding: 4px 10px; border-radius: 999px; background: rgba(21,16,26,.6); font-size: 12px; color: var(--m2-mute); }
 .mn[data-m2="1"] .mn-tb { padding: 4px; gap: 4px; border-radius: 999px; background: rgba(21,16,26,.78); box-shadow: 0 6px 18px rgba(0,0,0,.3); }
-.mn[data-m2="1"] .mn-tb .btn { min-height: 38px; }
-.mn[data-m2="1"] .mn-exit { margin-left: 0; background: var(--accent, #ff8fa3); color: #2a1b22; }
 /* панель справа: карточки */
-.mn[data-m2="1"] .mn-panel { top: 76px; width: 340px; background: var(--m2-bg) !important; border-radius: 22px; box-shadow: 0 18px 40px rgba(0,0,0,.4); }
-.mn[data-m2="1"] .mn-ph { padding: 14px 16px 10px; font: 700 13px var(--tx, Golos Text, sans-serif); color: var(--m2-mute); text-transform: uppercase; letter-spacing: .08em; cursor: default; }
-.mn[data-m2="1"] .mn-ph span { flex: 1 1 auto; min-width: 0; }
-.mn-ph em { display: none; }
 .mn[data-m2="1"] .mn-pb { padding: 0 12px 12px; gap: 10px; }
 .mn[data-m2="1"] .m2-card { display: grid; gap: 8px; padding: 12px 14px; border-radius: 16px; background: var(--m2-card); box-shadow: inset 0 0 0 1px var(--m2-line); }
 .mn[data-m2="1"] .m2-k { font: 800 12px var(--tx, Golos Text, sans-serif); text-transform: uppercase; letter-spacing: .08em; color: var(--m2-mute); }
 .mn[data-m2="1"] .m2-k small { text-transform: none; letter-spacing: 0; font-weight: 600; opacity: .8; }
-.mn[data-m2="1"] .m2-t { margin: 0; font-size: 15px; font-weight: 700; line-height: 1.35; color: var(--ink, #f7eadf); }
-.mn[data-m2="1"] .m2-now.on { box-shadow: inset 0 0 0 2px rgba(255,207,106,.45); }
-.mn[data-m2="1"] .m2-t b { color: var(--m2-gold); }
-.mn[data-m2="1"] .m2-pr { height: 10px; border-radius: 999px; background: #15101a; overflow: hidden; }
-.mn[data-m2="1"] .m2-pr i { display: block; height: 100%; width: 0; border-radius: 999px; background: linear-gradient(90deg, #ffb84a, var(--m2-gold)); }
-.mn[data-m2="1"] .m2-sub { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--m2-mute); font-weight: 700; }
-.mn[data-m2="1"] .m2-earn .mn-bag { padding: 0; background: none; }
-.mn[data-m2="1"] .m2-earn .mn-bag-c span { display: none; }
-.mn[data-m2="1"] .m2-earn .mn-bag-c b { font: 700 24px/1.1 var(--hd, sans-serif); color: var(--m2-gold); }
-.mn[data-m2="1"] .m2-earn .mn-res { gap: 4px; display: flex; flex-wrap: wrap; }
-.mn[data-m2="1"] .m2-earn .mn-res li { padding: 3px 9px; border-radius: 999px; background: rgba(0,0,0,.25); gap: 6px; }
-.mn[data-m2="1"] .m2-earn .mn-res li b { margin-left: 2px; color: var(--m2-gold); }
-.mn[data-m2="1"] .m2-sell { width: 100%; }
 .mn[data-m2="1"] .m2-dot { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: #7ff07a; color: #15241a; font: 800 11px var(--tx, sans-serif); vertical-align: 1px; }
-.mn[data-m2="1"] .m2-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 0; }
-.mn[data-m2="1"] .m2-stats > div { display: grid; gap: 3px; align-content: start; padding: 9px 11px; border-radius: 14px; background: var(--m2-card); min-width: 0; }
-.mn[data-m2="1"] .m2-stats .m2-gem { grid-column: 1 / -1; grid-template-columns: 1fr auto; align-items: center; }
-.mn[data-m2="1"] .m2-stats dt { font-size: 11px; color: var(--m2-mute); font-weight: 700; }
-.mn[data-m2="1"] .m2-stats dd { margin: 0; font-size: 15px; font-weight: 800; color: var(--ink, #f7eadf); }
-.mn[data-m2="1"] .m2-stats dd small { font-size: 11px; color: var(--m2-mute); font-weight: 700; }
-.mn[data-m2="1"] .m2-stats dd.ok { color: #8fe39a; }
-.mn[data-m2="1"] .m2-gem dd { display: inline-flex; align-items: center; gap: 6px; }
-.mn[data-m2="1"] .m2-gem dd i { width: 11px; height: 11px; border-radius: 3px; transform: rotate(45deg); box-shadow: 0 0 6px currentColor; }
 .mn[data-m2="1"] .m2-mini { display: block; height: 4px; border-radius: 999px; background: #15101a; overflow: hidden; margin-top: 2px; }
 .mn[data-m2="1"] .m2-mini i { display: block; height: 100%; background: #8fe3b0; border-radius: 999px; }
 .mn[data-m2="1"] .m2-mini.xp i { background: var(--m2-gold); }
-.mn[data-m2="1"] .m2-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.mn[data-m2="1"] .m2-log { border-top: 1px solid var(--m2-line); padding-top: 8px; }
-.mn[data-m2="1"] .m2-log summary { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; cursor: pointer; font: 800 12px var(--tx, sans-serif); text-transform: uppercase; letter-spacing: .08em; color: var(--m2-mute); list-style: none; }
-.mn[data-m2="1"] .m2-log summary::-webkit-details-marker { display: none; }
-.mn[data-m2="1"] .m2-log summary::after { content: '▾'; margin-left: 4px; }
-.mn[data-m2="1"] .m2-log[open] summary::after { content: '▴'; }
-.mn[data-m2="1"] .m2-log summary span { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 600; }
-.mn[data-m2="1"] .m2-log ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 2px; font-size: 13px; color: var(--ink, #f7eadf); }
-.mn[data-m2="1"] .m2-log li { padding: 4px 8px; border-radius: 8px; line-height: 1.3; }
-.mn[data-m2="1"] .m2-log li:nth-child(odd) { background: rgba(255,255,255,.03); }
 /* окна NPC и поручения — та же карточка */
 .mn[data-m2="1"] .mn-npc-p { display: grid; gap: 8px; }
 .mn[data-m2="1"] .mn-npc-p h3 { font: 700 18px var(--hd, sans-serif); color: var(--m2-gold); }
@@ -333,28 +283,22 @@ html body .mn-board-w .mn-board { position: relative; }
   .mn[data-m2="1"] .mn-ttl { padding: 5px 10px; border-radius: 12px; }
   .mn[data-m2="1"] .mn-ttl b { font-size: 16px; }
   .mn[data-m2="1"] .mn-ttl span { font-size: 11px; }
-  .mn[data-m2="1"] .mn-tb .btn { min-height: 34px; padding: 4px 10px; font-size: 13px; }
-  .mn[data-m2="1"] .mn-panel { top: auto; width: auto; border-radius: 20px 20px 0 0; max-height: 62vh; max-height: 62dvh; }
-  .mn[data-m2="1"] .mn-ph { padding: 12px 14px; cursor: pointer; color: var(--ink, #f7eadf); text-transform: none; letter-spacing: 0; font-size: 14px; }
-  .mn[data-m2="1"] .mn-ph span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .mn[data-m2="1"] .mn-ph em { display: block; font-style: normal; color: var(--m2-gold); font-weight: 800; white-space: nowrap; }
-  .mn[data-m2="1"] .mn-ph i { margin-left: 4px; }
 }
 
-@media (min-width: 721px) { html body .mn[data-m2="1"] .mn-ph { display: none; } html body .mn[data-m2="1"] .mn-pb { padding-top: 12px; } }
 @media (max-width: 720px) {
-  html body .mn .mn-panel[data-open="1"] { z-index: 5; }   /* развёрнутая панель — поверх «−/+» */
 }
 .mn-nm2 { bottom: calc(110px + var(--nmy, 0) * 15px); }
 /* 25.10 (обновление шахты): чат шахты — тот же чат, что в «Городе» (sitechat.js, стили city.css): слева снизу над «−/+» */
 .mn .cy-chat { position: absolute; left: 12px; bottom: 64px; margin: 0; z-index: 4; width: min(360px, calc(100% - 24px)); }
-@media (max-width: 720px) { .mn .cy-chat { left: auto; right: 10px; bottom: 64px; } .mn .cy-chat.open { left: 10px; width: auto; } html body .mn .mn-panel[data-open="1"] ~ .cy-chat { display: none; } }
 @media (max-width: 720px) { .mn .cy-chat:not(.open) { width: auto; } }
 /* 25.10 (mine2): чат не закрывает подъёмник и предметы (mine.js chatFit: data-chat="side" - слева от шахты, ширина --mn-chw;
    "band" - нижняя полоса, сцена кончается над ней). Свёрнут - язычок «Чат» у левого края (число непрочитанных - в нём) */
 .mn[data-m2="1"] .cy-chat { left: 0; bottom: 64px; width: var(--mn-chw, min(360px, calc(100% - 24px))); }
 .mn[data-m2="1"] .cy-chat.open { left: 12px; }
-.mn[data-m2="1"][data-chat="band"] .cy-chat.open { right: 12px; width: auto; }
+/* 30.10: полоса - не шире 720 px, прижата влево, ширина ЗАДАНА (было right: 12px; width: auto: из-за justify-self: start у .cy-chat ширина считалась
+   по длине сообщений и при длинных строках растягивалась на весь экран; а в Шахте 3.0 полоса - всегда, зал шире окна). На телефоне ниже - на ширину экрана */
+.mn[data-m2="1"][data-chat="band"] .cy-chat.open { right: auto; width: min(720px, calc(100% - 24px)); }
+@media (min-width: 721px) { .mn[data-m2="1"][data-chat="band"] .cy-chat-l { max-height: min(200px, 26vh); } }
 .mn[data-m2="1"] .cy-chat:not(.open) { width: auto; }
 .mn[data-m2="1"] .cy-chat:not(.open) > .cy-chat-t { border-radius: 0 999px 999px 0; padding: 0 12px 0 10px; box-shadow: 0 4px 14px rgba(0,0,0,.35); }
 @media (max-width: 720px) {
@@ -366,7 +310,6 @@ html body .mn-board-w .mn-board { position: relative; }
 /* 25.10 (mine2): сумка — компактная карточка на месте правой панели (вид карточки, ячейки, кукла, полоски, фильтр — библиотека
    инвентаря: /lib/inventory.css, .lgi--compact). Здесь — только где она стоит: справа сверху; шахта рядом видна и нажимается
    (у обёртки нет подложки); на телефоне — снизу на ~60% высоты */
-.mn.bag-on .mn-panel { display: none; }
 .mn-inv2-w { position: absolute; z-index: 6; right: 16px; top: 76px; width: 276px; max-height: calc(100% - 92px); display: flex; pointer-events: none; }
 .mn-inv2 { pointer-events: auto; }
 @media (max-width: 720px) {
@@ -383,9 +326,6 @@ html body .mn-board-w .mn-board { position: relative; }
 
 /* 25.10 (mine2, просьба стримера): на широком ПК панель, окна и сумка - вплотную к правой стене зала (mine.js dockFit: --mn-pl - где
    начинается тёмная полоса за стеной, --mn-pw - ширина: 340, окно - до 600), шапка с кнопками - над ними; чат - у левой стены */
-.mn[data-m2="1"][data-dock="1"] .mn-panel { left: var(--mn-pl); right: auto; width: var(--mn-pw, 340px); max-width: none; }
-.mn[data-m2="1"][data-dock="1"] .mn-inv2-w { left: var(--mn-pl); right: auto; }
-.mn[data-m2="1"][data-dock="1"] .mn-top { right: auto; width: var(--mn-hw); }
 .mn[data-m2="1"][data-chat="side"] .cy-chat.open { left: var(--mn-chx, 12px); }
 /* 26.10 (mine2): чат на ПК перетаскивается за заголовок (mine.js chatDrag): data-chat="free" - стоит, где поставил зритель (--mn-cfx/--mn-cfy
    от левого верхнего угла шахты), сцену не укорачивает; ленту можно потянуть за нижний правый угол. «⤢» / двойной клик - на место */
@@ -401,7 +341,6 @@ html body .mn-board-w .mn-board { position: relative; }
   .mn .cy-chat.mn-chat-drag .cy-chat-b { box-shadow: 0 12px 32px rgba(0, 0, 0, .5); }
 }
 .mn:not([data-chat="free"]) .cy-chat-l { height: auto !important; }   /* высота ленты, которую потянули, - только у перетащенного чата */
-.mn.board-on .mn-panel { visibility: hidden; }
 html body .mn-board-w.dock { display: block; padding: 0; background: none; pointer-events: none; }
 html body .mn-board-w.dock .mn-board { position: absolute; left: var(--bl); top: var(--bt); width: var(--bw); max-height: calc(100vh - var(--bt) - 16px); pointer-events: auto;
   background: rgba(29,22,32,.96) !important; color: #f3efe6; border-radius: 22px; box-shadow: 0 18px 40px rgba(0,0,0,.45); }
@@ -451,9 +390,6 @@ html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); 
   .mn[data-m2="1"] .mn-cnt b { padding: 0 6px; font-size: 11px; }
   .mn[data-m2="1"] .mn-cnt i { display: none; }
   /* шапка на телефоне - уже: «Игроки» и «Итоги» - значками (текст остаётся для экранного диктора), «В город» - словом */
-  .mn[data-m2="1"] .mn-tb [data-mn-hide], .mn[data-m2="1"] .mn-tb [data-mn-board] { font-size: 0 !important; min-width: 38px; padding: 0 8px !important; }
-  .mn[data-m2="1"] .mn-tb [data-mn-hide]::before { content: '👥'; font-size: 17px; }
-  .mn[data-m2="1"] .mn-tb [data-mn-board]::before { content: '📊'; font-size: 17px; }
   .mn[data-m2="1"] .mn-tb [data-mn-hide][aria-pressed="true"]::before { opacity: .45; }
 }
 /* 26.10 (mine2): телефон боком (низкий экран): шапка в одну строку - короткое название, кнопки значками, без срока недели и имени пласта;
@@ -465,23 +401,15 @@ html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); 
   .mn[data-m2="1"] .mn-ttl span[data-mn="floor"] { font-size: 11px; white-space: nowrap; }
   .mn[data-m2="1"] .mnb-nm, .mn[data-m2="1"] .mn-reset { display: none; }
   .mn[data-m2="1"] .mn-cnt i { display: none; }
-  .mn[data-m2="1"] .mn-tb .btn { min-height: 34px; padding: 4px 10px; font-size: 13px; white-space: nowrap; }
-  .mn[data-m2="1"] .mn-tb [data-mn-hide], .mn[data-m2="1"] .mn-tb [data-mn-board] { font-size: 0 !important; min-width: 38px; padding: 0 8px !important; }
-  .mn[data-m2="1"] .mn-tb [data-mn-hide]::before { content: '👥'; font-size: 17px; }
-  .mn[data-m2="1"] .mn-tb [data-mn-board]::before { content: '📊'; font-size: 17px; }
-  .mn[data-m2="1"] .mn-panel { top: 56px; width: 300px; max-height: calc(100% - 64px); }
 }
 /* 26.10: полоска копания - «здоровье» камня (mine.js hpGo): цвет по остатку, свой камень - светлая рамка */
 @keyframes mnHp { 0% { background-color: #5fd35f; } 50% { background-color: #ffd23f; } 100% { background-color: #ff4d3d; } }
 .mn .mn-bar i { background: none; background-color: #5fd35f; }
 .mn .mn-bar.me { box-shadow: 0 0 0 2px #ffe27a; }
-.mn[data-m2="1"] .m2-pr i { background-image: none; background-color: #5fd35f; }
 
 /* 26.10: шахта не нарисовалась - текст ошибки в панели (mine.js fail) */
 .mn .mn-err { padding: 4px 2px; } .mn .mn-err p { margin: 0 0 8px; } .mn .mn-err code { word-break: break-all; font-size: 12px; color: #ffb4a0; }
 /* 26.10: окно скупщика (флаг mineBuyerPublic / тестеры): прилавок, предложение «Дам за это N», руда из сумки — библиотекой инвентаря */
-.mn[data-m2="1"] .m2-earn .mb-earn .mn-bag-c { display: grid; gap: 2px; }
-.mn[data-m2="1"] .m2-earn .mb-earn .mn-bag-c span { display: block; font-size: 12px; color: var(--m2-mute); font-weight: 600; }
 .mn[data-m2="1"] .mb-earn p { margin: 4px 0 0; font-size: 12.5px; line-height: 1.35; }
 .mn[data-m2="1"] .mb-wait { padding: 6px 9px; border-radius: 10px; background: rgba(255,170,80,.12); color: #ffd19a; }
 .mn[data-m2="1"] .mb-head { grid-template-columns: 1fr; }
@@ -526,7 +454,7 @@ html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); 
 
 /* 26.10 (mine2): «Как устроена шахта» - значок «i» в шапке (только с обновлением) и окно (mine.js help: вид - как у «Итогов», .mn-board) */
 .mn .mn-info { display: none; }
-.mn[data-m2="1"] .mn-info { display: inline-flex; align-items: center; justify-content: center; min-width: 36px; padding-left: 0; padding-right: 0; font: italic 700 16px/1 Georgia, serif; text-transform: none; }
+.mn[data-m2="1"] .mn-info { display: grid; font: italic 700 17px/1 Georgia, serif; text-transform: none; }
 .mn-help .mn-board { width: min(560px, 100%); gap: 6px; }
 .mn-help-hd { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .mn-help-x { flex: 0 0 auto; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 10px; background: rgba(127, 127, 127, .18); color: inherit; font: 700 20px/1 system-ui; cursor: pointer; }
@@ -626,9 +554,168 @@ html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); 
 .mn-lchip-up { border-color: #7ad38a; color: #b9f3c2; }
 /* 29.10 (шаг 4): буровая - бур ходит, колесо крутится (только transform) */
 .mn3 .mn-drill { cursor: pointer; }
-.mn3 .mn-bit { animation: mnBit 1.1s ease-in-out infinite; }
-.mn3 .mn-wheel { animation: mnWheel 2.4s linear infinite; }
-@keyframes mnBit { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(8px); } }
-@keyframes mnWheel { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .mn3 .mn-bit, .mn3 .mn-wheel { animation: none; } }
+/* 30.10: подвижные части буровой - <img> в HTML-слое куска (.mn3-fx): двигает видеокарта, кусок этажа не перерисовывается */
+.mn3-fx { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; }
+.mn-dfx { position: absolute; width: 0; height: 0; }
+.mn-dfx img { position: absolute; display: block; max-width: none; will-change: transform; user-select: none; -webkit-user-drag: none; }   /* своё полотно: перерисовка картинки не задевает кусок этажа */
 .mn-dbar i { background: linear-gradient(#c9a0ff, #8e63d8); }
+
+/* 30.10: облачко у лифта - «В город» и «Этажи» (mine.js liftMenu): в слое вида, место - из камеры; кнопки крупные под палец */
+.mn-lm { position: absolute; left: 0; top: 0; z-index: 8; display: flex; gap: 10px; padding: 10px; border-radius: 18px; background: rgba(29, 22, 32, .96); border: 2px solid rgba(255, 226, 122, .55); box-shadow: 0 10px 28px rgba(0, 0, 0, .5); --tail: 50%; }
+.mn-lm::after { content: ''; position: absolute; left: var(--tail); bottom: -9px; width: 16px; height: 16px; margin-left: -8px; background: inherit; border-right: 2px solid rgba(255, 226, 122, .55); border-bottom: 2px solid rgba(255, 226, 122, .55); transform: rotate(45deg); }
+.mn-lm.dn::after { bottom: auto; top: -9px; transform: rotate(225deg); }
+.mn-lm .btn { min-width: 112px; min-height: 52px; padding: 0 20px; font-size: 18px; font-weight: 800; justify-content: center; }
+@media (max-width: 720px) { .mn-lm { gap: 8px; padding: 8px; } .mn-lm .btn { min-width: 96px; min-height: 56px; font-size: 17px; padding: 0 14px; } }
+/* 30.10: зум колесом - короткий плавный ход (только transform слоя мира) */
+.mn-world.zm { transition: transform .12s ease-out; }
+@media (prefers-reduced-motion: reduce) { .mn-world.zm { transition: none; } }
+/* 30.10: облачко буровой (mine.js liftMenu 'drill'): компактно, 280-320 px, читаемо, кнопки под палец */
+.mn-lm.mn-lmd { display: block; width: min(310px, calc(100% - 16px)); padding: 12px 14px; font-size: 14px; line-height: 1.35; color: #f3efe6; }
+.mn-lmd .mn-lm-t { font: 800 16px Golos Text, Arial, sans-serif; color: #ffe27a; margin-bottom: 4px; }
+.mn-lmd .mn-lm-s, .mn-lmd .mn-lm-by { margin: 0 0 8px; }
+.mn-lmd .mn-lm-by { font-size: 13px; opacity: .9; }
+.mn-lmd .mn-lm-h { font: 800 12px Golos Text, Arial, sans-serif; text-transform: uppercase; letter-spacing: .04em; opacity: .75; margin: 4px 0; }
+.mn-lmd .mn-lbar { margin: 4px 0 8px; }
+.mn-lmd .mn-btns { gap: 8px; margin-bottom: 8px; }
+.mn-lmd .mn-btns .btn { min-height: 44px; font-size: 15px; font-weight: 800; }
+.mn-lmd .mn-lore { margin: 0 0 8px; }
+.mn-lmd .mn-lore li .btn { min-height: 40px; min-width: 0; padding: 0 12px; font-size: 14px; white-space: nowrap; }
+.mn-lmd .mn-onote { font-size: 12px; margin: 0 0 6px; }
+.mn-lmd > .mn-btns:last-child { margin-bottom: 0; }
+.mn-lmd .mn-lm-by + .mn-btns .btn, .mn-lmd > .mn-btns:last-child .btn { min-width: 0; padding: 0 16px; }
+/* 30.10: таблички со временем улучшения над лифтом и буровой - крупно, как подписи НПС */
+.mn-tmrs { position: absolute; left: 0; top: 0; pointer-events: none; }
+.mn-tmr { transform: translate(-50%, -100%); padding: 5px 16px; border-radius: 14px; border-width: 3px; font: 800 24px/30px Golos Text, Arial, sans-serif; color: #b9f3c2; border-color: #7ad38a; }
+.mn-tmr-drill { color: #e3cdfb; border-color: #c9a0ff; }
+@media (max-width: 720px) { .mn .cy-chat { left: auto; right: 10px; bottom: 64px; } .mn .cy-chat.open { left: 10px; width: auto; } }
+
+/* ===== 30.10 (стример: убрать правую панель): компактный интерфейс шахты - шапка слева, угловые кнопки и виджет справа, «Сейчас»
+   над своим камнем, окна - облачками у предметов. Только transform / opacity, без filter. ===== */
+.mn .mn-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 8px 10px; background: none; }
+.mn-tl { display: grid; gap: 6px; justify-items: start; min-width: 0; pointer-events: none; }
+.mn-tl > * { pointer-events: auto; }
+.mn-tr { display: grid; gap: 6px; justify-items: end; flex: 0 0 auto; pointer-events: none; }
+.mn-tr > * { pointer-events: auto; }
+/* шапка слева: меньше шрифт и отступы */
+.mn .mn-ttl, .mn[data-m2="1"] .mn-ttl { display: grid; gap: 1px; padding: 5px 10px 6px; border-radius: 12px; background: rgba(21,16,26,.72); box-shadow: 0 4px 12px rgba(0,0,0,.28); }
+.mn .mn-ttl b, .mn[data-m2="1"] .mn-ttl b { font: 700 16px/1.15 var(--hd, "Russo One", sans-serif); letter-spacing: .02em; color: var(--m2-gold, #ffc94d); text-shadow: none; max-width: 46vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mn .mn-ttl span, .mn[data-m2="1"] .mn-ttl span { font-size: 11.5px; color: var(--m2-mute, #cfc4b0); font-weight: 700; white-space: nowrap; }
+.mn .mn-ttl .mn-reset, .mn[data-m2="1"] .mn-ttl .mn-reset { display: block; margin: 0; padding: 0; background: none; font-size: 10.5px; font-weight: 600; color: var(--m2-mute, #a89c88); opacity: .8; }
+.mn .mn-ttl .mn-reset:empty { display: none; }
+.mn[data-m2="1"] .mn-cnt:not([hidden]) { gap: 4px; margin-top: 2px; }
+.mn[data-m2="1"] .mn-cnt b { padding: 0 7px; font-size: 11px; }
+.mn[data-m2="1"] .mn-cnt b[hidden] { display: none; }
+/* мини-карта - под шапкой, меньше */
+.mn .mn-tl .mn-mm { position: static; padding: 4px; border-width: 1px; border-radius: 8px; background: rgba(14,12,20,.78); }
+.mn .mn-tl .mn-mm svg { width: 120px; height: auto; }
+.mn .mn-tl .mn-mm-t { font-size: 10px; margin-bottom: 2px; }
+/* угловые кнопки: «i», глаз, кубок - круглые, одного размера */
+.mn .mn-tb, .mn[data-m2="1"] .mn-tb { display: flex; gap: 6px; padding: 0; background: none; box-shadow: none; }
+.mn-cb { width: 36px; height: 36px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: rgba(21,16,26,.78); color: #f3efe6; box-shadow: 0 3px 10px rgba(0,0,0,.3); cursor: pointer; }
+.mn-cb:hover, .mn-cb:focus-visible { background: rgba(40,30,48,.95); outline: 2px solid var(--m2-gold, #ffc94d); outline-offset: 0; }
+.mn .mn-cb.mn-info { display: grid; font: italic 700 17px/1 Georgia, serif; }
+.mn-cb .mn-eye-x { display: none; }
+.mn-cb.off { color: var(--m2-gold, #ffc94d); }
+.mn-cb.off .mn-eye-x { display: inline; }
+/* виджет справа сверху: полупрозрачная плашка, мелкий шрифт, ~240 px */
+.mn-wg { width: 236px; padding: 7px 10px 8px; border-radius: 12px; background: rgba(21,16,26,.7); color: #f3efe6; box-shadow: 0 4px 14px rgba(0,0,0,.3); font-size: 12px; line-height: 1.25; box-sizing: border-box; }
+.mn-wg:empty { display: none; }
+.mn-wg-in { display: grid; gap: 4px; }
+.mn-wg-r { display: grid; grid-template-columns: 1fr auto; align-items: baseline; column-gap: 8px; }
+.mn-wg-r > span { color: var(--m2-mute, #bfaab7); font-weight: 700; }
+.mn-wg-r > span small { font-weight: 600; opacity: .8; }
+.mn-wg-r > b { font-weight: 800; color: var(--ink, #f7eadf); white-space: nowrap; }
+.mn-wg-r > b small { font-size: 10.5px; color: var(--m2-mute, #bfaab7); font-weight: 700; }
+.mn-wg-e > b { color: var(--m2-gold, #ffcf6a); font-size: 13px; }
+.mn-wg-b { grid-column: 1 / -1; display: block; height: 3px; margin-top: 2px; border-radius: 2px; background: rgba(0,0,0,.4); overflow: hidden; }
+.mn-wg-b > i { display: block; height: 100%; border-radius: 2px; background: #8fe3b0; }
+.mn-wg-xp .mn-wg-b > i { background: var(--m2-gold, #ffcf6a); }
+.mn-wg-qc .mn-wg-b > i { background: #ffc94d; }
+.mn-wg-w { margin: 0; font-size: 11px; color: #ffd19a; }
+.mn-wg-a { display: flex; gap: 4px; margin-top: 3px; }
+.mn-wg-a button { flex: 1 1 0; position: relative; min-height: 26px; padding: 0 6px; border: 1px solid rgba(255,255,255,.14); border-radius: 8px; background: rgba(255,255,255,.07); color: #f3efe6; font: 700 11.5px var(--tx, Golos Text, sans-serif); cursor: pointer; }
+.mn-wg-a button:hover, .mn-wg-a button:focus-visible { background: rgba(255,255,255,.16); outline: 1px solid var(--m2-gold, #ffc94d); }
+.mn-wg-dot { position: absolute; right: 3px; top: 3px; width: 7px; height: 7px; border-radius: 50%; background: #7ff07a; box-shadow: 0 0 0 2px rgba(21,16,26,.9); }
+.mn-wg-t { display: none; }
+/* каска нужна и не надета - строка сверху по центру */
+.mn-hat { position: absolute; left: 50%; top: 10px; z-index: 7; transform: translateX(-50%); max-width: calc(100% - 32px); padding: 4px 12px; border-radius: 999px; background: rgba(60,22,16,.88); border: 1px solid rgba(255,180,120,.55); color: #ffe0c0; font: 700 12px var(--tx, Golos Text, sans-serif); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+.mn-hat[hidden] { display: none; }
+/* «Сейчас» над своим камнем: название и уровень, «ещё N мин», маленькая «Стоп» */
+.mn-nowl { position: absolute; left: 0; top: 0; z-index: 3; display: flex; align-items: center; gap: 6px; padding: 3px 4px 3px 9px; border-radius: 10px; background: rgba(21,18,46,.88); border: 1.5px solid #ffe27a; color: #fff; font: 700 12px var(--tx, Golos Text, sans-serif); white-space: nowrap; box-shadow: 0 3px 10px rgba(0,0,0,.35); pointer-events: none; }
+.mn-nowl[hidden] { display: none; }
+.mn-nowl b { color: #ffe27a; font-weight: 800; }
+.mn-nowl em { font-style: normal; color: #cfc4b0; font-weight: 700; }
+.mn-nowl em:empty { display: none; }
+.mn-nowx { pointer-events: auto; min-height: 22px; padding: 0 8px; border: 0; border-radius: 7px; background: rgba(255,255,255,.14); color: #fff; font: 800 11px var(--tx, Golos Text, sans-serif); cursor: pointer; }
+.mn-nowx:hover, .mn-nowx:focus-visible { background: #ff8a7a; color: #2a1206; outline: none; }
+/* окно-облачко (Скупщик, Снабженец, доска, лифт, буровая; ошибка - по центру) */
+.mn-win { position: absolute; left: 0; top: 0; z-index: 8; width: min(340px, calc(100% - 16px)); max-height: 560px; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; box-sizing: border-box; padding: 10px 12px 12px; border-radius: 16px; background: rgb(29,22,32); border: 2px solid rgba(255,226,122,.5); color: #f3efe6; box-shadow: 0 12px 30px rgba(0,0,0,.5); font-size: 13px; -webkit-user-select: text; user-select: text; --tail: 50%; }
+.mn-win[hidden] { display: none; }
+.mn-win[data-k="buy"], .mn-win[data-k="lamp"], .mn-win[data-k="quests"] { width: min(360px, calc(100% - 16px)); }
+.mn-win .mn-pb { display: grid; gap: 8px; padding: 0; overflow-wrap: anywhere; }
+.mn-win-x { position: sticky; top: 0; float: right; z-index: 2; width: 26px; height: 26px; margin: -2px -4px 0 6px; padding: 0; border: 0; border-radius: 8px; background: rgba(255,255,255,.1); color: #fff; font: 700 17px/1 system-ui; cursor: pointer; }
+.mn-win-x:hover, .mn-win-x:focus-visible { background: rgba(255,255,255,.24); outline: none; }
+.mn-win[data-k="err"] .mn-win-x { display: none; }
+.mn-win .h3, .mn-win h3 { margin: 0; font: 700 15px var(--hd, sans-serif); color: var(--m2-gold, #ffc94d); }
+.mn-win h4 { margin: 4px 0 0; font-size: 11px; }
+.mn-win .m2-card { padding: 8px 10px; gap: 6px; border-radius: 12px; }
+.mn-win .mb-say { font-size: 13px; }
+.mn-win .mn-btns .btn { min-height: 34px; }
+.mn-win .mn-q li { font-size: 12.5px; }
+.mn-win .sp-tabs { margin-top: 6px; }
+.mn-win .sp-tab { min-height: 30px; font-size: 12px; }
+.mn-win .sp-now .sp-pic { width: 52px; height: 52px; }
+.mn-win .sp-up .sp-pic { width: 46px; height: 46px; }
+.mn-win .sp-nm { font-size: 15px; }
+/* закрыть - «×» в углу облачка, Esc или отойти от NPC */
+.mn-win [data-mn-back] { display: none; }
+.mn-log ul { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 2px; }
+/* доска: вкладки «Поручения / Доска почёта» */
+.mn-hon-me { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 2px 8px; padding: 8px 10px; border-radius: 10px; background: rgba(255,207,106,.1); }
+.mn-hon-me span { color: var(--m2-mute, #bfaab7); font-weight: 700; font-size: 12px; }
+.mn-hon-me b { font: 700 18px var(--hd, sans-serif); color: var(--m2-gold, #ffcf6a); }
+.mn-hon-me small { grid-column: 1 / -1; font-size: 11px; color: var(--m2-mute, #bfaab7); }
+.mn-hon .mn-bd-top li { font-size: 12.5px; }
+/* «Пока тебя не было» - небольшое окошко по центру */
+.mn .mn-news-w { padding: 16px; background: rgba(8,6,12,.3); }
+.mn .mn-news { width: min(100%, 300px); padding: 12px 14px !important; border-radius: 14px; font-size: 13px; }
+.mn .mn-news h3 { font-size: 15px; margin: 0 0 6px; }
+.mn .mn-news ul { margin: 0 0 6px; padding-left: 16px; gap: 2px; }
+.mn .mn-news .mn-btns { bottom: -12px; justify-content: flex-end; }
+/* «Итоги» из шахты - окно по центру, компактнее */
+.mn-board { font-size: 13px; }
+/* сумка - отдельным окном справа под виджетом */
+.mn .mn-inv2-w { top: var(--mn-bagt, 56px); right: 10px; max-height: calc(100% - var(--mn-bagt, 56px) - 10px); }
+/* шахта в другой вкладке: «Копать здесь» и аварийный «В город» */
+.mn-other .mn-btns { justify-content: center; }
+/* старая шахта (без обновления): кнопки и виджет - те же; чат её не показывает, «Журнал» - кнопкой в виджете */
+.mn:not([data-m2="1"]) .mn-cb.mn-info { display: none; }
+/* телефон: шапка короче, виджет - одной строкой (раскрывается нажатием), окна - по ширине экрана */
+@media (max-width: 720px) {
+  .mn .mn-top { padding: 6px 8px; }
+  .mn .mn-ttl b, .mn[data-m2="1"] .mn-ttl b { font-size: 14px; max-width: 52vw; }
+  .mn .mn-ttl span, .mn[data-m2="1"] .mn-ttl span { font-size: 10.5px; }
+  .mn[data-m2="1"] .mn-cnt i { display: none; }
+  .mn .mn-ttl .mn-reset { display: none; }
+  .mn .mn-tl .mn-mm svg { width: 92px; }
+  .mn .mn-tl .mn-mm-t { display: none; }
+  .mn-cb { width: 34px; height: 34px; }
+  .mn-wg { width: auto; max-width: 220px; padding: 0; }
+  /* раскрытый - поверх, шапку не сдвигает */
+  .mn-wg.open { position: absolute; right: 8px; top: 46px; z-index: 9; width: 210px; padding: 0 8px 8px; background: rgba(21,16,26,.94); }
+  .mn-wg-t { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 30px; padding: 0 10px; border: 0; background: none; color: #f3efe6; font: 800 12px var(--tx, Golos Text, sans-serif); cursor: pointer; position: relative; }
+  .mn-wg.open .mn-wg-t { padding: 0 2px; }
+  .mn-wg-t > span:first-child { color: var(--m2-gold, #ffcf6a); }
+  .mn-wg-t > i { width: 7px; height: 7px; margin-left: auto; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg) translate(-2px, -2px); }
+  .mn-wg.open .mn-wg-t > i { transform: rotate(-135deg); }
+  .mn-wg-t .mn-wg-dot { position: static; }
+  .mn-hat { top: auto; bottom: 150px; font-size: 11.5px; }
+  .mn-win, .mn-win[data-k="buy"], .mn-win[data-k="lamp"], .mn-win[data-k="quests"] { width: calc(100% - 16px); }
+  .mn .mn-inv2-w { top: auto; right: 0; }
+}
+/* журнал шахты во вкладке чата - строки событий, мелко и спокойно */
+.mn .cy-chat-l .cy-chat-lg { font-style: normal; font-size: 12.5px; color: #e8dcc8; background: none; padding: 2px 0; }
+/* в облачке - без «карточки в карточке»: заголовок NPC и подвал - прямо на фоне облачка */
+.mn-win .mb-head, .mn-win .sp-head, .mn-win .mb-foot { padding: 0; background: none; box-shadow: none; }
+.mn-win .mb-head .h3 { padding-right: 30px; }
+.mn-win .mb-say { margin-top: 2px; }

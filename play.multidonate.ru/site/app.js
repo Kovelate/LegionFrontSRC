@@ -220,7 +220,10 @@
     questTab(id === 'quest');   // 22.10: вкладка «Поход» (quest.js)
     if (id === 'world') openWorld(); else if (window.LGWorld) window.LGWorld.close();   // 23.10: «Карта мира» (worldmap.js)
     bfSoon();   // 24.10: «Отправить баг» — в другом разделе другие панели внизу
-    if (window.LGDm) setTimeout(() => window.LGDm.place(), 0);   // 29.10: ушли из «Города» - личка окном слева внизу, вернулись - в чат
+    // 29.10: ушли из «Города» - личка окном слева внизу, вернулись - в чат
+    if (window.LGDm) setTimeout(() => window.LGDm.place(), 0);
+    // 29.10: единый чат - на место сцены или слева внизу
+    if (window.LGChatOne) setTimeout(() => window.LGChatOne.place(), 0);
     if (window.LGStart) window.LGStart.tabChanged(id);   // 26.10: переключатель «Зритель / Стример» (start.js)
   }
   $$('.tabs button').forEach((b) => b.addEventListener('click', () => tab(b.dataset.tab)));
@@ -582,6 +585,20 @@
     if (window.LGNews && window.LGNews.me) window.LGNews.me(ME);   // 18.10: админу игры — правка новостей прямо на сайте (news.js)
     startSync();   // 26.10: переключатель «Зритель / Стример», поиск стримера (start.js)
     if (ME && ME.user && ME.friends) friendsLoad().catch(() => null);   // 29.10: кнопка «Друзья» (friends.js, новинка «friends»)
+  }
+
+  /* ---------- 29.10 (новинка chatone): единый чат страницы (packages/site-ui/chatone.js → window.LGChatOne) - вместо чатов «Города» и шахты;
+     нужен общий модуль чата (site-chat.js), его вид (city.css) и личка (LGDm) ---------- */
+  let ONEL = null;
+  const oneCtx = () => ({ api, hero: () => (ME && ME.hero) || null, login: () => (ME && ME.user ? String(ME.user.login).toLowerCase() : ''), awb, live: () => esOk });
+  function oneLoad() {
+    if (!ONEL) {
+      const V = window.LG_CITYV || {};
+      if (!document.getElementById('cityCss')) { const l = document.createElement('link'); l.id = 'cityCss'; l.rel = 'stylesheet'; l.href = `/site/city.css?v=${V.css || ''}`; document.head.appendChild(l); }
+      ONEL = (ME && ME.hero && ME.hero.cd ? dmLoad() : Promise.resolve()).then(() => (window.LGChat ? null : loadJs(`/lib/site-chat.js?v=${V.sc || ''}`)))
+        .then(() => (window.LGChatOne ? null : loadJs('/lib/site-chatone.js' + (window.LG_ONEV ? '?v=' + window.LG_ONEV : '')))).catch((e) => { ONEL = null; throw e; });
+    }
+    return ONEL.then(() => { if (window.LGChatOne) window.LGChatOne.init(oneCtx()); });
   }
 
   /* ---------- 29.10: личка страницы (packages/site-ui/dm.js → window.LGDm): вкладки собеседников не закрываются при переходах,
@@ -2226,7 +2243,9 @@
     doll: (h, o) => dollHtml(h, o), cardTip: (el, it, h, o) => cardTip(el, it, h, o), tipHide: () => tipHide(), tipFor: () => tipFor,
     toast: (t, bad) => toast(t, bad),   // 23.10: обмен между игроками (trade.js) — приглашения, итог
     mineFiles: () => mineFiles(),   // 24.10: Ратуша — цвета ресурсов склада (craftworld.js)
-    openMine: (c) => (c ? openMine(c) : openMines()),   // 24.10: шахты городов — портал «ШАХТА» в «Городе» (c — id шахты: округ или home — Ярмарка); без c — выбор
+    // 24.10: шахты городов — портал «ШАХТА» в «Городе» (c — id шахты: округ или home — Ярмарка); без c — выбор
+    // 30.10: ids - выбор только из этих шахт (Ярмарка: домашняя и «Новая шахта (тест)»)
+    openMine: (c, ids) => (c ? openMine(c) : openMines(ids)),
     openMineBoard: async () => { try { await mineFiles(); } catch { toast('Не загрузилось — проверь связь', true); return; } window.LGMine.board({ api: (p, b) => api(p, b), login: () => (ME && ME.user ? String(ME.user.login).toLowerCase() : ''), mines: () => mineList() }); },
   };
   /* ---------- 23.10: шахта (промысел города): mine.js + craftworld.js, грузятся при первом входе ---------- */
@@ -2244,12 +2263,13 @@
   const GEM_RU = { adamant: 'адамантит', fire_opal: 'огненный опал', emerald: 'изумруд', sapphire: 'сапфир', topaz: 'топаз', malachite: 'малахит', morion: 'морион', aquamarine: 'аквамарин', ruby: 'рубин', runestone: 'рунный камень' };
   const mineList = () => Object.entries((ME && ME.hero && ME.hero.mn) || {}).map(([id, m]) => ({ id, nm: (m && m.nm) || 'Шахта', dist: (m && m.dist) || '', bi: (m && m.bi) || 'mount', dg: (m && m.dg) || 1, gem: (m && m.gem) || null, busy: !!(m && m.i >= 0) }))
     .sort((a, b) => (a.id === 'home' ? -1 : b.id === 'home' ? 1 : b.dg - a.dg || a.nm.localeCompare(b.nm, 'ru')));
-  function openMines() {
-    const list = mineList();
+  function openMines(ids) {
+    const list = mineList().filter((m) => !Array.isArray(ids) || ids.includes(m.id));
+    const v3t = list.some((m) => m.id === 't-v3');
     if (!list.length) { toast('Шахта пока закрыта', true); return; }
     if (list.length === 1) { openMine(list[0].id); return; }
     const d = document.createElement('div'); d.className = 'mn-board-w'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-label', 'Шахты наших городов');
-    d.innerHTML = `<div class="mn-board panel mn-go"><h3 class="h3">Шахты наших городов</h3><p class="muted">Шахта есть в каждом городе ваших округов. Чем опаснее округ (★), тем богаче руда; у каждой природы — свой самоцвет.</p><ul>${list.map((m) => `<li><button type="button" class="btn ghost" data-go="${esc(m.id)}"><span aria-hidden="true">⛏</span><b>${esc(m.id === 'home' ? 'Домашняя шахта' : m.nm)} ${'★'.repeat(Math.max(1, Math.min(5, m.dg)))}</b><small>${esc([m.dist, BIO_RU[m.bi]].filter(Boolean).join(' · '))}${m.gem ? ` · самоцвет: ${esc(GEM_RU[m.gem] || m.gem)}` : ''}</small>${m.busy ? '<em>твой герой копает здесь</em>' : ''}</button></li>`).join('')}</ul><button type="button" class="btn primary" data-x>Закрыть</button></div>`;
+    d.innerHTML = `<div class="mn-board panel mn-go"><h3 class="h3">${v3t ? 'Шахты Ярмарки' : 'Шахты наших городов'}</h3><p class="muted">${v3t ? 'Шахта Города - как всегда. Новая шахта (тест) - Шахта 3.0 для тестеров: сумки, мастерство и лимит суток - общие, итогов и наград недели нет.' : 'Шахта есть в каждом городе ваших округов. Чем опаснее округ (★), тем богаче руда; у каждой природы — свой самоцвет.'}</p><ul>${list.map((m) => `<li><button type="button" class="btn ghost" data-go="${esc(m.id)}"><span aria-hidden="true">⛏</span><b>${esc(m.id === 'home' ? (v3t ? 'Шахта Города' : 'Домашняя шахта') : m.nm)} ${'★'.repeat(Math.max(1, Math.min(5, m.dg)))}</b><small>${esc([m.dist, BIO_RU[m.bi]].filter(Boolean).join(' · '))}${m.gem ? ` · самоцвет: ${esc(GEM_RU[m.gem] || m.gem)}` : ''}</small>${m.busy ? '<em>твой герой копает здесь</em>' : ''}</button></li>`).join('')}</ul><button type="button" class="btn primary" data-x>Закрыть</button></div>`;
     // 25.10: окно поверх страницы (Esc и нажатие мимо закрывают) - packages/site-ui; кладётся в полноэкранный элемент, если он есть
     const shut = SU.layer(d);   // 24.10: «Город» во весь экран — окно внутри него, иначе не видно
     d.querySelector('[data-x]').onclick = shut;
@@ -2320,6 +2340,8 @@
     // строка «Команда в поход» вкладки «Поход» - sticky, а не fixed: жук поднимается над ней
     const sy = e.closest('.q-say:not([hidden])'); if (sy) return sy;
     for (let n = e; n && n !== document.body; n = n.parentElement) if (getComputedStyle(n).position === 'fixed') return n;
+    // 30.10 (сборка 2, fix/chat-tabs-size): открытое окно чата «Города» теперь одной высоты (280-340 px) - мешает всё окно, не только его кнопки
+    const cho = e.closest('.cy .cy-chat.open'); if (cho) return cho;
     const ia = e.closest(BF_IA); if (!ia) return null;
     const ir = ia.getBoundingClientRect();
     if (ir.width * ir.height > window.innerWidth * window.innerHeight * 0.25) return null;   // сама карта (tabindex для клавиатуры) — не кнопка
@@ -2409,7 +2431,10 @@
     if (window.LGMine && window.LGMine.on && window.LGMine.hero) window.LGMine.hero();   // 27.10: сумка в шахте - сразу новые кучки и осколки (раньше рисовалась только при открытии)
     if (ME && ME.user) bfInit(); bfSoon();   // 24.10: «Отправить баг»
     if (window.LGCity && $('#tab-city').classList.contains('on')) window.LGCity.heroChanged();
-    if (ME && ME.user && ME.hero && ME.hero.cd) dmLoad().catch(() => null);   // 29.10: личка страницы (LGDm) - живёт вне «Города» и шахты
+    // 29.10: личка страницы (LGDm) - живёт вне «Города» и шахты
+    if (ME && ME.user && ME.hero && ME.hero.cd) dmLoad().catch(() => null);
+    // 29.10: единый чат страницы
+    if (ME && ME.user && ME.hero && ME.hero.c1) oneLoad().catch(() => null); else if (window.LGChatOne && ME && ME.hero) window.LGChatOne.init(oneCtx());
     if (!wasUser && ME.user) { if (logOn()) loadLog(); live(); }
   }
 
@@ -2426,8 +2451,10 @@
     if (!DOCK) {
       ES.addEventListener('me', (e) => { esOk = true; esFails = 0; try { const d = JSON.parse(e.data); if (d.now) clock(d.now); apply(d, false); } catch {} });
       ES.addEventListener('j', (e) => { try { logAdd(JSON.parse(e.data)); } catch {} });
-      ES.addEventListener('city', (e) => { try { if (window.LGCity) window.LGCity.onEvent(JSON.parse(e.data)); } catch {} });
-      ES.addEventListener('mine', (e) => { try { if (window.LGMine && window.LGMine.on) window.LGMine.onEvent(JSON.parse(e.data)); } catch {} });   // 23.10: шахта   // 20.10: «Город»
+      // 20.10: «Город»
+      ES.addEventListener('city', (e) => { try { const d = JSON.parse(e.data); if (window.LGChatOne && window.LGChatOne.on() && (d.chat || d.chatDel || d.chatMe)) window.LGChatOne.onFeed('city', d); if (window.LGCity) window.LGCity.onEvent(d); } catch (er) { console.error('[сайт] событие «city»', er); } });
+      // 23.10: шахта; 29.10: лента шахты - единому чату
+      ES.addEventListener('mine', (e) => { try { const d = JSON.parse(e.data); if (d.chatRoom === 'mine' && window.LGChatOne && window.LGChatOne.on()) { window.LGChatOne.onFeed('mine', d); return; } if (window.LGMine && window.LGMine.on) window.LGMine.onEvent(d); } catch (er) { console.error('[сайт] событие «mine»', er); } });
       ES.addEventListener('dm', (e) => { let d = null; try { d = JSON.parse(e.data); } catch {} if (!d) return; if (window.LGDm) window.LGDm.onEvent(d); else if (d.m) dmLoad().then(() => window.LGDm && window.LGDm.onEvent(d)).catch(() => null); });   // 29.10: личные
       ES.addEventListener('fr', (e) => { try { if (window.LGFriends) window.LGFriends.onEvent(JSON.parse(e.data)); } catch {} });   // 29.10: заявка в друзья, «принял»
       ES.addEventListener('q', (e) => { try { const d = JSON.parse(e.data); questData(d, d.now); } catch {} });   // 22.10: вкладка «Поход»

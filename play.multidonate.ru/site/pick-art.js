@@ -25,60 +25,70 @@
   const uid = (p) => p + (++N);
 
   /* ---------- кирки: уровни ---------- */
-  // head - головка (основной, светлая плоскость, тёмный низ), handle - черенок, grip - обмотка у кисти, glow / spark - свечение и искры
+  // head - головка (основной, светлая плоскость, тёмный низ), handle - черенок, grip - обмотка у кисти, t - «толщина» головки
+  // (чем больше, тем тоньше и острее серп), glow / spark - свечение и искры. 30.10 (#2111): у каждой ступени свой силуэт и свои детали -
+  // дерево: грубая головка в верёвочной обвязке и каменный наконечник; медь: заклёпки и зелёная патина; железо: тёмный хомут, клёпки, скос;
+  // сталь: узкий серп с жёлобом и кольцами; золото: рубин, оплётка, тёплое свечение; адамантит: кристальные грани, голубое свечение, руны
   const LV = [
-    { name: 'Деревянная кирка', head: ['#a0703a', '#d0a060', '#6b4423'], handle: ['#b8864e', '#e0b47a'], grip: '#6b4423', grain: true },
-    { name: 'Медная кирка', head: ['#d8803a', '#ffc08a', '#8a4a1e'], handle: ['#9a6636', '#c99560'], grip: '#5a3a1a' },
-    { name: 'Железная кирка', head: ['#6f7888', '#c8d0da', '#4a5260'], handle: ['#9a6636', '#c99560'], grip: '#3a2a1a' },
-    { name: 'Стальная кирка', head: ['#8aa2c0', '#e8f2ff', '#4a6080'], handle: ['#6b4423', '#9a6636'], grip: '#2a3a5a', wrap: true },
-    { name: 'Золотая кирка', head: ['#ffcf3a', '#fff0a0', '#c07a10'], handle: ['#5a3a22', '#8a5a32'], grip: '#a3122a', wrap: true, shine: true },
-    { name: 'Адамантитовая кирка', head: ['#7a8cff', '#d8e0ff', '#3a3aa8'], handle: ['#2a2440', '#4a4266'], grip: '#9fe8ff', wrap: true, shine: true, glow: '#8fd8ff' },
+    { name: 'Деревянная кирка', head: ['#a0703a', '#d0a060', '#6b4423'], handle: ['#c08a52', '#e8c08a'], grip: '#6b4423', t: 57, kind: 'wood' },
+    { name: 'Медная кирка', head: ['#d8803a', '#ffc08a', '#8a4a1e'], handle: ['#9a6636', '#c99560'], grip: '#5a3a1a', t: 61, kind: 'copper' },
+    { name: 'Железная кирка', head: ['#6f7888', '#c8d0da', '#4a5260'], handle: ['#7a5230', '#a87a4c'], grip: '#3a2a1a', t: 66, kind: 'iron' },
+    { name: 'Стальная кирка', head: ['#8aa2c0', '#e8f2ff', '#4a6080'], handle: ['#5a3a22', '#8a5e3a'], grip: '#2a3a5a', t: 71, wrap: true, kind: 'steel' },
+    { name: 'Золотая кирка', head: ['#ffcf3a', '#fff0a0', '#c07a10'], handle: ['#4a2e1c', '#7a4e2c'], grip: '#a3122a', t: 67, wrap: true, shine: true, glow: '#ffd84a', gl: 0.42, kind: 'gold' },
+    { name: 'Адамантитовая кирка', head: ['#7a8cff', '#d8e0ff', '#3a3aa8'], handle: ['#241e3a', '#4a4266'], grip: '#9fe8ff', t: 74, wrap: true, shine: true, glow: '#8fd8ff', gl: 0.7, kind: 'adamant' },
   ];
   const lvOf = (lv) => LV[Math.max(0, Math.min(LV.length - 1, Math.floor(+lv || 0)))];
 
   /* в лапе: оси кисти (как PICK_SVG в mine-art.js): u - вдоль черенка к головке (−100°), n - вперёд */
   const PK_U = [Math.cos((-100 * Math.PI) / 180), Math.sin((-100 * Math.PI) / 180)], PK_N = [-PK_U[1], PK_U[0]];
   const pk = (a, b) => [PK_U[0] * a + PK_N[0] * b, PK_U[1] * a + PK_N[1] * b], pp = (p) => `${f1(p[0])} ${f1(p[1])}`;
-  /** Кирка уровня lv в лапе: рисунок в осях кисти (вставлять туда же, куда <use href="#mna-pick">). */
+  const seg = (p, q, c, w, extra = '') => `<path d="M${pp(pk(p[0], p[1]))} L${pp(pk(q[0], q[1]))}" stroke="${c}" stroke-width="${w}" stroke-linecap="round" fill="none"${extra}/>`;
+  const dot = (a, b, r, c, w = 1.4) => { const q = pk(a, b); return `<circle cx="${f1(q[0])}" cy="${f1(q[1])}" r="${r}" fill="${c}" stroke="${INK}" stroke-width="${w}"/>`; };
+  /** Кирка уровня lv в лапе: рисунок в осях кисти (вставлять туда же, куда <use href="#mna-pick">). Клюв (45, 31) и обух (46, -23) у всех на месте. */
   function held(lv) {
-    const L = lvOf(lv), [h0, h1, h2] = L.head, B = pk(46, -23), F = pk(45, 31), top = pk(66, 2), bot = pk(52, 2), mid = pk(60, 2), hd = `M${pp(pk(-11, 0))} L${pp(pk(56, 0))}`, g = uid('pkh');
+    const L = lvOf(lv), [h0, h1, h2] = L.head, k = L.kind, B = pk(46, -23), F = pk(45, 31), tp = L.t, top = pk(tp, 2), bot = pk(k === 'wood' ? 54 : 52, 2), mid = pk(tp - 6, 2), hd = `M${pp(pk(-11, 0))} L${pp(pk(56, 0))}`, g = uid('pkh');
     let s = '';
-    if (L.glow) s += `<defs><radialGradient id="${g}"><stop offset="0" stop-color="${L.glow}" stop-opacity=".7"/><stop offset="1" stop-color="${L.glow}" stop-opacity="0"/></radialGradient></defs><circle cx="${f1(pk(56, 4)[0])}" cy="${f1(pk(56, 4)[1])}" r="34" fill="url(#${g})"/>`;
-    s += `<path d="${hd}" stroke="${INK}" stroke-width="9" stroke-linecap="round"/><path d="${hd}" stroke="${L.handle[0]}" stroke-width="5" stroke-linecap="round"/>`
+    if (L.glow) s += `<defs><radialGradient id="${g}"><stop offset="0" stop-color="${L.glow}" stop-opacity="${L.gl}"/><stop offset="1" stop-color="${L.glow}" stop-opacity="0"/></radialGradient></defs><circle cx="${f1(pk(56, 4)[0])}" cy="${f1(pk(56, 4)[1])}" r="34" fill="url(#${g})"/>`;
+    // черенок: у дерева толще и с сучком, у остальных - свой оттенок
+    s += `<path d="${hd}" stroke="${INK}" stroke-width="${k === 'wood' ? 10 : 9}" stroke-linecap="round"/><path d="${hd}" stroke="${L.handle[0]}" stroke-width="${k === 'wood' ? 6 : 5}" stroke-linecap="round"/>`
       + `<path d="M${pp(pk(-8, -1.2))} L${pp(pk(50, -1.2))}" stroke="${L.handle[1]}" stroke-width="1.6" stroke-linecap="round"/>`;
+    if (k === 'wood') s += `<ellipse cx="${f1(pk(24, 0.4)[0])}" cy="${f1(pk(24, 0.4)[1])}" rx="1.9" ry="2.6" transform="rotate(-10 ${pp(pk(24, 0.4))})" fill="#8a5a2c" stroke="${INK}" stroke-width="1"/>` + seg([30, 1.6], [38, 1.2], '#8a5a2c', 1);
     s += L.wrap ? [0, 4, 8, 12, 16].map((a) => `<path d="M${pp(pk(a, -3.4))} L${pp(pk(a + 2.5, 3.4))}" stroke="${L.grip}" stroke-width="2.4" stroke-linecap="round"/>`).join('')
       : `<path d="M${pp(pk(7, -3.2))} L${pp(pk(7, 3.2))} M${pp(pk(12, -3.2))} L${pp(pk(12, 3.2))}" stroke="${INK}" stroke-width="2" stroke-linecap="round"/>`;
+    // кольца-хомуты на черенке под головкой: медь - тонкое, железо - тёмное широкое, сталь - два блестящих, золото - золотое с рубиновой полосой, адамантит - светящееся
+    const ring = { copper: [['#e8964a', 2.4, 38]], iron: [['#3a4150', 4.2, 39], ['#6f7888', 1.2, 39]], steel: [['#dce8f5', 2.2, 36], ['#dce8f5', 2.2, 41]], gold: [['#ffcf3a', 3, 38], ['#e0243f', 1.2, 38]], adamant: [['#9fe8ff', 2.6, 38]] }[k];
+    if (ring) for (const [c, w, a] of ring) s += `<path d="M${pp(pk(a, -3.7))} L${pp(pk(a, 3.7))}" stroke="${INK}" stroke-width="${w + 2.2}" stroke-linecap="round"/><path d="M${pp(pk(a, -3.7))} L${pp(pk(a, 3.7))}" stroke="${c}" stroke-width="${w}" stroke-linecap="round"/>`;
+    // головка: силуэт, светлая плоскость, блик
     s += `<path d="M${pp(B)} Q${pp(top)} ${pp(F)} Q${pp(bot)} ${pp(B)} Z" fill="${h0}" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>`
-      + `<path d="M${pp(pk(48, -19))} Q${pp(pk(63.5, 2))} ${pp(pk(47.5, 27))} Q${pp(mid)} ${pp(pk(48, -19))} Z" fill="${h1}"/>`
-      + `<path d="M${pp(pk(56, 2))} Q${pp(pk(58.5, 14))} ${pp(pk(51, 24))}" stroke="#ffffff" stroke-width="${L.shine ? 2.4 : 1.8}" fill="none" stroke-linecap="round"/>`;
-    if (L.grain) s += `<path d="M${pp(pk(50, -12))} Q${pp(pk(54, 0))} ${pp(pk(50, 14))}" stroke="${h2}" stroke-width="1.6" fill="none" opacity=".8"/>`;
-    s += `<rect x="-5" y="-5" width="10" height="10" rx="2" transform="translate(${pp(pk(55, 0))}) rotate(-10)" fill="${h2}" stroke="${INK}" stroke-width="1.8"/>`;
+      + `<path d="M${pp(pk(48, -19))} Q${pp(pk(tp - 2.5, 2))} ${pp(pk(47.5, 27))} Q${pp(mid)} ${pp(pk(48, -19))} Z" fill="${h1}"/>`
+      + `<path d="M${pp(pk(tp - 10, 2))} Q${pp(pk(tp - 7.5, 14))} ${pp(pk(51, 24))}" stroke="#ffffff" stroke-width="${L.shine ? 2.4 : 1.8}" fill="none" stroke-linecap="round"/>`;
+    if (k === 'wood') {
+      // годовые кольца и трещинка; каменный наконечник на клюве; обвязка верёвкой крест-накрест у черенка
+      s += `<path d="M${pp(pk(50, -12))} Q${pp(pk(54, 0))} ${pp(pk(50, 14))} M${pp(pk(47, -6))} Q${pp(pk(50, 2))} ${pp(pk(47, 9))}" stroke="${h2}" stroke-width="1.5" fill="none" opacity=".85"/>`
+        + `<path d="${P([pk(39, 22), pk(46, 33), pk(50, 27), pk(46, 21)])}" fill="#9d9ba8" stroke="${INK}" stroke-width="2.2" stroke-linejoin="round"/><path d="M${pp(pk(41, 24))} L${pp(pk(46, 30))}" stroke="#e4e2ee" stroke-width="1.4" stroke-linecap="round"/>`
+        + `<path d="${P([pk(40, -14), pk(46, -24), pk(49, -18), pk(45, -12)])}" fill="#9d9ba8" stroke="${INK}" stroke-width="2.2" stroke-linejoin="round"/>`
+        + [48, 52, 56].map((a) => `<path d="M${pp(pk(a, -6.4))} L${pp(pk(a + 3, 6.4))}" stroke="${INK}" stroke-width="4" stroke-linecap="round"/><path d="M${pp(pk(a, -6.4))} L${pp(pk(a + 3, 6.4))}" stroke="#ead7a0" stroke-width="2" stroke-linecap="round"/>`).join('');
+    } else {
+      s += `<rect x="-5" y="-5" width="10" height="10" rx="2" transform="translate(${pp(pk(55, 0))}) rotate(-10)" fill="${h2}" stroke="${INK}" stroke-width="1.8"/>`;
+    }
+    if (k === 'copper') s += dot(55, 0, 1.5, '#ffd9a8', 1) + [[50, -9, 1.6], [52, 11, 1.3], [58, 7, 1.1]].map(([a, b, r]) => `<circle cx="${f1(pk(a, b)[0])}" cy="${f1(pk(a, b)[1])}" r="${r}" fill="#4fc9a4"/>`).join('') + seg([49, 15], [54, 18], '#4fc9a4', 1.4);
+    if (k === 'iron') s += seg([46, -17], [46, 21], '#4a5260', 1.6, ' opacity=".9"') + dot(55, -6, 1.3, '#c8d0da', 1) + dot(55, 6, 1.3, '#c8d0da', 1) + seg([60, -4], [62, 8], '#4a5260', 1.2);
+    if (k === 'steel') s += `<path d="M${pp(pk(50, -15))} Q${pp(pk(61, 1))} ${pp(pk(49, 23))}" stroke="${h2}" stroke-width="1.8" fill="none" stroke-linecap="round"/>` + seg([61, 12], [58, 20], '#ffffff', 1.1, ' opacity=".8"');
+    if (k === 'gold') s += `<path d="M${pp(pk(57, -4))} L${pp(pk(55, 0))} L${pp(pk(57, 4))} L${pp(pk(59.4, 0))} Z" fill="#e0243f" stroke="${INK}" stroke-width="1.4" stroke-linejoin="round"/><circle cx="${f1(pk(56.4, -1.2)[0])}" cy="${f1(pk(56.4, -1.2)[1])}" r=".9" fill="#ffffff"/>` + `<path d="M${pp(pk(49, -12))} Q${pp(pk(55, -8))} ${pp(pk(58, -9))} M${pp(pk(49, 14))} Q${pp(pk(55, 10))} ${pp(pk(58, 11))}" stroke="${h2}" stroke-width="1.4" fill="none" stroke-linecap="round"/>`;
+    if (k === 'adamant') s += `<path d="M${pp(B)} L${pp(pk(60, 2))} L${pp(F)} Z" fill="${h2}" opacity=".45"/><path d="M${pp(pk(48, -19))} L${pp(pk(63, 2))} L${pp(pk(47.5, 27))} M${pp(pk(55, -12))} L${pp(pk(63, 2))} L${pp(pk(55, 17))}" stroke="#ffffff" stroke-width="1.1" fill="none" stroke-linejoin="round" opacity=".85"/>` + [4, 10, 16].map((a) => `<path d="M${pp(pk(a + 22, -1.6))} L${pp(pk(a + 22, 1.6))}" stroke="${L.grip}" stroke-width="1.4" stroke-linecap="round"/>`).join('');
     if (L.shine) s += star(pk(60, 20)[0], pk(60, 20)[1], 0.8);
-    if (L.glow) s += star(pk(70, -16)[0], pk(70, -16)[1], 0.7, '#dff6ff') + star(pk(40, 36)[0], pk(40, 36)[1], 0.55, '#dff6ff') + `<circle cx="${f1(pk(74, 10)[0])}" cy="${f1(pk(74, 10)[1])}" r="1.8" fill="#dff6ff"/>`;
+    if (L.glow && k === 'adamant') s += star(pk(70, -16)[0], pk(70, -16)[1], 0.7, '#dff6ff') + star(pk(40, 36)[0], pk(40, 36)[1], 0.55, '#dff6ff') + `<circle cx="${f1(pk(74, 10)[0])}" cy="${f1(pk(74, 10)[1])}" r="1.8" fill="#dff6ff"/>`;
     return s;
   }
 
-  /* ---------- значок кирки 64×64 ---------- */
-  function pickIcon(L, g) {
-    // черенок по диагонали из левого низа в правый верх; головка - серп поперёк, клюв вниз-вправо
-    let s = '';
-    const gc = L.glow || (L.shine ? '#ffd84a' : '');   // свечение: у адамантитовой - голубое, у золотой - тёплое
-    if (gc) s += `<defs><radialGradient id="${g}"><stop offset="0" stop-color="${gc}" stop-opacity="${L.glow ? 0.75 : 0.45}"/><stop offset="1" stop-color="${gc}" stop-opacity="0"/></radialGradient></defs><circle cx="36" cy="26" r="28" fill="url(#${g})"/>`;
-    s += `<path d="M12 56 L46 20" stroke="${INK}" stroke-width="10" stroke-linecap="round"/><path d="M12 56 L46 20" stroke="${L.handle[0]}" stroke-width="5.6" stroke-linecap="round"/><path d="M14 52 L44 20" stroke="${L.handle[1]}" stroke-width="1.8" stroke-linecap="round"/>`;
-    s += L.wrap ? [0, 1, 2, 3].map((i) => { const x = 15 + i * 3.4, y = 52 - i * 3.6; return `<path d="M${f1(x - 3)} ${f1(y - 3)} L${f1(x + 3)} ${f1(y + 3)}" stroke="${L.grip}" stroke-width="2.8" stroke-linecap="round"/>`; }).join('') : `<path d="M16 48 l4 4 M19 45 l4 4" stroke="${INK}" stroke-width="2.2" stroke-linecap="round"/>`;
-    const [h0, h1, h2] = L.head;
-    const head = 'M14 18 Q36 2 58 34 Q56 37 52 36 Q38 18 18 22 Q14 22 14 18Z';
-    s += `<path d="${head}" fill="${h0}" ${O(3.2)}/><path d="M17 18.5 Q36 6 55 31 Q45 17 18 20Z" fill="${h1}"/><path d="M22 23 Q40 22 52 36" stroke="${h2}" stroke-width="2.6" fill="none" stroke-linecap="round"/>`;
-    if (L.grain) s += `<path d="M26 14 q8 -2 14 2 M34 14 q6 0 10 6" stroke="${h2}" stroke-width="1.6" fill="none" opacity=".7"/>`;
-    s += `<rect x="40" y="15" width="11" height="11" rx="2" transform="rotate(42 45.5 20.5)" fill="${h2}" ${O(2.4)}/><path d="${head}" fill="none" ${O(3.2)}/>`;
-    s += `<path d="M30 9.5 Q42 9 51 20" stroke="#ffffff" stroke-width="${L.shine ? 2.6 : 1.8}" fill="none" stroke-linecap="round" opacity="${L.shine ? 1 : 0.8}"/>`;
-    if (L.shine) s += star(52, 10, 1) + star(10, 22, 0.6);
-    if (L.glow) s += star(58, 46, 0.7, '#dff6ff') + star(26, 6, 0.6, '#dff6ff') + `<circle cx="8" cy="34" r="1.8" fill="#dff6ff"/><circle cx="60" cy="16" r="1.6" fill="#dff6ff"/>`;
-    return s;
+  /* ---------- значок кирки 64×64: та же кирка, что в лапе, повёрнутая черенком по диагонали (левый низ - правый верх) ---------- */
+  function pickIcon(L) {
+    const lv = LV.indexOf(L);
+    return `<g transform="translate(11 52) rotate(52) scale(.76)">${held(lv < 0 ? 2 : lv)}</g>`;
   }
   const box64 = (body, size = 64) => `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 64 64">${body}</svg>`;
   /** Значок кирки уровня lv для окна торговца. size - размер в px (по умолчанию 64). */
-  const icon = (lv, size = 64) => box64(pickIcon(lvOf(lv), uid('pki')), size);
+  const icon = (lv, size = 64) => box64(pickIcon(lvOf(lv)), size);
 
   /* ---------- рудная сумка ---------- */
   function bagBody() {
@@ -127,7 +137,7 @@
           + [16, 26, 38, 48].map((x) => `<rect x="${x - 2}" y="36" width="4" height="18" fill="#fff8e6" stroke="${INK}" stroke-width="1.4"/>`).join('') + `<circle cx="32" cy="27" r="4.4" fill="#fff8e6" ${O(1.8)}/>`
           + `<path d="M44 46 c0 -6 8 -6 8 0 c0 -6 8 -6 8 0 c0 6 -8 10 -8 12 c0 -2 -8 -6 -8 -12Z" fill="#ff5a6e" ${O(2.2)}/>`;
       case 'РМ-28':   // Новая кирка — кирка с бликом и бантиком «новое»
-        return pickIcon(LV[3], uid('ach')) + `<path d="M50 44 q-6 -6 0 -10 q6 4 0 10 q6 -6 10 0 q-4 6 -10 0Z" fill="#ff5a6e" ${O(2)}/><circle cx="50" cy="44" r="2.4" fill="#ff8fa3" ${O(1.4)}/>`;
+        return pickIcon(LV[3]) + `<path d="M50 44 q-6 -6 0 -10 q6 4 0 10 q6 -6 10 0 q-4 6 -10 0Z" fill="#ff5a6e" ${O(2)}/><circle cx="50" cy="44" r="2.4" fill="#ff8fa3" ${O(1.4)}/>`;
       case 'РМ-29':   // Свой мешок — рудная сумка
         return `<g transform="translate(4 6) scale(.88)">${bagBody()}</g>`;
       case 'РМ-30':   // Дно не видно — уходящий в темноту ствол с лестницей
@@ -143,7 +153,7 @@
       case 'РМ-33':   // Полная смена — песочные часы и кирка
         return `<path d="M18 8 H46 M18 56 H46" stroke="${INK}" stroke-width="7" stroke-linecap="round"/><path d="M18 8 H46 M18 56 H46" stroke="#a0703a" stroke-width="3.6" stroke-linecap="round"/>`
           + `<path d="M22 10 Q22 26 32 32 Q22 38 22 54 H42 Q42 38 32 32 Q42 26 42 10Z" fill="#dff4ff" ${O(2.6)}/><path d="M24 54 Q26 44 32 40 Q38 44 40 54Z" fill="#e8b84a"/><path d="M30 33 H34 L32 40Z" fill="#e8b84a"/><path d="M26 14 Q26 22 30 26" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/>`
-          + `<g transform="translate(36 30) scale(.5)">${pickIcon(LV[2], uid('ach'))}</g>`;
+          + `<g transform="translate(36 30) scale(.5)">${pickIcon(LV[2])}</g>`;
       case 'РМ-34': {   // Коллекционер руды — ящик-витрина с ячейками руды
         const C = ['#2c2b34', '#c8643a', '#d8803a', '#f2e24a', '#eef3fa', '#ffcf3a', '#7fe8ff', '#efe6d2', '#ff4a6a'];
         let s = `<rect x="8" y="12" width="48" height="42" rx="4" fill="#8a5a32" ${O(3)}/><rect x="12" y="16" width="40" height="34" rx="2" fill="#3a2414"/>`;

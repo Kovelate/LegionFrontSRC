@@ -123,7 +123,10 @@
       const a = D.src.querySelector('.cy-gi, .art'); g.innerHTML = a ? a.outerHTML : '';
       document.body.appendChild(g); D.ghost = g;
       targets().forEach((t) => { if (!o.ok || o.ok(D.src, t)) t.classList.add('ig-ok'); });
-      if (o.scroll) for (let el = root; el && el !== document.body; el = el.parentElement) { const oy = getComputedStyle(el).overflowY; if ((oy === 'auto' || oy === 'scroll') && el.scrollHeight > el.clientHeight + 4) { D.sc = el; break; } }
+      // 30.10: склад в два столбца - прокручивается тот столбец, из которого тащат
+      const col = o.scroll && D.src.closest('.lgi-col'), cy = col ? getComputedStyle(col).overflowY : '';
+      if (col && (cy === 'auto' || cy === 'scroll') && col.scrollHeight > col.clientHeight + 4) D.sc = col;
+      if (o.scroll && !D.sc) for (let el = root; el && el !== document.body; el = el.parentElement) { const oy = getComputedStyle(el).overflowY; if ((oy === 'auto' || oy === 'scroll') && el.scrollHeight > el.clientHeight + 4) { D.sc = el; break; } }
       if (o.scroll === 'page' && !D.sc) { const se = document.scrollingElement; if (se && se.scrollHeight > window.innerHeight + 4) D.sc = se; }   // 26.10: окна с прокруткой нет - прокручивается сама страница («Персонаж»: из сумки внизу на куклу вверху)
       if (o.onStart) try { o.onStart(D.src); } catch (e) { console.warn('[перетаскивание]', e); }
       if (D.touch && navigator.vibrate) try { navigator.vibrate(12); } catch {}
@@ -541,13 +544,17 @@
   function tipHide() { if (!TIP) return; if (TIPFOR) TIPFOR.removeAttribute('aria-describedby'); TIPFOR = null; TIP.hidden = true; }
 
   let MOUNTS = 0;
+  // 30.10: «Рудная сумка» сворачивается (кнопка-заголовок); одно значение на все места (склад, «Персонаж», сумка шахты) - localStorage lgOreBagFold
+  const FOLD_KEY = 'lgOreBagFold', FOLDS = new Set();
+  function foldGet() { try { return root.localStorage.getItem(FOLD_KEY) === '1'; } catch (e) { /* хранилища нет (приватный режим) - по умолчанию развёрнута */ return false; } }
+  function foldPut(on) { try { root.localStorage.setItem(FOLD_KEY, on ? '1' : '0'); } catch (e) { /* не сохранилось - останется до закрытия окна */ } }
   function mount(el, cfg = {}) {
     if (!el || el.nodeType !== 1) throw new Error('LGInventory.mount: нужен элемент');
     if (el.__lgi) el.__lgi.destroy();
     const v = VARIANTS.includes(cfg.variant) ? cfg.variant : 'compact', mode = MODES.includes(cfg.mode) ? cfg.mode : 'equip';
     let A = cfg.actions || {}, O = { ...(cfg.options || {}) }, D = norm(cfg.data);
     const ID = String(++MOUNTS); el.dataset.lgiId = ID;
-    const S = { f: 'all', sort: SORTS.some(([k]) => k === O.sortDefault) ? O.sortDefault : 'rar', sel: O.sel || '', busy: false, k: {}, drag: null, dead: false, tip: false };
+    const S = { f: 'all', sort: SORTS.some(([k]) => k === O.sortDefault) ? O.sortDefault : 'rar', sel: O.sel || '', busy: false, k: {}, drag: null, dead: false, tip: false, fold: foldGet() };
     const T = () => ({ ...TXT, ...(O.labels || {}) });
     if (O.storeKey) try { const p = JSON.parse(root.localStorage.getItem(O.storeKey) || '{}'); if (typeof p.f === 'string') S.f = p.f; if (SORTS.some(([k]) => k === p.sort)) S.sort = p.sort; } catch (e) { /* без хранилища - по умолчанию */ }
     const save = () => { if (O.storeKey) try { root.localStorage.setItem(O.storeKey, JSON.stringify({ f: S.f, sort: S.sort })); } catch (e) { /* приватный режим */ } };
@@ -601,10 +608,13 @@
       const fl = filters() || O.sort !== false && v !== 'inline' ? `<div class="lgi-f" role="group" aria-label="Тип вещей" data-lgi="f"></div>` : '';
       // цель броска - вся область сетки (и пустое место под ячейками), а не только ряды ячеек
       const g = (from, label) => `<div class="lgi-g" data-lgi="g-${from}"${mode === 'equip' || mode === 'storage' ? ` data-igdrop="${from}"` : ''}>${mode === 'storage' ? `<div class="lgi-gh"><b>${esc(label)}</b><span data-lgi="cap-${from}"></span></div>` : ''}<div class="cy-grid ig-grid" role="group" aria-label="${esc(label)}" data-lgi="grid-${from}"></div><p class="lgi-empty muted" data-lgi="empty-${from}" hidden>${esc(t.empty)}</p></div>`;
-      const obG = obOn() ? `<div class="lgi-g lgi-ob" data-lgi="g-ob"${mode === 'storage' ? ' data-igdrop="ob"' : ''}><div class="lgi-gh"><b>${esc(t.oreBag || 'Рудная сумка')}</b><span data-lgi="cap-ob"></span></div><div class="cy-grid ig-grid" role="group" aria-label="${esc(t.oreBag || 'Рудная сумка')}" data-lgi="grid-ob"></div></div>` : '';
+      // 30.10 (склад в два столбца): заголовок рудной сумки - кнопка «свернуть / развернуть» (aria-expanded), выбор помним (lgOreBagFold)
+      const obT = esc(t.oreBag || 'Рудная сумка');
+      const obG = obOn() ? `<div class="lgi-g lgi-ob${S.fold ? ' lgi-fold' : ''}" data-lgi="g-ob"${mode === 'storage' ? ' data-igdrop="ob"' : ''}><button type="button" class="lgi-gh lgi-foldbt" data-lgi-fold aria-expanded="${!S.fold}" aria-controls="lgi-ob-${ID}" title="${esc(S.fold ? t.obOpen || 'Развернуть' : t.obShut || 'Свернуть')}"><b>${obT}</b><span data-lgi="cap-ob"></span><i class="lgi-chev" aria-hidden="true"></i></button><div class="cy-grid ig-grid" id="lgi-ob-${ID}" role="group" aria-label="${obT}" data-lgi="grid-ob"></div></div>` : '';
       // 28.10 (bag-trash): слот «Выбросить» под сеткой - только если страница дала actions.discard (вкладка «Поход»)
       const tr = trashOn() ? `<button type="button" class="lgi-trash" data-lgi="trash" data-igdrop="trash" aria-label="${esc(t.trash)}: ${esc(t.trashPick)}" title="${esc(t.trashPick)}"><span class="lgi-tri" aria-hidden="true">🗑</span><b>${esc(t.trash)}</b><small>${esc(t.trashSub)}</small></button>` : '';
-      const grids = (mode === 'storage' ? g('bag', t.bag) + obG + g('st', t.storage) : g('bag', O.gridLabel || t.bag) + obG) + tr;
+      // 30.10: склад - два столбца-обёртки (слева сумка и рудная сумка, справа склад); без места (телефон) обёртки «прозрачны» и сетки идут столбиком, как раньше
+      const grids = (mode === 'storage' ? `<div class="lgi-cols"><div class="lgi-col lgi-col-l">${g('bag', t.bag)}${obG}</div><div class="lgi-col lgi-col-r">${g('st', t.storage)}</div></div>` : g('bag', O.gridLabel || t.bag) + obG) + tr;
       S.ob = obOn(); el.classList.toggle('lgi-wob', S.ob && (v === 'compact' || v === 'sheet'));   // 28.10 (mine-orebag-scroll): с рудной сумкой прокручивается вся карточка - иначе блок руды обрезан (телефон) или не доскроллить из сумки (ПК)
       const foot = '<footer class="lgi-a" data-lgi="a"></footer>';
       const hd = O.header === false ? '' : head, det = O.detail === false ? '' : '<aside class="lgi-det" data-lgi="det" aria-live="polite"></aside>';
@@ -834,8 +844,18 @@
         onDrop: (src, t) => { const it = itemBy(src.dataset.ig); if (it) run(A.drop, it, t); }, quick: (src) => pick(src.dataset.ig), shift: (src) => pick(src.dataset.ig) });   // 26.10: Shift+клик - тоже «положить» (окно скупщика)
       else S.drag = drag(R, { ...base, ...own, quick: mode === 'pick' ? (src) => pick(src.dataset.ig) : undefined });
     }
+    // 30.10: свернуть / развернуть «Рудную сумку»: сетка прячется (ячейки остаются в разметке - счётчик и перетаскивание на заголовок целы)
+    function foldSync(on) {
+      if (S.dead) return; S.fold = !!on;
+      const g = q('g-ob'); if (!g) return;
+      g.classList.toggle('lgi-fold', S.fold);
+      const b = g.querySelector('[data-lgi-fold]'); if (b) { b.setAttribute('aria-expanded', String(!S.fold)); b.title = S.fold ? T().obOpen || 'Развернуть' : T().obShut || 'Свернуть'; }
+    }
+    FOLDS.add(foldSync);
     const onClick = (e) => {
       const t = e.target;
+      // свернуть / развернуть: запоминаем и сообщаем другим открытым сумкам страницы
+      const fb = t.closest('[data-lgi-fold]'); if (fb && el.contains(fb)) { const on = !S.fold; foldPut(on); FOLDS.forEach((f) => f(on)); return; }
       const f = t.closest('[data-bf]'); if (f && el.contains(f)) { S.f = f.dataset.bf; save(); chips(); grids(); mark(); return; }
       const em = t.closest('[data-empty]'); if (em && el.contains(em)) { if ((filters() || []).includes(em.dataset.empty)) { S.f = em.dataset.empty; save(); chips(); grids(); mark(); } return; }
       if (t.closest('[data-bx]')) { cardOff(); if (A.close) A.close(); return; }
@@ -897,7 +917,7 @@
       state: () => ({ f: S.f, sort: S.sort, sel: S.sel, busy: S.busy }),
       dragging: () => !!(S.drag && S.drag.dragging()),
       destroy() {
-        if (S.dead) return; cardOff(); dlgClose(); unbind(); clearTimeout(S.sayT); S.dead = true; delete el.dataset.lgiId;
+        if (S.dead) return; FOLDS.delete(foldSync); cardOff(); dlgClose(); unbind(); clearTimeout(S.sayT); S.dead = true; delete el.dataset.lgiId;
         if (PE) { PE.innerHTML = ''; PE.classList.remove('lgi', 'lgi--' + v, 'lgi-dollx'); delete PE.dataset.lgiId; el.classList.remove('lgi-nodoll'); }
         el.innerHTML = ''; el.classList.remove('lgi', 'lgi--' + v, 'lgi-m-' + mode, 'lgi-nodet'); el.removeAttribute('aria-busy'); delete el.__lgi;
       },

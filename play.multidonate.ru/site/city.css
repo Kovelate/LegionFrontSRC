@@ -65,7 +65,7 @@
 .cy-bt { position: absolute; transform: translate(-50%, -100%); pointer-events: none; padding: calc(3px * var(--iz, 1.5)) calc(8px * var(--iz, 1.5)); border-radius: 999px; background: #ffd34a; color: #231c2e; border: calc(2px * var(--iz, 1.5)) solid #231c2e; font: 800 calc(12px * var(--iz, 1.5))/1.1 var(--tx, system-ui); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .cy-tag:hover, .cy-tag:focus-visible { background: #ffc94d; outline: none; }
 
-.cy-hud { position: absolute; left: 60px; top: 14px; right: 60px;   /* 21.10: слева сверху, рядом с «Скрыть других» */
+.cy-hud { position: absolute; left: 112px; top: 14px; right: 60px;   /* 21.10: слева сверху, рядом с «Скрыть других» */
    display: flex; flex-wrap: wrap; gap: 6px; pointer-events: none; }
 .cy-hud > span { font: 700 13px/1.2 var(--tx, system-ui); color: #fff; background: rgba(15, 12, 34, .7); padding: 6px 10px; border-radius: 999px; }
 .cy-hud .cy-on:empty { display: none; }
@@ -88,14 +88,22 @@ html.cy-full .cy-bar { padding: 6px 8px; background: var(--bg, #0d0b22); }
 .cy-ar.zi { right: 60px; bottom: 60px; } .cy-ar.zo { right: 60px; bottom: 8px; }   /* 23.10: зум — «+ / −» рядом со стрелками вверх-вниз */
 .cy-ar:hover, .cy-ar:focus-visible { background: rgba(15, 12, 34, .92); outline: 2px solid #fff; }
 /* 20.10: «Скрыть / Показать других игроков» — левый нижний угол (там нет кнопок, зданий-входов — только мостовая); 44 px, как стрелки */
-.cy-others { position: absolute; left: 8px; top: 8px; z-index: 2; width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border-radius: 50%; border: 0; background: rgba(15, 12, 34, .7); color: #fff; cursor: pointer; }
+.cy-others { position: absolute; left: 60px; top: 8px; z-index: 2; width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border-radius: 50%; border: 0; background: rgba(15, 12, 34, .7); color: #fff; cursor: pointer; }
 .cy-others:hover, .cy-others:focus-visible { background: rgba(15, 12, 34, .92); outline: 2px solid #fff; }
 .cy-others .cy-oth-x { display: none; }
+.cy-fr { position: absolute; left: 8px; top: 8px; z-index: 2; width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border-radius: 50%; border: 0; background: rgba(15, 12, 34, .7); color: #fff; cursor: pointer; }
+.cy-fr:hover, .cy-fr:focus-visible { background: rgba(15, 12, 34, .92); outline: 2px solid #fff; }
+.cy-fr-n { position: absolute; right: -3px; top: -3px; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 999px; background: var(--accent, #ffc94d); color: var(--accent-ink, #1a1400); font: 800 11px/18px var(--tx, system-ui); text-align: center; }
+.cy-fr-n[hidden] { display: none; }
+/* 30.10: пока открыт Город, «Друзья» - кнопка в его углу, а в шапке сайта её нет (вне Города - как была) */
+html.cy-full #frBtn { display: none; }
 .cy-others.off { color: #ffc94d; }
 .cy-others.off .cy-oth-x { display: inline; }
 .cy-tipb { position: absolute; left: 0; top: calc(100% + 8px); white-space: nowrap; font: 700 13px/1.2 var(--tx, system-ui); color: #fff; background: rgba(15, 12, 34, .92); padding: 6px 10px; border-radius: 8px; pointer-events: none; opacity: 0; transform: translateY(4px); transition: opacity .15s, transform .15s; }
 .cy-others.said .cy-tipb { opacity: 1; transform: none; }
-@media (hover: hover) { .cy-others:hover .cy-tipb, .cy-others:focus-visible .cy-tipb { opacity: 1; transform: none; } }
+/* 30.10: подсказка кнопки лежит ниже неё, где плашка города (.cy-town, z-index 2, позже в разметке) её перекрывала - пока подсказка видна, кнопка выше плашки */
+.cy-others.said, .cy-others:focus-visible { z-index: 3; }
+@media (hover: hover) { .cy-others:hover { z-index: 3; } .cy-others:hover .cy-tipb, .cy-others:focus-visible .cy-tipb { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .cy-tipb { transition: none; } }
 
 /* быстрый переход к зданиям */
@@ -276,6 +284,21 @@ html.cy-reading { overflow: hidden; }
 .cy-stall { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; margin: 10px 0 2px; }
 .cy-stres { flex-basis: 100%; margin: 0; min-height: 1.3em; text-align: center; font-size: 13px; font-weight: 700; color: var(--up, #2f9e44); }
 .cy-stres.bad { color: var(--accent, #c81e17); }
+
+/* 30.10 (склад в два столбца): на ПК окно Склада шире и стоит на всю высоту сцены - внутри «Сумка» и «Рудная сумка» слева, «Склад» справа
+   (раскладку столбцов решает сама сумка по своей ширине: packages/inventory/inventory.css, @container 800px). Окно не растёт: сверху - кладовщик и кнопки,
+   под ними столбцы делят остаток высоты и листаются каждый сам. Уже 900px и на телефоне - окно как было, всё столбиком */
+@media (min-width: 900px) {
+  .cy-room[data-b="storage"] .cy-rui { width: min(1040px, calc(100vw - 32px)); display: flex; flex-direction: column; overflow: hidden; }
+  .cy-room[data-b="storage"] .cy-pb { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; }
+  .cy-store2 { flex: 1 1 560px; min-height: 560px; display: flex; flex-direction: column; }   /* ниже 560px высоты - листается всё окно */
+  .cy-store2 > .lgi-m-storage.lgi--full { flex: 1 1 auto; min-height: 340px; display: flex; flex-direction: column; }
+  .cy-store2 .lgi-m-storage.lgi--full .lgi-in { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
+  .cy-store2 .lgi-m-storage.lgi--full .lgi-main { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+}
+@container (min-width: 800px) {
+  .cy-store2 .lgi-m-storage.lgi--full .lgi-main { overflow: hidden; }
+}
 
 /* Шатёр: зеркало и образцы */
 .cy-tent { display: block; }
@@ -462,13 +485,15 @@ html.cy-reading { overflow: hidden; }
    Без размытия фона и без анимаций по кадрам: только transform/opacity */
 /* в той же ячейке сетки .cy, что и карта (поверх неё, снизу слева): от высоты полосы зданий не зависит */
 .cy-view { grid-area: 1 / 1; }
-.cy-chat { grid-area: 1 / 1; align-self: end; justify-self: start; position: relative; margin: 0 0 8px 8px; z-index: 3; width: min(360px, calc(100% - 68px));   /* 21.10: в левом нижнем углу; справа — стрелки вверх/вниз */ display: flex; flex-direction: column; align-items: flex-start; gap: 6px; font: 500 14px/1.35 var(--tx, system-ui); color: #fff; }
+.cy-chat { grid-area: 1 / 1; align-self: end; justify-self: start; position: relative; margin: 0 0 8px 8px; z-index: 3; min-width: 0; width: min(360px, calc(100% - 68px));   /* 21.10: в левом нижнем углу; справа — стрелки вверх/вниз */ display: flex; flex-direction: column; align-items: flex-start; gap: 6px; font: 500 14px/1.35 var(--tx, system-ui); color: #fff; }
 .cy-chat[hidden] { display: none; }
 .cy-chat-t { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border: 0; border-radius: 999px; background: rgba(15, 12, 34, .82); color: #fff; font: 700 14px/1 var(--tx, system-ui); cursor: pointer; }
 .cy-chat-t:hover, .cy-chat-t:focus-visible { background: rgba(15, 12, 34, .95); outline: 2px solid #fff; }
 .cy-chat.open > .cy-chat-t { display: none; }   /* открыт — свернуть «×» в заголовке окна */
-.cy:has(.cy-chat.open) .cy-ar.l { top: 30%; }   /* стрелка «влево» — выше открытого окна */
-.cy-chat-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: -2px 0 4px; font: 700 12px/1 var(--tx, system-ui); letter-spacing: .04em; text-transform: uppercase; color: rgba(255, 255, 255, .6); }
+/* 30.10 (снимок стримера: «<» у верха, «>» ниже середины): обе стрелки всегда по центру вида (top: 50%, одно правило). Раньше открытый чат поднимал левую на 30%.
+   Теперь открытое окно чата сдвигается правее стрелки (она 8-52 px от края) - на низком экране и на широком оно доходит до середины, а на высоком телефоне места хватает и так */
+@media (min-width: 721px), (max-height: 700px) { .cy:has(.cy-chat.open) .cy-chat { margin-left: 60px; width: min(360px, calc(100% - 128px)); } }
+.cy-chat-h { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: -2px 0 4px; font: 700 12px/1 var(--tx, system-ui); letter-spacing: .04em; text-transform: uppercase; color: rgba(255, 255, 255, .6); }
 .cy-chat-x { width: 28px; height: 28px; padding: 0; border: 0; border-radius: 8px; background: rgba(255, 255, 255, .1); color: #fff; font: 700 18px/1 system-ui; cursor: pointer; }
 .cy-chat-sh { margin-left: auto; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 8px; background: rgba(255, 255, 255, .1); color: #fff; font: 16px/1 system-ui; cursor: pointer; }   /* 22.10: модерация */
 .cy-chat-sh[aria-pressed="true"], .cy-chat-sh:hover, .cy-chat-sh:focus-visible { background: rgba(255, 255, 255, .25); outline: 2px solid #fff; outline-offset: 0; }
@@ -477,9 +502,18 @@ html.cy-reading { overflow: hidden; }
 .cy-chat-x > i { display: block; width: 12px; height: 2px; margin: 8px auto 0; border-radius: 1px; background: currentColor; }
 .cy-chat-x:hover, .cy-chat-x:focus-visible { background: rgba(255, 255, 255, .22); outline: 2px solid #fff; outline-offset: 0; }
 .cy-chat-n { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--hov, #ffc94d); color: #15122e; font-size: 12px; line-height: 20px; text-align: center; }
-.cy-chat-b { width: 100%; padding: 8px 10px 10px; border-radius: 14px; background: rgba(15, 12, 34, .82); box-shadow: 0 6px 20px rgba(0, 0, 0, .3); }
+.cy-chat-b { display: flex; flex-direction: column; box-sizing: border-box; height: clamp(260px, 44vh, 340px); width: 100%; padding: 8px 10px 10px; border-radius: 14px; background: rgba(15, 12, 34, .82); box-shadow: 0 6px 20px rgba(0, 0, 0, .3); }
 .cy-chat-b[hidden] { display: none; }
-.cy-chat-l { list-style: none; margin: 0; padding: 0 2px 0 0; max-height: min(240px, 34vh); overflow-y: auto; overscroll-behavior: contain; }
+/* 30.10 (стример: «окно чата прыгает по размеру на вкладках»): у открытого окна своя фиксированная высота - лента, личка и модерация занимают остаток между шапкой/вкладками и полем ввода (flex: 1 1 0), а не растут по содержимому */
+.cy-chat-l { flex: 1 1 0; min-height: 0; list-style: none; margin: 0; padding: 0 2px 0 0; overflow-y: auto; overscroll-behavior: contain; }
+.cy-chat-dmx { flex: 1 1 0; min-height: 0; min-width: 0; display: flex; flex-direction: column; }
+.cy-chat-dmx[hidden] { display: none; }
+.cy-chat-dmx > .dm { flex: 1 1 0; min-height: 0; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.cy-chat-dmx .dm-tabs, .cy-chat-dmx .dm-h, .cy-chat-dmx .dm-rep, .cy-chat-dmx .dm-e, .cy-chat-dmx .dm-f { flex: none; }
+.cy-chat-dmx .dm-l { flex: 1 1 0; min-height: 0; max-height: none; }
+.cy-chat-dmx .dm-l::-webkit-scrollbar { width: 8px; }
+.cy-chat-dmx .dm-l::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .22); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+.cy-chat-dmx .dm-l::-webkit-scrollbar-track, .cy-chat-dmx .dm-l::-webkit-scrollbar-button { background: transparent; display: none; }
 /* 26.10 (стример: «скролл не под стиль сайта»): полоса прокрутки чата - тонкая, скруглённая, цвет акцента сайта при наведении.
    Chrome/Edge/Safari - ::-webkit-scrollbar (scrollbar-color в Chrome 121+ отключил бы его - поэтому он только для Firefox) */
 .cy-chat-l::-webkit-scrollbar, .cy-chat-p::-webkit-scrollbar { width: 8px; }
@@ -508,17 +542,16 @@ html.cy-reading { overflow: hidden; }
 .cy-chat-mm button:hover, .cy-chat-mm button:focus-visible { background: rgba(255, 255, 255, .14); }
 .cy-chat-mm [data-cmute] { border-color: #ff8a7a; color: #ffb0a6; }
 /* 24.10: вкладки чата: «Общий», «Торговля», «Личные» */
-.cy-chat-tabs { display: flex; gap: 4px; margin: 0 0 6px; }
+.cy-chat-tabs { flex: none; display: flex; gap: 2px; margin: 0 0 6px; }
 .cy-chat-tabs[hidden] { display: none; }
-.cy-chat-tabs button { display: inline-flex; align-items: center; gap: 4px; min-height: 30px; padding: 0 10px; border: 1px solid rgba(255, 255, 255, .25); border-radius: 999px; background: transparent; color: rgba(255, 255, 255, .8); font: 700 12px/1 var(--tx, system-ui); cursor: pointer; }
+.cy-chat-tabs button { display: inline-flex; align-items: center; gap: 4px; min-height: 24px; padding: 0 8px; border: 0; border-radius: 999px; background: transparent; color: rgba(255, 255, 255, .8); font: 700 12px/1 var(--tx, system-ui); cursor: pointer; }
+.cy-chat-tabs button:hover { background: rgba(255, 255, 255, .12); color: #fff; }
 .cy-chat-tabs button[hidden] { display: none; }
-.cy-chat-tabs button[aria-selected="true"] { background: var(--hov, #ffc94d); border-color: transparent; color: #15122e; }
-.cy-chat-tabs button:focus-visible { outline: 2px solid #fff; }
+.cy-chat-tabs button[aria-selected="true"] { background: var(--hov, #ffc94d); color: #15122e; }
+.cy-chat-tabs button:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
 .cy-chat-tn { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: #ff5a5a; color: #fff; font-size: 11px; line-height: 18px; text-align: center; }
 .cy-chat-tn[hidden] { display: none; }
-.cy-chat-dm { margin-left: 4px; padding: 0 4px; border: 0; border-radius: 6px; background: transparent; color: rgba(255, 255, 255, .6); font: 13px/1 system-ui; cursor: pointer; vertical-align: 1px; }
-.cy-chat-dm:hover, .cy-chat-dm:focus-visible { color: #fff; background: rgba(255, 255, 255, .15); outline: none; }
-.cy-chat-to { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 6px; font-size: 12px; }
+.cy-chat-to { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 6px; font-size: 12px; }
 .cy-chat-to[hidden] { display: none; }
 .cy-chat-to button { min-height: 26px; padding: 0 8px; border: 1px solid rgba(255, 255, 255, .25); border-radius: 999px; background: transparent; color: #fff; font: 700 12px/1 var(--tx, system-ui); cursor: pointer; }
 .cy-chat-to button[aria-pressed="true"] { background: rgba(255, 255, 255, .18); border-color: #fff; }
@@ -530,9 +563,9 @@ html.cy-reading { overflow: hidden; }
 .cy-nm button { min-height: 34px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: #fff; font: inherit; text-align: left; cursor: pointer; }
 .cy-nm button:hover, .cy-nm button:focus-visible { background: rgba(255, 255, 255, .14); outline: none; }
 .cy-chat-l li b[data-nick]:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
-.cy-chat-e { margin: 4px 0 0; min-height: 0; color: #ffb0a6; font-size: 12px; }
+.cy-chat-e { flex: none; margin: 4px 0 0; min-height: 0; color: #ffb0a6; font-size: 12px; }
 .cy-chat-e:empty { display: none; }
-.cy-chat-f { display: flex; gap: 6px; margin-top: 6px; }
+.cy-chat-f { flex: none; display: flex; gap: 6px; margin-top: 6px; }
 .cy-chat-f input { flex: 1; min-width: 0; height: 38px; padding: 0 10px; border: 1px solid rgba(255, 255, 255, .25); border-radius: 10px; background: rgba(255, 255, 255, .08); color: #fff; font: 500 14px/1 var(--tx, system-ui); }
 .cy-chat-f input::placeholder { color: rgba(255, 255, 255, .5); }
 .cy-chat-f input:focus { outline: 2px solid var(--hov, #ffc94d); outline-offset: 0; border-color: transparent; }
@@ -546,7 +579,7 @@ html.cy-reading { overflow: hidden; }
   .cy-chat-b { padding: 6px 8px 8px; border-radius: 12px; }
   .cy-chat-h { margin-bottom: 2px; }
   .cy-chat-x { width: 26px; height: 26px; }
-  .cy-chat-l { max-height: min(132px, 22vh); }
+  .cy-chat-b { height: clamp(220px, 36vh, 280px); }
   .cy-chat-l li { padding: 2px 24px 2px 0; }
   .cy-chat-f { margin-top: 4px; }
   .cy-chat-f input { height: 34px; font-size: 16px; }
@@ -566,7 +599,7 @@ html.cy-reading { overflow: hidden; }
 .cy-chat-mt { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; color: rgba(255, 255, 255, .6); font-size: 12px; }
 .cy-chat-mm button.bad { border-color: #ff8a7a; color: #ffb0a6; }
 .cy-chat-e.ok { color: #9fe39a; }
-.cy-chat-p { max-height: min(300px, 44vh); overflow-y: auto; overscroll-behavior: contain; }
+.cy-chat-p { flex: 1 1 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 .cy-chat-p[hidden] { display: none; }
 .cy-chat-p h4 { margin: 10px 0 4px; font: 700 12px/1.2 var(--tx, system-ui); letter-spacing: .04em; text-transform: uppercase; color: rgba(255, 255, 255, .6); }
 .cy-chat-pu { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
@@ -578,12 +611,12 @@ html.cy-reading { overflow: hidden; }
 .cy-chat-pl { margin: 0; color: rgba(255, 255, 255, .6); font-size: 12px; }
 .cy-chat-pf { display: flex; gap: 6px; margin-top: 6px; }
 .cy-chat-pf input, .cy-chat-pf select { min-width: 0; height: 34px; padding: 0 8px; border: 1px solid rgba(255, 255, 255, .25); border-radius: 8px; background: rgba(255, 255, 255, .08); color: #fff; font: 500 13px/1 var(--tx, system-ui); }
-.cy-chat-pf input { flex: 1; } .cy-chat-pf select { flex: none; } .cy-chat-pf select option { color: #15122e; }
+.cy-chat-pf input { flex: 1; } .cy-chat-pf select { flex: none; } .cy-chat-pf select { color-scheme: light; } .cy-chat-pf select option, .cy-chat-pf select optgroup { color: #15122e; background-color: #fffaf0; }
 .cy-chat-pf input:focus, .cy-chat-pf select:focus { outline: 2px solid var(--hov, #ffc94d); outline-offset: 0; }
 .cy-chat-pf button, .cy-chat-pb { flex: none; height: 34px; padding: 0 12px; border: 0; border-radius: 8px; background: var(--hov, #ffc94d); color: #15122e; font: 700 13px/1 var(--tx, system-ui); cursor: pointer; }
 .cy-chat-pb { margin-top: 10px; background: rgba(255, 255, 255, .14); color: #fff; }
 .cy-chat-pf button:focus-visible, .cy-chat-pb:focus-visible { outline: 2px solid #fff; }
-@media (max-width: 720px) { .cy-chat-p { max-height: min(220px, 36vh); } .cy-chat-pf input { font-size: 16px; } }
+@media (max-width: 720px) { .cy-chat-pf input { font-size: 16px; } }
 .cy-chat-l .cy-chat-sys { padding-right: 0; color: #9fe0ff; font-size: 12px; font-style: italic; }   /* ответ на команду — только себе */
 .cy-chat-f[hidden], .cy-chat-l[hidden] { display: none; }   /* открыто окно модерации — ленты и поля нет */
 
@@ -593,6 +626,8 @@ html.cy-reading { overflow: hidden; }
 .tr-menu { position: fixed; left: 0; top: 0; z-index: 230; display: grid; gap: 8px; min-width: 190px; max-width: 260px; padding: 10px 12px; border-radius: 12px;
   background: var(--surface, #fff); color: var(--ink, #15122e); border: 2px solid var(--ink, #15122e); box-shadow: 0 10px 30px rgba(0, 0, 0, .35); font: 600 14px/1.3 var(--tx, system-ui); }
 .tr-menu .tr-mh { display: flex; align-items: baseline; gap: 8px; } .tr-menu .tr-mh small { color: var(--mute, #666); font-weight: 600; }
+.tr-menu .tr-mt, .tr-menu .tr-mf { display: grid; gap: 8px; }   /* 30.10: обмен и друзья - блоками столбиком */
+.tr-menu .tr-mt + .tr-mf { padding-top: 8px; border-top: 1px solid var(--line, rgba(0, 0, 0, .15)); }   /* линия - только если есть оба блока */
 .tr-menu .note { margin: 0; font-size: 12px; color: var(--mute, #666); }
 .tr-inv { position: fixed; left: 50%; top: calc(12px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); z-index: 225; display: grid; gap: 8px; width: min(420px, calc(100vw - 32px)); }
 .tr-ic { display: grid; gap: 8px; padding: 12px 14px; border-radius: 14px; background: var(--surface, #fff); color: var(--ink, #15122e); border: 2px solid var(--accent, #c81e17);
@@ -771,7 +806,9 @@ html.cy-reading { overflow: hidden; }
 /* 24.10: «Показывать: всех / 50 / 25 / 10 / 5» - сколько других игроков рисовать */
 .cy-hud > label.cy-capl { pointer-events: auto; display: inline-flex; align-items: center; gap: 6px; font: 700 13px/1.2 var(--tx, system-ui); color: #fff; background: rgba(15, 12, 34, .7); padding: 3px 6px 3px 10px; border-radius: 999px; margin-left: 6px; }
 .cy-hud .cy-cap { font: inherit; color: #fff; background: rgba(255, 255, 255, .12); border: 1px solid rgba(255, 255, 255, .3); border-radius: 999px; padding: 2px 6px; cursor: pointer; }
-.cy-hud .cy-cap option { color: #1d1620; }
+.cy-hud .cy-cap { color-scheme: light; }
+/* 30.10: пункты списка - свои цвет и фон (раньше только цвет: на тёмном оформлении фон брался из темы и текст терялся) */
+.cy-hud .cy-cap option, .cy-hud .cy-cap optgroup { color: #1d1620; background-color: #fffaf0; }
 /* 24.10: Ратуша — склад города (city.js hallHtml) */
 .cy-hall h3 { margin: 4px 0 6px; }
 .cy-hall h4 { margin: 10px 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; opacity: .8; }
@@ -812,3 +849,22 @@ html.cy-reading { overflow: hidden; }
 .cy-qty .btn { min-width: 40px; padding: 6px 0; font-size: 20px; line-height: 1; }
 .cy-qty b { min-width: 2.2em; text-align: center; font-size: 20px; }
 .cy-qty small { opacity: .7; }
+
+/* 29.10 (новинка chatone): единый чат страницы вне сцен - то же окно (.cy-chat), закреплено в ЛЕВОМ нижнем углу (правый - вебка);
+   в «Городе» и шахте оно стоит на месте их чата (.cy .cy-chat, .mn .cy-chat). Не перетаскивается нигде (один способ везде). */
+.co-float { position: fixed; z-index: 60; left: max(12px, env(safe-area-inset-left)); bottom: max(12px, env(safe-area-inset-bottom)); width: min(360px, calc(100vw - 24px)); pointer-events: none; }
+.co-float[hidden] { display: none; }
+.co-float > .cy-chat { pointer-events: auto; margin: 0; width: 100%; }
+body.sm-on .co-float { display: none; }   /* режим стримера - без чата поверх пульта */
+.co-host { display: none; }
+/* 30.10: монеты на складе - строка «На складе: N», кнопки «Положить / Забрать монеты» и поле суммы (как в обмене) */
+.cy-vm { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 2px 0 6px; }
+.cy-vm .cy-vmn { margin: 0; flex: 1 1 auto; }
+.cy-vm .cy-warn { flex-basis: 100%; margin: 0; }
+.cy-vmf { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 0 0 8px; }
+/* 30.10 (проверка на телефоне): «↓ забрать» 18 px - пальцем не попасть; на касании жмётся вся ячейка, стрелка - значком в углу */
+@media (pointer: coarse) { .cy-htk { width: 100%; height: 100%; background: transparent; font-size: 0; border-radius: 6px; } .cy-htk::after { content: '↓'; position: absolute; left: 0; top: 0; width: 16px; height: 16px; border-radius: 4px; background: #15122e; color: #fff; font-size: 11px; line-height: 16px; text-align: center; } }
+/* 30.10 (проверка на телефоне): поля мэра и лимита - под палец; 16px - iOS не приближает страницу при вводе */
+.cy-hall .cy-hrow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 0; }
+.cy-hall .cy-hrow .input { min-height: 36px; font-size: 16px; padding: 4px 8px; box-sizing: border-box; max-width: 100%; }
+.cy-hall .cy-hrow .btn { min-height: 36px; }

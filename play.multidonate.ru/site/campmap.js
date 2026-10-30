@@ -21,6 +21,9 @@
   // здания: hit - где кликнуть (рисунок), door - куда идёт герой (на тропе перед входом)
   const BUILDINGS = [
     { id: 'storage', title: 'Склад', sub: 'хранение вещей', icon: '📦', soon: true, hit: [96, 560, 492, 800], door: { x: 330, y: 838 } },
+    // 30.10 (fix/camp-magic-shop, «большая ошибка» стримера): магическая лавка между Складом и Кузней (на месте палатки снабжения). magic: true - как
+    // на Ярмарке и в городах: здание есть и кликается только у кого лавка открыта (ms у героя); название - стиля канала (shops.js MAGIC_NAMES)
+    { id: 'magic', title: 'Лавка звездочёта', sub: 'посохи, мантии, амулеты', icon: '🔮', magic: true, hit: [606, 846, 440, 800], door: { x: 722, y: 848 } },
     { id: 'forge', title: 'Кузня', sub: 'лавка кузнеца', icon: '⚒', hit: [880, 1290, 506, 800], door: { x: 1090, y: 840 } },
     { id: 'gate', title: 'Ворота', sub: 'в поход - только на стриме', icon: '🚩', hit: [1500, 1900, 296, 800], door: { x: 1700, y: 828 } },
     { id: 'tent', title: 'Шатёр', sub: 'облик', icon: '🎩', hit: [2030, 2470, 366, 800], door: { x: 2250, y: 856 } },
@@ -95,17 +98,19 @@
   }
   let L0 = null;
   const get = () => L0 || (L0 = layout());
-  /** Карта для поиска пути (citymap.js makeFrom). */
-  function map(L) { L = L || get(); return CM.makeFrom({ W: L.W, H: L.H, AREA: L.AREA, OBST: L.OBST, BUILDINGS: L.BUILDINGS, HOT: [], home: L.spawn }); }
+  /** Карта для поиска пути (citymap.js makeFrom). o.magic - магическая лавка открыта (её здание кликается); без неё здание в карту не входит. */
+  function map(L, o) { L = L || get(); const mg = !!(o && o.magic); return CM.makeFrom({ W: L.W, H: L.H, AREA: L.AREA, OBST: L.OBST, BUILDINGS: L.BUILDINGS.filter((b) => !b.magic || mg), HOT: [], home: L.spawn }); }
   /** Размер человечка по глубине - как у Ярмарки и городов округов (у верха полосы мельче, ниже главной улицы - в полный рост). */
   const scaleAt = (L, y) => CM.scaleAt(y);
   /** Проверка раскладки: все двери и место появления - на свободном месте и достижимы друг из друга; предметы не на дверях;
    *  свободная часть лагеря - одна связная (нигде не застрять). [] - всё хорошо, иначе - список ошибок. */
   function check(L) {
-    L = L || get(); const m = map(L), err = [];
-    const need = ['storage', 'forge', 'gate', 'tent', 'shop'];
+    L = L || get(); const m = map(L, { magic: true }), err = [];
+    const need = ['storage', 'forge', 'gate', 'tent', 'shop', 'magic'];
     for (const k of need) if (!L.BUILDINGS.some((b) => b.id === k)) err.push('нет здания ' + k);
-    for (const k of ['anvil', 'hall', 'auction', 'board', 'mine', 'trainer', 'magic']) if (L.BUILDINGS.some((b) => b.id === k)) err.push('лишнее здание ' + k);
+    for (const k of ['anvil', 'hall', 'auction', 'board', 'mine', 'trainer']) if (L.BUILDINGS.some((b) => b.id === k)) err.push('лишнее здание ' + k);
+    // магическая лавка - только с признаком magic (видна лишь у кого открыта), остальные здания его не имеют
+    for (const b of L.BUILDINGS) if (!!b.magic !== (b.id === 'magic')) err.push('признак magic у ' + b.id);
     const pts = [...L.BUILDINGS.map((b) => [b.door.x, b.door.y, b.id]), [L.spawn[0], L.spawn[1], 'spawn']];
     for (const [x, y, id] of pts) if (!m.free(x, y)) err.push(`дверь ${id} не на свободном месте (${x}, ${y})`);
     const [sx, sy] = L.spawn;

@@ -72,6 +72,13 @@
       if (c.lair.is.at && n.lair.is.at) is.at = { ...c.lair.is.at, my: n.lair.is.at.my };
       v.lair = { ...c.lair, is };
     }
+    // 30.10 (антибот): слова логова (телеграф, заклинания) комната отдаёт, только когда они дошли до стрима (hid) - берём их из свежего вида
+    // того же события: карточка - со стримом, слово - как только пришло
+    if (c.lair && n.lair) {
+      const lw = {};
+      for (const k of ['tele', 'spell', 'mass']) { const a = c.lair[k], b = n.lair[k]; if (a && a.hid && b && !b.hid && b.id && a.id === b.id) lw[k] = { ...a, ...(k === 'tele' ? { word: b.word } : { words: b.words }), hid: 0 }; }
+      if (lw.tele || lw.spell || lw.mass) v.lair = { ...(v.lair || c.lair), ...lw };
+    }
     if (c.vote && n.vote && c.vote.id === n.vote.id) v.vote = { ...c.vote, my: n.vote.my };
     if (c.dgn && n.dgn && c.dgn.vote && n.dgn.vote && c.dgn.vote.id === n.dgn.vote.id) v.dgn = { ...c.dgn, vote: { ...c.dgn.vote, my: n.dgn.vote.my } };
     if (c.loot && n.loot && c.loot.name === n.loot.name) v.loot = { ...c.loot, my: n.loot.my };
@@ -410,9 +417,9 @@
   function lairWords(v) {
     const X0 = v.lair; if (!X0 || !qaOn()) return '';
     let h = '';
-    if (X0.tele) h += `<section class="q-card q-urge"><p class="q-big">${bn().n} атакует!</p><p class="muted">${X0.tele.got} из ${X0.tele.need} нужных</p>${X0.tele.ok ? `<p class="qa-st ok">${svgI('check', 'ok')} слово принято</p>` : `<div class="q-ncw"><span>Напечатай в строке внизу:</span>${wd(X0.tele.word, 'big')}</div>`}</section>`;
-    if (X0.spell) h += `<section class="q-card"><p><b>Сорви заклинание</b> - повтори фразу целиком${X0.spell.until ? ` · <span data-until="${X0.spell.until}"></span> с` : ''}</p><div class="q-ncw">${X0.spell.words.map((w) => wd(w)).join(' ')}</div></section>`;
-    if (X0.mass) h += `<section class="q-card"><p><b>Общее заклинание</b> - повтори фразу</p><div class="q-ncw">${X0.mass.words.map((w) => wd(w)).join(' ')}</div></section>`;
+    if (X0.tele) h += `<section class="q-card q-urge"><p class="q-big">${bn().n} атакует!</p><p class="muted">${X0.tele.got} из ${X0.tele.need} нужных</p>${X0.tele.ok ? `<p class="qa-st ok">${svgI('check', 'ok')} слово принято</p>` : X0.tele.hid ? '<p class="muted">Слово - на экране стрима</p>' : `<div class="q-ncw"><span>Напечатай в строке внизу:</span>${wd(X0.tele.word, 'big')}</div>`}</section>`;
+    if (X0.spell) h += `<section class="q-card"><p><b>Сорви заклинание</b> - повтори фразу целиком${X0.spell.until ? ` · <span data-until="${X0.spell.until}"></span> с` : ''}</p>${X0.spell.hid ? '<p class="muted">Фраза - на экране стрима</p>' : `<div class="q-ncw">${X0.spell.words.map((w) => wd(w)).join(' ')}</div>`}</section>`;
+    if (X0.mass) h += `<section class="q-card"><p><b>Общее заклинание</b> - повтори фразу</p>${X0.mass.hid ? '<p class="muted">Фраза - на экране стрима</p>' : `<div class="q-ncw">${X0.mass.words.map((w) => wd(w)).join(' ')}</div>`}</section>`;
     if (X0.deal) h += `<section class="q-card"><p>Сделка с демоном: половина здоровья за монеты. Согласен - напечатай ${wd('сделка', 'sm')}</p></section>`;
     return h;
   }

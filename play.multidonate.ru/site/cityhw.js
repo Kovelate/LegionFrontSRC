@@ -108,6 +108,31 @@
     + '<radialGradient id="hwcRed"><stop offset="0" stop-color="#ff3a2a" stop-opacity=".5"/><stop offset=".5" stop-color="#c8283a" stop-opacity=".16"/><stop offset="1" stop-color="#8a2040" stop-opacity="0"/></radialGradient>'
     + '<radialGradient id="hwcDeep" cx=".5" cy=".55" r=".55"><stop offset="0" stop-color="#050307"/><stop offset=".55" stop-color="#1a0a12"/><stop offset=".85" stop-color="#3a1620"/><stop offset="1" stop-color="#5a2028"/></radialGradient>'
     + '</defs>';
+  /* 30.10 (hw-lamps): уличные фонари в Изнанке светят холодным призрачным светом (#8ec8ff → прозрачный): на мостовой под фонарём - пятно, сплюснутое
+     по перспективе (запекается в мёртвые плитки вместе с убранством: art → over, ниже героев), вокруг плафона - маленький ореол и светлое
+     стекло (lampProps - картинки поверх столба, один раз в Pixi). Только статичные radialGradient с низкой opacity: без filter, режимов смешивания,
+     масок и анимации. Фонари улицы - нижняя улица города (citymap LOW.lamps, одна на все стили; в городах края фонарей ивента нет). */
+  const LAMP_DEFS = '<defs>'
+    + '<radialGradient id="hwlPool"><stop offset="0" stop-color="#8ec8ff" stop-opacity=".62"/><stop offset=".5" stop-color="#8ec8ff" stop-opacity=".24"/><stop offset="1" stop-color="#8ec8ff" stop-opacity="0"/></radialGradient>'
+    + '<radialGradient id="hwlHalo"><stop offset="0" stop-color="#d4ecff" stop-opacity=".8"/><stop offset=".4" stop-color="#8ec8ff" stop-opacity=".34"/><stop offset="1" stop-color="#8ec8ff" stop-opacity="0"/></radialGradient>'
+    + '</defs>';
+  // высота кованого фонаря улицы (cityart: Kt.lamp(lx, ly, 218))
+  const LAMP_H = 218;
+  function lampsOf(sc) {
+    if (sc && sc.lamps) return sc.lamps;
+    const M = typeof window !== 'undefined' ? window.LGCityMap : null;
+    return sc && sc.fair && M && M.LOW && M.LOW.lamps ? M.LOW.lamps : [];
+  }
+  // пятно света на мостовой под каждым фонарём (в запечённое убранство, под героями)
+  function lampPools(sc) {
+    const L = lampsOf(sc); if (!L.length) return '';
+    return LAMP_DEFS + L.map(([lx, ly]) => `<ellipse cx="${f1(lx)}" cy="${f1(ly + 2)}" rx="170" ry="48" fill="url(#hwlPool)" opacity=".5"/><ellipse cx="${f1(lx)}" cy="${f1(ly + 2)}" rx="62" ry="17" fill="url(#hwlPool)" opacity=".4"/>`).join('');
+  }
+  // ореол и светлое стекло у плафона - предметом поверх столба (глубина столба + 0,5)
+  function lampProps(sc) {
+    return lampsOf(sc).map(([lx, ly]) => ({ x: lx - 70, y: ly - LAMP_H - 60, w: 140, h: 130, z: ly + 0.5, dx: 0,
+      svg: `${LAMP_DEFS}<circle cx="${f1(lx)}" cy="${f1(ly - LAMP_H * 0.86)}" r="58" fill="url(#hwlHalo)" opacity=".34"/><rect x="${f1(lx - 8)}" y="${f1(ly - LAMP_H * 0.86 - 15)}" width="16" height="28" rx="5" fill="#bfe0ff" opacity=".6"/><ellipse cx="${f1(lx)}" cy="${f1(ly - LAMP_H * 0.86 - 1)}" rx="4" ry="9" fill="#f2faff" opacity=".7"/>`, hw: 'lamp' }));
+  }
   // свет тыквы (рисуется ДО неё): блик на стене, ореол, пятно на земле; s - размер, k - сила
   const glowOf = (s, k = 1) => `<ellipse cx="0" cy="${f1(-80 * s)}" rx="${f1(70 * s)}" ry="${f1(90 * s)}" fill="url(#hwcGl)" opacity="${f1(0.5 * k)}"/><circle cx="0" cy="${f1(-30 * s)}" r="${f1(82 * s)}" fill="url(#hwcGl)" opacity="${f1(k)}"/><ellipse cx="${f1(6 * s)}" cy="${f1(10 * s)}" rx="${f1(92 * s)}" ry="${f1(20 * s)}" fill="url(#hwcPool)" opacity="${f1(k)}"/>`;
   // вырезанное лицо: кромка стенки (тёмная, чуть больше) и светящееся нутро
@@ -283,7 +308,7 @@
   function art(sc, o = {}) {
     // тыквы (и их свет) - последними: лозы, трещины, деревья - под ними (28.10, hw-city-light)
     const its = items(sc, o).filter((q) => q.k !== 'spark' && q.k !== 'zap'), lit = (q) => (q.k === 'light' ? 1 : 0);
-    let over = LIGHT_DEFS + its.slice().sort((a, b) => lit(a) - lit(b)).map(svgAt).join(''), under = '';
+    let over = LIGHT_DEFS + lampPools(sc) + its.slice().sort((a, b) => lit(a) - lit(b)).map(svgAt).join(''), under = '';
     const P = o.portal ? at(sc) : null;
     if (P) { const T0 = `translate(${P.x} ${P.y}) scale(${P.s})`; under = `<g transform="${T0}">${frameOf(o, 'open')}</g>`; over = LIGHT_DEFS + `<g transform="${T0}">${RIFT()}${o.spin ? '' : SWIRL_A() + SWIRL_B() + MOTES() + CORE()}<g opacity=".38">${frameOf(o, 'open')}</g>${FRONT_L()}</g>` + over; }   // рамка: перекрашенная + её приглушённый цвет поверх (видна, но не светит)
     return { under, over };
@@ -414,5 +439,5 @@
     function stop(fin) { if (done) return; done = true; T.forEach(clearTimeout); try { cancelAnimationFrame(raf); } catch (e) { /* нет */ } wl.remove(); sl.remove(); for (const e of o.shake || []) e.classList.remove('hwc-shake'); if (o.tint) o.tint(1); if (!fin && o.bake) o.bake(); if (o.screenOn) o.screenOn(); if (o.ghosts) o.ghosts(); if (o.done) o.done(); }
     return { stop: () => stop(false), dur: 12.6 };
   }
-  return { items, props, portal, portalLive, flickers, jack, jackGroup, art, portalSvg, at, npcSpots, baseOf, DECOR, lantern, pumpkin, candle, web, ghost, bat, vine, css, ambient, play, CSS };
+  return { items, props, portal, portalLive, flickers, jack, jackGroup, art, portalSvg, at, npcSpots, lampProps, baseOf, DECOR, lantern, pumpkin, candle, web, ghost, bat, vine, css, ambient, play, CSS };
 });

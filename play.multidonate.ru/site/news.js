@@ -35,13 +35,25 @@
     edge(on);
   }
   // телефон: вкладки прокручиваются, и «Новости» могут быть за краем — тогда точка ещё и у правого края полосы вкладок
-  let edgeOn = false;
+  // 30.10 (репорт #2178: «кружочек нового в новостях двоится на телефоне»): «за краем» считалось по offsetLeft - а он от шапки (.top
+  // sticky - её offsetParent), не от полосы вкладок: к нему прибавлялось всё, что левее полосы (кнопка друзей, логотип), и вкладку,
+  // которую видно целиком, считало скрытой - рядом со своей точкой вставала вторая, у края полосы (над «Картой»). Теперь - по экранным
+  // рамкам кнопки и полосы; и пересчёт, когда вкладки появляются или прячутся (Город, Карта мира - hidden), не только при прокрутке
+  let edgeOn = false, edgeMo = null;
+  const edgeUpd = () => {
+    const b = btn(), T = b && b.parentElement; if (!T) return;
+    let hid = false;
+    if (edgeOn && b.offsetParent) { const r = b.getBoundingClientRect(), t = T.getBoundingClientRect(); hid = r.right - 4 > t.right; }
+    T.classList.toggle('nw-edge', hid);
+  };
   function edge(on) {
     const T = btn() && btn().parentElement; if (!T) return;
-    const upd = () => { const b = btn(); const hid = edgeOn && b && b.offsetLeft + b.offsetWidth - 4 > T.scrollLeft + T.clientWidth; T.classList.toggle('nw-edge', !!hid); };
-    if (on && !edgeOn) { edgeOn = true; T.addEventListener('scroll', upd, { passive: true }); window.addEventListener('resize', upd, { passive: true }); }
-    if (!on && edgeOn) { edgeOn = false; T.removeEventListener('scroll', upd); window.removeEventListener('resize', upd); }
-    upd();
+    if (on && !edgeOn) {
+      edgeOn = true; T.addEventListener('scroll', edgeUpd, { passive: true }); window.addEventListener('resize', edgeUpd, { passive: true });
+      if (window.MutationObserver) { edgeMo = new MutationObserver(edgeUpd); edgeMo.observe(T, { subtree: true, childList: true, attributes: true, attributeFilter: ['hidden'] }); }
+    }
+    if (!on && edgeOn) { edgeOn = false; T.removeEventListener('scroll', edgeUpd); window.removeEventListener('resize', edgeUpd); if (edgeMo) { edgeMo.disconnect(); edgeMo = null; } }
+    edgeUpd();
   }
   function headCheck() {
     if (DOCK) return;

@@ -77,9 +77,10 @@
 
   /* --- Ступа сладостей: холст 520×560, земля y = 500, середина ступы x = 250 --- */
   const SHOP_CX = 250, PASS_CX = 260, GROUND = 500;
-  function stupaArt(title) {
-    let s = `<ellipse cx="250" cy="502" rx="170" ry="22" fill="#000" opacity=".28"/><ellipse cx="250" cy="470" rx="140" ry="20" fill="url(#hnGlowG)"/>`;
-    s += `<ellipse cx="250" cy="250" rx="134" ry="26" fill="${C.woodD}" ${O(5)}/><ellipse cx="250" cy="246" rx="118" ry="17" fill="#3a2414"/>`;
+  // 30.10: рисунок Ступы - тремя слоями (тень и свечение земли / ступа с ведьмой / метла, вывеска, тыквы): так её и показывает появление (enter)
+  function stupaParts(title) {
+    const back = `<ellipse cx="250" cy="502" rx="170" ry="22" fill="#000" opacity=".28"/><ellipse cx="250" cy="470" rx="140" ry="20" fill="url(#hnGlowG)"/>`;
+    let s = `<ellipse cx="250" cy="250" rx="134" ry="26" fill="${C.woodD}" ${O(5)}/><ellipse cx="250" cy="246" rx="118" ry="17" fill="#3a2414"/>`;
     s += witch(250, 300, 1.08);
     const tub = 'M116 250 L140 446 Q250 470 360 446 L384 250 Q250 280 116 250 Z';
     s += `<path d="${tub}" fill="${C.wood}" ${O(5)}/>`;
@@ -90,14 +91,16 @@
     s += `<path d="M116 250 Q250 280 384 250" stroke="${C.woodL}" stroke-width="8" fill="none"/><path d="M116 250 Q250 280 384 250" ${O(4)} fill="none"/>`;
     s += [[160, 252, 0, -20], [190, 246, 1, 10], [222, 256, 2, -6], [282, 254, 3, 18], [312, 248, 4, -14], [340, 250, 5, 20], [250, 258, 4, 30]].map(([x, y, k, r]) => candy(x, y, C.candy[k], r, 0.9)).join('');
     s += jar(146, 254, C.candy[2], 0.85) + jar(356, 254, C.candy[0], 0.85, C.pump);
+    const body = s; s = '';
     // метла с вывеской слева, тыквы-фонари справа
     s += `<g transform="translate(70 500) rotate(8)"><path d="M0 -10 V-330" stroke="${INK}" stroke-width="12" stroke-linecap="round"/><path d="M0 -10 V-330" stroke="${C.woodL}" stroke-width="7" stroke-linecap="round"/>`
       + `<path d="M-6 -46 q-30 30 -26 50 h64 q4 -20 -26 -50 z" fill="#e0b050" ${O(3)}/><path d="M-20 -8 l4 -30 M-8 -6 l2 -34 M6 -6 l-2 -34 M18 -8 l-4 -30" stroke="#a87a2a" stroke-width="2.4"/><path d="M-10 -46 h20" stroke="${C.vio}" stroke-width="7" stroke-linecap="round"/></g>`;
     const T = String(title || 'Ступа сладостей').toUpperCase().split(' ');
     s += `<path d="M60 112 L150 104" stroke="${INK}" stroke-width="3"/>` + board(118, 150, 190, 92, T.length > 1 ? [T[0], T.slice(1).join(' ')] : T, 30);
     s += pumpLamp(420, 500, 0.9) + pumpLamp(462, 500, 0.6);
-    return s;
+    return { back, body, front: s };
   }
+  const stupaArt = (title) => { const p = stupaParts(title); return p.back + p.body + p.front; };
   // живое у Ступы: искры под ней мерцают, две конфеты подпрыгивают над горкой
   const stupaLive = () => [
     { cls: 'hwn-tw', box: [110, 450, 300, 50], svg: [[136, 470], [210, 488], [300, 486], [366, 470]].map(([x, y], i) => `<path style="animation-delay:${-i * 0.45}s" d="M${x} ${y - 8} l2 6 l6 2 l-6 2 l-2 6 l-2 -6 l-6 -2 l6 -2 z" fill="#c8ffe4"/>`).join('') },
@@ -474,6 +477,171 @@
     return el;
   }
 
+  /* ===================== ПОЯВЛЕНИЕ НПС (30.10, feat/hw-npc-entrance) ===================== */
+  /* enter(spots, o) - разовое появление после превращения города (и при первом заходе в хэллоуинский «Город» за сессию):
+       Ступа сладостей ПРИЛЕТАЕТ (дуга из-за верхнего края вида, метла, искры и конфеты следом, посадка с пылью, ~2,8 с);
+       Призрачный Фонарщик ВЫХОДИТ из-за края вида по свободной земле (путь карты o.map; нет пути - плывёт над улицей) и зажигает арку (~3,5-4 с).
+     o: host - слой в координатах города (div, position: absolute), view - видимая часть города { x0, y0, x1, y1 }, map - карта (path / nearest),
+        lv - сколько огней зажечь (по умолчанию все 20), side - 'l' | 'r' (откуда идти; по умолчанию - ближняя к месту сторона),
+        title - вывеска Ступы, reduce - «меньше движения»: без пролёта, только проявление, done() - когда всё стоит на месте (дальше - обычный рисунок).
+     Всё движение - WAAPI transform / opacity на элементах SVG, без filter и без SMIL; слой живёт, пока играет, потом уходит. null - показать нельзя. */
+  const rectOf = (sp) => { const H = SHAPE[sp.id], s = sp.s || S_BASE, tx = (cx) => sp.x + (cx - H.cx) * s, ty = (cy) => sp.y + (cy - GROUND) * s; return [tx(H.box[0]), ty(H.box[1]), tx(H.box[0] + H.box[2]), ty(H.box[1] + H.box[3])]; };
+  // место НПС (с запасом pad) попадает в видимую часть города
+  function inView(sp, view, pad) { const r = rectOf(sp), p = pad || 0; return r[0] < view.x1 + p && r[2] > view.x0 - p && r[1] < view.y1 + p && r[3] > view.y0 - p; }
+  const easeOut = (u) => 1 - Math.pow(1 - u, 2.2);
+  const bez = (a, b, c, d, t) => { const m = 1 - t; return [m * m * m * a[0] + 3 * m * m * t * b[0] + 3 * m * t * t * c[0] + t * t * t * d[0], m * m * m * a[1] + 3 * m * m * t * b[1] + 3 * m * t * t * c[1] + t * t * t * d[1]]; };
+  // ломаная: at(d) - точка на расстоянии d от начала
+  function polyline(pts) {
+    const cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+    const len = cum[cum.length - 1];
+    return { len, at(d) { d = Math.max(0, Math.min(len, d)); let i = 1; while (i < cum.length - 1 && cum[i] < d) i++; const a = pts[i - 1], b = pts[i], seg = cum[i] - cum[i - 1] || 1, t = (d - cum[i - 1]) / seg; return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]; } };
+  }
+  // метла, на которой ведьма прилетела: торчит из-за ступы назад по ходу (dir = 1 - летит вправо), при посадке падает на землю
+  const flyBroom = (dir) => `<g transform="translate(${dir > 0 ? 150 : 350} 372) scale(${-dir} 1)"><path d="M30 -8 L-190 92" stroke="${INK}" stroke-width="14" stroke-linecap="round"/><path d="M30 -8 L-190 92" stroke="${C.woodL}" stroke-width="8" stroke-linecap="round"/>`
+    + `<g transform="translate(-190 92) rotate(24) scale(1.45)"><path d="M0 -8 q-40 -4 -62 20 q22 30 62 20 q10 -18 0 -40 z" fill="#e0b050" ${O(3)}/><path d="M-6 -4 q-30 0 -48 12 M-6 8 q-30 4 -48 8 M-6 20 q-26 4 -42 2" stroke="#a87a2a" stroke-width="2.4" fill="none"/><path d="M-2 -10 l-2 44" stroke="${C.vio}" stroke-width="7" stroke-linecap="round"/></g></g>`;
+  const sparkPath = (x, y, k) => `<path d="M${f1(x)} ${f1(y - 8 * k)} l${f1(2 * k)} ${f1(6 * k)} l${f1(6 * k)} ${f1(2 * k)} l${f1(-6 * k)} ${f1(2 * k)} l${f1(-2 * k)} ${f1(6 * k)} l${f1(-2 * k)} ${f1(-6 * k)} l${f1(-6 * k)} ${f1(-2 * k)} l${f1(6 * k)} ${f1(-2 * k)} z" fill="#c8ffe4"/>`;
+  // призрак на ходу: низ подола - (0,0); шест стоит прямо, наверху фонарь (качается вокруг руки в (72,-110))
+  function ghostWalkArt() {
+    return ghostBody() + `<g transform="translate(72 -110)"><g data-k="sway"><path d="M0 34 L0 -118" stroke="${INK}" stroke-width="7" stroke-linecap="round"/><path d="M0 34 L0 -118" stroke="${C.woodL}" stroke-width="3" stroke-linecap="round"/><g transform="translate(0 -112) scale(1.05)"><use href="#hnLampOn"/></g></g></g>`;
+  }
+  // путь Фонарщика: от края вида по свободной земле к двери и к своему месту; float - пути нет, плывёт над улицей
+  function ghostRoute(sp, view, o) {
+    const H = SHAPE[sp.id], s = sp.s || S_BASE, tx = (cx) => sp.x + (cx - H.cx) * s, ty = (cy) => sp.y + (cy - GROUND) * s;
+    const fin = [tx(196), ty(470)], door = [tx(H.door[0]), ty(H.door[1])];
+    const right = o.side ? o.side === 'r' : sp.x > (view.x0 + view.x1) / 2;
+    const ax = right ? view.x1 + 70 : view.x0 - 70, ay = door[1];
+    let pts = null;
+    const map = o.map;
+    if (map && map.path && map.nearest) {
+      try {
+        const a = map.nearest(Math.max(60, Math.min((map.W || 1e9) - 60, ax)), ay);
+        const p = a && Math.abs(a[0] - ax) < 220 ? map.path(a, door) : null;
+        if (p && p.length > 1) { pts = [[ax, a[1]], ...p.map((q) => [q[0], q[1]]), fin]; if (polyline(pts).len > 3200) pts = null; }
+      } catch (e) { pts = null; }
+    }
+    const float = !pts;
+    if (!pts) pts = [[ax, ay - 20], [(ax + fin[0]) / 2, (ay + fin[1]) / 2 - 24], fin];
+    return { fin, door, float, line: polyline(pts) };
+  }
+
+  function enter(spots, o) {
+    o = o || {};
+    const host = o.host, view = o.view;
+    if (typeof document === 'undefined' || !host || !view || !(Element.prototype && Element.prototype.animate)) return null;
+    const list = (spots || []).filter((sp) => SHAPE[sp.id]);
+    if (!list.length) return null;
+    const rm = !!o.reduce, lv = Math.max(0, Math.min(20, o.lv == null ? 20 : +o.lv || 0));
+    const anims = [];
+    const an = (el, kf, opt) => { if (!el) return null; const a = el.animate(kf, { fill: 'both', easing: 'linear', ...opt }); anims.push(a); return a; };
+    const ms = (sec) => Math.round(sec * 1000);
+    const ent = document.createElement('div'); ent.className = 'hwn-ent'; ent.setAttribute('aria-hidden', 'true');
+    ent.style.cssText = `position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;z-index:${Math.round(Math.max(...list.map((sp) => sp.y))) + 50}`;
+    let svg = '', end = 0;
+    // что настроить после вставки в страницу
+    const post = [];
+    // место на холсте (cx, cy) НПС → (x, y) города, масштаб s
+    const at = (x, y, s, inner, att) => `<g transform="translate(${f1(x)} ${f1(y)})"><g ${att || ''}><g transform="scale(${s})">${inner}</g></g></g>`;
+    const stuck = (x, y, inner, att) => `<g transform="translate(${f1(x)} ${f1(y)})"><g ${att || ''}>${inner}</g></g>`;
+    const bit = (k) => ent.querySelector(`[data-k="${k}"]`);
+
+    list.forEach((sp, si) => {
+      const H = SHAPE[sp.id], s = sp.s || S_BASE, id = sp.id + si;
+      const shifted = (cx, cy) => `translate(${-cx} ${-cy})`;
+      if (sp.id === 'hwshop') {
+        const P = stupaParts(o.title), F = [sp.x, sp.y];
+        const right = o.side ? o.side === 'r' : sp.x > (view.x0 + view.x1) / 2;
+        // летит слева направо - 1
+        const dir = right ? -1 : 1;
+        const A = [right ? view.x1 + 260 : view.x0 - 260, Math.min(view.y0 - 60, F[1] - 420)];
+        const p1 = [A[0] + (F[0] - A[0]) * 0.5, A[1] - 140], p2 = [F[0] - dir * 150, F[1] - 400];
+        const T1 = 1.9, N = 28;
+        const anchor = (inner, k, extra) => at(F[0], F[1], s, `<g transform="${shifted(H.cx, GROUND)}">${inner}</g>`, `data-k="${k}-${id}" style="transform-origin:0px 0px" ${extra || ''}`);
+        svg += anchor(P.back, 'bk');
+        svg += `<g transform="translate(${f1(F[0])} ${f1(F[1])})"><g data-k="fly-${id}" style="transform-origin:0px ${f1(-150 * s)}px"><g data-k="land-${id}" style="transform-origin:0px 0px"><g transform="scale(${s}) ${shifted(H.cx, GROUND)}"><g data-k="brm-${id}" style="transform-origin:${dir > 0 ? 150 : 350}px 372px">${flyBroom(dir)}</g>${P.body}</g></g></g></g>`;
+        svg += anchor(P.front, 'fr');
+        // искры и конфеты, сыплющиеся следом (по пути полёта), пыль и искры при посадке
+        const rnd = (() => { let a = 7 + si; return () => { a = (a * 16807) % 2147483647; return a / 2147483647; }; })();
+        let parts = '';
+        const trail = [];
+        for (let j = 0; j < 22; j++) {
+          const u = 0.08 + 0.84 * (j / 21), pos = bez(A, p1, p2, F, easeOut(u)), t0 = T1 * u;
+          const x = pos[0] - dir * 30 * s + (rnd() - 0.5) * 30, y = pos[1] - 90 * s + 30 + rnd() * 26, candy_ = j % 2 === 0;
+          trail.push({ t0, dx: -dir * (10 + rnd() * 50), dy: 90 + rnd() * 90, rot: (rnd() - 0.5) * 360, dur: 0.8 + rnd() * 0.6 });
+          parts += `<g transform="translate(${f1(x)} ${f1(y)})"><g data-k="tr-${id}-${j}" style="transform-origin:0px 0px">${candy_ ? `<use href="#hnCandy" fill="${C.candy[j % 6]}" transform="scale(.55)"/>` : sparkPath(0, 0, 1.3)}</g></g>`;
+        }
+        const puffs = [[-1, 0], [1, 0], [-0.55, 0.35], [0.55, 0.35], [-0.2, -0.2], [0.2, -0.2]];
+        puffs.forEach(([px, py], j) => { parts += `<g transform="translate(${f1(F[0] + px * 40 * s * 2)} ${f1(F[1] - 6 + py * 12)})"><g data-k="du-${id}-${j}" style="transform-origin:0px 0px"><ellipse rx="${f1(34 * s * 1.4)}" ry="${f1(14 * s * 1.4)}" fill="#e6dac4" opacity=".7"/></g></g>`; });
+        for (let j = 0; j < 8; j++) parts += `<g transform="translate(${f1(F[0] + (j - 3.5) * 34 * s)} ${f1(F[1] - 20)})"><g data-k="ls-${id}-${j}" style="transform-origin:0px 0px">${sparkPath(0, 0, 1.5)}</g></g>`;
+        svg += parts;
+        post.push(() => {
+          const T = rm ? 0.8 : 2.8;
+          if (rm) {
+            for (const k of ['bk', 'fr']) an(bit(`${k}-${id}`), [{ opacity: 0 }, { opacity: 1 }], { duration: ms(0.7) });
+            an(bit(`fly-${id}`), [{ opacity: 0 }, { opacity: 1 }], { duration: ms(0.7) });
+            end = Math.max(end, 0.9); for (const e of ent.querySelectorAll(`[data-k^="tr-${id}-"], [data-k="brm-${id}"]`)) e.style.display = 'none'; return;
+          }
+          const kf = [], kr = [];
+          for (let i = 0; i <= N; i++) { const u = i / N, pos = bez(A, p1, p2, F, easeOut(u)), r = dir * 17 * Math.pow(1 - u, 1.3) + 5 * Math.sin(u * 17) * (1 - u); kf.push({ transform: `translate(${f1(pos[0] - F[0])}px,${f1(pos[1] - F[1])}px) rotate(${f1(r)}deg)` }); }
+          an(bit(`fly-${id}`), kf, { duration: ms(T1) });
+          an(bit(`land-${id}`), [{ transform: 'scale(1,1)' }, { transform: 'scale(1.09,.88)', offset: 0.3 }, { transform: 'translate(0px,-9px) scale(.98,1.03)', offset: 0.62 }, { transform: 'scale(1,1)' }], { duration: ms(0.7), delay: ms(T1 - 0.02) });
+          // метла, на которой ведьма летела, падает вниз и тает, когда ступа села (дальше - своя метла с вывеской слева)
+          an(bit(`brm-${id}`), [{ opacity: 1, transform: 'translate(0px,0px) rotate(0deg)' }, { opacity: 1, transform: `translate(${f1(dir * -10)}px,16px) rotate(${f1(dir * -14)}deg)`, offset: 0.4 }, { opacity: 0, transform: `translate(${f1(dir * -30)}px,70px) rotate(${f1(dir * -55)}deg)` }], { duration: ms(0.7), delay: ms(T1 - 0.1), easing: 'ease-in' });
+          an(bit(`bk-${id}`), [{ opacity: 0, transform: 'scale(.3,.3)' }, { opacity: 1, transform: 'scale(1,1)' }], { duration: ms(1.1), delay: ms(1.0), easing: 'ease-out' });
+          an(bit(`fr-${id}`), [{ opacity: 0, transform: 'translateY(16px)' }, { opacity: 1, transform: 'translateY(0px)' }], { duration: ms(0.6), delay: ms(T1 + 0.08), easing: 'ease-out' });
+          trail.forEach((q, j) => an(bit(`tr-${id}-${j}`), [{ opacity: 0, transform: 'translate(0px,0px) rotate(0deg)' }, { opacity: 1, transform: `translate(${f1(q.dx * 0.2)}px,${f1(q.dy * 0.15)}px) rotate(${f1(q.rot * 0.2)}deg)`, offset: 0.12 }, { opacity: 0, transform: `translate(${f1(q.dx)}px,${f1(q.dy)}px) rotate(${f1(q.rot)}deg)` }], { duration: ms(q.dur), delay: ms(q.t0), easing: 'ease-in' }));
+          puffs.forEach(([px], j) => an(bit(`du-${id}-${j}`), [{ opacity: 0, transform: 'translate(0px,0px) scale(.3,.3)' }, { opacity: 1, transform: `translate(${f1(px * 26)}px,-4px) scale(.9,.9)`, offset: 0.25 }, { opacity: 0, transform: `translate(${f1(px * 70)}px,-14px) scale(1.8,1.5)` }], { duration: ms(0.9), delay: ms(T1), easing: 'ease-out' }));
+          for (let j = 0; j < 8; j++) an(bit(`ls-${id}-${j}`), [{ opacity: 0, transform: 'translate(0px,0px) scale(.4,.4)' }, { opacity: 1, transform: `translate(${f1((j - 3.5) * 8)}px,${f1(-24 - (j % 3) * 14)}px) scale(1,1)`, offset: 0.35 }, { opacity: 0, transform: `translate(${f1((j - 3.5) * 16)}px,${f1(-8 - (j % 3) * 10)}px) scale(.5,.5)` }], { duration: ms(0.8), delay: ms(T1 + 0.02 + (j % 4) * 0.04), easing: 'ease-out' });
+          end = Math.max(end, T);
+        });
+      } else {
+        const F = [sp.x, sp.y], R = ghostRoute(sp, view, o);
+        const Tw = Math.max(2.2, Math.min(3.0, R.line.len / 330)), t1 = 0.35, lampT = Tw + t1 + 0.1;
+        svg += at(F[0], F[1], s, `<g transform="${shifted(H.cx, GROUND)}">${archArt(0)}</g>`, `data-k="ar-${id}"`);
+        let lit = '';
+        for (let i = 0; i < lv; i++) {
+          const [x, y] = lampAt(i);
+          lit += `<g data-k="lp-${id}-${i}"><circle cx="${f1(x)}" cy="${f1(y + 11)}" r="19" fill="url(#hnGlow)"/><use href="#hnLampOn" transform="translate(${f1(x)} ${f1(y)}) scale(.9)"/></g>`;
+        }
+        svg += at(F[0], F[1], s, `<g transform="${shifted(H.cx, GROUND)}">${lit}</g>`, '');
+        svg += stuck(R.fin[0], R.fin[1], `<g data-k="gh-${id}" style="transform-origin:0px 0px"><g data-k="bob-${id}"><g transform="scale(${s})">${ghostWalkArt()}</g></g></g>`, '');
+        post.push(() => {
+          const g = bit(`gh-${id}`), sway = bit(`gh-${id}`) && ent.querySelector(`[data-k="gh-${id}"] [data-k="sway"]`);
+          if (rm) {
+            an(g, [{ opacity: 0 }, { opacity: 1 }], { duration: ms(0.7) }); an(bit(`ar-${id}`), [{ opacity: 0 }, { opacity: 1 }], { duration: ms(0.7) });
+            end = Math.max(end, 0.9); return;
+          }
+          const kf = [], N = 36, n0 = R.line.len;
+          for (let i = 0; i <= N; i++) { const u = i / N, p = R.line.at(n0 * easeOut(u)); kf.push({ transform: `translate(${f1(p[0] - R.fin[0])}px,${f1(p[1] - R.fin[1])}px)` }); }
+          an(g, kf, { duration: ms(Tw), delay: ms(t1) });
+          // призрак проявляется на краю и к концу пути становится плотным (плыл над улицей - дольше полупрозрачным)
+          an(g, [{ opacity: 0 }, { opacity: 0.35, offset: 0.1 }, { opacity: R.float ? 0.6 : 0.7, offset: 0.7 }, { opacity: 1 }], { duration: ms(Tw), delay: ms(t1) });
+          an(bit(`bob-${id}`), [{ transform: 'translateY(0px)' }, { transform: 'translateY(-7px)' }], { duration: ms(0.55), direction: 'alternate', iterations: Math.ceil((Tw + 0.3) / 0.55) + 1, easing: 'ease-in-out', delay: ms(t1) });
+          if (sway) an(sway, [{ transform: 'rotate(-9deg)' }, { transform: 'rotate(9deg)' }], { duration: ms(0.7), direction: 'alternate', iterations: Math.ceil(Tw / 0.7) + 2, easing: 'ease-in-out', delay: ms(t1) });
+          an(bit(`ar-${id}`), [{ opacity: 0 }, { opacity: 1 }], { duration: ms(Tw * 0.4), delay: ms(t1 + Tw * 0.4) });
+          for (let i = 0; i < lv; i++) an(bit(`lp-${id}-${i}`), [{ opacity: 0 }, { opacity: 1 }], { duration: ms(0.25), delay: ms(lampT + i * 0.04) });
+          end = Math.max(end, lampT + lv * 0.04 + 0.3);
+        });
+      }
+    });
+
+    ent.innerHTML = `<svg width="1" height="1" overflow="visible" style="display:block;overflow:visible">${DEFS}${svg}</svg>`;
+    // все огни арки и ступа стоят в итоговом виде; пока играет, ничего лишнего не рисуется
+    for (const e of ent.querySelectorAll('[data-k^="lp-"], [data-k^="tr-"], [data-k^="du-"], [data-k^="ls-"], [data-k^="bk-"], [data-k^="fr-"], [data-k^="ar-"], [data-k^="gh-"]')) e.style.opacity = '0';
+    host.appendChild(ent);
+    for (const f of post) f();
+    let closed = false, tm = 0;
+    const gone = () => { if (ent.parentNode) ent.remove(); };
+    const stop = () => { if (closed) return; closed = true; clearTimeout(tm); for (const a of anims) { try { a.cancel(); } catch (e) { /* уже снята */ } } gone(); };
+    tm = setTimeout(() => {
+      if (closed) return; closed = true;
+      if (o.done) { try { o.done(); } catch (e) { console.warn('[НПС] появление', e); } }
+      // обычный рисунок уже под слоем - слой растворяется (одно проявление, без скачка)
+      try { ent.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 280, fill: 'forwards' }); } catch (e) { gone(); return; }
+      setTimeout(gone, 340);
+    }, ms(end) + 60);
+    return { stop, dur: end, el: ent };
+  }
+
   // CSS живых слоёв (city.css / оверлей подключают один раз): только transform / opacity
   const LIVE_CSS = `.hwn-live{position:absolute;pointer-events:none}.hwn-live svg{display:block;overflow:visible}
 .hwn-tw path,.hwn-tw2 circle{animation:hwnTw 1.8s ease-in-out infinite}
@@ -485,5 +653,5 @@
 @keyframes hwnBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
 @media (prefers-reduced-motion:reduce){.hwn-live *{animation:none!important}}`;
 
-  return { C, INK, DEFS, META, SHAPE, S_BASE, WEBCAM, LINES, witch, stupaArt, archArt, ghostArt, ghostBody, garland, lampAt, geo, inWebcam, camView, open, close, result, swapStep, swapPlan, shopHtml, passHtml, LIVE_CSS, WIN_CSS, esc, candy, jar, board, flame, pumpLamp };
+  return { C, INK, DEFS, META, SHAPE, S_BASE, WEBCAM, LINES, witch, stupaArt, stupaParts, enter, inView, rectOf, polyline, ghostRoute, ghostWalkArt, archArt, ghostArt, ghostBody, garland, lampAt, geo, inWebcam, camView, open, close, result, swapStep, swapPlan, shopHtml, passHtml, LIVE_CSS, WIN_CSS, esc, candy, jar, board, flame, pumpLamp };
 });

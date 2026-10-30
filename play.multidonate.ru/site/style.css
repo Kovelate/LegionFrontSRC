@@ -1957,15 +1957,22 @@ html[data-skin="cave"] .cell[aria-pressed="true"] { box-shadow: inset 0 -6px 0 v
 /* 29.10: личка страницы (packages/site-ui/dm.js, window.LGDm) - во вкладке «Личные» чата «Города» и шахты, вне них - окно в ЛЕВОМ
    нижнем углу (правый - вебка стримера). Цвета - как у чата «Города» (тёмная подложка); движение - только opacity. */
 .dm { display: flex; flex-direction: column; gap: 4px; font: 500 14px/1.35 var(--tx, system-ui); color: #fff; }
-.dm-tabs { display: flex; flex-wrap: wrap; gap: 4px; }
-.dm-tab { display: inline-flex; align-items: center; border-radius: 999px; background: rgba(255, 255, 255, .08); }
-.dm-tab.on { background: rgba(255, 255, 255, .2); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .45); }
-.dm-tab button { min-height: 28px; border: 0; background: none; font: 700 12px/1 var(--tx, system-ui); cursor: pointer; }
-.dm-tab [data-dmt] { padding: 0 4px 0 10px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dm-x { width: 26px; padding: 0; color: rgba(255, 255, 255, .6); font-size: 16px !important; }
+/* 30.10: строка собеседников - всегда одна линия фиксированной высоты (24px): без переноса, листается вбок (колесо, палец), края мягко гаснут маской; вид - как у верхних вкладок чата (без рамок) */
+.dm-tabs { scroll-padding-inline: 14px; display: flex; flex-wrap: nowrap; gap: 2px; height: 24px; padding: 0 12px; overflow-x: auto; overflow-y: hidden; overscroll-behavior: contain; scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12px, #000 calc(100% - 12px), transparent); mask-image: linear-gradient(90deg, transparent, #000 12px, #000 calc(100% - 12px), transparent); }
+.dm-tabs::-webkit-scrollbar { display: none; }
+.dm-tab { flex: none; display: inline-flex; align-items: center; height: 24px; border-radius: 999px; background: transparent; }
+.dm-tab:hover { background: rgba(255, 255, 255, .12); }
+.dm-tab.on, .dm-tab.on:hover { background: rgba(255, 255, 255, .22); }
+.dm-tab button { min-height: 24px; border: 0; background: none; font: 700 12px/1 var(--tx, system-ui); cursor: pointer; }
+.dm-tab [data-dmt] { padding: 0 2px 0 8px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dm-x { position: relative; width: 18px; padding: 0; color: rgba(255, 255, 255, .6); font-size: 13px !important; }
+/* зона нажатия шире видимого крестика */
+.dm-x::after { content: ''; position: absolute; inset: -6px -2px; }
+@media (pointer: coarse) { .dm-x { width: 22px; } .dm-x::after { inset: -10px -4px; } }
 .dm-x:hover, .dm-x:focus-visible { color: #fff; }
-.dm-tab button:focus-visible { outline: 2px solid #fff; outline-offset: 0; border-radius: 999px; }
-.dm-un { margin-left: 5px; padding: 0 5px; border-radius: 999px; background: #ffc94d; color: #15122e; font-size: 11px; line-height: 16px; }
+.dm-tab button:focus-visible { outline: 2px solid #fff; outline-offset: -1px; border-radius: 999px; }
+.dm-un { margin-left: 4px; padding: 0 5px; border-radius: 999px; background: #ffc94d; color: #15122e; font-size: 11px; line-height: 16px; }
 .dm-h { display: flex; align-items: center; gap: 6px; justify-content: space-between; }
 .dm-h[hidden], .dm-rep[hidden] { display: none; }
 .dm-who { font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

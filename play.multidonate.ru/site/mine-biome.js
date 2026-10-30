@@ -851,5 +851,7 @@
     for (const p of ['--rock-base', '--rock-light', '--rock-shade', '--rock-outline', '--hard-base', '--hard-light', '--hard-shade', '--mnb-floor', '--mnb-wall', '--mnb-light', '--mnb-ac', '--mnb-vc']) S.el.style.removeProperty(p);
     S.el.style.background = ''; delete S.el.dataset.mnb; S.mnb = null;
   }
-  window.LGMineBiome = { THEMES, themeOf: (n, biome) => themeOf(n, biome), palette, paint, off, svgOf, span };
+  // 30.10 (авто-майнер, «Боты в шахте»): own() - paint / off на месте (не подменены чужим скриптом); спрашивает mine.js в телеметрии «Копать»
+  const API = { THEMES, themeOf: (n, biome) => themeOf(n, biome), palette, paint, off, svgOf, span, own: () => API.paint === paint && API.off === off };
+  window.LGMineBiome = API;
 })();

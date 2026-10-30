@@ -7,7 +7,8 @@
    Без фильтров и без SMIL: city.js печёт рисунок в Pixi один раз (citygl.js). Движение - только пламя костра (одна CSS-анимация
    transform/opacity поверх сцены, A.anim) - по желанию страницы; при «меньше движения» его нет.
    window.LGCampArt.draw(L, style, o) → { sky, defs, layers: [{ x, y, w, h, svg }], props: [{ x, y, w, h, z, svg() }], fx, anim, signs, L };
-   o.name - { name, sub } (названия стиля: names.json → places.camp). */
+   o.name - { name, sub } (названия стиля: names.json → places.camp); o.magic - название магической лавки (ms у героя; 30.10) - её здание
+   рисуется, только если оно передано: на месте палатки снабжения между Складом и Кузней. */
 (function (root) {
   'use strict';
   const f1 = (v) => Math.round(v * 10) / 10;
@@ -625,6 +626,101 @@
       return out;
     },
   };
+  /* ================= магическая лавка (30.10, fix/camp-magic-shop) =================
+     Палатка-колпак звездочёта между Складом и Кузней (на месте палатки снабжения - пока лавка не открыта, там она): остроконечный шатёр
+     со звёздами и месяцем, раскрытый вход с хрустальным шаром, вывеска на мачте над макушкой. Рисуется только когда лавка открыта
+     (draw(L, style, { magic: 'Название' }) - название стиля, как на Ярмарке: ms у героя); иначе на её месте палатка снабжения.
+     Одна форма у всех стилей, характер - в MG[стиль]: цвета, уши / рога / листья, мелочи у входа. Без filter и SMIL. */
+  const star5 = (X, x, y, r, c) => { let d = ''; for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, q = i % 2 ? r * 0.45 : r; d += (i ? 'L' : 'M') + f1(x + Math.cos(a) * q) + ' ' + f1(y + Math.sin(a) * q); } return `<path d="${d}Z" fill="${c}" stroke="${X.INK}" stroke-width="2" stroke-linejoin="round"/>`; };
+  const moon5 = (X, x, y, r, c) => `<path d="M${f1(x)} ${f1(y - r)} A${f1(r)} ${f1(r)} 0 0 0 ${f1(x)} ${f1(y + r)} A${f1(r * 1.3)} ${f1(r * 1.3)} 0 0 1 ${f1(x)} ${f1(y - r)} Z" fill="${c}" stroke="${X.INK}" stroke-width="2" stroke-linejoin="round"/>`;
+  const MG = {
+    legion: { c: ['#34308a', '#6a4aa8'], brim: '#241f5e', star: '#ffd76a', glow: '#9ad8ff', moon: '#fff2c8', bend: 18 },
+    cats: { c: ['#ffb8c8', '#e86a8a'], brim: '#c8a0f0', star: '#fff0a8', glow: '#ff9ac0', moon: '#fff6d0', bend: 0,
+      // кошачьи уши на склонах колпака
+      back(X, g) {
+        let s = '';
+        for (const sg of [-1, 1]) {
+          const a = g.pt(0.62, sg), b = g.pt(0.86, sg), tip = [(a[0] + b[0]) / 2 + sg * 20, b[1] - 38];
+          s += `<path d="M${f1(a[0])} ${f1(a[1])} L${f1(tip[0])} ${f1(tip[1])} L${f1(b[0])} ${f1(b[1])} Z" fill="#ffb8c8" ${X.O(4)}/><path d="M${f1(a[0] + sg * 2)} ${f1(a[1] - 6)} L${f1(tip[0] - sg * 3)} ${f1(tip[1] + 12)} L${f1(b[0] + sg * 2)} ${f1(b[1] + 4)} Z" fill="#ff8ab0"/>`;
+        }
+        return s;
+      },
+      // клубки у входа и лапка на пологе
+      front(X, g) {
+        return yarn(X, g.cx - g.hw - 14, g.base + 6, '#8fd0ff', 15) + yarn(X, g.cx + g.hw + 12, g.base + 8, '#ffd76a', 13)
+          + `<g fill="${X.mix('#e86a8a', X.INK, 0.2)}" transform="translate(${f1(g.cx)} ${f1(g.base - 128)}) scale(.55)"><ellipse cy="4" rx="7" ry="6"/><circle cx="-7" cy="-5" r="3"/><circle cy="-8" r="3"/><circle cx="7" cy="-5" r="3"/></g>`;
+      } },
+    monkeys: { c: ['#ffd84a', '#3f8f3a'], brim: '#8a5a32', star: '#fff6c8', glow: '#fff59a', moon: '#fff6c8', bend: 14,
+      back(X, g) { return leafCrown(X, g.cx - g.hw + 6, g.base - 4, 44, '#3f8f3a', 5) + leafCrown(X, g.cx + g.hw - 6, g.base - 4, 44, '#3f8f3a', 5); },
+      front(X, g) { return bananas(X, g.cx + g.hw * 0.62, g.base - 74, 0.75) + coconut(X, g.cx - g.hw - 6, g.base + 6, 12) + coconut(X, g.cx - g.hw + 14, g.base + 12, 10); } },
+    veggies: { c: ['#9ad06a', '#f2f6d8'], brim: '#7a5a3e', star: '#fff0a8', glow: '#ffe08a', moon: '#fff7d6', bend: 0,
+      back(X, g) { return leafCrown(X, g.cx - g.hw + 4, g.base - 4, 40, '#4caf50', 5) + leafCrown(X, g.cx + g.hw - 4, g.base - 4, 40, '#4caf50', 5); },
+      // тыква и помидор у входа
+      front(X, g) {
+        const pk = (x, y, r) => `<ellipse cx="${f1(x)}" cy="${f1(y)}" rx="${r}" ry="${f1(r * 0.8)}" fill="#ff8a2a" ${X.O(3)}/><path d="M${f1(x - r * 0.4)} ${f1(y - r * 0.7)} Q${f1(x - r * 0.55)} ${f1(y)} ${f1(x - r * 0.4)} ${f1(y + r * 0.7)} M${f1(x + r * 0.4)} ${f1(y - r * 0.7)} Q${f1(x + r * 0.55)} ${f1(y)} ${f1(x + r * 0.4)} ${f1(y + r * 0.7)}" stroke="${X.mix('#ff8a2a', X.INK, 0.35)}" stroke-width="2.4" fill="none"/><path d="M${f1(x)} ${f1(y - r * 0.8)} v-7" stroke="#3a8f3c" stroke-width="4" stroke-linecap="round"/>`;
+        return pk(g.cx - g.hw - 8, g.base + 6, 17) + `<circle cx="${f1(g.cx + g.hw + 10)}" cy="${f1(g.base + 4)}" r="11" fill="#e8453a" ${X.O(3)}/><path d="M${f1(g.cx + g.hw + 4)} ${f1(g.base - 6)} l6 4 l6 -4" stroke="#3a8f3c" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+      } },
+    '42brothers': { c: ['#ff8cc6', '#ffc83d'], brim: '#5a1a5a', star: '#fff6c8', glow: '#5ad1ff', moon: '#fff6c8', bend: 0,
+      front(X, g) { return disco(X, g.tipX, g.top + 30, 15) + crown(X, g.cx + g.hw + 4, g.base + 6, 0.5); } },
+    cherts: { c: ['#7a1a2a', '#c8202a'], brim: '#2a0d14', star: '#ffe27a', glow: '#8aff6a', moon: '#ff9a6a', bend: 16,
+      back(X, g) { return batWing(X, g.cx - g.hw + 10, g.base - 112, 70, -1) + batWing(X, g.cx + g.hw - 10, g.base - 112, 70, 1); },
+      front(X, g) { return horns(X, g.ax(0.72), g.y(0.72) + 6, 20, 1.1, '#f2e6c8') + lavaCrack(g.cx - 40, g.base + 12, 60, 7); } },
+    ugabugi: { c: ['#c89a6a', '#8a6040'], brim: '#5a3a1e', star: '#e8453a', glow: '#ffd76a', moon: '#f2e6c8', bend: 0, pit: true,
+      front(X, g) { return tusk(X, g.cx - g.hw + 2, g.base + 2, 54, -1) + tusk(X, g.cx + g.hw - 2, g.base + 2, 54, 1) + bone(X, g.cx - 18, g.base - 138, g.cx + 18, g.base - 120, 6) + bone(X, g.cx - 18, g.base - 120, g.cx + 18, g.base - 138, 6) + feathers(X, g.tipX + 26, g.top + 30); } },
+  };
+  // название на вывеске: до двух строк (по первому пробелу), шрифт под ширину
+  function magicLines(name) {
+    const t = String(name || '').trim().toUpperCase(), i = t.indexOf(' ');
+    return i > 0 && t.length > 11 ? [t.slice(0, i), t.slice(i + 1)] : [t];
+  }
+  function magicTent(X, name) {
+    const { TH, K, BASE, INK, signs } = X, M = MG[X.style] || MG.legion, O = X.O;
+    const cx = 722, hw = 92, top = BASE - 250, H = BASE - top, bend = M.bend || 0;
+    const u2y = (u) => BASE - u * H, wAt = (u) => hw * Math.pow(1 - u, 1.3), axAt = (u) => cx + bend * Math.pow(u, 2.2);
+    const pt = (u, sg) => [axAt(u) + sg * wAt(u), u2y(u)];
+    const band = (u1, u2) => {
+      const n = Math.max(2, Math.round((u2 - u1) * 30)); let l = '', r = '';
+      for (let k = 0; k <= n; k++) { const u = u1 + (u2 - u1) * k / n; l += (k ? 'L' : 'M') + f1(pt(u, -1)[0]) + ' ' + f1(u2y(u)); r = 'L' + f1(pt(u, 1)[0]) + ' ' + f1(u2y(u)) + r; }
+      return l + r + 'Z';
+    };
+    const g = { cx, hw, top, base: BASE, tipX: axAt(1), ax: axAt, y: u2y, pt, w: wAt };
+    const [c1, c2] = M.c, glow = K.glowId(M.glow, 'mgg');
+    let s = X.sh(cx, BASE + 6, hw + 34, 12, 0.34);
+    // лужайка под палаткой: у Уга-Буги - яма с камнями по краю
+    if (M.pit) {
+      s += `<ellipse cx="${cx}" cy="${BASE - 2}" rx="${hw + 26}" ry="15" fill="${M.brim}" ${O(4)}/>`;
+      for (let k = 0; k < 11; k++) { const a = Math.PI * 2 * k / 11; s += `<ellipse cx="${f1(cx + Math.cos(a) * (hw + 24))}" cy="${f1(BASE - 2 + Math.sin(a) * 14)}" rx="8" ry="5.5" fill="${TH.stone}" ${O(2.5)}/>`; }
+    } else s += `<ellipse cx="${cx}" cy="${BASE - 2}" rx="${hw + 20}" ry="13" fill="${M.brim}" ${O(4)}/>`;
+    if (M.back) s += M.back(X, g);
+    // колпак: тело, пояс другого цвета, блик
+    s += `<path d="${band(0, 1)}" fill="${c1}" ${O(4.5)}/>`;
+    s += `<path d="${band(0.3, 0.38)}" fill="${c2}"/><path d="${band(0.6, 0.66)}" fill="${c2}"/><path d="${band(0, 1)}" fill="none" ${O(4.5)}/>`;
+    const hl = pt(0.5, -1); s += `<path d="M${f1(hl[0] + 8)} ${f1(hl[1] + 20)} L${f1(pt(0.9, -1)[0] + 5)} ${f1(u2y(0.9) + 6)}" stroke="#ffffff" stroke-width="5" opacity=".25" stroke-linecap="round"/>`;
+    // звёзды и месяц на ткани
+    for (const [u, k, r] of [[0.66, 0.3, 8], [0.56, 0.5, 7], [0.25, -0.75, 9], [0.2, 0.78, 9]]) s += star5(X, axAt(u) + k * wAt(u), u2y(u), r, M.star);
+    s += moon5(X, axAt(0.47) - 4, u2y(0.47), 13, M.moon);
+    // вход: тёмный проём, внутри - стол, хрустальный шар и сияние; полог собран по бокам
+    const dk = X.mix(INK, c1, 0.25);
+    s += `<path d="M${cx - 34} ${BASE - 2} V${BASE - 66} Q${cx - 34} ${BASE - 112} ${cx} ${BASE - 112} Q${cx + 34} ${BASE - 112} ${cx + 34} ${BASE - 66} V${BASE - 2} Z" fill="${dk}" stroke="${INK}" stroke-width="3"/>`;
+    s += `<circle cx="${cx}" cy="${BASE - 44}" r="46" fill="url(#${glow})"/>`;
+    s += `<path d="M${cx - 24} ${BASE - 2} V${BASE - 20} H${cx + 24} V${BASE - 2} Z" fill="${c2}" ${O(3)}/><ellipse cx="${cx}" cy="${BASE - 21}" rx="12" ry="3.5" fill="${X.mix(c2, '#000000', 0.3)}"/>`;
+    s += `<circle cx="${cx}" cy="${BASE - 38}" r="16" fill="${M.glow}" ${O(3)}/><path d="M${cx - 9} ${BASE - 44} q3 -7 10 -8" stroke="#ffffff" stroke-width="3.5" fill="none" stroke-linecap="round"/>${star5(X, cx + 4, BASE - 33, 5, '#ffffff')}`;
+    for (const sg of [-1, 1]) {
+      const ox = cx + sg * 34;
+      s += `<path d="M${ox} ${BASE - 68} Q${ox} ${BASE - 114} ${cx + sg * 3} ${BASE - 114} Q${ox - sg * 4} ${BASE - 80} ${cx + sg * 22} ${BASE - 2} H${cx + sg * 46} Q${cx + sg * 44} ${BASE - 38} ${ox} ${BASE - 68} Z" fill="${c2}" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>`;
+    }
+    // тесёмка полога
+    s += `<path d="M${cx - 44} ${BASE - 50} H${cx - 28} M${cx + 28} ${BASE - 50} H${cx + 44}" stroke="${TH.woodL}" stroke-width="5" stroke-linecap="round"/>`;
+    // мачта над макушкой и вывеска с названием
+    const lines = magicLines(name), mx = Math.max(...lines.map((l) => l.length)), sz = Math.max(14, Math.min(22, Math.floor((230 - 44) / (mx * 0.72)))), bw = Math.max(120, mx * sz * 0.72 + 44), bh = lines.length * (sz + 6) + 20;
+    const tx = g.tipX, by = top - 26 - bh, S = TH.sign;
+    s += `<path d="M${f1(tx)} ${f1(top + 6)} V${f1(by + bh - 4)}" stroke="${INK}" stroke-width="10" stroke-linecap="round"/><path d="M${f1(tx)} ${f1(top + 6)} V${f1(by + bh - 4)}" stroke="${TH.woodL}" stroke-width="5" stroke-linecap="round"/>`;
+    s += (TH.board ? TH.board(X, tx - bw / 2, by, bw, bh) : K.board(tx - bw / 2, by, bw, bh, S.bg, INK));
+    lines.forEach((l, i) => { s += X.txt(tx, by + 14 + sz * 0.9 + i * (sz + 6), l, sz, S.tx); });
+    signs.push({ t: lines.join(' '), r: [tx - bw / 2, by, tx + bw / 2, by + bh] });
+    if (M.front) s += M.front(X, g);
+    return `<g data-ol="magic">${s}</g>`;
+  }
   const XU = { O: (w = 3) => `stroke="#2a1a12" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"`, INK: '#2a1a12', mix };
   const themeOf = (style) => THEMES[style] || THEMES.legion;
 
@@ -659,7 +755,7 @@
     };
     const sh = (x, y, rx, ry, a = 0.3) => `<ellipse cx="${f1(x)}" cy="${f1(y)}" rx="${f1(rx)}" ry="${f1(ry)}" fill="${INK}" opacity="${a}"/>`;
     // всё нужное «своему» рисунку стиля (темы ниже могут заменить здание, палатку, даль, предмет или добавить свои мелочи)
-    const X = { K, C, TH, L, O, txt, sign, sh, mix, f1, R, rng, BASE, W, H, INK, LN, P, prop, signs, o };
+    const X = { K, C, TH, L, O, txt, sign, sh, mix, f1, R, rng, BASE, W, H, INK, LN, P, prop, signs, o, style };
 
     /* ---------- небо и даль ---------- */
     {
@@ -719,7 +815,7 @@
 
     /* ---------- здания заднего ряда ---------- */
     const B = (id) => L.BUILDINGS.find((b) => b.id === id);
-    const NM = TH.names;
+    const NM = TH.names, top0 = 400;
     // Склад: большая палатка-«марки» (каркасная), полог открыт - внутри полки с ящиками и мешками; снаружи - штабель, бочки, тачка
     if (TH.b && TH.b.storage) TH.b.storage(X);
     else {
@@ -751,7 +847,9 @@
     }
     // 26.10 (решение стримера): Заточки в лагере нет (откроется в городе канала после пролога). На её месте между Складом и Кузней -
     // палатка снабжения (декорация заднего ряда, в неё не заходят): палатка стиля, ящики и бочки
-    {
+    // 30.10: когда магическая лавка открыта (o.magic - её название), на этом месте стоит она (здание magic в campmap.js)
+    if (o.magic) P(580, 880, magicTent(X, o.magic), top0, BASE + 40);
+    else {
       const t = { x: 762, y: 796, w: 210, d: 0, k: 'mid', flip: true }, [c, st] = TH.canvas[3 % TH.canvas.length];
       const op = { c, s: st, flip: true, open: true, bed: TH.beds[1 % TH.beds.length], kind: TH.kinds.mid || 'ridge' };
       const own = TH.tent && TH.tent(X, t, 3, op);
@@ -911,7 +1009,13 @@
       if (own && own.flat) { P(x - (own.w || 160) / 2, x + (own.w || 160) / 2, own.flat, y - (own.h || 60), y + 30); continue; }
       if (own) { prop(x - own.w / 2, y - own.h, own.w, own.h + 30, y, own.s); continue; }
       switch (p.k) {
-        case 'sign': s = C.signpost(x, y, [{ t: NM.gate, dir: 1 }, { t: NM.forge.length > 11 ? 'КУЗНЯ' : NM.forge, dir: -1 }, { t: NM.shop.split(' ').pop(), dir: 1 }], { tx: TH.sign.tx }); w = 420; h = 220; break;
+        case 'sign': {
+          // 30.10: лавка открыта - четвёртая стрелка «МАГИЯ» влево (к ней); столб выше на одну стрелку
+          const ar = [{ t: NM.gate, dir: 1 }, { t: NM.forge.length > 11 ? 'КУЗНЯ' : NM.forge, dir: -1 }];
+          if (o.magic) ar.push({ t: 'МАГИЯ', dir: -1 });
+          ar.push({ t: NM.shop.split(' ').pop(), dir: 1 });
+          s = C.signpost(x, y, ar, { tx: TH.sign.tx }); w = 420; h = o.magic ? 260 : 220; break;
+        }
         case 'rack': s = C.rack(x, y, { shield: TH.banner }); w = 300; h = 220; break;
         case 'target': s = C.target(x, y, { ring: TH.banner, fletch: TH.flags[1] }); w = 120; h = 160; break;
         case 'hitch': s = C.hitch(x, y, 200); w = 260; h = 110; break;
