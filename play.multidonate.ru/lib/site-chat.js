@@ -48,6 +48,97 @@
     const tabRoom = (t) => (t === 'mn' ? 'mine' : 'city');
     const baseOf = (rm) => (K.baseFor ? K.baseFor(rm || 'city') : K.base);
     const setMuted = (rm, v) => { const C = St().chat; if (K.one) { C.mutes[rm || 'city'] = v; if (tabRoom(C.tab) === (rm || 'city')) C.muted = v; } else C.muted = v; };
+    /* 30.10 (просьба стримера): на ПК окно чата тянут за края - верхний край: высота, правый: ширина, правый верхний угол: оба
+       (вместо разворачивания полосой во всю ширину). Пределы: ширина 280…min(720, 60% окна), высота 160…(окно - шапка - 24).
+       Размер помнится у зрителя (localStorage K.sz.key - свой у «Города» и у шахты); окно браузера меньше - чат ужимается в видимую
+       область, сохранённый размер не меняется. Двойной клик по заголовку - размер по умолчанию. Телефон (≤ 720 px или касание без мыши) -
+       как было (размер из CSS). Хозяин (St().el): data-chat="free" - место чата ставит он сам (шахта: чат перетаскивают), тогда высота
+       не ограничивается местом над чатом; data-chat-top - высота своей шапки сверху. После смены размера - событие «cy-chat-size» на
+       окне (detail.end - отпустили). Только события указателя, в покое ничего не работает. */
+    const rzPc = () => !window.LGSiteUi.is('phone') && !(window.LGSiteUi.is('nohover') && window.LGSiteUi.is('touch'));
+    const szKey = () => (K.sz ? (typeof K.sz.key === 'function' ? K.sz.key() : K.sz.key) : '');
+    const szMem = {};
+    function szGet() {
+      const k = szKey(); if (!k) return null;
+      if (!(k in szMem)) {
+        let v = null;
+        try { const o = JSON.parse(localStorage.getItem(k) || 'null'); if (o && (+o.w > 0 || +o.h > 0)) v = { w: +o.w > 0 ? +o.w : 0, h: +o.h > 0 ? +o.h : 0 }; } catch (e) {
+          // хранилище закрыто или там чужое - размер по умолчанию
+          v = null;
+        }
+        szMem[k] = v;
+      }
+      return szMem[k];
+    }
+    function szPut(v, keep) {
+      const k = szKey(); if (!k) return; szMem[k] = v; if (keep) return;
+      try { if (v) localStorage.setItem(k, JSON.stringify(v)); else localStorage.removeItem(k); } catch (e) {
+        // приватный режим - размер живёт до перезагрузки
+        szMem[k] = v;
+      }
+    }
+    const clampN = (v, a, b) => Math.max(a, Math.min(b, v));
+    // пределы для окна box (размер ленты - у .cy-chat-b): от места окна на экране и от хозяина
+    function szLim(box) {
+      const host = St().el, b = box.querySelector('.cy-chat-b'), br = b.getBoundingClientRect();
+      const ar = K.sz && K.sz.area && !K.sz.area() ? { left: 0, top: 0, right: innerWidth, bottom: innerHeight } : host.getBoundingClientRect();
+      const free = host.dataset.chat === 'free', top = Math.max(0, ar.top) + (+host.dataset.chatTop || 0);
+      const w1 = Math.min(720, innerWidth * 0.6, free ? Math.min(ar.right, innerWidth) - Math.max(0, ar.left) - 16 : Math.min(ar.right, innerWidth) - br.left - 8);
+      const h1 = Math.min(innerHeight - top - 24, free ? Infinity : br.bottom - top - 8);
+      return { w0: 280, w1: Math.max(280, Math.floor(w1)), h0: 160, h1: Math.max(160, Math.floor(h1)) };
+    }
+    // применить сохранённый размер (или снять его: телефон, свёрнут, размера нет)
+    function szFit(box) {
+      box = box || (St() && St().el.querySelector('.cy-chat')); if (!box || !K.sz) return;
+      const b = box.querySelector('.cy-chat-b'); if (!b) return;
+      const on = rzPc() && box.classList.contains('open') && !b.hidden;
+      box.classList.toggle('cy-rz', on);
+      const v = on ? szGet() : null;
+      if (!v) { if (box.style.width) box.style.width = ''; if (b.style.height) b.style.height = ''; return; }
+      const L = szLim(box), w = v.w ? Math.round(clampN(v.w, L.w0, L.w1)) + 'px' : '', h = v.h ? Math.round(clampN(v.h, L.h0, L.h1)) + 'px' : '';
+      if (box.style.width !== w) box.style.width = w;
+      if (b.style.height !== h) b.style.height = h;
+    }
+    const szSaid = (box, end) => { try { box.dispatchEvent(new CustomEvent('cy-chat-size', { bubbles: true, detail: { end: !!end } })); } catch (e) { console.error('[чат] размер', e); } };
+    function szBind(box) {
+      const b = box.querySelector('.cy-chat-b'), hd = box.querySelector('.cy-chat-h'); if (!b || !K.sz) return;
+      for (const [d, t] of [['n', 'Потянуть - высота чата'], ['e', 'Потянуть - ширина чата'], ['ne', 'Потянуть - размер чата']]) {
+        const g = document.createElement('i'); g.className = 'cy-chat-rz'; g.dataset.rz = d; g.title = t; g.setAttribute('aria-hidden', 'true'); b.appendChild(g);
+      }
+      let rz = null;
+      b.addEventListener('pointerdown', (e) => {
+        const g = e.target.closest && e.target.closest('.cy-chat-rz');
+        if (!g || e.button !== 0 || !box.classList.contains('cy-rz')) return;
+        e.preventDefault(); e.stopPropagation();
+        rz = { id: e.pointerId, d: g.dataset.rz, x: e.clientX, y: e.clientY, w: box.getBoundingClientRect().width, h: b.getBoundingClientRect().height, g, L: szLim(box) };
+        try { g.setPointerCapture(e.pointerId); } catch (x) {
+          // без захвата тоже тянется, пока указатель над краем
+          rz.nc = 1;
+        }
+        g.classList.add('on'); box.classList.add('cy-rzing');
+      });
+      b.addEventListener('pointermove', (e) => {
+        if (!rz || e.pointerId !== rz.id) return;
+        const v = { ...(szGet() || { w: 0, h: 0 }) };
+        if (rz.d !== 'n') v.w = Math.round(clampN(rz.w + e.clientX - rz.x, rz.L.w0, rz.L.w1));
+        if (rz.d !== 'e') v.h = Math.round(clampN(rz.h - (e.clientY - rz.y), rz.L.h0, rz.L.h1));
+        szPut(v, true);
+        if (v.w) box.style.width = v.w + 'px';
+        if (v.h) b.style.height = v.h + 'px';
+        szSaid(box, false);
+      });
+      const up = (e) => {
+        if (!rz || e.pointerId !== rz.id) return;
+        const g = rz.g; rz = null; g.classList.remove('on'); box.classList.remove('cy-rzing');
+        try { if (g.hasPointerCapture && g.hasPointerCapture(e.pointerId)) g.releasePointerCapture(e.pointerId); } catch (x) { console.error('[чат] размер', x); }
+        const v = szGet(); if (v) szPut(v);
+        szSaid(box, true);
+      };
+      b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up);
+      // двойной клик по заголовку (не по кнопкам) - размер по умолчанию; место по умолчанию - у хозяина (шахта)
+      if (hd) hd.addEventListener('dblclick', (e) => { if ((e.target.closest && e.target.closest('button, input, a, select, textarea')) || !rzPc()) return; szPut(null); szFit(box); szSaid(box, true); });
+      if (!szBind.win) { szBind.win = 1; window.addEventListener('resize', () => { if (St() && St().chat && St().chat.open) szFit(); }); }
+    }
     function chatInit() {
       if (!St()) return;
       const h = X.hero(), box = St().el.querySelector('.cy-chat'); if (!box) return;
@@ -65,6 +156,7 @@
       if (St().chat.tab === 'g' && !St().chat.g && St().chat.mn) St().chat.tab = 'mn';
       if (!on || box.dataset.bound) { if (on) chatRender(); return; }
       box.dataset.bound = '1';
+      szBind(box);
       // 29.10: личка страницы (window.LGDm, packages/site-ui/dm.js) - живёт вне сцены: здесь только её место во вкладке «Личные»
       if (window.LGDm) {
         window.LGDm.dock(K.key, box, box.querySelector('.cy-chat-dmx'));
@@ -311,6 +403,8 @@
       const box = St() && St().el.querySelector('.cy-chat'); if (!box || !St().chat || !St().chat.on) return;
       const C = St().chat, b = box.querySelector('.cy-chat-b'), n = box.querySelector('.cy-chat-n'), l = box.querySelector('.cy-chat-l'), inp = box.querySelector('.cy-chat-f input'), sh = box.querySelector('.cy-chat-sh');
       box.querySelector('.cy-chat-t').setAttribute('aria-expanded', String(C.open)); b.hidden = !C.open; box.classList.toggle('open', C.open);
+      // 30.10: размер окна (ПК) - когда открыли / свернули; смена места - хозяин зовёт size()
+      if (box.dataset.szo !== String(C.open)) { box.dataset.szo = String(C.open); szFit(box); }
       chatBadges(box, C); chatTo(box, C);
       if (K.one) C.muted = C.mutes[tabRoom(C.tab)] || null;
       // мут истёк
@@ -434,7 +528,9 @@
     // 29.10: tab, unAdd - для единого чата (chatone.js)
     return { init: () => { St(); chatInit(); }, enter: (r, rm) => { St(); chatEnter(r, rm); }, apply: (d, rm) => { St(); chatApply(d, rm); },
       tab: (t) => { St(); if (St() && St().chat) chatTab(t); }, unAdd: (t, n) => { St(); const C = St() && St().chat; if (!C || !n) return; C.un[t] = (C.un[t] || 0) + n; C.unread += n; const box = St().el.querySelector('.cy-chat'); if (box) chatBadges(box, C); },
-      render: (e) => { St(); chatRender(e); }, open: (on) => { St(); chatOpen(on); }, menuClose: () => { St(); nickMenuClose(); } };
+      render: (e) => { St(); chatRender(e); }, open: (on) => { St(); chatOpen(on); }, menuClose: () => { St(); nickMenuClose(); },
+      // 30.10: размер окна чата на ПК - заново по месту (хозяин переставил окно, сменился data-chat)
+      size: () => { if (St()) szFit(); } };
   }
   window.LGChat = { make, html };
 })();

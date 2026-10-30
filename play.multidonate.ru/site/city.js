@@ -735,7 +735,7 @@
   // Чат только у тех, кому он открыт (флаг cc у героя: cityChatPublic или тестеры); остальные окна не видят вовсе.
   // 25.10: сам чат — общий модуль сайта (packages/site-ui/chat.js, window.LGChat): тот же код у чата шахты; здесь — как он живёт в «Городе»
   let CH0 = null;
-  const CH = () => CH0 || (CH0 = window.LGChat ? window.LGChat.make({ state: () => S, X: () => X, base: '/api/city/chat', say: '/api/city/say', key: 'lgCityChat', name: 'Чат города', ph: 'Написать в чат города…', where: 'в чате города',
+  const CH = () => CH0 || (CH0 = window.LGChat ? window.LGChat.make({ state: () => S, X: () => X, base: '/api/city/chat', say: '/api/city/say', key: 'lgCityChat', sz: { key: 'lgCityChatSz' }, name: 'Чат города', ph: 'Написать в чат города…', where: 'в чате города',
     flags: (h) => ({ on: !!(h && h.cc), tr: !!(h && h.ct), dm: !!(h && h.cd) }), trade: true,
     here: () => !!(S && S.inCity), joining: 'подключаемся к городу…', rejoin: () => enter(),
     onError: (er) => { if (/не в городе/.test(er) && S) { S.inCity = false; enter(); } },

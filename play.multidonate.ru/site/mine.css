@@ -327,20 +327,15 @@ html body .mn-board-w .mn-board { position: relative; }
 /* 25.10 (mine2, просьба стримера): на широком ПК панель, окна и сумка - вплотную к правой стене зала (mine.js dockFit: --mn-pl - где
    начинается тёмная полоса за стеной, --mn-pw - ширина: 340, окно - до 600), шапка с кнопками - над ними; чат - у левой стены */
 .mn[data-m2="1"][data-chat="side"] .cy-chat.open { left: var(--mn-chx, 12px); }
-/* 26.10 (mine2): чат на ПК перетаскивается за заголовок (mine.js chatDrag): data-chat="free" - стоит, где поставил зритель (--mn-cfx/--mn-cfy
-   от левого верхнего угла шахты), сцену не укорачивает; ленту можно потянуть за нижний правый угол. «⤢» / двойной клик - на место */
-.mn .mn-chat-home { display: none; }
+/* 26.10 (mine2): чат на ПК перетаскивается за заголовок (mine.js chatDrag): data-chat="free" - стоит, где поставил зритель (--mn-cfx от
+   левого края шахты, --mn-cfb - от нижнего: окно растёт вверх, когда тянут верхний край), сцену не укорачивает. 30.10: на ПК открытый
+   чат - всегда free (по умолчанию слева внизу), размер тянут за края (chat.js, .cy-chat-rz в city.css); «⤢» убрана, двойной клик - на место */
 @media (min-width: 721px) {
   .mn[data-m2="1"][data-chat="side"] .cy-chat-h, .mn[data-m2="1"][data-chat="free"] .cy-chat-h { cursor: move; user-select: none; -webkit-user-select: none; touch-action: none; }
   .mn[data-m2="1"][data-chat="side"] .cy-chat-h button, .mn[data-m2="1"][data-chat="free"] .cy-chat-h button { cursor: pointer; }
-  .mn[data-m2="1"][data-chat="free"] .cy-chat.open { left: var(--mn-cfx, 12px); top: var(--mn-cfy, 76px); right: auto; bottom: auto; z-index: 6; }
-  .mn[data-m2="1"][data-chat="free"] .cy-chat-l { resize: vertical; min-height: 60px; max-height: 70vh; }
-  .mn[data-m2="1"][data-chat="free"] .mn-chat-home { display: block; width: 28px; height: 28px; margin-left: auto; padding: 0; border: 0; border-radius: 8px; background: rgba(255, 255, 255, .1); color: #fff; font: 700 15px/1 system-ui; }
-  .mn[data-m2="1"][data-chat="free"] .mn-chat-home:hover, .mn[data-m2="1"][data-chat="free"] .mn-chat-home:focus-visible { background: rgba(255, 255, 255, .22); outline: 2px solid #fff; outline-offset: 0; }
-  .mn[data-m2="1"][data-chat="free"] .mn-chat-home + .cy-chat-sh { margin-left: 0; }
+  .mn[data-m2="1"][data-chat="free"] .cy-chat.open { left: var(--mn-cfx, 12px); bottom: var(--mn-cfb, 64px); top: auto; right: auto; z-index: 6; }
   .mn .cy-chat.mn-chat-drag .cy-chat-b { box-shadow: 0 12px 32px rgba(0, 0, 0, .5); }
 }
-.mn:not([data-chat="free"]) .cy-chat-l { height: auto !important; }   /* высота ленты, которую потянули, - только у перетащенного чата */
 html body .mn-board-w.dock { display: block; padding: 0; background: none; pointer-events: none; }
 html body .mn-board-w.dock .mn-board { position: absolute; left: var(--bl); top: var(--bt); width: var(--bw); max-height: calc(100vh - var(--bt) - 16px); pointer-events: auto;
   background: rgba(29,22,32,.96) !important; color: #f3efe6; border-radius: 22px; box-shadow: 0 18px 40px rgba(0,0,0,.45); }
@@ -436,8 +431,13 @@ html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); 
 .mn[data-m2="1"] .mb-offer { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 8px 12px; border-radius: 12px; background: rgba(0,0,0,.3); color: var(--m2-mute); font-weight: 700; font-size: 13px; }
 .mn[data-m2="1"] .mb-offer b { font: 700 22px/1.1 var(--hd, sans-serif); color: var(--m2-mute); }
 .mn[data-m2="1"] .mb-offer.on b { color: var(--m2-gold); }
-.mn[data-m2="1"] .mb-counter .mn-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.mn[data-m2="1"] .mb-counter .mn-btns .btn { min-height: 42px; }
+/* 30.10 (стример, окно Скупщика 1420x1016): «Обменя / ть», «Забрать / обратн / о» - слова рвались из-за overflow-wrap: anywhere окна (min-content кнопки
+   становился в одну букву, колонки сжимались). Кнопки облачек: перенос только между словами, не уже самого длинного слова; две кнопки - в ряд,
+   не помещаются - в столбик на всю ширину (flex-wrap, flex-grow) */
+.mn .btn { overflow-wrap: normal; word-break: normal; hyphens: manual; }
+.mn .mn-btns > .btn { min-width: min-content; }
+.mn[data-m2="1"] .mb-counter .mn-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+.mn[data-m2="1"] .mb-counter .mn-btns .btn { flex: 1 1 auto; min-height: 42px; padding-left: 12px; padding-right: 12px; }
 .mn[data-m2="1"] .mb-inv .lgi { background: none; box-shadow: none; padding: 0; }
 .mn[data-m2="1"] .mb-inv .cy-grid { grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); }
 .mn[data-m2="1"] .mb-foot { display: grid; gap: 6px; }
@@ -582,7 +582,7 @@ html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); 
 .mn-lmd .mn-lore li .btn { min-height: 40px; min-width: 0; padding: 0 12px; font-size: 14px; white-space: nowrap; }
 .mn-lmd .mn-onote { font-size: 12px; margin: 0 0 6px; }
 .mn-lmd > .mn-btns:last-child { margin-bottom: 0; }
-.mn-lmd .mn-lm-by + .mn-btns .btn, .mn-lmd > .mn-btns:last-child .btn { min-width: 0; padding: 0 16px; }
+.mn-lmd .mn-lm-by + .mn-btns .btn, .mn-lmd > .mn-btns:last-child .btn { min-width: min-content; padding: 0 16px; }
 /* 30.10: таблички со временем улучшения над лифтом и буровой - крупно, как подписи НПС */
 .mn-tmrs { position: absolute; left: 0; top: 0; pointer-events: none; }
 .mn-tmr { transform: translate(-50%, -100%); padding: 5px 16px; border-radius: 14px; border-width: 3px; font: 800 24px/30px Golos Text, Arial, sans-serif; color: #b9f3c2; border-color: #7ad38a; }

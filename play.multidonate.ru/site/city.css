@@ -504,6 +504,21 @@ html.cy-reading { overflow: hidden; }
 .cy-chat-n { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--hov, #ffc94d); color: #15122e; font-size: 12px; line-height: 20px; text-align: center; }
 .cy-chat-b { display: flex; flex-direction: column; box-sizing: border-box; height: clamp(260px, 44vh, 340px); width: 100%; padding: 8px 10px 10px; border-radius: 14px; background: rgba(15, 12, 34, .82); box-shadow: 0 6px 20px rgba(0, 0, 0, .3); }
 .cy-chat-b[hidden] { display: none; }
+/* 30.10 (просьба стримера): размер окна чата на ПК - тянуть за края (packages/site-ui/chat.js szBind, класс .cy-rz): верхний край - высота,
+   правый - ширина, правый верхний угол - оба. Зона захвата 8 px по краю, видна только тонкая подсветка при наведении (opacity) */
+.cy-chat-rz { display: none; }
+.cy-chat.cy-rz .cy-chat-b { position: relative; }
+.cy-chat.cy-rz .cy-chat-rz { display: block; position: absolute; z-index: 3; touch-action: none; }
+.cy-chat.cy-rz .cy-chat-rz[data-rz="n"] { left: 14px; right: 18px; top: -4px; height: 8px; cursor: ns-resize; }
+.cy-chat.cy-rz .cy-chat-rz[data-rz="e"] { top: 18px; bottom: 14px; right: -4px; width: 8px; cursor: ew-resize; }
+.cy-chat.cy-rz .cy-chat-rz[data-rz="ne"] { top: -5px; right: -5px; width: 18px; height: 18px; cursor: nesw-resize; }
+.cy-chat.cy-rz .cy-chat-rz::after { content: ''; position: absolute; border-radius: 2px; background: var(--hov, #ffc94d); opacity: 0; transition: opacity .15s; pointer-events: none; }
+.cy-chat.cy-rz .cy-chat-rz[data-rz="n"]::after { left: 0; right: 0; top: 3px; height: 2px; }
+.cy-chat.cy-rz .cy-chat-rz[data-rz="e"]::after { top: 0; bottom: 0; right: 3px; width: 2px; }
+.cy-chat.cy-rz .cy-chat-rz[data-rz="ne"]::after { top: 4px; right: 4px; width: 12px; height: 12px; background: none; border: 2px solid var(--hov, #ffc94d); border-left: 0; border-bottom: 0; border-radius: 0 8px 0 0; }
+.cy-chat.cy-rz .cy-chat-rz:hover::after, .cy-chat.cy-rz .cy-chat-rz.on::after { opacity: .75; }
+.cy-chat.cy-rzing, .cy-chat.cy-rzing * { user-select: none; -webkit-user-select: none; }
+@media (prefers-reduced-motion: reduce) { .cy-chat.cy-rz .cy-chat-rz::after { transition: none; } }
 /* 30.10 (стример: «окно чата прыгает по размеру на вкладках»): у открытого окна своя фиксированная высота - лента, личка и модерация занимают остаток между шапкой/вкладками и полем ввода (flex: 1 1 0), а не растут по содержимому */
 .cy-chat-l { flex: 1 1 0; min-height: 0; list-style: none; margin: 0; padding: 0 2px 0 0; overflow-y: auto; overscroll-behavior: contain; }
 .cy-chat-dmx { flex: 1 1 0; min-height: 0; min-width: 0; display: flex; flex-direction: column; }

@@ -148,10 +148,12 @@
     chatWatch();   // 25.10: чат шахты - не на предметах (chatFit)
     // 26.10: чат шахты на ПК можно перетащить за заголовок; 29.10: единый чат - закреплён (один способ везде)
     if (!one()) chatDrag();
+    // 30.10: размер чата тянут за края (chat.js) - и у единого чата
+    el.addEventListener('cy-chat-size', chatSized);
     // 30.10: вкладка чата сменилась (лента «Журнала» выше) - полоса чата другой высоты: сцену пересчитать
     { const tb = el.querySelector('.cy-chat-tabs'); if (tb) tb.addEventListener('click', () => { clearTimeout(S.chatFitT); S.chatFitT = setTimeout(chatFit, 30); }); }
     document.addEventListener('visibilitychange', vis); tlOn();   // 29.10: телеметрия «Боты в шахте» (счётчик нажатий)
-    document.addEventListener('keydown', key);
+    document.addEventListener('keydown', key); document.addEventListener('pointerdown', outDown, true);
     enter().catch(fail);
   }
   /* 26.10: шахта упала при отрисовке (исключение в своём коде, в рисунках, в данных) - не тихий чёрный экран и не выход: текст в окне
@@ -180,7 +182,7 @@
   let CHM = null;
   const chatX = () => { if (!X || !S) return X; if (!S.chatX) S.chatX = { ...X, api: (p, b) => X.api(/^\/api\/mine\/chat/.test(p) ? p + `?c=${encodeURIComponent(CB())}` : p, b) }; return S.chatX; };
   // 30.10 (стример): журнал шахты (события) - вкладка «Журнал» чата шахты, а не блок правой панели
-  const mchat = () => CHM || (CHM = window.LGChat ? window.LGChat.make({ state: () => S, X: chatX, base: '/api/mine/chat', say: '/api/mine/chat/say', key: 'lgMineChat', name: 'Чат шахты', ph: 'Написать в чат шахты…', where: 'в чате шахты', log: () => (S && S.st && S.st.log) || [],
+  const mchat = () => CHM || (CHM = window.LGChat ? window.LGChat.make({ state: () => S, X: chatX, base: '/api/mine/chat', say: '/api/mine/chat/say', key: 'lgMineChat', sz: { key: 'lgMineChatSz' }, name: 'Чат шахты', ph: 'Написать в чат шахты…', where: 'в чате шахты', log: () => (S && S.st && S.st.log) || [],
     flags: (h) => ({ on: !!(S && S.mchatOn && mine2On()), tr: false, dm: !!(window.LGDm && h && h.cd) }),   // 29.10: «Личные» и в шахте (личка страницы - LGDm, пишется из любого места) trade: false, here: () => !!(S && S.st), joining: 'подключаемся к шахте…', rejoin: () => enter(true),
     onError: (er) => { if (/не в шахте/.test(er) && S) enter(true); } }) : null);
   // 29.10 (новинка chatone): единый чат страницы - своего чата шахты нет, окно встаёт на его место (раскладка chatFit - та же)
@@ -192,8 +194,7 @@
     liftMenu(false);
     try { X.api('/api/mine/leave' + q(), {}); } catch (e) {}
     cancelAnimationFrame(S.raf); clearInterval(S.pollT); clearInterval(S.pingT); if (S.chatMo) S.chatMo.disconnect(); clearTimeout(S.chatFitT); clearTimeout(S.chatT); clearTimeout(S.failT); clearTimeout(S.entT);
-    if (S.chatRo) S.chatRo.disconnect(); clearTimeout(S.chatHT);
-    window.removeEventListener('resize', fit); document.removeEventListener('visibilitychange', vis); document.removeEventListener('keydown', key); tlOff();
+    window.removeEventListener('resize', fit); document.removeEventListener('visibilitychange', vis); document.removeEventListener('keydown', key); document.removeEventListener('pointerdown', outDown, true); tlOff();
     try { if (CHM) CHM.menuClose(); } catch (e) {}
     if (BD && BD.mine && BD.d.isConnected) try { BD.shut(); } catch (e) { BD.d.remove(); }   // 29.10: итоги, открытые из шахты, - закрыть вместе с ней
     for (const h of document.querySelectorAll('.mn-help')) h.remove();
@@ -202,6 +203,31 @@
     if (window.LGChatOne) setTimeout(() => window.LGChatOne.place(), 0);
   }
   // 25.10: Esc в поле чата — свернуть чат, а не уйти из шахты
+  /* 30.10 (просьба стримера): нажатие мимо открытого окна или облачка (Скупщик, Снабженец, поручения, журнал, лифт, буровая, «Этажи») - закрывает его
+     и ТОЛЬКО закрывает: само нажатие в сцену не уходит (не копает, не идёт, не открывает другое), и следующий за ним click глотается;
+     второе нажатие действует как обычно. Не закрывают: само окно / облачко, сумка героя (часть сделки у скупщика), чат, виджет заработка,
+     «−» / «+», окна поверх шахты (итоги, помощь, «пока тебя не было»), NPC или здание, чьё окно открыто, не-основная кнопка и второй палец
+     (перетаскивание руды из сумки начинается внутри сумки - там нажатие "своё"). Обработчик - один на документ, только на нажатие */
+  const OUT_OK = '.mn-win, .mn-lm, .mn-inv2-w, .cy-chat, .mn-wg, .mn-zoom, .mn-board-w, .mn-news-w, .mn-news, .mn-other, input, textarea, select';
+  function outOwn(t) {
+    const o = t && t.closest ? t.closest('[data-npc],[data-obj],[data-drill]') : null; if (!o) return false;
+    const k = S.lm ? S.lmK : S.npcOpen;
+    if (k === 'buy' || k === 'lamp') return o.dataset.npc === k;
+    if (k === 'quests') return o.dataset.obj === 'board';
+    if (k === 'lift') return o.dataset.obj === 'lift';
+    if (k === 'drill') return o.dataset.drill === S.drillK;
+    return false;
+  }
+  function outDown(e) {
+    if (!S || !(S.lm || S.npcOpen) || !e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    const t = e.target; if (!t || !t.closest || !S.el.contains(t) || t.closest(OUT_OK) || outOwn(t)) return;
+    e.stopPropagation(); e.preventDefault();
+    if (S.lm) liftMenu(false);
+    if (S.npcOpen) winClose();
+    const eat = (ev) => { ev.stopPropagation(); ev.preventDefault(); stop(); };
+    const stop = () => { clearTimeout(S.eatT); document.removeEventListener('click', eat, true); };
+    stop(); document.addEventListener('click', eat, true); S.eatT = setTimeout(stop, 400);
+  }
   const key = (e) => { if (e.key === 'Escape' && S && !(e.target && e.target.closest && e.target.closest('input, textarea, select, .cy-nm'))) { if (document.querySelector('.mn-board-w')) return; if (S.el.querySelector('.mn-inv2-w')) bagClose(); else if (S.lm) liftMenu(false); else if (S.npcOpen) winClose(); else { close(); if (X.close) X.close(); } } };
   /* 29.10 (стример: «оставляю шахту в фоне - при возврате пишет "только в одном окне", не знаю, идёт ли работа»): герой копает на
      сервере и без страницы (камень докапывается, сайт не нужен). Вернулся в ту же вкладку - сразу спрашиваем вид (не ждём 10-го опроса
@@ -284,7 +310,7 @@
   function onEvent(d) { if (!S || !d) return; if (d.chatRoom === 'mine') { if (S.chat && S.chat.on) mchat().apply(d); return; } if (d.c && d.c !== C) return;
     if (d.here != null) { hereOf(d); if (!d.st && !d.a && !d.m && !d.g && d.n == null) return; }   // 26.10: только счётчик - котов не трогаем
     if (d.st) take(d.st, null); presence(d); }
-  function hereOf(d) { if (!S || !d || d.here == null) return; S.here = +d.here || 0; S.hw = d.hw != null ? +d.hw || 0 : null; if (d.hm) S.hm = +d.hm || 0; try { cnt(); } catch (e) { console.error('[шахта] счётчик', e); } }
+  function hereOf(d) { if (!S || !d || d.here == null) return; S.here = +d.here || 0; S.hw = d.hw != null ? +d.hw || 0 : null; S.hg = d.hg != null ? +d.hg || 0 : null; if (d.hm) S.hm = +d.hm || 0; try { cnt(); } catch (e) { console.error('[шахта] счётчик', e); } }
 
   /* ---------- новый вид шахты ---------- */
   // 26.10: исключение при отрисовке - один раз заново в старом облике (без рисунков обновления), снова исключение - текст ошибки (fail)
@@ -1073,7 +1099,7 @@
   }
   function liftMenu(on, kind) {
     if (!S) return;
-    if (S.lm) { document.removeEventListener('pointerdown', S.lmOut, true); S.lm.remove(); S.lm = null; S.lmOut = null; S.lmK = null; S.lmH = ''; }
+    if (S.lm) { S.lm.remove(); S.lm = null; S.lmK = null; S.lmH = ''; }
     if (!on || !V3()) return;
     const m = document.createElement('div'); m.className = 'mn-lm' + (kind === 'drill' ? ' mn-lmd' : ''); m.setAttribute('role', kind === 'drill' ? 'dialog' : 'menu');
     S.lmK = kind === 'drill' || kind === 'shaft' ? kind : 'lift'; S.lm = m;
@@ -1088,9 +1114,7 @@
       if (k === 'tolift') { const [hx, hy] = GX().hall, at = freePt({ x: hx + 256, y: hy + 200 }); leaveRock(cellOfPt(at.x, at.y), at); walkTo(cellOfPt(at.x, at.y), null, at); return; }
       if (k === 'city') exit(); else if (k === 'floors') openPanel('lift'); else if (k === 'more') openPanel('drill');
     });
-    S.lmOut = (e) => { if (!m.contains(e.target)) liftMenu(false); };
     S.view.appendChild(m); liftPlace();
-    document.addEventListener('pointerdown', S.lmOut, true);
     if (kind !== 'drill') { const first = m.querySelector('button'); if (first) first.focus({ preventScroll: true }); }
   }
   function openPanel(kind) { bagClose(); liftMenu(false); if (S.wgOpen) { S.wgOpen = false; S.wgH = ''; } const was = S.npcOpen; S.npcOpen = kind; npcArm(kind); if (was !== kind) S.bodyHtml = ''; panel(); const w = S.el.querySelector('.mn-win'); if (w) w.scrollTop = 0; }
@@ -1187,10 +1211,13 @@
     const ce = S.el.querySelector('[data-mn="cnt"]'); if (!ce) return;
     if (!mine2On()) { if (!ce.hidden) { ce.hidden = true; ce.textContent = ''; } return; }
     const w = S.hw != null ? S.hw : S.st.working || 0, all = S.here != null ? Math.max(S.here, w) : w + (S.nOthers || 0);   // старый сервер без here - как было
-    if (!ce.firstChild) ce.innerHTML = '<b data-cn="ht" title="Сейчас в шахте">👥 <i>В шахте </i><span class="mn-num" data-cn="here"></span></b><b title="Сейчас копают">⛏ <i>копают </i><span class="mn-num" data-cn="w"></span></b><b title="Гуляют по шахте (с открытым сайтом)" data-cn="gt" hidden>🚶 <i>гуляют </i><span class="mn-num" data-cn="g"></span></b>';
-    const ht = S.hm ? `Были в шахте за последние ${S.hm} мин` : 'Сейчас в шахте', hb = ce.querySelector('[data-cn="ht"]'); if (hb && hb.title !== ht) hb.title = ht;
+    if (!ce.firstChild) ce.innerHTML = '<b data-cn="ht" title="Сейчас в шахте">👥 <i>В шахте </i><span class="mn-num" data-cn="here"></span></b><b data-cn="wt" title="Сейчас копают">⛏ <i>копают </i><span class="mn-num" data-cn="w"></span></b><b title="Гуляют по шахте (с открытым сайтом)" data-cn="gt" hidden>🚶 <i>гуляют </i><span class="mn-num" data-cn="g"></span></b>';
+    // 30.10 (mine/online-total): числа - вся шахта (все этажи); в Шахте 3.0 (st.deep) в подсказке - сколько копают на этом этаже (st.working вида этажа)
+    const fl = S.st.deep != null ? ` На этом этаже: ${S.st.working || 0}.` : '';
+    const ht = (S.hm ? `Были в шахте за последние ${S.hm} мин (вся шахта).` : 'Сейчас в шахте (вся шахта).') + fl, hb = ce.querySelector('[data-cn="ht"]'); if (hb && hb.title !== ht) hb.title = ht;
+    const wt = 'Сейчас копают (вся шахта).' + fl, wb = ce.querySelector('[data-cn="wt"]'); if (wb && wb.title !== wt) wb.title = wt;
     // 30.10: «гуляют M» (из журнала шахты) - рядом, в шапке
-    const g = S.nOthers || 0, gt = ce.querySelector('[data-cn="gt"]'); if (gt && gt.hidden !== !g) gt.hidden = !g;
+    const g = S.hg != null ? Math.max(0, S.hg - 1) : S.nOthers || 0, gt = ce.querySelector('[data-cn="gt"]'); if (gt && gt.hidden !== !g) gt.hidden = !g;
     for (const [k, v] of [['here', all], ['w', w], ['g', g]]) { const e = ce.querySelector(`[data-cn="${k}"]`); if (e && e.dataset.v !== String(v)) { e.dataset.v = String(v); e.style.setProperty('--mn-n', String(v)); e.setAttribute('aria-label', String(v)); } }
     ce.hidden = false;
   }
@@ -1616,7 +1643,9 @@
      телефон) - нижняя полоса: сцена (.mn-view) кончается над чатом / строкой кнопок, под ними ничего из шахты нет; камера, если
      смотрела на вход, остаётся на входе. Свернуть - «×» в чате: язычок «Чат» с числом непрочитанных у левого края (на телефоне - в
      строке кнопок, «−/+» - справа). Открыт / свёрнут - запоминается у зрителя (localStorage lgMineChat, packages/site-ui/chat.js).
-     Пересчёт - по событиям (размер окна, камера, открыть / свернуть, панель, сумка), без кадров */
+     Пересчёт - по событиям (размер окна, камера, открыть / свернуть, панель, сумка), без кадров.
+     30.10 (стример): на ПК полосы больше нет - открытый чат всегда окно поверх сцены (слева от зала, если там есть место, иначе слева
+     внизу), его тянут за края и переставляют за заголовок; полоса и «слева от зала» с подгонкой ширины - только на телефоне */
   const shown = (e) => !!e && !e.hidden && e.getClientRects().length > 0;
   // 30.10: правой панели нет - у правой стены зала ничего не ставим (было data-dock); остаётся низ шапки: до него сцену можно опустить,
   // чтобы верх зала был виден (S.topPad), и облачка не заходят под шапку
@@ -1635,22 +1664,45 @@
     const z = Math.max(0.25, Math.min(1.6, Math.min(1, vw < W.W ? vw / gridW : vw / W.W, vh / (W.RH * 9)) * (S.zk || 1)));
     return (vw - W.W * z) / 2;
   }
+  // 30.10 (просьба стримера): ПК (мышь, окно шире 720 px) - открытый чат всегда окно поверх сцены (data-chat="free"), сцену не укорачивает
+  // и полосой во всю ширину не встаёт; размер - тянуть за края (packages/site-ui/chat.js), место - перетащить за заголовок (chatDrag).
+  // Телефон (≤ 720 px или касание без мыши) - как было: нижняя полоса (band) или слева от зала (side)
+  const pcChat = () => !window.LGSiteUi.is('phone') && !(window.LGSiteUi.is('nohover') && window.LGSiteUi.is('touch'));
+  const chatSize = () => { const c = one() ? window.LGChatOne : CHM; if (c && c.size) c.size(); };
   function chatFit0() {
     dockFit();
-    const box = S.el.querySelector('.cy-chat'), m2 = S.el.dataset.m2 === '1', phone = window.LGSiteUi.is('phone');
+    const box = S.el.querySelector('.cy-chat'), m2 = S.el.dataset.m2 === '1', phone = window.LGSiteUi.is('phone'), pc = pcChat();
     // телефон: сумка закрывает экран (и прячет чат) - полосу не трогаем, иначе сцена прыгает дважды
     if (phone && S.el.dataset.chat && S.el.classList.contains('bag-on')) return;
-    let dock = '';
+    let dock = '', room = false;
     if (m2 && shown(box)) {
       const free = Math.floor(txFull() - 24);   // слева от шахты (вид начинается у левого края)
-      if (!phone && S.chatPos && box.classList.contains('open')) dock = 'free';   // 26.10: перетащен зрителем - стоит, где поставили
-      else if (!phone && free >= 240) { const w = Math.min(360, free); dock = 'side'; box.style.setProperty('--mn-chw', w + 'px'); box.style.setProperty('--mn-chx', Math.max(12, Math.round(S.tx - 16 - w)) + 'px'); }   // вплотную к левой стене зала
-      else { dock = 'band'; box.style.removeProperty('--mn-chw'); box.style.removeProperty('--mn-chx'); }
+      if (pc) {
+        // слева от зала есть место - по умолчанию чат там (не на предметах входа), иначе - слева внизу поверх сцены
+        room = free >= 280;
+        dock = box.classList.contains('open') ? 'free' : 'tab';
+        if (room) box.style.setProperty('--mn-chw', Math.min(360, free) + 'px'); else box.style.removeProperty('--mn-chw');
+        S.chatDx = room ? Math.max(12, Math.round(S.tx - 16 - Math.min(360, free))) : 12;
+      } else if (!phone && S.chatPos && box.classList.contains('open')) {
+        // 26.10: перетащен зрителем - стоит, где поставили
+        dock = 'free';
+      } else if (free >= 240) {
+        // вплотную к левой стене зала
+        const w = Math.min(360, free); dock = 'side'; box.style.setProperty('--mn-chw', w + 'px'); box.style.setProperty('--mn-chx', Math.max(12, Math.round(S.tx - 16 - w)) + 'px');
+      } else { dock = 'band'; box.style.removeProperty('--mn-chw'); box.style.removeProperty('--mn-chx'); }
     }
     if (S.el.dataset.chat !== dock) S.el.dataset.chat = dock;
-    if (dock === 'free') chatPlace(box);
-    let res = 0, padC = 0;
-    if (dock === 'band') {
+    // шапка шахты сверху - выше неё чат не растягивается (chat.js: data-chat-top)
+    const tp = String(S.topPad || 0); if (S.el.dataset.chatTop !== tp) S.el.dataset.chatTop = tp;
+    let res = 0, padC = 0, padA = 0;
+    if (dock === 'free') {
+      chatSize();
+      const p = chatPlace(box);
+      // чат поверх зала: камеру можно поднять, чтобы низ этажа (вход, подъёмник) вышел из-под чата; сама камера не прыгает
+      const w = box.offsetWidth, h = box.offsetHeight;
+      if (p.x < S.tx + S.Wd.W * S.z && p.x + w > S.tx) padA = Math.max(0, Math.round(p.b + h + 6));
+    } else chatSize();
+    if (dock === 'band' || (dock === 'tab' && !room)) {
       const top0 = S.el.getBoundingClientRect().top, h = S.el.clientHeight; let top = h;
       for (const e of [box, S.el.querySelector('.mn-zoom')]) if (shown(e)) top = Math.min(top, e.getBoundingClientRect().top - top0);
       res = Math.max(0, Math.round(h - top + 6));
@@ -1658,9 +1710,10 @@
       // кнопки лежат поверх сцены, а камера у нижнего края может поднять вход над ними (padB)
       if (!box.classList.contains('open')) { padC = res; res = 0; }
     }
-    if (res === (S.res || 0) && padC === (S.padC || 0)) return;
-    const atB = S.ty <= S.view.clientHeight - S.Wd.H * S.z - padB() + 2;   // камера у входа - и останется у входа
-    S.res = res; S.padC = padC; S.view.style.bottom = res ? res + 'px' : '';
+    if (res === (S.res || 0) && padC === (S.padC || 0) && padA === (S.padA || 0)) return;
+    // камера у входа - и останется у входа (запас под чатом, padA, камеру не двигает)
+    const atB = (res !== (S.res || 0) || padC !== (S.padC || 0)) && S.ty <= S.view.clientHeight - S.Wd.H * S.z - padB() + 2;
+    S.res = res; S.padC = padC; S.padA = padA; S.view.style.bottom = res ? res + 'px' : '';
     fit(atB ? true : undefined);
   }
   function chatWatch() {
@@ -1672,48 +1725,64 @@
     S.chatMo = mo;
   }
   /* 26.10 (mine2, просьба игрока, одобрил стример): на ПК чат шахты можно взять за заголовок («ЧАТ ШАХТЫ») и поставить в любое место
-     экрана - режим data-chat="free": chatFit его не двигает и сцену не укорачивает. Позиция (и высота ленты, если её потянули за угол)
-     помнится у зрителя (localStorage lgMineChatPos); окно стало меньше - чат прижимается в видимую область (сохранённое место не
-     меняется: окно снова больше - чат там, где был). Двойной клик по заголовку или «⤢» - на место (авто-раскладка). Кнопки заголовка
-     и поле ввода не тащат. Телефон (≤ 720 px) и нижняя полоса (band) - не перетаскивается. Только события указателя, в покое ничего. */
+     экрана - режим data-chat="free": chatFit его не двигает и сцену не укорачивает. Позиция помнится у зрителя (localStorage
+     lgMineChatPos: x - от левого края, b - от нижнего края шахты: окно растёт вверх, когда тянут верхний край); окно стало меньше -
+     чат прижимается в видимую область (сохранённое место не меняется: окно снова больше - чат там, где был). 30.10: двойной клик по
+     заголовку - место и размер по умолчанию (кнопки «⤢» больше нет: на ПК чат всегда окно поверх сцены, «на место» - не нужно).
+     Кнопки заголовка и поле ввода не тащат. Телефон (≤ 720 px) и нижняя полоса (band) - не перетаскивается. Только события указателя. */
   const CHAT_POS = 'lgMineChatPos';
   function chatPosLoad() {
-    try { const p = JSON.parse(localStorage.getItem(CHAT_POS) || 'null'); if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) return { x: +p.x, y: +p.y, ...(Number.isFinite(p.h) ? { h: +p.h } : {}) }; } catch (e) {}
+    try {
+      const p = JSON.parse(localStorage.getItem(CHAT_POS) || 'null');
+      if (p && Number.isFinite(p.x) && Number.isFinite(p.b)) return { x: +p.x, b: +p.b };
+      // до 30.10 - от верхнего края (y): пересчитаем в b при первой расстановке (chatPlace)
+      if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) return { x: +p.x, y: +p.y };
+    } catch (e) {
+      // в хранилище чужое или оно закрыто - место по умолчанию
+      return null;
+    }
     return null;
   }
-  function chatPosSave() { try { if (S.chatPos) localStorage.setItem(CHAT_POS, JSON.stringify(S.chatPos)); else localStorage.removeItem(CHAT_POS); } catch (e) {} }
-  // поставить перетащенный чат: ширина как у бокового (до 360), целиком в видимой области шахты
-  function chatPlace(box, x, y) {
-    const W = S.el.clientWidth, H = S.el.clientHeight, w = Math.max(240, Math.min(360, W - 24)), p = S.chatPos;
-    box.style.setProperty('--mn-chw', w + 'px');
-    const l = box.querySelector('.cy-chat-l'); if (l) { const lh = p.h ? p.h + 'px' : ''; if (l.style.height !== lh) l.style.height = lh; }
-    const h = box.offsetHeight || 0;
-    const cx = Math.round(Math.max(0, Math.min(W - w, x != null ? x : p.x))), cy = Math.round(Math.max(0, Math.min(H - h, y != null ? y : p.y)));
-    box.style.setProperty('--mn-cfx', cx + 'px'); box.style.setProperty('--mn-cfy', cy + 'px');
-    return { x: cx, y: cy };
+  function chatPosSave() {
+    try { if (S.chatPos) localStorage.setItem(CHAT_POS, JSON.stringify(S.chatPos)); else localStorage.removeItem(CHAT_POS); } catch (e) {
+      // приватный режим - место живёт до закрытия шахты
+      S.chatPos = S.chatPos || null;
+    }
+  }
+  // поставить чат (data-chat="free"): x, b (от нижнего края) - куда; не задано - сохранённое место или по умолчанию (слева внизу; есть
+  // место слева от зала - вплотную к его левой стене); целиком в видимой области шахты. Вернёт { x, b } - где встал
+  function chatPlace(box, x, b) {
+    const W = S.el.clientWidth, H = S.el.clientHeight, w = box.offsetWidth || 0, h = box.offsetHeight || 0, p = S.chatPos;
+    if (p && p.b == null && Number.isFinite(p.y)) { p.b = Math.max(0, Math.round(H - p.y - h)); delete p.y; chatPosSave(); }
+    // по умолчанию левый край - у левой стены зала по ширине по умолчанию (S.chatDx): потянули правый край - левый не едет
+    const dx = S.chatDx || 12, dB = 64;
+    // на месте по умолчанию чат не заходит на шапку шахты (S.topPad), даже когда его вытянули вверх; поставленный зрителем - где поставили
+    const bMax = H - h - (b == null && !p ? Math.min(S.topPad || 0, Math.max(0, H - h)) : 0);
+    const cx = Math.round(Math.max(0, Math.min(W - w, x != null ? x : p ? p.x : dx))), cb = Math.round(Math.max(0, Math.min(bMax, b != null ? b : p ? p.b : dB)));
+    box.style.setProperty('--mn-cfx', cx + 'px'); box.style.setProperty('--mn-cfb', cb + 'px');
+    return { x: cx, b: cb };
   }
   function chatHome() {
     if (!S) return;
     S.chatPos = null; chatPosSave();
-    const box = S.el.querySelector('.cy-chat'); if (box) { for (const k of ['--mn-cfx', '--mn-cfy']) box.style.removeProperty(k); const l = box.querySelector('.cy-chat-l'); if (l) l.style.height = ''; }
+    const box = S.el.querySelector('.cy-chat'); if (box) for (const k of ['--mn-cfx', '--mn-cfb']) box.style.removeProperty(k);
     chatFit();
   }
   function chatDrag() {
-    const box = S.el.querySelector('.cy-chat'), hd = box && box.querySelector('.cy-chat-h'), l = box && box.querySelector('.cy-chat-l');
+    const box = S.el.querySelector('.cy-chat'), hd = box && box.querySelector('.cy-chat-h');
     if (!hd) return;
     S.chatPos = chatPosLoad();
-    // «на место» - маленькая кнопка в заголовке, видна, только пока чат перетащен (CSS: .mn[data-chat="free"])
-    const hb = document.createElement('button'); hb.type = 'button'; hb.className = 'mn-chat-home'; hb.textContent = '⤢';
-    hb.title = 'Вернуть чат на место'; hb.setAttribute('aria-label', 'Вернуть чат на место'); hb.onclick = chatHome;
-    hd.insertBefore(hb, hd.querySelector('.cy-chat-sh') || hd.querySelector('.cy-chat-x'));
     const can = () => !!S && S.el.dataset.m2 === '1' && !window.LGSiteUi.is('phone') && (S.el.dataset.chat === 'side' || S.el.dataset.chat === 'free');
     const noDrag = (t) => !!(t && t.closest && t.closest('button, input, a, select, textarea'));
     let d = null;
     hd.addEventListener('pointerdown', (e) => {
       if (e.button !== 0 || noDrag(e.target) || !can()) return;
       const r = box.getBoundingClientRect(), o = S.el.getBoundingClientRect();
-      d = { id: e.pointerId, sx: e.clientX, sy: e.clientY, x: r.left - o.left, y: r.top - o.top, moved: false };
-      try { hd.setPointerCapture(e.pointerId); } catch (x) {}
+      d = { id: e.pointerId, sx: e.clientX, sy: e.clientY, x: r.left - o.left, b: o.bottom - r.bottom, moved: false };
+      try { hd.setPointerCapture(e.pointerId); } catch (x) {
+        // без захвата перетаскивание идёт, пока указатель над заголовком
+        d.nc = 1;
+      }
       e.preventDefault();   // без выделения текста
     });
     hd.addEventListener('pointermove', (e) => {
@@ -1722,39 +1791,34 @@
       if (!d.moved) {
         if (Math.abs(dx) + Math.abs(dy) < 4) return;
         d.moved = true;
-        // 26.10: из бокового положения лента растянута на высоту зала, в свободном - без высоты и вытягивалась до 70vh («разворачивается»):
-        // берём высоту, которую зритель видел, - чат едет за курсором того же размера
-        const lh = l && !l.hidden ? Math.round(Math.min(l.getBoundingClientRect().height, window.innerHeight * 0.7)) : 0;
-        const h = S.chatPos && S.chatPos.h ? S.chatPos.h : lh >= 60 ? lh : 0;
-        S.chatPos = { x: d.x, y: d.y, ...(h ? { h } : {}) }; box.classList.add('mn-chat-drag'); chatFit();
+        S.chatPos = { x: d.x, b: d.b }; box.classList.add('mn-chat-drag'); chatFit();
       }
-      const p = chatPlace(box, d.x + dx, d.y + dy); S.chatPos.x = p.x; S.chatPos.y = p.y;
+      const p = chatPlace(box, d.x + dx, d.b - dy); S.chatPos.x = p.x; S.chatPos.b = p.b;
     });
     const up = (e) => {
       if (!d || e.pointerId !== d.id) return;
       const was = d.moved; d = null; box.classList.remove('mn-chat-drag');
-      try { hd.releasePointerCapture(e.pointerId); } catch (x) {}
-      if (was && S) chatPosSave();
+      try { if (hd.hasPointerCapture && hd.hasPointerCapture(e.pointerId)) hd.releasePointerCapture(e.pointerId); } catch (x) { console.error('[шахта] чат', x); }
+      if (was && S) { chatPosSave(); chatFit(); }
     };
     hd.addEventListener('pointerup', up); hd.addEventListener('pointercancel', up);
-    hd.addEventListener('dblclick', (e) => { if (noDrag(e.target) || !S || !S.chatPos) return; chatHome(); });
-    // высота ленты: в перетащенном чате ленту можно потянуть за нижний правый угол (CSS resize: браузер пишет style.height) - запоминаем
-    if (l && window.ResizeObserver) {
-      S.chatRo = new ResizeObserver(() => {
-        if (!S || S.el.dataset.chat !== 'free' || !S.chatPos || l.hidden) return;
-        const h = Math.round(parseFloat(l.style.height));
-        if (h >= 60 && h !== S.chatPos.h) { S.chatPos.h = h; clearTimeout(S.chatHT); S.chatHT = setTimeout(() => { if (S) chatPosSave(); }, 300); }
-        if (!d) chatPlace(box);   // лента выросла (сообщения, потянули) - чат не уходит за нижний край
-      });
-      S.chatRo.observe(l);
-    }
+    // двойной клик по заголовку - место по умолчанию (размер по умолчанию - chat.js)
+    hd.addEventListener('dblclick', (e) => { if (noDrag(e.target) || !S || !pcChat()) return; chatHome(); });
+  }
+  // 30.10: тянут край чата (chat.js, событие «cy-chat-size») - чат остаётся в видимой области; отпустили - пересчёт запаса под чатом (padA)
+  function chatSized(e) {
+    if (!S || S.el.dataset.chat !== 'free') return;
+    const box = S.el.querySelector('.cy-chat'); if (!box) return;
+    if (e && e.detail && e.detail.end) chatFit(); else chatPlace(box);
   }
   // 25.10: на телефоне снизу — свёрнутая панель: вход (Скупщик, подъёмник) можно поднять над ней, а не прятать под ней
   // 30.10: правой (на телефоне - нижней) панели больше нет - снизу сцену ничто не закрывает, кроме полосы чата (S.res)
   // 30.10 (репорт #2140): свёрнутый чат лежит поверх сцены - нижний край этажа можно поднять над язычком и «−/+» (S.padC, chatFit0)
   const padB = () => (S && S.padC) || 0;
   // 26.10 (mine2): верх зала (клеть «ЭТАЖ N ↓») можно опустить под шапку - шапка его не закрывает (S.topPad - низ шапки, dockFit)
-  function clampY() { if (S.Wd && S.Wd.v3) return clamp3(); const vh = S.view.clientHeight, H = S.Wd.H * S.z; S.ty = Math.min(S.topPad || 0, Math.max(vh - H - padB(), S.ty)); }
+  // 30.10: открытый чат поверх зала (ПК) - низ этажа можно поднять над ним (S.padA), но сама камера к этому не прыгает
+  const padX = () => Math.max(padB(), (S && S.padA) || 0);
+  function clampY() { if (S.Wd && S.Wd.v3) return clamp3(); const vh = S.view.clientHeight, H = S.Wd.H * S.z; S.ty = Math.min(S.topPad || 0, Math.max(vh - H - padX(), S.ty)); }
   /* 29.10 (Шахта 3.0): камера во все стороны. Масштаб: телефон - ~7 клеток по ширине, ПК - до 15 клеток и не крупнее 1:1 («−» / «+» - свой).
      Начало - на своём герое (зал лифта). Края - не дальше края пещеры (за ней - сплошная порода). */
   function fit3(reset) {
@@ -1766,9 +1830,9 @@
   }
   const m3Margin = () => { const G3 = S.Wd && S.Wd.G; return G3 ? G3.PAD * G3.CW * 0.5 : 0; };
   function clamp3() {
-    const W = S.Wd, vw = S.view.clientWidth, vh = S.view.clientHeight - padB(), mg = m3Margin() * S.z, w = W.W * S.z, h = W.H * S.z;
+    const W = S.Wd, vw = S.view.clientWidth, vh = S.view.clientHeight - padB(), mg = m3Margin() * S.z, w = W.W * S.z, h = W.H * S.z, pa = Math.max(0, ((S && S.padA) || 0) - padB());
     S.tx = w - 2 * mg <= vw ? (vw - w) / 2 : Math.min(-mg, Math.max(vw - w + mg, S.tx));
-    S.ty = h - 2 * mg <= vh ? (vh - h) / 2 : Math.min(-mg, Math.max(vh - h + mg, S.ty));
+    S.ty = h - 2 * mg <= vh ? (vh - h) / 2 : Math.min(-mg, Math.max(vh - h + mg - pa, S.ty));
   }
   // смена камеры на большом этаже: дорисовать куски, вошедшие в кадр (раз за кадр браузера)
   function camMoved() { if (!V3() || !S.m3 || S.camRaf) return; S.camRaf = requestAnimationFrame(() => { if (!S) return; S.camRaf = 0; S.m3.ensure(); if (S.st && S.F) bars(); }); }
