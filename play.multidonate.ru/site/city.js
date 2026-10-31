@@ -155,7 +155,9 @@
     const N = window.LGHwNpc; if (!N || !N.open) return;
     const st = await loadStock().catch(() => null);
     N.open(id, { hero: () => X.hero(), data: (st && st.hw) || null, D: window.MDDoodle, login: () => (X.login ? X.login() : ''), toast: (t) => X.toast && X.toast(t), swap: async (b) => { const r = await X.api('/api/hwSwap', b); if (!r || !r.ok) { if (X.toast) X.toast((r && r.error) || 'Обмен не вышел', true); throw new Error('swap'); } if (X.toast) X.toast('Обмен принят: монеты придут через пару секунд'); },
-      buy: async (b) => { const r = await X.api('/api/hwBuy', b); if (!r || !r.ok) { if (X.toast) X.toast((r && r.error) || 'Обмен не вышел', true); throw new Error('buy'); } } });   // 29.10: покупка вещи / облика кнопкой - ответ комнаты придёт в app.js (LGHwNpc.result)   // 29.10: обмен конфет на монеты
+      buy: async (b) => { const r = await X.api('/api/hwBuy', b); if (!r || !r.ok) { if (X.toast) X.toast((r && r.error) || 'Обмен не вышел', true); throw new Error('buy'); } },
+      // 31.10 (feat/hw-pass20): «Забрать» награду пасса (ур. 20 - выбранное оружие) - ответ комнаты придёт в app.js (LGHwNpc.result)
+      pick: async (b) => { const r = await X.api('/api/hwPick', b); if (!r || !r.ok) { if (X.toast) X.toast((r && r.error) || 'Забрать не вышло', true); throw new Error('pick'); } } });   // 29.10: покупка вещи / облика кнопкой - ответ комнаты придёт в app.js (LGHwNpc.result)   // 29.10: обмен конфет на монеты
   }
   const titleOf = (b) => (b && b.id === 'magic' && msOn() ? String(X.hero().ms) : (b && b.title) || '');
   const still = (svg) => String(svg).replace(/<(animate|animateTransform|animateMotion|set)\b[^>]*?(\/>|>[\s\S]*?<\/\1>)/g, '');

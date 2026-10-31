@@ -164,6 +164,15 @@
     const st = b.hp == null ? 'out' : b.hp === 0 ? 'dead' : b.hp < 0 ? 'fled' : i >= 0 || f ? 'on' : 'reserve';
     return { l, p, st, side: p ? p[2] || 'R' : f ? f[1] || 'R' : '', role: p ? p[1] : f ? f[0] : (X.hero() && X.hero().role) || 'recruit' };
   }
+  // 31.10 (стример): мой герой пал в этом бою (бой похода или с боссом) - вместо подсказок и кнопок значок смерти.
+  // rev - в этом бою могут воскресить (обычный бой: донат, свиток, жрец); бой с боссом - только конец боя
+  function deadIn(v) {
+    if (!v) return null;
+    if (v.bg && v.bg.st !== 'end' && v.bg.in && !(v.bg.my > 0)) return { rev: false };
+    if (v.b && v.b.st !== 'end' && meIn(v.b).st === 'dead') return { rev: !v.b.gb };
+    return null;
+  }
+  const deadHtml = (d) => `<section class="q-card q-dead" role="status"><p class="q-big"><span class="q-skull" aria-hidden="true">💀</span> Пал в бою</p><p class="muted">${d.rev ? 'жди конца боя или воскрешения' : 'жди конца боя'}</p></section>`;
   const multi = (b) => !!(b.cr && b.cr.fr && b.cr.fr.length > 1) || b.two;
   function cmdFor(b, m) {
     const base = BASE_CMD[m.role] || 'удар';
@@ -299,7 +308,7 @@
   }
   /* 26.10 (п. 26): арена босса - площадки (контуры как на стриме), опасные - красным, уцелеющие - зелёным, своя - «ты»; кнопки «прыжок N»:
      на соседнюю (или на любую, если механика разрешает) - уходят строкой */
-  function zonesHtml(g, M) {
+  function zonesHtml(g, M, noBtn) {
     const Z = g.zn, gone = new Set(Z.gone || []), my = g.area || 0, bad = new Set(M.id === 'M32' ? [] : M.zones || []), keep = new Set(M.id === 'M32' ? M.zones || [] : []);
     const pts = Z.a.flatMap((a) => a[2]); if (!pts.length) return '';
     const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]), x0 = Math.min(...xs) - 40, y0 = Math.min(...ys) - 40, w = Math.max(...xs) - x0 + 40, hgt = Math.max(...ys) - y0 + 40;
@@ -307,22 +316,27 @@
     const shapes = Z.a.map(([n, , P]) => { if (!P.length) return ''; const [cx, cy] = cen(P), cls = gone.has(n) ? 'gone' : bad.has(n) ? 'bad' : keep.has(n) ? 'keep' : '';
       return `<g class="za ${cls}${n === my ? ' me' : ''}"><polygon points="${P.map((p) => p.join(',')).join(' ')}"/><text x="${cx}" y="${cy}" dy="0.35em">${n}</text>${n === my ? `<text class="you" x="${cx}" y="${cy + 70}">ты</text>` : ''}</g>`; }).join('');
     const nb = (Z.a.find((a) => a[0] === my) || [0, []])[1], cand = Z.a.map((a) => a[0]).filter((n) => !gone.has(n) && n !== my && (M.any || !my || nb.includes(n)));
-    const btns = qaOn() && X.say && cand.length ? `<div class="qa-row">${cand.map((n) => `<button type="button" class="qa-b ${bad.has(n) ? 'warn' : keep.has(n) ? 'main' : ''}" data-qpb="${esc('прыжок ' + n)}">⤴ на площадку ${n}</button>`).join('')}</div>` : '';
+    const btns = !noBtn && qaOn() && X.say && cand.length ? `<div class="qa-row">${cand.map((n) => `<button type="button" class="qa-b ${bad.has(n) ? 'warn' : keep.has(n) ? 'main' : ''}" data-qpb="${esc('прыжок ' + n)}">⤴ на площадку ${n}</button>`).join('')}</div>` : '';
     const art = `<svg viewBox="${x0} ${y0} ${w} ${hgt}" role="img" aria-label="Арена: площадки ${Z.a.map((a) => a[0]).join(', ')}${my ? `; ты на площадке ${my}` : ''}">${shapes}</svg>${my ? '' : '<p class="muted">Где ты - видно на стриме</p>'}`;
     if (SCH) { SCH.h += `<div class="q-arena">${art}</div>`; return btns; }   // 26.10: раскладка - схема арены слева, кнопки «прыжок» - в окне действий
     return `<div class="q-arena">${art}${btns}</div>`;
   }
   // 25.10: бой с генерированным боссом - босс (фаза, здоровье, приспешники), механика сейчас (что писать, слово, варианты, счётчик, таймер), мой герой
   function bgHtml(v, mid = '') {
-    const g = v.bg, M = g.mech;
+    const g = v.bg, M = g.mech, D = deadIn(v);
+    // 31.10: павшему - без кнопок и подсказок: схема арены и здоровье босса остаются
+    if (D) mid = '';
     const stage = M ? `${esc(M.name)}${M.until ? ` · <span data-until="${M.until}"></span> с` : ''}` : g.st === 'party' ? 'Ход отряда' : g.st === 'boss' ? 'Ход босса' : g.st === 'trans' ? 'Новая фаза' : g.st === 'end' ? 'Бой окончен' : 'Бой';
     let h = `<div class="q-stage ${M ? 'tele' : g.st === 'party' ? 'party' : ''}"><b>${stage}</b><span>фаза ${g.ph} из ${g.phs}${g.hw && g.hw.phn ? ` «${esc(g.hw.phn)}»` : ''}${g.limit ? ` · ход ${g.round} из ${g.limit}` : ''}${g.form ? ` · «${esc(g.form)}»` : ''}${g.rage ? ' · ярость: удары сильнее' : ''}</span></div>` + mid;
     let bc = `<section class="q-card q-bgc"><p><b>${esc(g.name)}</b>, ${esc(g.title)} · ★${g.danger} · здоровье ${Math.round(g.hp * 100)}%</p>${hpBar(g.hp)}`;
     if (g.adds && g.adds.length) bc += `<p class="muted">Приспешники: ${g.adds.map((a) => `${esc(a[0])} ${a[1]} (${Math.round(a[2] * 100)}%)`).join(', ')} - пиши «удар ${esc(g.adds[0][0])} N»: пока живы, урон по боссу вдвое меньше</p>`;
     bc += '</section>';
     if (SCH) SCH.h += bc; else h += bc;   // 26.10: раскладка - босс над ареной (схема)
-    if (g.hw) h += jackHtml(g, M);   // HW: Джек-Фонарщик - фонари, горячая тыква, куранты
-    if (M) {
+    if (g.hw && !D) h += jackHtml(g, M);   // HW: Джек-Фонарщик - фонари, горячая тыква, куранты
+    if (D) {
+      if (g.zn && M && M.fam === 'position') { const z = zonesHtml(g, M, true); if (!SCH) h += z; }
+      h += deadHtml(D);
+    } else if (M) {
       h += `<section class="q-card"><h3>${esc(M.name)}</h3>`;
       if (M.fake) h += '<p><b class="urge">ФИНТ - ничего не пиши!</b></p>';
       if (M.text) h += `<p>${ncText(M.text)}</p>`;
@@ -336,7 +350,7 @@
       if (M.need != null) h += `<p class="muted">Набрано ${M.got != null ? M.got : 0} из ${M.need}</p>`;
       h += '</section>';
     } else if (g.st === 'party') h += `<section class="q-card"><p>${g.acted ? `${svgI('check', 'ok')} Твой ход принят` : 'Пиши в чат: <b>удар</b> · <b>выстрел</b> · <b>магия</b> · <b>лечить</b> (или умение класса)'}</p></section>`;
-    if (!SCH) h += `<section class="q-card"><p>${g.in ? (g.my > 0 ? 'Твой герой в бою' : 'Твой герой пал') : 'Ты не в этом бою'}</p>${g.in ? hpBar(g.my) : ''}</section>`;   // раскладка: герой - в карточке героя
+    if (!SCH && !D) h += `<section class="q-card"><p>${g.in ? (g.my > 0 ? 'Твой герой в бою' : 'Твой герой пал') : 'Ты не в этом бою'}</p>${g.in ? hpBar(g.my) : ''}</section>`;   // раскладка: герой - в карточке героя
     if (SCH && !(g.zn && M && M.fam === 'position')) SCH.h += bossArt(g);
     return h;
   }
@@ -361,9 +375,10 @@
     const b = v.b, m = meIn(b);
     const stage = b.st === 'party' ? `Ход отряда · <span data-until="${b.until}"></span> с` : b.st === 'tele' ? (b.gb ? 'Ход босса' : `Ход врага · <span data-until="${b.until}"></span> с`) : b.st === 'mech' ? 'Механика босса' : b.st === 'trans' ? 'Новая фаза босса' : b.st === 'end' ? 'Бой окончен' : b.st === 'intro' ? 'Бой начинается…' : 'Удары!';
     let h = `<div class="q-stage ${b.st}"><b>${stage}</b><span>раунд ${b.round}${b.gb ? '' : ` из ${b.maxR}`}${b.cr && b.cr.fr.length > 1 ? ` · враги ${b.cr.fr.map((s) => ({ L: 'слева', R: 'справа', F: 'вдали' }[s])).join(', ')}` : ''}</span></div>`;
-    const qa = qaOn();   // 25.10: тестерам — кнопки сразу под стадией (видно без прокрутки), слово врага — кнопкой «Блок» в той же панели
+    const qa = qaOn(), D = deadIn(v);   // 25.10: тестерам — кнопки сразу под стадией (видно без прокрутки), слово врага — кнопкой «Блок» в той же панели
     if (qa) h += qaBattle(v, b, m);
-    if (b.tele && !qa) h += `<section class="q-card q-urge"><p class="q-big">${esc(b.tele.text || 'Враг атакует!')}</p><p>${b.tele.ok ? `${svgI('check', 'ok')} ты написал «${esc(b.tele.word)}» — принято` : `Пиши в чат <b class="w">${esc(b.tele.word)}</b>`}</p><p class="muted">${b.tele.got} из ${b.tele.need} нужных</p></section>`;
+    if (D) h += deadHtml(D);
+    else if (b.tele && !qa) h += `<section class="q-card q-urge"><p class="q-big">${esc(b.tele.text || 'Враг атакует!')}</p><p>${b.tele.ok ? `${svgI('check', 'ok')} ты написал «${esc(b.tele.word)}» — принято` : `Пиши в чат <b class="w">${esc(b.tele.word)}</b>`}</p><p class="muted">${b.tele.got} из ${b.tele.need} нужных</p></section>`;
     // схема отряда
     const where = m.st === 'on' ? `Где ты в строю${multi(b) && m.side ? ' · ' + SIDE_RU[m.side] : ''}` : m.st === 'reserve' ? 'Ты в бою, но вне кадра стрима' : m.st === 'dead' ? 'Твой герой пал' : m.st === 'fled' ? 'Ты сбежал из боя' : 'Тебя нет в этом бою';
     const sq = b.gb ? qaBoss(b) + (SCH ? bossArt(b.gb) : '')   // 25.10: генерированный босс — карточка босса (строя нет)
@@ -1365,6 +1380,8 @@
   const GROUPS = [['', ''], ['tg', 'Помочь своим'], ['act', ''], ['esc', 'Уйти из боя']];
   function pbHtml(v) {
     if (!v.pb || !v.pb.b || !v.pb.b.length || !qaOn() || !X.say) return '';
+    // 31.10: пал в этом бою - кнопок нет (вместо них - «Пал в бою» в окне действий)
+    if (deadIn(v)) return '';
     const arm = (t) => PBA.k === t && Date.now() - PBA.at < 4000, role = (X.hero() && X.hero().role) || '';
     const inB = !v.b || ['on', 'reserve'].includes(meIn(v.b).st);   // бегство, «вытащить», «освободить» - только тем, кто в этом бою
     const list = v.pb.b.filter((x) => !(x.x && x.x.role && !x.x.role.split(',').includes(role)) && (inB || !['esc', 'tg'].includes(x.g || ''))), warnOn = list.find((x) => x.c === 'warn' && arm(x.t));

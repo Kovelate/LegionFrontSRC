@@ -55,10 +55,28 @@
   const hwTok = (st) => Object.assign({ line: '#f5f2ff', ink: '#15122e', sw: 4, face: '#15122e' }, (st && st.hw) || {});
   function hwHats(k, T) {
     const b = k.b, t = b.square ? b.top - 5 : b.top, hw = b.hw, cx = 60, O = `stroke="${T.line}" stroke-width="${T.sw}" stroke-linejoin="round" stroke-linecap="round"`, I = `stroke="${T.ink}" stroke-width="2" stroke-linejoin="round"`;
-    const pr = hw + 7, py = t - 6;
-    const pumpkin = `<g class="jd-hw-hat"><path d="M${cx - 2} ${py - 15} q1 -9 7 -11" fill="none" stroke="#4e7a2e" stroke-width="5" stroke-linecap="round"/><path d="M${cx + 3} ${py - 17} q8 -6 14 -2 q-8 5 -14 2 z" fill="#6fae3a" ${I}/>`
-      + `<ellipse cx="${cx}" cy="${py}" rx="${f1h(pr)}" ry="15" fill="#ff7a1a" ${O}/><path d="M${f1h(cx - pr * 0.45)} ${py - 13} q-5 13 0 27 M${cx} ${py - 15} v30 M${f1h(cx + pr * 0.45)} ${py - 13} q5 13 0 27" fill="none" stroke="#c4520e" stroke-width="2.4"/>`
-      + `<path d="M${cx - 12} ${py - 2} l5 -7 l5 7 z M${cx + 2} ${py - 2} l5 -7 l5 7 z" fill="#ffd34d" ${I}/><path d="M${cx - 11} ${py + 5} q11 8 22 0 l-3 3 l-3 -2 l-3 3 l-3 -3 l-3 3 l-3 -2 z" fill="#ffd34d" ${I}/></g>`;
+    // 31.10 (стример: «тыква-фонарь плохо получилась»): тыква-шлем из пяти долек (рёбра - стыки долек), сидит на макушке и не ниже бровей
+    // (лицо героя видно, как у шлема-черепа), вырезанные глаза, нос и улыбка Джека с тёплым светом изнутри, черенок с листом. Без анимации и фильтров
+    const pkR = f1h(Math.max(hw + 9, 24)), pkY0 = f1h(Math.min(t + 10, b.eyeY - 11)), pkH = f1h(Math.min(40, Math.max(30, pkR * 0.95 + 6))), pkC = f1h(pkY0 - pkH / 2), pkTop = f1h(pkC - pkH / 2);
+    // дольки: крайние, средние, центральная (у каждой пары - один path; стыки долек и есть рёбра тыквы)
+    const pkEl = (dx, rx, ry, dy) => { const x = f1h(cx + dx * pkR - rx * pkR), r = f1h(rx * pkR), y = f1h(pkC + dy); return `M${x} ${y} a${r} ${f1h(ry * pkH)} 0 1 0 ${f1h(2 * r)} 0 a${r} ${f1h(ry * pkH)} 0 1 0 ${f1h(-2 * r)} 0Z`; };
+    const pkOut = pkEl(-0.56, 0.44, 0.46, 1) + pkEl(0.56, 0.44, 0.46, 1), pkMid = pkEl(-0.3, 0.4, 0.49, 0) + pkEl(0.3, 0.4, 0.49, 0), pkCen = pkEl(0, 0.4, 0.5, 0);
+    const pkE = f1h(Math.min(9, Math.max(6, pkR * 0.22))), pkEy = f1h(pkC - pkH * 0.12), pkGy = f1h(pkC + pkH * 0.13), pkGw = f1h(pkR * 0.46), pkGd = f1h(pkH * 0.2);
+    const pkTri = (x, sd, w, y0, y1) => `M${f1h(x - w)} ${f1h(y0)} L${f1h(x + sd * w * 0.24)} ${f1h(y1)} L${f1h(x + w)} ${f1h(y0)}Z`;
+    const pkEx = [-1, 1].map((sd) => [f1h(cx + sd * pkR * 0.27), sd]);
+    // вырезы (глаза, нос, улыбка) - одним path, свет внутри - вторым
+    const pkCut = pkEx.map(([x, sd]) => pkTri(x, sd, pkE / 2, pkEy + pkE * 0.42, pkEy - pkE * 0.48)).join('') + `M${cx - 2.5} ${f1h(pkC + pkH * 0.05)}l2.5 -4l2.5 4Z`
+      + `M${f1h(cx - pkGw)} ${pkGy}Q${cx} ${f1h(pkGy + pkGd * 0.55)} ${f1h(cx + pkGw)} ${pkGy}Q${f1h(cx + pkGw * 0.7)} ${f1h(pkGy + pkGd * 1.15)} ${cx} ${f1h(pkGy + pkGd * 1.25)}Q${f1h(cx - pkGw * 0.7)} ${f1h(pkGy + pkGd * 1.15)} ${f1h(cx - pkGw)} ${pkGy}Z`;
+    const pkCore = pkEx.map(([x, sd]) => pkTri(x, sd, pkE * 0.24, pkEy + pkE * 0.36, pkEy - pkE * 0.06)).join('');
+    const pkTx = [-0.36, 0.3].map((u) => [f1h(cx + u * pkGw - 2), f1h(pkGy + pkGd * 0.275 * (1 - u * u))]), pkTh = f1h(pkGd * 0.42);
+    const pumpkin = `<g class="jd-hw-hat"><path d="M${cx - 1} ${f1h(pkTop + 5)}q-1 -10 5 -14" fill="none" stroke="${T.ink}" stroke-width="8.5" stroke-linecap="round"/><path d="M${cx - 1} ${f1h(pkTop + 5)}q-1 -10 5 -14" fill="none" stroke="#6b7a2a" stroke-width="5" stroke-linecap="round"/>`
+      + `<path d="M${cx + 3} ${f1h(pkTop - 3)}q10 -9 18 -2q-9 7 -18 2z" fill="#6fae3a" ${I}/><path d="M${cx - 3} ${f1h(pkTop + 1)}q-8 -2 -7 -9q1 -4 5 -2" fill="none" stroke="#6fae3a" stroke-width="1.8" stroke-linecap="round"/>`
+      + `<path d="${pkOut}${pkMid}${pkCen}" fill="${T.line}" stroke="${T.line}" stroke-width="${T.sw * 2}"/>`
+      + `<path d="${pkOut}" fill="#e0601a" stroke="#a8420c" stroke-width="1.8"/><path d="${pkMid}" fill="#f5721c" stroke="#a8420c" stroke-width="1.8"/><path d="${pkCen}" fill="#ff8424" stroke="#a8420c" stroke-width="1.8"/>`
+      + `<path d="M${f1h(cx - pkR * 0.42)} ${f1h(pkC - pkH * 0.3)}q-4 ${f1h(pkH * 0.2)} -2 ${f1h(pkH * 0.42)}" fill="none" stroke="#ffb066" stroke-width="2.4" stroke-linecap="round" opacity=".8"/>`
+      + `<path d="${pkCut}" fill="#ffc23a" stroke="#6a2406" stroke-width="1.8" stroke-linejoin="round"/><path d="${pkCore}" fill="#fff4b8"/>`
+      + `<path d="M${f1h(cx - pkGw * 0.6)} ${f1h(pkGy + pkGd * 0.5)}Q${cx} ${f1h(pkGy + pkGd * 1.05)} ${f1h(cx + pkGw * 0.6)} ${f1h(pkGy + pkGd * 0.5)}" fill="none" stroke="#fff4b8" stroke-width="2.2" stroke-linecap="round"/>`
+      + `<path d="${pkTx.map(([x, y]) => `M${x} ${f1h(y - 1.5)}h4.4v${f1h(pkTh + 1.5)}h-4.4z`).join('')}" fill="#ff8424"/><path d="${pkTx.map(([x, y]) => `M${x} ${y}v${pkTh}h4.4v${-pkTh}`).join('')}" fill="none" stroke="#6a2406" stroke-width="1.4" stroke-linejoin="round"/></g>`;
     const witch = `<g class="jd-hw-hat"><ellipse cx="${cx}" cy="${t + 5}" rx="${f1h(hw + 17)}" ry="7" fill="#3a2a5e" ${O}/>`
       + `<path d="M${f1h(cx - hw * 0.62)} ${t + 3} Q${cx - 4} ${t - 22} ${cx + 2} ${t - 40} Q${cx + 14} ${t - 46} ${cx + 22} ${t - 36} Q${cx + 12} ${t - 34} ${cx + 9} ${t - 26} Q${cx + 12} ${t - 10} ${f1h(cx + hw * 0.62)} ${t + 3} Z" fill="#5b3fa0" ${O}/>`
       + `<path d="M${f1h(cx - hw * 0.6)} ${t - 1} Q${cx} ${t - 6} ${f1h(cx + hw * 0.6)} ${t - 1}" fill="none" stroke="#ff8a1f" stroke-width="5"/><rect x="${cx - 4}" y="${t - 6}" width="8" height="7" rx="1.5" fill="#ffd34d" ${I}/></g>`;
@@ -321,6 +339,8 @@
     const g = {}, L = Array.isArray(items) ? items : [], on = (sl) => L.find((x) => x && x.slot === sl && x.on !== false), rar = (x) => (x && x.rarity) || 'common';
     const w = on('weapon'), s = on('shield'), a = on('armor'), h = on('helmet'), t = on('trinket');
     if (w && w.look && w.look.weapon) { g.w = w.look.weapon; g.wr = rar(w); }
+    // 31.10 (feat/hw-pass20): своё свечение оружия (look.glow) - как packages/game-data gearOf
+    if (g.w && /^#[0-9a-f]{6}$/i.test(String(w.look.glow || ''))) g.wg = w.look.glow;
     if (s && s.look && s.look.shield) { g.s = s.look.shield; g.sr = rar(s); }
     if (a) { const k = a.look && CATALOG.armors.includes(a.look.armor) ? a.look.armor : a.gear === 'cloth' || a.id === 'robe' ? 'robe' : 'lorica'; g.a = k; g.ar = rar(a); g.am = ['heavy', 'light', 'cloth'].includes(a.gear) ? a.gear : k === 'robe' ? 'cloth' : 'heavy'; }
     if (h && h.look && h.look.hat) { g.h = h.look.hat; g.hr = rar(h); }
@@ -597,12 +617,13 @@
       const a = st.arms.armed(k);   // { svg, right: {x,y} — правая кисть (оружие), left: {x,y} — левая (щит) }
       arms = a.svg;
       const hr = a.right, hl = a.left, H = st.hold;
-      const glow = (rar) => { if (!st.rarityGlow[rar]) return ''; const id = uid('jlR'); return { id, def: st.gearGlow(id, st.rarityGlow[rar]) }; };
+      // 31.10: col - своё свечение вещи (gear.wg у хэллоуинского оружия) вместо цвета редкости; у стиля без свечения редкости - как было (без свечения)
+      const glow = (rar, col) => { if (!st.rarityGlow[rar]) return ''; const id = uid('jlR'); return { id, def: st.gearGlow(id, col || st.rarityGlow[rar]) }; };
       let defs = '';
       // jd-weapon / jd-shield — обёртки для анимаций боя (взмах оружием, щит вперёд): точка поворота — кисть (transform-origin)
       const wa = gear.w && gearArt(st, 'weapon', gear.w, gear.wr);
       front += `<g class="jd-weapon" data-w="${wa ? gear.w : 'fist'}" style="transform-origin:${hr.x}px ${hr.y}px">`;
-      if (wa) { const g = glow(gear.wr); if (g) defs += g.def; front += `<g transform="translate(${hr.x} ${hr.y}) rotate(${H.weaponRot(gear.w)}) scale(${H.weaponScale})"${g ? ` filter="url(#${g.id})"` : ''}>${wa}</g>`; }
+      if (wa) { const g = glow(gear.wr, gear.wg); if (g) defs += g.def; front += `<g transform="translate(${hr.x} ${hr.y}) rotate(${H.weaponRot(gear.w)}) scale(${H.weaponScale})"${g ? ` filter="url(#${g.id})"` : ''}>${wa}</g>`; }
       front += st.hand(k, hr.x, hr.y) + '</g>';
       const sa = gear.s && gearArt(st, 'shield', gear.s, gear.sr);
       if (sa) { const g = glow(gear.sr); if (g) defs += g.def; front += `<g class="jd-shield" style="transform-origin:${hl.x}px ${hl.y}px"><g transform="translate(${hl.x + H.shieldDx} ${hl.y + H.shieldDy}) scale(${H.shieldScale})"${g ? ` filter="url(#${g.id})"` : ''}>${sa}</g></g>`; }

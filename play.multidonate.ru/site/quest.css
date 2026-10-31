@@ -39,6 +39,11 @@ b.dn, .dn { color: var(--dn); } b.up, .up { color: var(--up); } b.hit { color: v
 .q-stage span { color: var(--mute); font-size: var(--t-sm); }
 .q-card { position: relative; padding: var(--s3) var(--s4); border-radius: 14px; background: var(--surface); border: 1px solid var(--line, rgba(127,127,127,.25)); display: flex; flex-direction: column; gap: var(--s2); }
 .q-card.q-urge { border-color: color-mix(in srgb, var(--dn) 55%, transparent); background: color-mix(in srgb, var(--dn) 10%, var(--surface)); }
+/* 31.10: пал в этом бою - вместо подсказок и кнопок */
+.q-card.q-dead { text-align: center; border-color: color-mix(in srgb, var(--dn) 40%, transparent); }
+.q-card.q-dead .q-big { margin: 0; }
+.q-card.q-dead .muted { margin: var(--s1, 4px) 0 0; font-size: var(--t-sm, 0.85em); }
+.q-skull { font-size: 1.4em; vertical-align: -0.1em; }
 .q-big { font-family: var(--hd); font-size: var(--t-xl); line-height: 1.2; }
 .q-card .w { display: inline-block; padding: 2px 10px; border-radius: 8px; background: var(--accent); color: var(--surface); font-size: var(--t-lg); letter-spacing: .02em; }
 .q-ch { display: flex; justify-content: space-between; gap: var(--s2); flex-wrap: wrap; font-size: var(--t-sm); }
