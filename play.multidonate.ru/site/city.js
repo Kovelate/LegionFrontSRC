@@ -874,9 +874,11 @@
       // 23.10: по чужому герою — меню «Предложить обмен» (если обмен открыт); иначе — как раньше
       // 24.10 (стример): мышью - только правой кнопкой (левая - просто идти); на телефоне - тапом, как было
       // 30.10: меню открывается и без обмена, если открыты друзья (window.LGFriends): в нём «Добавить в друзья» и «Заблокировать»
-      // 30.10 (тюрьма): по заключённому - окно Тюрьмы (меню друзей, лички и обмена для него не открывается); сам заключённый - только смотрит
+      // 30.10 (тюрьма): по заключённому - окно Тюрьмы (меню друзей, лички и обмена для него не открывается)
+      // 31.10 (стример): сам заключённый гуляет по клетке: клик в клетке (и по сидящим в ней) - идти туда; по зданию Тюрьмы - окно;
+      // в другом месте - к ближайшей точке пола клетки (jailGo)
+      if (meJail()) { if (inCage(x, y)) { jailGo(x, y); return; } const bj = S.map.hoverAt(x, y); if (bj && bj.id === 'jail') jwOpen(); else jailGo(x, y); return; }
       if (jailAt(x, y)) { jwOpen(); return; }
-      if (meJail()) { const bj = S.map.hoverAt(x, y); if (bj && bj.id === 'jail') jwOpen(); return; }
       const wh = window.LGTrade && ((X.hero() && X.hero().tr) || window.LGFriends) && (e.pointerType !== 'mouse' || e.button === 2) ? walkerAt(x, y) : null;
       if (wh) { window.LGTrade.mount(X, S.el); window.LGTrade.menu(wh.l, wh.v, e.clientX, e.clientY); return; }
       const b = S.map.hoverAt(x, y);
@@ -893,8 +895,10 @@
       const ab = awAt(x, y, 3), k = ab ? 'cy:' + ab.l + ':' + ab.i : '';
       if (k !== (S.awK || '')) { S.awK = k; v.style.cursor = ab ? 'help' : ''; if (ab) awShow(ab); else if (X.awHide) X.awHide('cy:'); }
       if (ab) { hover(null); return; }
+      // 31.10 (тюрьма): заключённому пол клетки не подсвечиваем - клик там значит «идти», а не окно Тюрьмы
+      if (meJail() && inCage(x, y) && !jailAt(x, y)) { hover(null); return; }
       // 30.10 (тюрьма): над заключённым - «ник - в тюрьме канала» (без причины)
-      { const jw = jailAt(x, y); if (jw) { const J = WD.LOW.jail; hover({ id: 'jail', ol: 'jail', r: [J.c0, J.c1, 1100, J.fy], tip: `${jw.v.n || jw.l} - в тюрьме канала` }, x, jw.y - 150 * scaleAt(jw.y) * HS); return; } }
+      { const jw = jailAt(x, y); if (jw) { const J = WD.LOW.jail; hover({ id: 'jail', ol: 'jail', r: [J.c0, J.c1, J.ct - 50, J.fy], tip: `${jw.v.n || jw.l} - в тюрьме канала` }, x, jw.y - 150 * scaleAt(jw.y) * HS); return; } }
       hover(S.map.hoverAt(x, y), x, y);
     });
     v.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') { hover(null); if (S.awK) { S.awK = ''; v.style.cursor = ''; if (X.awHide) X.awHide('cy:'); } } });   // палец «уходит» сразу после тапа — подсветка тапа остаётся
@@ -990,8 +994,9 @@
     S.cam.classList.add('glide'); applyCam(); setTimeout(() => S && S.cam.classList.remove('glide'), 420);
   }
   function goPoint(x, y) {
-    // 30.10 (тюрьма): из клетки не ходят
-    if (!S.me || meJail()) return;
+    // 30.10 (тюрьма): из клетки не ходят (31.10: по клетке - jailGo)
+    if (!S.me) return;
+    if (meJail()) { jailGo(x, y); return; }
     closePanel(); S.el.classList.add('went');
     S.arrive = null; S.freeUntil = 0;
     const end = walkTo(S.me, x, y);
@@ -1026,8 +1031,8 @@
   // поверх «Города» открыто окно, меню или поле ввода - клавиши ему, а не герою
   const KW_OWN = '[role="dialog"], [role="alertdialog"], [role="menu"], [aria-modal="true"]';
   function kwBusy(e) {
-    // 30.10: заключённый не ходит
-    if (!S || !S.me || !S.root || !S.root.isConnected || !S.root.classList.contains('on') || S.panelId || document.hidden || meJail()) return true;
+    // 31.10: заключённый ходит клавишами - только по клетке (kwStep), на сервер шаги не идут (kwSync)
+    if (!S || !S.me || !S.root || !S.root.isConnected || !S.root.classList.contains('on') || S.panelId || document.hidden) return true;
     if (e && (e.ctrlKey || e.metaKey || e.altKey)) return true;
     const t = e && e.target;
     if (t && t.closest && (t.closest('input, textarea, select, [contenteditable]') || t.isContentEditable)) return true;
@@ -1036,7 +1041,8 @@
   }
   // ближайшее здание, у двери которого стоит герой (не дальше KW_DOOR px), - его открывает E
   function kwNear() {
-    if (!S || !S.me) return null;
+    // 31.10: заключённому в здания нельзя - и подсказки «E - войти» нет
+    if (!S || !S.me || meJail()) return null;
     let best = null, bd = KW_DOOR;
     for (const b of WD.BUILDINGS) {
       if (!b.door || !bOk(b)) continue;
@@ -1065,9 +1071,13 @@
     const len = Math.hypot(dx, dy);
     if (!len) { setMoving(w, false); return true; }
     const s = M.SPEED * dt, vx = dx / len * s, vy = dy / len * s, x = w.x, y = w.y;
+    // 31.10 (тюрьма): заключённый - только по полу клетки (M.jailWalk), сидящие в ней не мешают
+    // (у края - встаёт на край и скользит вдоль него)
+    const jl = !!meJail();
     const ok = (a, b) => S.map.free(a, b) && S.map.clear([x, y], [a, b]);
     let nx = x, ny = y;
-    if (ok(x + vx, y + vy)) { nx = x + vx; ny = y + vy; }
+    if (jl) [nx, ny] = M.jailWalk(x + vx, y + vy);
+    else if (ok(x + vx, y + vy)) { nx = x + vx; ny = y + vy; }
     // упёрся - вдоль стены: по той оси, по которой можно
     else if (vx && ok(x + vx, y)) nx = x + vx;
     else if (vy && ok(x, y + vy)) ny = y + vy;
@@ -1092,6 +1102,8 @@
   // свой шаг клавишами - на сервер: откуда (прошлая отправленная точка) → где сейчас
   function kwSync(stop) {
     const k = S && S.kw; if (!k || !k.dirty || !S.me) return;
+    // 31.10 (тюрьма): ходьба заключённого - только у него на экране: другие видят его на месте в клетке, сервер шаги отклоняет (403 jailed)
+    if (meJail()) { k.dirty = false; return; }
     const wait = (stop ? KW_STOP : KW_GO) - (Date.now() - k.at);
     if (wait > 0) {
       if (stop && !k.t) k.t = setTimeout(() => { k.t = 0; if (S && S.kw === k && !k.on) kwSync(true); }, wait);
@@ -1108,7 +1120,7 @@
     e.preventDefault();
     S.kbd = true;
     if (e.code === 'KeyE') {
-      if (e.repeat) return;
+      if (e.repeat || meJail()) return;
       const b = kwNear(); if (b) goBuilding(b.id);
       return;
     }
@@ -1413,11 +1425,13 @@
   const newsClose = () => BLD.board.close(), newsBoard = (box, list) => BLD.board.render(box, list), newsRead = (i) => BLD.board.read(i);
 
   /* ===================== 30.10: тюрьма (флаг legionary.jailPublic; сервер - src/site/jail.ts) =====================
-     Тюрьма и клетка - на нижней улице Ярмарки (citymap.js LOW.jail, рисунок - cityart.js lower(…, { jail })), только кому тюрьма открыта.
+     Тюрьма и клетка - на нижней улице Ярмарки, у нижней ограды (citymap.js LOW.jail, рисунок - cityart.js lower(…, { jail })), только кому тюрьма открыта.
      Заключённые - не из присутствия Города, а по списку /api/jail (и событию «jail» живого канала): до 8 в клетке (места LOW.jail.seats),
      остальные - «+N» на табличке; свой герой у заключённого - всегда среди первых восьми. Иногда вздыхают (только transform, только
      пока Город открыт). Нажатие на Тюрьму, клетку или заключённого - окно со списком и когда выйдут (стримеру, модераторам и админу -
-     причина и кто выдал). Сам заключённый: стоит в клетке, ходить и заходить в здания нельзя (goPoint / goBuilding / WASD - нет). */
+     причина и кто выдал). Сам заключённый: в клетке, в здания не заходит (goBuilding - нет).
+     31.10 (стример): гуляет по полу клетки (LOW.jail.walk) - кликом (jailGo) и WASD (kwStep); выйти нельзя, сидящие не мешают.
+     Ходьба - только у него на экране: на сервер шаги не идут (он «смотрит» - другие видят его сидящим на месте в клетке). */
   const jlOn = () => !!(X && X.jailOn && X.jailOn());
   const meJail = () => (X && X.jail && X.jail()) || null;
   let JAIL = { list: [], n: 0 };
@@ -1444,7 +1458,8 @@
     const keep = new Set();
     show.forEach((e, i) => {
       const [sx, sy] = J.seats[i];
-      if (e.self) { if (S.me) { S.me.path = null; S.me.x = sx; S.me.y = sy; S.me.face = i % 2 ? -1 : 1; setMoving(S.me, false); S.me.sc = 0; place(S.me); } return; }
+      // 31.10: свой герой гуляет по клетке - на место сажаем, только если он не на её полу (вошёл, только что посадили)
+      if (e.self) { if (S.me && !inWalk(S.me)) { S.me.path = null; S.me.x = sx; S.me.y = sy; S.me.face = i % 2 ? -1 : 1; setMoving(S.me, false); S.me.sc = 0; place(S.me); } return; }
       keep.add(e.l);
       const vk = JSON.stringify([e.n, e.lv, e.lk, e.g, e.gh, e.aw]);
       let w = S.jail.get(e.l);
@@ -1460,8 +1475,8 @@
     if (more > 0) {
       if (!pl || !pl.isConnected) { pl = S.jailPl = document.createElement('div'); pl.className = 'cy-jmore'; pl.setAttribute('aria-hidden', 'true'); host.appendChild(pl); }
       pl.textContent = '+' + more;
-      // справа от клетки - не на никах
-      pl.style.cssText = `left:${J.c1 + 44}px;top:${1200}px;z-index:${J.fy + 3}`;
+      // справа от клетки - не на никах (31.10: высота - от бруса клетки LOW.jail.ct)
+      pl.style.cssText = `left:${J.c1 + 44}px;top:${J.ct + 50}px;z-index:${J.fy + 3}`;
     } else if (pl) { pl.remove(); S.jailPl = null; }
     if (!S.sighT && (show.length || mj)) S.sighT = setInterval(jailSigh, 3200);
     kick();
@@ -1475,6 +1490,20 @@
     if (S.gl) { if (w.gl) { w.gl.body.scale.set(w.face * sc, sc * 0.94); if (S.gl.dirty) S.gl.dirty(); kick(); } }
     else if (w.body) w.body.style.transform = `scale(${(w.face * sc).toFixed(3)},${(sc * 0.94).toFixed(3)})`;
     setTimeout(() => { if (!S) return; w.sc = 0; place(w); kick(); }, 520);
+  }
+  // 31.10: точка сцены - в клетке (прутья, брус и пол), с запасом на клик чуть ниже прутьев
+  const inCage = (x, y) => { const J = WD && WD.LOW && WD.LOW.jail; return !!J && x >= J.c0 && x <= J.c1 && y >= J.ct - 56 && y <= J.fy + 30; };
+  const inWalk = (w) => { const q = M.jailWalk(w.x, w.y); return Math.abs(q[0] - w.x) < 0.5 && Math.abs(q[1] - w.y) < 0.5; };
+  // заключённый идёт к (x, y) - к ближайшей точке пола клетки, напрямую (пол - прямоугольник, внутри препятствий нет); шаг - не на сервер
+  function jailGo(x, y) {
+    if (!S || !S.me || !jailHere()) return;
+    const w = S.me, [tx, ty] = M.jailWalk(x, y);
+    if (!inWalk(w)) { const q = M.jailWalk(w.x, w.y); w.x = q[0]; w.y = q[1]; place(w); }
+    if (S.kw && S.kw.on) kwHalt();
+    S.el.classList.add('went'); S.arrive = null; S.freeUntil = 0;
+    w.path = Math.hypot(tx - w.x, ty - w.y) > 1 ? [[tx, ty]] : null; w.lag = 0;
+    setMoving(w, !!w.path); kick();
+    ripple(tx, ty);
   }
   const jailAt = (x, y) => { if (!S || !S.jail) return null; let best = null; for (const w of S.jail.values()) { const sc = scaleAt(w.y) * HS; if (Math.abs(x - w.x) <= 36 * sc && y <= w.y + 8 && y >= w.y - 150 * sc && (!best || w.y > best.y)) best = w; } return best; };
   // окно Тюрьмы: список и срок - всем; причина и кто выдал - стримеру, модераторам и админу (сервер даёт why только им)
@@ -1705,7 +1734,7 @@
     chatInit();   // 21.10: чат «Города»
     if (!S.me && h) spawnMe();
     // 30.10 (тюрьма): выпустили (или открыл «Город» уже свободным, а стоит в клетке) - выходит рядом с Тюрьмой, у двери
-    if (S.me && !meJail() && WD && WD.LOW && WD.LOW.jail && !inTown()) { const J = WD.LOW.jail; if (S.me.x >= J.c0 - 10 && S.me.x <= J.c1 + 10 && S.me.y <= J.fy + 4 && S.me.y >= 1124) { const B = WD.BUILDINGS.find((b) => b.id === 'jail'); const [x, y] = S.map.nearest(B ? B.door.x + 120 : J.c0, B ? B.door.y : J.fy + 30); S.me.x = x; S.me.y = y; S.me.path = null; S.me.face = 1; S.me.sc = 0; place(S.me); centerOn(x, y); } }
+    if (S.me && !meJail() && WD && WD.LOW && WD.LOW.jail && !inTown()) { const J = WD.LOW.jail; if (S.me.x >= J.c0 - 10 && S.me.x <= J.c1 + 10 && S.me.y <= J.fy + 4 && S.me.y >= J.back) { const B = WD.BUILDINGS.find((b) => b.id === 'jail'); const [x, y] = S.map.nearest(B ? B.door.x + 120 : J.c0, B ? B.door.y : J.fy + 30); S.me.x = x; S.me.y = y; S.me.path = null; S.me.face = 1; S.me.sc = 0; place(S.me); centerOn(x, y); } }
     if (!h) { hud('Героя пока нет — он появится, когда ты напишешь в чат на стриме'); return; }
     hud(); enter();
     hwApply();   // 28.10 (hw-city)

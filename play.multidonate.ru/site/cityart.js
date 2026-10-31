@@ -678,16 +678,19 @@
         return g + '</g>';
       } });
     }
-    // 30.10 (тюрьма, legionary.jailPublic): здание «ТЮРЬМА» у подпорной стены и клетка рядом (citymap.js LOW.jail). Клетка - два предмета:
-    // пол и задние прутья (за героями, z - у стены) и передние прутья (перед героями, z - линия прутьев). Дверца клетки и «+N» - city.js
-    // (зависят от того, сидит ли кто-то): в передних прутьях на месте дверцы - проём
-    if (opt.jail && L.jail) { const J = L.jail, B = J.base, e1w = L.edge[1];
+    // 30.10 (тюрьма, legionary.jailPublic): здание «ТЮРЬМА» и клетка рядом (citymap.js LOW.jail). Клетка - два предмета:
+    // пол и задние прутья (за героями, z - задний край пола) и передние прутья (перед героями, z - линия прутьев). Дверца клетки и «+N» - city.js
+    // (зависят от того, сидит ли кто-то): в передних прутьях на месте дверцы - проём.
+    // 31.10: тюрьма - внизу, у нижней ограды; все высоты - от LOW.jail (top, ct, back), а не от подпорной стены. Ограда и кусты нижнего края -
+    // в слое земли (под всеми предметами): здание и клетка стоят выше их (основание - над кустами), гуляющие за тюрьмой (проход у набережной)
+    // рисуются за ней, перед ней (полоса у ограды) - перед ней
+    if (opt.jail && L.jail) { const J = L.jail, B = J.base;
       const tx = (x, y, t, size, fill = K.signTx) => `<text x="${x}" y="${y}" text-anchor="middle" font-family="Russo One, Arial Black, sans-serif" font-size="${size}" fill="${fill}" stroke="${K.ink}" stroke-width="${Math.max(3, size / 7)}" paint-order="stroke" letter-spacing="3">${t}</text>`;
       const stone = X ? X.plinth : style === 'cats' ? '#8a7a8e' : style === 'monkeys' ? '#8a8270' : '#7d7a8a', stoneL = style === 'cats' ? '#a898aa' : style === 'monkeys' ? '#a89e88' : '#9a97a8', stoneD = '#4e4b5a';
       const iron = '#2e2b36', ironL = '#8a8e9e';
       // здание: каменный дом с зубцами, решётка на окне, кованая дверь, вывеска, факел
-      props.push({ x: J.x0 - 30, y: 1030, w: J.x1 - J.x0 + 60, h: B - 1030 + 24, z: B, svg: () => {
-        const a = J.x0 + 10, b = J.x1 - 10, top = 1150, cx = (a + b) / 2;
+      props.push({ x: J.x0 - 30, y: J.top - 120, w: J.x1 - J.x0 + 60, h: B - J.top + 144, z: B, svg: () => {
+        const a = J.x0 + 10, b = J.x1 - 10, top = J.top, cx = (a + b) / 2;
         let g = `<g data-ol="jail"><ellipse cx="${cx}" cy="${B}" rx="${(b - a) / 2 + 18}" ry="15" fill="${K.ink}" opacity=".3"/>`;
         g += `<rect x="${a}" y="${top}" width="${b - a}" height="${B - top}" fill="${stone}" ${O(5)}/>`;
         if (Kt !== STUB) g += Kt.wall([a + 2, top + 2, b - 2, B - 2], { pal: 'light', scale: 0.38, seed: 131 }) + `<rect x="${a}" y="${top}" width="${b - a}" height="${B - top}" fill="none" ${O(5)}/>`;
@@ -716,7 +719,7 @@
         return g + '</g>';
       } });
       // клетка - задняя часть (за героями): каменный пол в перспективе, задняя рама у стены, боковые прутья, солома, миска, тень от прутьев
-      const c0 = J.c0, c1 = J.c1, fy = J.fy, ct = 1150, back = e1w + 14, bt = ct - 46, inset = 36;
+      const c0 = J.c0, c1 = J.c1, fy = J.fy, ct = J.ct, back = J.back, bt = ct - 46, inset = 36;
       props.push({ x: c0 - 30, y: bt - 30, w: c1 - c0 + 60, h: fy - bt + 50, z: back, svg: () => {
         const b0 = c0 + inset, b1 = c1 - inset;
         let g = `<g data-ol="jail"><ellipse cx="${(c0 + c1) / 2}" cy="${fy + 6}" rx="${(c1 - c0) / 2 + 24}" ry="15" fill="${K.ink}" opacity=".32"/>`;

@@ -338,6 +338,10 @@
     if (!st) { panel(); return; }
     // 24.10: вид без раскладки этажа (fl) — этаж тот же, раскладка у нас; этаж новый, а раскладки нет — спросить вид целиком
     if (!st.fl) { if (S.st && S.st.fl && S.st.seed === st.seed && S.st.n === st.n) st = { ...st, fl: S.st.fl }; else { if (!S.full) { S.full = true; poll(true).finally(() => { if (S) S.full = false; }); } return; } }
+    // 31.10 (баг стримера: вход из «Города» - сначала на миг самый глубокий этаж, через секунду - этаж, где вышел): герой на другом этаже
+    // (me.at) - едем туда ДО того, как этаж запомнен и нарисован. Раньше проверка стояла после «mine3.js ещё грузится» (первый вход
+    // после загрузки страницы): вид глубокого этажа оставался в S.st, догрузка mine3.js рисовала его, и только следующий опрос уводил на свой
+    if (follow3(st)) return;
     const newFloor = !S.st || S.st.n !== st.n || S.st.seed !== st.seed;
     const prevDug = S.dug, prevDg = (S.st && S.st.dg) || {}, prevMy = S.myI;
     S.st = st; S.F = floorOf(st); S.dug = dugArr(st); S.stAt = Date.now();
@@ -380,7 +384,6 @@
     for (const ls of Object.values(st.dg || {})) for (const l of ls.filter((x) => x !== X.login()).slice(0, 4)) if (!S.looks.has(l) && !S.others.has(l)) S.lkWant.add(l);
     if (S.lkWant.size && Date.now() - S.lkAt > 5000) { S.lkAt = Date.now(); setTimeout(() => poll(), 50); }
     if (newFloor && S.pos && S.F) { S.pos = spawnPt(); S.path = null; S.want = null; S.qq = []; }
-    if (follow3(st)) return;
     draw(); panel();
     // 30.10: журнал шахты в чате - перерисовать вкладку, только если журнал поменялся и она открыта
     { const lk = (st.log || []).length + ':' + ((st.log || [])[0] || {}).at; if (lk !== S.logK) { S.logK = lk; if (S.chat && S.chat.on && S.chat.open && S.chat.tab === 'lg' && CHM) CHM.render(); } }

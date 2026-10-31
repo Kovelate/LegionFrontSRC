@@ -281,3 +281,6 @@
 .lgi-dlgb .lgi-btn { min-height: 40px; }
 .lgi-dlgb .lgi-dlgy { background: #b3261e; border-color: transparent; color: #fff; }   /* белый на тёмно-красном - контраст 6:1 при любом оформлении */
 .lgi-dlgb .lgi-dlgy:hover, .lgi-dlgb .lgi-dlgy:focus-visible { background: #c62f26; }
+/* 31.10 (feat/candy-tile): плитка «не вещи» (конфеты ивента) - в конце сетки сумки, места не занимает; рамка - оранжевая, не по редкости */
+.lgi .cy-sc.lgi-pin { --rc: #ff8a1f; cursor: help; }
+.lgi .cy-sc.lgi-pin i.n { background: #ff8a1f; color: #15122e; }

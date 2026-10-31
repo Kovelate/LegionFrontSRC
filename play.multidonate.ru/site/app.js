@@ -813,6 +813,25 @@
         </div>`;
   }
   // 20.10: заточка — «Гладиус +7»; 23.10: отдельно — и для героя, пришедшего без перерисовки вкладки (его читает «Город»)
+  /* ---------- 31.10 (feat/candy-tile, стример): конфеты Хэллоуина - плитка в сетке сумки. Только показ: число - тот же счётчик ивента
+     (hero.hw.c), в сумку героя ничего не кладётся. Плитка одна (до 9999 - точно, больше - «9999+», полное число - в подсказке),
+     стоит после вещей, место не занимает (счёт «N / M», «сумка полна» и пустые ячейки - как без неё), действий нет - только подсказка ---------- */
+  const CANDY_MAX = 9999;
+  const candyN = (h) => (h && h.hw ? Math.max(0, Math.floor(+h.hw.c || 0)) : null);
+  const candyLabel = (n) => (n > CANDY_MAX ? CANDY_MAX + '+' : String(n));
+  const candyText = (n) => `Конфеты: ${n}. Тратить - в «Ступе сладостей» в Городе; в конце ивента остаток превратится в монеты.`;
+  // рисунок - завёрнутые конфеты, как на оверлее Изнанки (hollow.js, счётчик «конфет за ночь»)
+  const candyArt = (cls) => `<svg class="art${cls ? ' ' + cls : ''}" viewBox="-22 -22 44 44" aria-hidden="true"><g transform="translate(9 -9) rotate(28) scale(.8)"><path d="M-12 -6 L-6 -2 L-6 2 L-12 6 Z M12 -6 L6 -2 L6 2 L12 6 Z" fill="#9b5cff" stroke="#15122e" stroke-width="1.6" stroke-linejoin="round"/><ellipse rx="7" ry="5.5" fill="#ffd34d" stroke="#15122e" stroke-width="1.8"/></g><g transform="translate(-3 6) rotate(-18) scale(1.45)"><path d="M-12 -6 L-6 -2 L-6 2 L-12 6 Z M12 -6 L6 -2 L6 2 L12 6 Z" fill="#ff7a1a" stroke="#15122e" stroke-width="1.6" stroke-linejoin="round"/><ellipse rx="7" ry="5.5" fill="#ff9fb2" stroke="#15122e" stroke-width="1.8"/><path d="M-3 -5 q2 5 0 10 M2 -5 q2 5 0 10" stroke="#fff" stroke-width="1.6" fill="none" opacity=".8"/></g></svg>`;
+  const candyTipHtml = (n) => `<div class="t-h"><span class="t-n">🍬 Конфеты</span><span class="muted">${n}</span></div><div class="t-s"><span class="muted">Хэллоуин</span><span class="muted">место в сумке не занимают</span></div><p class="t-desc">${esc(candyText(n))}</p>`;
+  // плитка старой сумки «Персонажа»: без data-sel / data-drag - её не выбрать, не надеть, не перетащить и не открыть меню вещи
+  const candyCell = (h) => { const n = candyN(h); if (n == null) return ''; return `<button type="button" class="cell cnd-tile" data-r="common" data-candy="${n}" aria-label="${esc(candyText(n))}">${candyArt()}<span class="cn">Конфеты</span><span class="cnt">${candyLabel(n)}</span></button>`; };
+  // та же плитка для библиотеки инвентаря (новая сумка «Персонажа», сумка «Похода»): data.pins
+  const candyPins = (h) => { const n = candyN(h); return n == null ? [] : [{ id: 'candy', name: 'Конфеты', label: candyLabel(n), n, art: candyArt(), aria: candyText(n) }]; };
+  function candyTip(el, n) {
+    if (!el || !el.isConnected || DR.active) return;
+    if (tipFor && tipFor !== el) tipFor.removeAttribute('aria-describedby');
+    tip.classList.remove('card', 'scroll'); tipFor = el; tip.innerHTML = candyTipHtml(n); tip.hidden = false; tip.dataset.r = 'common'; tipPlace(el);
+  }
   function nameItems(h) { if (h && h.items) for (const it of h.items) { if (!it.srvName) it.srvName = it.name; it.baseName = it.baseName || it.srvName; it.name = nameOf(it) + (it.en > 0 ? ' +' + it.en : ''); } }
   /* ---------- 25.10: новая сумка (новинка inv2 - флаг i2 у героя, inv2Public): кукла и сумка вкладки «Персонаж» - библиотека
      инвентаря (packages/inventory: LGInventory.mount, вид 'full' на ПК и планшете, 'sheet' на телефоне, режим 'equip').
@@ -823,7 +842,7 @@
   const inv2On = (h) => !!(h && h.i2 && window.LGInventory && !DOCK);
   const mqInv = SU.media('tablet');   // 25.10: (min-width: 720px) - packages/site-ui
   let INV2 = null;   // { host, inv, v }
-  const inv2Data = (h) => ({ hero: h, items: h.items.slice().sort((a, b) => (a.no || 1e9) - (b.no || 1e9)), stack: (h.sg && h.sg.bs) || 20, bagCap: h.sg && cls === 'all' ? h.sg.cap : null, ...(+h.ob > 0 ? { obCap: +h.ob } : {}) });   // 26.10: рудная сумка - своей сеткой
+  const inv2Data = (h) => ({ hero: h, items: h.items.slice().sort((a, b) => (a.no || 1e9) - (b.no || 1e9)), stack: (h.sg && h.sg.bs) || 20, bagCap: h.sg && cls === 'all' ? h.sg.cap : null, ...(+h.ob > 0 ? { obCap: +h.ob } : {}), pins: candyPins(h) });   // 26.10: рудная сумка - своей сеткой
   const inv2Busy = () => { const h = ME && ME.hero; if (h && (h.ghost || h.busy)) { toast(h.ghost ? 'Призрак не переодевается' : BUSY_NOTE, true); return true; } return false; };
   function inv2Host(h, selUid) {
     const v = mqInv.matches ? 'full' : 'sheet';
@@ -844,7 +863,7 @@
           filters: ['all', 'weapon', 'armor', 'helmet', 'shield', 'trinket', 'use', 'other'],
           art: (it) => art(it), only: (it) => fitsCls(it, cls),
           figure: (hh) => { const st = hh.stats || {}, mx = st.hp || 0, nw = hh.hpNow ?? mx; return doodle(hh.login, heroLook(hh), mx && nw / mx < 0.3 ? 'hurt' : 'stern', hh.ghost ? undefined : kit); },
-          cardTip: (c, it) => cardTip(c, it, ME.hero), tipHide: () => tipHide(),
+          cardTip: (c, it) => cardTip(c, it, ME.hero), tipHide: () => tipHide(), pinTip: (b, p) => candyTip(b, p.n),
           canUse: (it) => (eatCd(it, ME.hero) && !(it && it.effect && it.effect.hw) ? 'Еда и зелья ещё не готовы' : true),
           extra: (c) => (c.it.no ? `<span class="no" title="Номер в сумке - для команд в чате">${c.it.no}</span>` : ''),
           // выбор - карточка вещи сайта справа (на телефоне - шторка) с её кнопками: починить, заточить, съесть…
@@ -948,7 +967,6 @@
         ${h.xs ? xsHtml(h.xs, h) : ''}
         ${gp ? `<p class="penl" role="note"><b>⚠ Надеты вещи другого класса — дебафф −${gp.pct}% ${esc(gp.statName || 'урон')}</b><span>${gp.parts.map((x) => `${esc(x.name)} (${esc(x.gearName)}, −${x.pct}%)`).join(' · ')}</span></p>` : ''}
         <div class="coins">${ico('coin')}<span>Монеты</span>${money(h.money)}</div>
-        ${h.hw ? `<div class="coins cnd" title="Конфеты Хэллоуина лежат отдельно - место в сумке не занимают. Их меняют у «Ступы сладостей» в городе или в чате Ярмарки"><span class="cnd-i" aria-hidden="true">🍬</span><span>Конфеты</span><span class="m"><b>${+h.hw.c || 0}</b></span></div>` : ''}
         ${h.debt > 0 ? `<p class="debtl" role="note"><b>Долг: −${money(h.debt)}</b><span>Пойман на краже в лавке. Пока долг не погашен, покупать нельзя — награды сначала идут в счёт долга.</span></p>` : ''}
         ${repAllHtml(h)}
         ${h.soc ? `<button type="button" class="socl${h.soc.bad ? ' bad' : ''}" data-gosoc title="Соц. рейтинг: место ${h.soc.place || '—'} из ${h.soc.total} — открыть рейтинг"><span class="sr-i" aria-hidden="true">${esc(h.soc.icon || '')}</span><span>Соц. рейтинг</span><b class="sr-r">${esc(h.soc.rankName || '')}</b><b class="sr-s">${h.soc.score}</b>${h.soc.place ? `<em>${h.soc.place} место</em>` : ''}</button>` : ''}
@@ -960,7 +978,8 @@
         ${i2 ? `${clsBtns.length ? `${clsBar}` : ''}<div data-inv2></div>`
           : bag.length ? `<div class="filters" role="group" aria-label="Что показать">${cats.map(([k, l]) => `<button type="button" data-f="${k}" aria-pressed="${filter === k}">${l}</button>`).join('')}</div>
           ${clsBtns.length ? `${clsBar}` : ''}
-          <div class="grid">${shown.map(cell).join('') || '<p class="empty">В этом разделе пусто</p>'}${freeCells(h, filter === 'all' && cls === 'all')}</div>`
+          <div class="grid">${shown.map(cell).join('') || (filter === 'all' && h.hw ? '' : '<p class="empty">В этом разделе пусто</p>')}${filter === 'all' ? candyCell(h) : ''}${freeCells(h, filter === 'all' && cls === 'all')}</div>`
+          : h.hw ? `<p class="empty">${word('empty', 'Сумка пуста. Вещи добываются в Походе и покупаются на Ярмарке.')}</p><div class="grid">${candyCell(h)}${freeCells(h, true)}</div>`
           : `<p class="empty">${word('empty', 'Сумка пуста. Вещи добываются в Походе и покупаются на Ярмарке.')}</p>`}
       </section>
       <aside class="panel detail${sheet ? ' open' : ''}" aria-label="Вещь" ${cur ? '' : 'data-none'}>${cur ? detailHtml(cur, h) : `<p class="empty">${word('none', 'Выбери вещь в сумке или на герое')}</p>`}</aside>
@@ -1167,6 +1186,7 @@
   function tipShow(el) {
     tip.classList.remove('card', 'scroll');
     if (el.dataset.stat) { const html = statTip(el.dataset.stat); if (!html || DR.active) return tipHide(); tipFor = el; tip.innerHTML = html; tip.hidden = false; tip.dataset.r = 'common'; return tipPlace(el); }
+    if (el.dataset.candy != null) return candyTip(el, +el.dataset.candy || 0);
     const it = TIPS[el.dataset.sel]; if (!it || !TIPHERO || DR.active) return tipHide();
     tipFor = el; tip.innerHTML = tipHtml(it, TIPHERO); tip.hidden = false; tip.dataset.r = it.rarity || 'common';
     tipPlace(el);
@@ -1218,13 +1238,17 @@
   // 22.10: подсказки вешаются на любой контейнер — окно персонажа и зал аукциона (CX.tips): вещь (data-sel) и характеристика (data-stat)
   function tipOn(root) {
     if (!root || root.dataset.tips) return; root.dataset.tips = '1';
-    const SEL = '.cell[data-sel], .slot.full[data-sel], [data-stat]';
+    const SEL = '.cell[data-sel], .slot.full[data-sel], [data-stat], .cell[data-candy]';
     root.addEventListener('pointerover', (e) => { if (e.pointerType !== 'mouse') return; const el = e.target.closest(SEL); if (el && el !== tipFor) tipShow(el); });
     root.addEventListener('pointerout', (e) => { if (!tipFor) return; const to = e.relatedTarget; if (!to || !tipFor.contains(to)) tipHide(); });
     root.addEventListener('click', (e) => { const el = e.target.closest('[data-stat]'); if (el) { if (tipFor === el) tipHide(); else tipShow(el); } });   // на телефоне — по нажатию
+    // 31.10 (feat/candy-tile): плитка конфет - по нажатию та же подсказка (на телефоне наведения нет)
+    // нажатие может перерисовать сумку (плитка - новый элемент): показываем после перерисовки, на плитке, что сейчас в сетке
+    root.addEventListener('click', (e) => { const el = e.target.closest('.cell[data-candy]'); if (!el) return; setTimeout(() => { const t = el.isConnected ? el : root.querySelector('.cell[data-candy]'); if (t) tipShow(t); }, 0); });
     root.addEventListener('focusin', (e) => { const el = e.target.closest(SEL); if (el && el.matches(':focus-visible')) tipShow(el); });
     root.addEventListener('focusout', tipHide);
-    root.addEventListener('pointerdown', tipHide);
+    // 31.10: нажатие на плитку конфет подсказку не гасит (она и есть ответ на нажатие)
+    root.addEventListener('pointerdown', (e) => { if (e.target.closest && e.target.closest('.cell[data-candy]')) return; tipHide(); });
   }
   tipOn(heroTab);
   window.addEventListener('scroll', tipHide, { passive: true });
@@ -2092,7 +2116,7 @@
     jrHtml: (n) => jrMini(n), jrAll: () => { tab('hero'); goView('log'); },
     // 26.10 (стример): вкладка «Поход» - кукла (слоты вокруг) и сумка: библиотека инвентаря с теми же действиями, что «Персонаж» (inv2Host):
     // двойной клик - надеть / съесть, ПКМ - меню вещи, перетаскивание на слот; монтирует quest.js один раз, дальше - invData
-    invData: () => { const h = ME && ME.hero; return h ? { hero: h, items: (h.items || []).slice().sort((a, b) => (a.no || 1e9) - (b.no || 1e9)), stack: (h.sg && h.sg.bs) || 20, bagCap: h.sg ? h.sg.cap : null, ...(+h.ob > 0 ? { obCap: +h.ob } : {}) } : null; },
+    invData: () => { const h = ME && ME.hero; return h ? { hero: h, items: (h.items || []).slice().sort((a, b) => (a.no || 1e9) - (b.no || 1e9)), stack: (h.sg && h.sg.bs) || 20, bagCap: h.sg ? h.sg.cap : null, ...(+h.ob > 0 ? { obCap: +h.ob } : {}), pins: candyPins(h) } : null; },
     invMount: (host, dollEl, root) => {
       const d = QX.invData(); if (!d || !window.LGInventory) return null;
       // 28.10 (bag-trash, стример): слот «Выбросить» под сумкой - только во вкладке «Поход» (у «Персонажа» нет); меню вещи - и там «Выбросить…»
@@ -2110,7 +2134,7 @@
           header: false, vitals: false, storeKey: 'lgQInv', label: word('bag', 'Сумка'), dollEl, dragRoot: root,
           filters: ['all', 'weapon', 'armor', 'helmet', 'shield', 'trinket', 'use', 'other'], art: (it) => art(it),
           figure: (hh) => { const st = hh.stats || {}, mx = st.hp || 0, nw = hh.hpNow ?? mx; return doodle(hh.login, heroLook(hh), mx && nw / mx < 0.3 ? 'hurt' : 'stern', hh.ghost ? undefined : 'battle'); },
-          cardTip: (c, it) => cardTip(c, it, ME.hero), tipHide: () => tipHide(),
+          cardTip: (c, it) => cardTip(c, it, ME.hero), tipHide: () => tipHide(), pinTip: (b, p) => candyTip(b, p.n),
           canUse: (it) => (eatCd(it, ME.hero) && !(it && it.effect && it.effect.hw) ? 'Еда и зелья ещё не готовы' : true),
           extra: (c) => (c.it.no ? `<span class="no" title="Номер в сумке - для команд в чате">${c.it.no}</span>` : ''),
           menu: (c, it, e) => { const t = TIPS[it.uid] || Object.values(TIPS).find((x) => x.uids && x.uids.includes(it.uid)) || { ...it, n: 1, uids: [it.uid] }; ctxMenu(e.clientX, e.clientY, t, ME.hero, { discard: trash }); },

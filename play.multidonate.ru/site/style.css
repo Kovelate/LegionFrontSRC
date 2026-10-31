@@ -108,8 +108,6 @@ main { max-width: 1320px; margin: 0 auto; padding: var(--s5) var(--s5) var(--s7)
 .coins { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); font-size: var(--t-sm); color: var(--mute); }
 .coins .m { margin-left: auto; color: var(--ink); }
 .coins .m b { font-variant-numeric: tabular-nums; }
-.coins.cnd .cnd-i { font-size: 1.1em; line-height: 1; }
-.coins.cnd .m b { color: #ff9a3a; }
 
 /* сумка */
 .bag-h { display: flex; align-items: baseline; gap: var(--s3); flex-wrap: wrap; margin-bottom: var(--s4); }
@@ -137,6 +135,9 @@ html[data-skin="poster"] .clsf.on select option, html[data-skin="comic"] .clsf.o
 .cell .cnt { position: absolute; right: 6px; bottom: 34px; font-size: var(--t-xs); font-weight: 800; padding: 0 6px; }
 .cell .upg { position: absolute; top: 6px; right: 6px; display: grid; place-items: center; width: 22px; height: 22px; }
 .cell .upg .i { width: 14px; height: 14px; stroke-width: 3; }
+/* 31.10 (feat/candy-tile): плитка конфет Хэллоуина - после вещей, места не занимает (не вещь: без выбора и перетаскивания) */
+.cell.cnd-tile, [data-r].cell.cnd-tile { --rc: #ff8a1f; cursor: help; }
+.cell.cnd-tile .cnt, [data-skin] .cell.cnd-tile .cnt { z-index: 2; color: #ff9a3a; background: rgba(21, 18, 46, .88); border-radius: 999px; font-variant-numeric: tabular-nums; }
 
 /* карточка вещи */
 .detail { position: relative; }

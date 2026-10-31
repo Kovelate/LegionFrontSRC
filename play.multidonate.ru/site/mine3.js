@@ -94,9 +94,11 @@
     { const x0 = hx + 20, x1 = hx + 176, b = hy + 340;
       let g = `<ellipse cx="${(x0 + x1) / 2}" cy="${b + 3}" rx="86" ry="10" fill="#000" fill-opacity=".3"/>`;
       g += `<path d="M${x0 + 6} ${b - 50} V${b - 128} M${x1 - 6} ${b - 50} V${b - 128}" stroke="#6b4423" stroke-width="8"/><path d="M${x0 - 10} ${b - 128} H${x1 + 10} L${x1 - 4} ${b - 104} H${x0 + 4} Z" fill="#b5533c" ${O(4)}/>`;
-      g += `<rect x="${x0}" y="${b - 52}" width="${x1 - x0}" height="52" rx="5" fill="#a0703a" ${O(4)}/><rect x="${x0 + 30}" y="${b - 44}" width="${x1 - x0 - 60}" height="22" rx="4" fill="#5a3a1e"/><text x="${(x0 + x1) / 2}" y="${b - 27}" text-anchor="middle" font-family="Russo One, Arial Black, sans-serif" font-size="15" fill="#fff3c8">СКУПКА</text>`;
+      g += `<rect x="${x0}" y="${b - 52}" width="${x1 - x0}" height="52" rx="5" fill="#a0703a" ${O(4)}/><rect x="${x0 + 58}" y="${b - 44}" width="${x1 - x0 - 64}" height="22" rx="4" fill="#5a3a1e"/><text x="${x0 + 104}" y="${b - 27}" text-anchor="middle" font-family="Russo One, Arial Black, sans-serif" font-size="15" fill="#fff3c8">СКУПКА</text>`;
       g += `<path d="M${x1 - 30} ${b - 52} V${b - 84} M${x1 - 50} ${b - 84} H${x1 - 10}" stroke="${INK}" stroke-width="3"/><path d="M${x1 - 56} ${b - 84} l6 12 h12 l6 -12 M${x1 - 16} ${b - 84} l6 12 h12 l6 -12" fill="#c9ccd6" ${O(2)}/>`;
-      g += `<path d="M${x0 + 4} ${b} q-6 -40 10 -50 q-6 -10 6 -12 h26 q12 2 6 12 q16 10 10 50 Z" fill="#d9c08a" ${O(3)}/>`;
+      // 31.10 (репорт #2273, issue #154): мешок стоял поверх таблички «СКУПКА» и закрывал «С». Теперь мешок меньше и прижат к левому краю
+      // прилавка, табличка - правее мешка (x0 + 58 … x1 - 6), надпись целиком видна
+      g += `<path d="M${x0 + 2} ${b} q-5 -34 8 -42 q-5 -8 5 -10 h20 q10 2 5 10 q13 8 8 42 Z" fill="#d9c08a" ${O(3)}/>`;
       out.push({ obj: 'buyer', x: (x0 + x1) / 2, y: b, svg: g }); }
     // доска поручений: два столба, козырёк, листки
     { const x0 = hx + 356, x1 = hx + 492, b = hy + 346;

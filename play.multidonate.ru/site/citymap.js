@@ -35,13 +35,18 @@
     mine: { x0: 1150, x1: 1470, base: 1336 },
     mineBed: [[980, 1300], [880, 1300]],   // 24.10: шахта открыта — клумба левее (не заходит на доску итогов)   // 23.10: вход в шахту (промысел города) — у подпорной стены, правее Склада (только кому шахта открыта)
     lamps: [[1140, 1460], [1420, 1460], [QW + 520, 1460], [QW + 800, 1460], [QW + 2120, 1460], [QW + 2400, 1460], [QW + 3380, 1460], [QW + 3660, 1460]],
-    // 30.10 (тюрьма, legionary.jailPublic): у подпорной стены правее шахты - здание (x0…x1) и клетка (c0…c1, пол от стены до fy, прутья - fy,
-    // проём дверцы - door); тупик у стены: дорогу, мосты, портал шахты и двери не закрывает, фонари моста - правее клетки. В клетке - два
-    // ряда по 4 места (seats); две скамейки, что стояли там, - правее (move: было → стало)
-    jail: { x0: 1540, x1: 1800, base: 1342, c0: 1830, c1: 2240, fy: 1352, door: [1985, 2055], seats: [[1890, 1262], [1980, 1262], [2070, 1262], [2160, 1262], [1935, 1318], [2025, 1318], [2115, 1318], [2195, 1318]],
-      move: { benches: [[1600, 1290], [2330, 1300], [QW + 300, 1310], [QW + 760, 1310]], decor: [] } },
+    // 30.10 (тюрьма, legionary.jailPublic): здание (x0…x1, верх стены top, основание base) и клетка (c0…c1, брус ct, пол от back до fy,
+    // прутья - fy, проём дверцы - door), в клетке два ряда по 4 места (seats); move - что сдвинуто, пока тюрьма открыта (было → стало).
+    // 31.10 (стример: «тюрьму - вниз экрана»): за каналом, у нижней ограды (была у подпорной стены под Ярмаркой). За ней вдоль набережной -
+    // проход (back - ниже набережной), перед ней - полоса у ограды, к двери. Бочка с места клетки - правее моста, ящик у угла здания - левее
+    jail: { x0: 1540, x1: 1800, top: 1664, base: 1856, c0: 1830, c1: 2240, ct: 1664, back: 1652, fy: 1866, door: [1985, 2055],
+      seats: [[1890, 1776], [1980, 1776], [2070, 1776], [2160, 1776], [1935, 1832], [2025, 1832], [2115, 1832], [2195, 1832]],
+      // 31.10 (стример: заключённый гуляет по клетке): где может стоять сам заключённый - [x0, y0, x1, y1], пол клетки с отступом
+      // от прутьев (по бокам 40, спереди 22; сзади - не выше заднего ряда мест, иначе голова - на задней решётке); все места - внутри
+      walk: [1870, 1760, 2200, 1844],
+      move: { benches: [], decor: [[2100, 1700], [2640, 1700], [1450, 1870], [1400, 1870]] } },
   };
-  /** 30.10 (тюрьма): нижняя улица с тюрьмой - скамейка и бочки с её места сдвинуты (рисунок cityart.js и препятствия - одни). */
+  /** 30.10 (тюрьма): нижняя улица с тюрьмой - скамейки и мелочи с её места сдвинуты (рисунок cityart.js и препятствия - одни). */
   const lowJail = () => {
     const mv = (list, pairs) => list.map(([x, y]) => { for (let i = 0; i < pairs.length; i += 2) if (pairs[i][0] === x && pairs[i][1] === y) return pairs[i + 1].slice(); return [x, y]; });
     return { ...LOW, benches: mv(LOW.benches, LOW.jail.move.benches), decor: mv(LOW.decor, LOW.jail.move.decor) };
@@ -59,8 +64,10 @@
     { b: [L.storage.x0, L.edge[1], L.storage.x1, L.storage.base] },   // 22.10: Склад — от стены до основания (сквозь здание не ходят)
   ];
   const LOWER_OBST = lowerObst(LOW);
-  // 30.10 (тюрьма): здание и клетка - от стены до основания (сквозь них не ходят)
-  const JAIL_OBST = [{ b: [LOW.jail.x0, LOW.edge[1], LOW.jail.x1, LOW.jail.base] }, { b: [LOW.jail.c0 - 6, LOW.edge[1], LOW.jail.c1 + 6, LOW.jail.fy + 4] }];
+  // 30.10 (тюрьма): здание и клетка - от заднего края (back) до основания (сквозь них не ходят)
+  const JAIL_OBST = [{ b: [LOW.jail.x0, LOW.jail.back, LOW.jail.x1, LOW.jail.base] }, { b: [LOW.jail.c0 - 6, LOW.jail.back, LOW.jail.c1 + 6, LOW.jail.fy + 4] }];
+  /** 31.10 (тюрьма): ближайшая к (x, y) точка, где может стоять заключённый (LOW.jail.walk) - [x, y]; внутри - та же точка. */
+  const jailWalk = (x, y) => { const [x0, y0, x1, y1] = LOW.jail.walk; return [Math.max(x0, Math.min(x1, +x || 0)), Math.max(y0, Math.min(y1, +y || 0))]; };
   // препятствия Ярмарки «Легиона» (координаты Ярмарки, без сдвига) — для сервера и тестов; страница берёт их из стиля канала
   // e — эллипс (основание предмета), r — [x0, x1, y1]: от верха сцены до y1 (прилавки и торговцы — пройти можно только спереди)
   const FAIR_OBST = [
@@ -95,7 +102,10 @@
     { id: 'mineboard', title: 'Итоги шахты', sub: 'лучшие копатели', icon: '📋', mine: true, hit: [1062, 1148, 1150, 1330], door: { x: 1104, y: 1366 } },
     { id: 'storage', title: 'Склад', sub: 'хранение вещей', icon: '📦', soon: true, hit: [80, 500, 1050, 1340], door: { x: 290, y: 1368 } },
     // 30.10: Тюрьма - внутрь не войти; нажатие на здание или клетку - окно со списком заключённых (city.js). jail - только когда тюрьма открыта
-    { id: 'jail', title: 'Тюрьма', sub: 'заключённые канала', icon: '⛓', jail: true, hit: [1540, 2240, 1060, 1352], door: { x: 1670, y: 1376 } },
+    // 31.10: где кликать и дверь - от LOW.jail (верх - крыша клетки, дверь - перед зданием, у ограды); ярлык - над зданием, а не над клеткой
+    // (над клеткой - подсказка «ник - в тюрьме канала» у головы заключённого, ярлык её закрывал)
+    { id: 'jail', title: 'Тюрьма', sub: 'заключённые канала', icon: '⛓', jail: true, hit: [LOW.jail.x0, LOW.jail.c1, LOW.jail.ct - 56, LOW.jail.fy],
+      door: { x: (LOW.jail.x0 + LOW.jail.x1) / 2, y: LOW.jail.base + 34 }, tag: [(LOW.jail.x0 + LOW.jail.x1) / 2, LOW.jail.top - 60] },
     // 20.10: заточка — на улице, у наковальни под навесом Кузни (наковальня во всех fair.js — x 150, низ 810); раньше Кузни в списке —
     // клик по наковальне не уходит в Кузню. Внутри Кузни — только лавка кузнеца
     { id: 'anvil', title: 'Заточка', sub: 'наковальня у Кузни', icon: '🔨', fair: true, hit: [QW + 20, QW + 300, 600, 880], door: { x: QW + 250, y: 900 }, tag: [QW + 130, 552] },
@@ -131,7 +141,7 @@
   // o.magic — у зрителя открыта магическая лавка: её здание есть (и кликается), тележки с сеном нет (её препятствие — у стиля: cart)
   function make(fairObst, o) {
     const mg = !!(o && o.magic), mn = !!(o && o.mine), FO = fairObst && fairObst.length ? fairObst : FAIR_OBST;
-    // 30.10: тюрьма - скамейка и бочки сдвинуты
+    // 30.10: тюрьма - скамейки и мелочи сдвинуты
     const jl = !!(o && o.jail), LB = jl ? lowerObst(lowJail()) : LOWER_OBST;
     const [bedA, bedB] = LOW.mineBed, LO = mn ? LB.map((x) => (x.e && x.e[0] === bedA[0] && x.e[1] === bedA[1] ? { e: [bedB[0], bedB[1], x.e[2], x.e[3]] } : x)) : LB;
     const OB = [...QUARTER_OBST, ...LO, ...(jl ? JAIL_OBST : []), ...(mn ? [{ b: [LOW.mine.x0, LOW.edge[1], LOW.mine.x1, LOW.mine.base] }] : []), ...shift(mg ? FO.filter((x) => !x.cart).concat([o.magicObst || MAGIC_OBST]) : FO, QW)];
@@ -332,5 +342,5 @@
     const lag = path ? pathLen([[x, y], ...path]) - real.restLen : 0;
     return { x, y, path, lag, fade: false };
   }
-  return { QW, FAIR_W, W, H, WALL_L, HARD_OBST, hard, ROWS_DX, END_DX, AREA, LOW, lowJail, JAIL_OBST, FAIR_OBST, MAGIC_OBST, QUARTER_OBST, LOWER_OBST, BUILDINGS, HOT, SCALE, SPEED, CATCH, SLOW, FAR_S, scaleAt, shift, make, makeFrom, pathLen, stepAlong, follow };
+  return { QW, FAIR_W, W, H, WALL_L, HARD_OBST, hard, ROWS_DX, END_DX, AREA, LOW, lowJail, jailWalk, JAIL_OBST, FAIR_OBST, MAGIC_OBST, QUARTER_OBST, LOWER_OBST, BUILDINGS, HOT, SCALE, SPEED, CATCH, SLOW, FAR_S, scaleAt, shift, make, makeFrom, pathLen, stepAlong, follow };
 });

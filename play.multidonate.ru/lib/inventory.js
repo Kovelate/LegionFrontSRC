@@ -31,6 +31,9 @@
 //          slots (режим storage) - в шапке сетки «Сумка» / «Склад» место [data-lgi="gx-bag" | "gx-st"] и между столбцами колонка [data-lgi="mid"] под кнопки страницы,
 //          label - подпись сетки для экранного диктора, onDragEnd() - перетаскивание кончилось (страница дорисует отложенное), sortDefault. actions.reorder(fromUid, toUid) - свой порядок сумки: ячейку на ячейку
 //          (порядок «как в сумке», фильтр «Все») и Alt+стрелки.
+//          31.10: data.pins - плитки «не вещей» в конце сетки сумки (конфеты ивента): [{ id, name, label, art, tip, aria }]. Это не вещь:
+//          места не занимают (не в счёте «N / M», пустые ячейки не съедают), их нельзя выбрать, надеть, съесть, перетащить, выбросить
+//          или перенести; наведение / нажатие - подсказка (options.pinTip(el, pin) или встроенная с pin.tip). Только фильтр «Все».
 (function (root, factory) {
   const api = factory(root);
   if (typeof module === 'object' && module.exports) module.exports = api;
@@ -73,6 +76,13 @@
     return `<button type="button" class="cy-sc ig-c${o.on ? ' on' : ''}${o.off ? ' off' : ''}" data-r="${esc(it.rarity || 'common')}" data-ig="${esc(uid)}"${o.drag ? ' data-igdrag="1"' : ''}${o.attr ? ' ' + o.attr : ''} aria-pressed="${!!o.on}" aria-label="${esc(nm)}">`
       + `<span class="cy-gi">${o.art ? o.art(it) : ''}</span>${it.en > 0 ? `<i class="en">+${+it.en}</i>` : ''}${it.qty ? `<i class="n">${oreN(it.q)}</i>` : c.n > 1 ? `<i class="n">${c.n}</i>` : ''}`
       + `${it.dur != null ? `<i class="du${low ? ' br' : ''}">${low ? '⚠' : ''}${+it.dur}%</i>` : ''}${o.extra ? o.extra(c) : ''}</button>`;
+  }
+
+  /* 31.10 (feat/candy-tile): плитка «не вещи» (конфеты ивента): p = { id, name, label, art, aria }. Нарочно без data-ig / data-igdrag /
+     data-igdrop: её не выбрать, не надеть, не перетащить, не выбросить и не перенести - только подсказка (data-lgi-pin) */
+  function pinCell(p) {
+    p = p || {};
+    return `<button type="button" class="cy-sc lgi-pin" data-r="common" data-lgi-pin="${esc(p.id)}" aria-label="${esc(p.aria || p.name || '')}"><span class="cy-gi">${p.art || ''}</span>${p.label != null && p.label !== '' ? `<i class="n">${esc(p.label)}</i>` : ''}</button>`;
   }
 
   /* сетка: cs — ячейки (cells), o: { cap — сколько ячеек всего (пустые — пунктиром), label — подпись для экранного диктора,
@@ -501,7 +511,7 @@
     const hero = d.hero || {};
     let list = d.items || hero.items || [];
     if (d.equipped || d.bag) list = [...Object.entries(d.equipped || {}).filter(([, x]) => x).map(([sl, x]) => ({ ...x, slot: x.slot || sl, on: true })), ...(d.bag || []).map((x) => ({ ...x, on: false }))];
-    return { hero, items: list, storage: d.storage || null, bagCap: d.bagCap != null ? +d.bagCap : null, storageCap: d.storageCap != null ? +d.storageCap : null, stack: +d.stack || 20, storageStack: +d.storageStack || +d.stack || 20, obCap: +d.obCap > 0 ? +d.obCap : 0 };   // 26.10: obCap - рудная сумка (ячеек), руда с it.ob - в ней
+    return { hero, items: list, storage: d.storage || null, bagCap: d.bagCap != null ? +d.bagCap : null, storageCap: d.storageCap != null ? +d.storageCap : null, stack: +d.stack || 20, storageStack: +d.storageStack || +d.stack || 20, obCap: +d.obCap > 0 ? +d.obCap : 0, pins: Array.isArray(d.pins) ? d.pins.filter((p) => p && p.id) : [] };   // 26.10: obCap - рудная сумка (ячеек), руда с it.ob - в ней
   }
   const coarse = () => { try { return 'ontouchstart' in root && !(root.matchMedia && root.matchMedia('(pointer: fine)').matches); } catch (e) { return false; } };
   const fallbackArt = (it) => `<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="16" fill="#3b2d44" stroke="#ffe27a" stroke-width="2"/><text x="20" y="26" text-anchor="middle" font-size="16" font-weight="800" fill="#ffe27a">${esc(String(it.name || '?').slice(0, 1))}</text></svg>`;
@@ -675,6 +685,15 @@
         return `<button type="button" class="lgi-chip${EMPTY[k] ? ' ic' : ''}" data-bf="${k}" aria-pressed="${S.f === k}" title="${esc(t)}: ${n}" aria-label="${esc(t)}: ${n}">${EMPTY[k] ? `<span class="cy-gi">${artOf(EMPTY[k])}</span>` : esc(k === 'all' ? 'Все' : k === 'use' ? 'Еда' : 'Ещё')}<small>${n}</small></button>`; }).join('')
         + (O.sort === false ? '' : `<select data-bsort aria-label="Порядок" title="Порядок">${SORTS.map(([k, t]) => `<option value="${k}"${S.sort === k ? ' selected' : ''}>${t}</option>`).join('')}</select>`));
     }
+    // 31.10 (feat/candy-tile): плитка «не вещи» (конфеты): без data-ig / data-igdrag / data-igdrop - ни выбора, ни действий, ни перетаскивания
+    const pinsOf = (from) => (from === 'bag' && S.f === 'all' && (mode === 'equip' || mode === 'view') ? D.pins : []);
+    const pinHtml = (p) => pinCell(p);
+    const pinBy = (id) => D.pins.find((p) => p.id === id) || null;
+    function pinTip(b) {
+      const p = pinBy(b.dataset.lgiPin); if (!p) return;
+      if (O.pinTip) { try { O.pinTip(b, p); } catch (e) { console.warn('[инвентарь]', e); } S.tip = true; return; }
+      tipShow(b, p.tip || esc(p.name || ''), 'common'); S.tip = true;
+    }
     function cellHtml(c, from) {
       const it = c.it, off = mode === 'pick' && okOf(O.can, it) !== true;
       const dr = mode === 'equip' ? (!!it.wearable && !!A.equip) || (from === 'bag' && reorderOn()) || (trashOn() && !c.ev) :mode === 'storage' ? !c.ev && !!A.move : mode === 'pick' ? !!A.drop && !off : false;
@@ -693,13 +712,21 @@
         if (g.children[i] !== b) g.insertBefore(b, g.children[i] || null);
         i++;
       }
+      // 31.10: плитки «не вещей» - после вещей (вещи не сдвигаются), до пустых ячеек; в счёт места не идут
+      const pins = pinsOf(from);
+      for (const p of pins) {
+        const k = ['pin', p.id, p.label, p.aria || p.name || ''].join('#');
+        let b = old.get(k); if (b) old.delete(k); else { b = frag(pinHtml(p)); b.dataset.k = k; }
+        if (g.children[i] !== b) g.insertBefore(b, g.children[i] || null);
+        i++;
+      }
       for (const b of old.values()) b.remove();
       const cap = from === 'st' ? D.storageCap : from === 'ob' ? D.obCap : D.bagCap != null ? D.bagCap : O.cap;
       const used = cells(srcOf(from).filter(shown), from === 'st' ? D.storageStack : D.stack).filter((c) => !c.ev).length;
       const want = cap != null && (S.f === 'all' || from === 'ob') ? Math.max(0, Math.min(200, cap - used)) : 0;
       for (const p of ph.slice(want)) p.remove();
       for (let k = ph.length; k < want; k++) { const s = document.createElement('span'); s.className = 'cy-sc e'; s.setAttribute('aria-hidden', 'true'); g.appendChild(s); }
-      const em = q('empty-' + from); if (em) em.hidden = cs.length > 0 || want > 0;
+      const em = q('empty-' + from); if (em) em.hidden = cs.length > 0 || want > 0 || pins.length > 0;
       const cp = q('cap-' + from); if (cp) cp.textContent = cap != null ? `${used} / ${cap}` : String(used);
     }
     function grids() { gridPatch('bag'); if (obOn()) gridPatch('ob'); if (mode === 'storage') gridPatch('st'); }
@@ -866,14 +893,16 @@
       const off = t.closest('[data-lgi-off]'); if (off) { const it = D.items.find((x) => x.on && x.slot === off.dataset.lgiOff); if (it) use(it.uid); return; }
       const us = t.closest('[data-lgi-use]'); if (us) { use(us.dataset.lgiUse); return; }
       const tb = t.closest('[data-lgi-trash]'); if (tb) { trashAskFor(tb.dataset.lgiTrash, tb); return; }   // 28.10 (bag-trash)
+      // 31.10: нажатие на плитку «не вещи» (палец) - та же подсказка, что наведение
+      const pn = t.closest('[data-lgi-pin]'); if (pn && el.contains(pn)) { pinTip(pn); return; }
       const tr = t.closest('[data-lgi="trash"]'); if (tr && el.contains(tr)) { if (S.sel && itemBy(S.sel) && !itemBy(S.sel).on) trashAskFor(S.sel, tr); else say(T().trashPick); return; }
       const mv = t.closest('[data-lgi-mv]'); if (mv && S.sel) { const c = cellOf(S.sel); move(S.sel, fromOf(S.sel), mv.dataset.lgiMv === 'all' && c ? c.n : 1); }
     };
     const onChange = (e) => { if (e.target.matches('[data-bsort]')) { S.sort = e.target.value; save(); chips(); grids(); mark(); } };
     const onDbl = (e) => { const c = e.target.closest('[data-ig]'); if (!c || !el.contains(c) || mode === 'view' || mode === 'pick') return; if (c.closest('.lgi-eqrow')) return; use(c.dataset.ig); };
     // 26.10: слоты куклы в отдельном элементе (dollEl) - тоже наши: карточка вещи при наведении и там (раньше - только в сетке el)
-    const onOver = (e) => { if (e.pointerType !== 'mouse' || (S.drag && S.drag.dragging())) return; const c = e.target.closest('[data-ig]'); if (c && (el.contains(c) || (PE && PE.contains(c)))) card(c); };
-    const onOut = (e) => { const c = e.target.closest('[data-ig]'); if (c && !c.contains(e.relatedTarget)) cardOff(); };
+    const onOver = (e) => { if (e.pointerType !== 'mouse' || (S.drag && S.drag.dragging())) return; const pn = e.target.closest('[data-lgi-pin]'); if (pn && el.contains(pn)) { pinTip(pn); return; } const c = e.target.closest('[data-ig]'); if (c && (el.contains(c) || (PE && PE.contains(c)))) card(c); };
+    const onOut = (e) => { const c = e.target.closest('[data-ig], [data-lgi-pin]'); if (c && !c.contains(e.relatedTarget)) cardOff(); };
     // стрелки - по ячейкам сетки (вверх / вниз - на ряд), Enter / пробел - выбрать (кнопка), Esc - закрыть
     const onKey = (e) => {
       if (!e.key.startsWith('Arrow')) return;
@@ -929,5 +958,5 @@
     return api;
   }
 
-  return { mount, trashAsk, items, cells, cell, grid, drag, menu, menuClose, art, still, lgx, EMPTY, configure, artReset, vitals, sortCells, cardHtml, tipShow, tipHide, esc, oreN, oreQty, VARIANTS, MODES, SLOTS: SLOTS5 };
+  return { mount, trashAsk, items, cells, cell, pinCell, grid, drag, menu, menuClose, art, still, lgx, EMPTY, configure, artReset, vitals, sortCells, cardHtml, tipShow, tipHide, esc, oreN, oreQty, VARIANTS, MODES, SLOTS: SLOTS5 };
 });
