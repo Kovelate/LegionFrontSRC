@@ -398,6 +398,11 @@
         if (t !== 'g') tb.hidden = !C[t]; else if (K.one) tb.hidden = !C.g;
         tb.setAttribute('aria-selected', String(C.tab === t)); bn.hidden = !u || C.tab === t; bn.textContent = u > 99 ? '99+' : String(u);
       }
+      // 30.10: вкладок много - ряд прокручивается вбок (полосы нет); выбранная вкладка всегда в пределах ряда (только scrollLeft, страница не двигается)
+      if (tabs.scrollWidth > tabs.clientWidth + 1) {
+        const on = tabs.querySelector('[aria-selected="true"]');
+        if (on && on.offsetParent) { const l = on.offsetLeft - tabs.offsetLeft, r = l + on.offsetWidth; if (l < tabs.scrollLeft) tabs.scrollLeft = Math.max(0, l - 4); else if (r > tabs.scrollLeft + tabs.clientWidth) tabs.scrollLeft = r - tabs.clientWidth + 4; }
+      }
     }
     function chatRender(toEnd) {
       const box = St() && St().el.querySelector('.cy-chat'); if (!box || !St().chat || !St().chat.on) return;
@@ -524,6 +529,23 @@
       if (done) done();
       if (St().chat.panel) chatPanel(true); else chatRender();
       return true;
+    }
+    // 30.10 (телефон): вылезла клавиатура (visualViewport стал ниже окна) - открытое окно чата со вставшим в нём полем ввода поднимается над ней
+    // (--cy-kb, transform в city.css), поле видно; ушла - окно на месте. Окна «Города» и шахты - одна и та же разметка
+    function kbFit() {
+      const vv = window.visualViewport; if (!vv) return;
+      for (const box of document.querySelectorAll('.cy-chat')) {
+        const on = box.classList.contains('open') && window.LGSiteUi.is('phone') && box.contains(document.activeElement) && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName);
+        if (!on) { if (box.classList.contains('cy-kb')) { box.classList.remove('cy-kb'); box.style.removeProperty('--cy-kb'); } continue; }
+        // нижний край окна без текущего сдвига против нижнего края видимой области
+        const cur = +(box.style.getPropertyValue('--cy-kb') || 0), bottom = box.getBoundingClientRect().bottom + cur, up = Math.max(0, Math.round(bottom - (vv.offsetTop + vv.height) + 6));
+        box.classList.add('cy-kb'); if (String(up) !== String(cur)) box.style.setProperty('--cy-kb', String(up));
+      }
+    }
+    if (!kbFit.on && window.visualViewport) {
+      kbFit.on = 1;
+      window.visualViewport.addEventListener('resize', kbFit); window.visualViewport.addEventListener('scroll', kbFit);
+      document.addEventListener('focusin', () => setTimeout(kbFit, 60)); document.addEventListener('focusout', () => setTimeout(kbFit, 60));
     }
     // 29.10: tab, unAdd - для единого чата (chatone.js)
     return { init: () => { St(); chatInit(); }, enter: (r, rm) => { St(); chatEnter(r, rm); }, apply: (d, rm) => { St(); chatApply(d, rm); },

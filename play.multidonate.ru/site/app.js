@@ -201,6 +201,8 @@
     clearTimeout(tabNoteT); tabNoteT = setTimeout(() => { n.hidden = true; }, 2500);
   }
   function tab(id) {
+    // 30.10 (тюрьма): заключённому - только «Город»
+    if (inJail() && id !== 'city') id = 'city';
     if (id !== 'city') townEntry = 0;   // ушли из города, зашедшего с «Похода», — блокировка снова действует
     if (id === 'city' && cityLocked()) { const b = $('.tabs button[data-tab="city"]'); if (b) tabNote(b, 'Вы сейчас в походе'); return; }
     if (siteOld && !window.LG_DOCK) { try { localStorage.setItem('lgTab', id); } catch {} if (verReload()) return; }
@@ -590,6 +592,8 @@
   /* ---------- 29.10 (новинка chatone): единый чат страницы (packages/site-ui/chatone.js → window.LGChatOne) - вместо чатов «Города» и шахты;
      нужен общий модуль чата (site-chat.js), его вид (city.css) и личка (LGDm) ---------- */
   let ONEL = null;
+  // 30.10: единый чат включён для этого зрителя (флаг c1 с сервера и ленты Города / шахты) - тогда окно лички dm.js не показывается никогда
+  const oneIsOn = () => { const h = ME && ME.hero; return !!(h && h.c1 && (h.cc || h.mc) && (window.LGChatOne || ONEL)); };
   const oneCtx = () => ({ api, hero: () => (ME && ME.hero) || null, login: () => (ME && ME.user ? String(ME.user.login).toLowerCase() : ''), awb, live: () => esOk });
   function oneLoad() {
     if (!ONEL) {
@@ -606,7 +610,7 @@
   let DML = null;
   function dmLoad() {
     if (!DML) DML = (window.LGDm ? Promise.resolve() : loadJs('/lib/site-dm.js' + (window.LG_DMV ? '?v=' + window.LG_DMV : ''))).catch((e) => { DML = null; throw e; });
-    return DML.then(() => { if (window.LGDm && ME && ME.user) window.LGDm.init({ api, toast, me: () => (ME && ME.user ? String(ME.user.login).toLowerCase() : ''), ch: CH ? CH.login : '' }); });
+    return DML.then(() => { if (window.LGDm && ME && ME.user) window.LGDm.init({ api, toast, me: () => (ME && ME.user ? String(ME.user.login).toLowerCase() : ''), ch: CH ? CH.login : '', one: oneIsOn, showOne: () => oneLoad().catch(() => null) }); });
   }
   /* ---------- 29.10: друзья (friends.js, src/site/friends.ts) - грузятся, только когда сервер открыл их этому входу (ME.friends) ---------- */
   let FRL = null;
@@ -1372,13 +1376,14 @@
     if (busy) return; busy = true;
     if (btn) { btn.disabled = true; btn.dataset.label = btn.textContent; btn.textContent = 'Секунду…'; }
     const r = await api(p, body); busy = false;
-    if (!r.ok) { if (btn) { btn.disabled = false; btn.textContent = btn.dataset.label; } return toast(r.error || 'Не получилось', true); }
+    // 30.10: ответ - { ok, error } (окно Склада показывает причину у себя); раньше ничего не возвращал
+    if (!r.ok) { if (btn) { btn.disabled = false; btn.textContent = btn.dataset.label; } toast(r.error || 'Не получилось', true); return { ok: false, error: r.error || 'Не получилось' }; }
     // съел одну из стопки — карточка остаётся на той же стопке (а не пропадает, будто съедена вся)
     if (p === '/api/use' && r.hero) { const was = TIPS[body.uid] || (ME.hero && ME.hero.items.find((x) => x.uid === body.uid)); const next = was && r.hero.items.find((x) => x.id === was.id && !x.on); sel = next ? next.uid : null; if (!next) sheet = false; }
     if (r.hero) ME.hero = r.hero;   // 24.10: ответ без героя не стирает героя (иначе вкладка падала, а кнопка оставалась «Секунду…»)
     last = ''; renderHero(); toast(ok);
     // 19.10: вместо мигающей плашки — уведомление, и только если игра стримера долго не подтверждает (комната не в сети)
-    clearTimeout(act.pt); if (r.hero && r.hero.pending) act.pt = setTimeout(() => { if (ME && ME.hero && ME.hero.pending) toast('Сохранено — применится, когда игра стримера будет в сети'); }, 6000);
+    clearTimeout(act.pt); if (r.hero && r.hero.pending) act.pt = setTimeout(() => { if (ME && ME.hero && ME.hero.pending) toast('Сохранено — применится, когда игра стримера будет в сети'); }, 6000);    return { ok: true };
   }
 
   /* ---------- 20.10: Кузня — заточка вещи (+1…+15), ковка Печати Ауруса, звёзды и сферы за монеты ----------
@@ -2206,10 +2211,10 @@
      Файлы «Города» (Ярмарка стиля, карта, рисунок квартала, сам город) грузятся, только когда вкладку открыли. */
   let cityWant = false, cityLoading = null;
   function cityVis() {
-    const ok = !!(ME && ME.hero && ME.hero.cy), b = $('.tabs button[data-tab="city"]');
+    const ok = !!(ME && ME.hero && (ME.hero.cy || ME.jail)), b = $('.tabs button[data-tab="city"]');
     if (!b) return;
     b.hidden = !ok;
-    const lock = ok && cityLocked();
+    const lock = ok && !inJail() && cityLocked();
     b.classList.toggle('tab-lock', lock);
     if (lock) { b.setAttribute('aria-disabled', 'true'); b.title = 'Вы сейчас в походе'; } else { b.removeAttribute('aria-disabled'); b.removeAttribute('title'); }
     if (!ok && $('#tab-city').classList.contains('on')) tab('hero');
@@ -2217,16 +2222,33 @@
     if (ok && !lock && cityWant) { cityWant = false; tab('city'); }
   }
   const loadJs = (src) => new Promise((ok, no) => { const sc = document.createElement('script'); sc.src = src; sc.onload = ok; sc.onerror = no; document.head.appendChild(sc); });
+  // 30.10 (D1): citystore.js - окно Склада, файл модуля «Город» (fair/client), - до city.js: city.js подключает его при запуске
+  // 31.10 (D1): и окна зданий модуля «Город» - общее cityshop.js и здания b-<здание>.js (V.bl; друг друга не ждут), тоже до city.js
+  const cityWin = (V) => Promise.all(['cityshop', ...(V.bl || []).map((b) => 'b-' + b)].map((f) => loadJs(`/site/${f}.js?v=${V.bw || ''}`)));
+  // стили окон (V.bc: общее, Склад, здания) - сразу за city.css и в том же порядке: каскад как был, когда всё лежало в city.css
+  function cityWinCss(V) {
+    let at = document.getElementById('cityCss');
+    for (const f of V.bc || []) {
+      const id = 'cyCss-' + f; const was = document.getElementById(id);
+      if (was) { at = was; continue; }
+      const l = document.createElement('link'); l.id = id; l.rel = 'stylesheet'; l.href = `/site/${f}.css?v=${V.bw || ''}`; at.after(l); at = l;
+    }
+  }
   function cityFiles() {
     if (cityLoading) return cityLoading;
     const V = window.LG_CITYV || {}, base = window.LG_BASE || '';
     if (!document.getElementById('cityCss')) { const l = document.createElement('link'); l.id = 'cityCss'; l.rel = 'stylesheet'; l.href = `/site/city.css?v=${V.css || ''}`; document.head.appendChild(l); }
-    cityLoading = loadJs(`${base}/cityfair.js?v=${V.fair || ''}`).then(() => loadJs(`/site/citymap.js?v=${V.map || ''}`)).then(() => loadJs(`/site/cityart.js?v=${V.art || ''}`)).then(() => loadJs(`/site/citygl.js?v=${V.gl || ''}`)).then(() => loadJs(`/site/itemgrid.js?v=${V.ig || ''}`)).then(() => loadJs(`/lib/site-chat.js?v=${V.sc || ''}`)).then(() => loadJs(`/site/city.js?v=${V.js || ''}`)).then(() => loadJs(`/site/trade.js?v=${V.tr || ''}`))
+    cityWinCss(V);
+    cityLoading = loadJs(`${base}/cityfair.js?v=${V.fair || ''}`).then(() => loadJs(`/site/citymap.js?v=${V.map || ''}`)).then(() => loadJs(`/site/cityart.js?v=${V.art || ''}`)).then(() => loadJs(`/site/citygl.js?v=${V.gl || ''}`)).then(() => loadJs(`/site/itemgrid.js?v=${V.ig || ''}`)).then(() => loadJs(`/lib/site-chat.js?v=${V.sc || ''}`)).then(() => loadJs(`/site/citystore.js?v=${V.st || ''}`)).then(() => cityWin(V)).then(() => loadJs(`/site/city.js?v=${V.js || ''}`)).then(() => loadJs(`/site/trade.js?v=${V.tr || ''}`))
       .catch((e) => { cityLoading = null; throw e; });
     return cityLoading;
   }
   // что нужно городу от сайта
   const CX = {
+    // 30.10 (тюрьма): я - заключённый (причина, срок) или null
+    jail: () => (ME && ME.jail) || null,
+    // 30.10: тюрьма открыта этому зрителю (здание и клетка в Ярмарке)
+    jailOn: () => !!(ME && (ME.jail || ME.jl)),
     hero: () => (ME && ME.hero) || null, login: () => (ME && ME.user ? String(ME.user.login).toLowerCase() : ''), style: () => sty(),
     doodle: (l, h, mood, k) => doodle(l, h, mood, k), fig: (l, v, o) => figSvg(l, v, o), heroLook: (h) => heroLook(h), still: (svg) => still(svg), awb: (aw) => awb(aw), awPop: (a, r, k) => awPop(a, r, k), awHide: (pre) => awHide(pre), ico: (k) => ico(k),
     api: (p, b) => api(p, b), act: (p, b, ok, btn) => act(p, b, ok, btn), money: (n, r) => money(n, r), moneyText: (n, r) => moneyText(n, r), lack: (p, hv, c) => lackHtml(p, hv, c), bal: (p, hv, c) => balHtml(p, hv, c), art: (it) => art(it),
@@ -2290,9 +2312,28 @@
       equip: async (uid) => { const r = await api('/api/equip', { uid }); if (r && r.ok && r.hero) { ME.hero = r.hero; last = ''; renderHero(); } return r; },
       unequip: async (slot) => { const r = await api('/api/unequip', { slot }); if (r && r.ok && r.hero) { ME.hero = r.hero; last = ''; renderHero(); } return r; } }, c);
   }
+  /* ---------- 30.10 (тюрьма, флаг legionary.jailPublic): забаненный заходит на сайт, но сидит в клетке у Тюрьмы ----------
+     Только вкладка «Город» (остальные скрыты, шапка без друзей, лички и чатов - CSS html.jailed), плашка «Ты в тюрьме канала» с причиной
+     и сроком; ходить и открывать здания нельзя (city.js), чат - только читать. Выпустили - всё на месте без перезагрузки страницы. */
+  function inJail() { return !!(ME && ME.jail); }
+  let jailWas = false;
+  function jailUi() {
+    const on = inJail();
+    document.documentElement.classList.toggle('jailed', on);
+    let bar = document.getElementById('jailBar');
+    if (on) {
+      const j = ME.jail;
+      if (!bar) { bar = document.createElement('div'); bar.id = 'jailBar'; bar.className = 'jail-bar'; bar.setAttribute('role', 'status'); document.body.appendChild(bar); }
+      bar.innerHTML = `<b>Ты в тюрьме канала</b>${j.reason ? `<span>Причина: ${esc(j.reason)}</span>` : ''}<span>${j.until ? 'Выйдешь: ' + esc(String(j.untilText || '').replace(/^до /, '')) : 'Срок: бессрочно'}</span>`;
+      if (!$('#tab-city').classList.contains('on')) tab('city');
+    } else if (bar) bar.remove();
+    // выпустили: «Город» - заново, уже без клетки (режим зрителя)
+    if (jailWas && !on && window.LGCity && $('#tab-city').classList.contains('on')) { window.LGCity.close(); openCity(); }
+    jailWas = on;
+  }
   async function openCity() {
     const el = $('#tab-city');
-    if (!ME || !ME.hero || !ME.hero.cy) { el.innerHTML = SU.note('Город пока закрыт.'); return; }
+    if (!ME || !ME.hero || !(ME.hero.cy || ME.jail)) { el.innerHTML = SU.note('Город пока закрыт.'); return; }
     if (!window.LGCity && !(await SU.loadInto(el, cityFiles, 'Город строится на глазах…', 'Город не загрузился — проверь связь и открой вкладку ещё раз.'))) return;   // 25.10: packages/site-ui
     if (!$('#tab-city').classList.contains('on') || !window.LGCity) return;
     window.LGCity.open(el, CX);
@@ -2396,9 +2437,30 @@
   }
 
   /* ---------- загрузка ---------- */
+  // 30.10: режим «Технические работы» - плашка на весь экран поверх страницы (сервер кладёт maintenance: { text } в /api/me; админу игры и тестерам - нет).
+  // Пока плашка висит, раз в 30 с спрашиваем /api/me: работы закончились - плашка уходит сама.
+  let mtEl = null, mtT = 0;
+  function maintShow(m) {
+    if (!m) {
+      if (mtEl) { mtEl.remove(); mtEl = null; document.documentElement.classList.remove('lg-maint-on'); }
+      clearTimeout(mtT); mtT = 0;
+      return;
+    }
+    if (!mtEl) {
+      mtEl = document.createElement('div'); mtEl.className = 'lg-maint'; mtEl.setAttribute('role', 'alertdialog'); mtEl.setAttribute('aria-modal', 'true');
+      mtEl.innerHTML = '<div class="lg-maint-box"><div class="lg-maint-ico" aria-hidden="true">&#9874;</div><p class="lg-maint-t"></p></div>';
+      document.body.appendChild(mtEl); document.documentElement.classList.add('lg-maint-on');
+    }
+    mtEl.querySelector('.lg-maint-t').textContent = String(m.text || 'Технические работы - скоро вернёмся');
+    if (!mtT) mtT = setTimeout(async () => {
+      mtT = 0;
+      try { const r = await api('/api/me'); if (r && r.ok !== false) { maintShow(r.maintenance || null); if (!r.maintenance) { last = ''; apply(r, true); } } else maintShow(m); } catch (e) { maintShow(m); }
+    }, 30000);
+  }
   async function load() {
     const r = await api('/api/me');
     if (!r || r.ok === false) return;
+    maintShow(r.maintenance || null);
     apply(r, true);
     if (r.ql) questData(r.ql, r.now);   // 22.10: вкладка «Поход» без живого канала — по опросу
   }
@@ -2407,7 +2469,7 @@
   function apply(r, full) {
     const wasUser = !!(ME && ME.user);
     const next = full ? r : { ...ME, hero: r.hero, creating: r.creating, results: r.results, synced: r.synced || (ME && ME.synced), ...(r.fq ? { fq: r.fq } : {}) };
-    const k = JSON.stringify([next.user, next.hero, next.creating, (next.results || []).map((x) => x.id)]);
+    const k = JSON.stringify([next.user, next.hero, next.creating, (next.results || []).map((x) => x.id), next.jail || null]);
     ME = next; nameItems(ME && ME.hero);
     for (const x of (ME && ME.results) || []) {
       if (shownRes.has(x.id)) continue;
@@ -2426,15 +2488,17 @@
     if (k === last) return; last = k;   // ничего не поменялось — не перерисовываем (не сбиваем прокрутку)
     // пока тянут вещь или открыто меню — перерисуем чуть позже
     if (DR.active || DR.src || document.querySelector('.ctxm') || busy) { clearTimeout(laterT); laterT = setTimeout(() => { last = ''; apply(ME, true); }, 700); return; }
-    renderUser(); renderHero(); smVis(); cityVis(); questVis(); worldVis();
+    renderUser(); renderHero(); smVis(); cityVis(); questVis(); worldVis(); jailUi();
     if (window.LGQuest && window.LGQuest.hero) window.LGQuest.hero();   // 25.10: панель героя во вкладке «Поход» (здоровье, еда, баффы)
     if (window.LGMine && window.LGMine.on && window.LGMine.hero) window.LGMine.hero();   // 27.10: сумка в шахте - сразу новые кучки и осколки (раньше рисовалась только при открытии)
     if (ME && ME.user) bfInit(); bfSoon();   // 24.10: «Отправить баг»
     if (window.LGCity && $('#tab-city').classList.contains('on')) window.LGCity.heroChanged();
     // 29.10: личка страницы (LGDm) - живёт вне «Города» и шахты
-    if (ME && ME.user && ME.hero && ME.hero.cd) dmLoad().catch(() => null);
+    if (ME && ME.user && ME.hero && ME.hero.cd && !inJail()) dmLoad().catch(() => null);
     // 29.10: единый чат страницы
-    if (ME && ME.user && ME.hero && ME.hero.c1) oneLoad().catch(() => null); else if (window.LGChatOne && ME && ME.hero) window.LGChatOne.init(oneCtx());
+    if (ME && ME.user && ME.hero && ME.hero.c1 && !inJail()) oneLoad().catch(() => null); else if (window.LGChatOne && ME && ME.hero) window.LGChatOne.init(oneCtx());
+    // флаг включили на лету - окно лички сразу уходит во вкладку чата (выключили - возвращается)
+    if (window.LGDm) window.LGDm.place();
     if (!wasUser && ME.user) { if (logOn()) loadLog(); live(); }
   }
 
@@ -2458,6 +2522,8 @@
       ES.addEventListener('dm', (e) => { let d = null; try { d = JSON.parse(e.data); } catch {} if (!d) return; if (window.LGDm) window.LGDm.onEvent(d); else if (d.m) dmLoad().then(() => window.LGDm && window.LGDm.onEvent(d)).catch(() => null); });   // 29.10: личные
       ES.addEventListener('fr', (e) => { try { if (window.LGFriends) window.LGFriends.onEvent(JSON.parse(e.data)); } catch {} });   // 29.10: заявка в друзья, «принял»
       ES.addEventListener('q', (e) => { try { const d = JSON.parse(e.data); questData(d, d.now); } catch {} });   // 22.10: вкладка «Поход»
+      // 30.10 (тюрьма): список заключённых изменился - клетке в «Городе»; посадили / выпустили меня - перечитать /api/me (режим страницы)
+      ES.addEventListener('jail', (e) => { let d = null; try { d = JSON.parse(e.data); } catch (x) { d = null; } if (!d) return; if (window.LGCity && window.LGCity.jail) window.LGCity.jail(d); const me = CX.login(), inn = (d.list || []).some((x) => x.l === me); if (me && inn !== inJail()) load(); });
     }
     ES.addEventListener('style', (e) => { let d = {}; try { d = JSON.parse(e.data) || {}; } catch {} styleEvent(String(d.style || '')); });   // 28.10 (fix/style-live)
     ES.addEventListener('sm', (e) => { let d = {}; try { d = JSON.parse(e.data) || {}; } catch {} if ((d.why || []).includes('mods')) { smStale = true; smStaleCheck(); } smRefresh(true, d.style); smTell(d.why); });

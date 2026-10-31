@@ -35,19 +35,32 @@
     mine: { x0: 1150, x1: 1470, base: 1336 },
     mineBed: [[980, 1300], [880, 1300]],   // 24.10: шахта открыта — клумба левее (не заходит на доску итогов)   // 23.10: вход в шахту (промысел города) — у подпорной стены, правее Склада (только кому шахта открыта)
     lamps: [[1140, 1460], [1420, 1460], [QW + 520, 1460], [QW + 800, 1460], [QW + 2120, 1460], [QW + 2400, 1460], [QW + 3380, 1460], [QW + 3660, 1460]],
+    // 30.10 (тюрьма, legionary.jailPublic): у подпорной стены правее шахты - здание (x0…x1) и клетка (c0…c1, пол от стены до fy, прутья - fy,
+    // проём дверцы - door); тупик у стены: дорогу, мосты, портал шахты и двери не закрывает, фонари моста - правее клетки. В клетке - два
+    // ряда по 4 места (seats); две скамейки, что стояли там, - правее (move: было → стало)
+    jail: { x0: 1540, x1: 1800, base: 1342, c0: 1830, c1: 2240, fy: 1352, door: [1985, 2055], seats: [[1890, 1262], [1980, 1262], [2070, 1262], [2160, 1262], [1935, 1318], [2025, 1318], [2115, 1318], [2195, 1318]],
+      move: { benches: [[1600, 1290], [2330, 1300], [QW + 300, 1310], [QW + 760, 1310]], decor: [] } },
+  };
+  /** 30.10 (тюрьма): нижняя улица с тюрьмой - скамейка и бочки с её места сдвинуты (рисунок cityart.js и препятствия - одни). */
+  const lowJail = () => {
+    const mv = (list, pairs) => list.map(([x, y]) => { for (let i = 0; i < pairs.length; i += 2) if (pairs[i][0] === x && pairs[i][1] === y) return pairs[i + 1].slice(); return [x, y]; });
+    return { ...LOW, benches: mv(LOW.benches, LOW.jail.move.benches), decor: mv(LOW.decor, LOW.jail.move.decor) };
   };
   // полосы-препятствия между проходами (уступ без лестниц, канал без мостов): [x0, y0, x1, y1]
   const gaps = (holes, y0, y1) => { const out = []; let x = 0; for (const [a, b] of holes) { if (a > x) out.push({ b: [x, y0, a, y1] }); x = b; } if (x < W) out.push({ b: [x, y0, W, y1] }); return out; };
-  const LOWER_OBST = [
-    ...gaps(LOW.stairs, LOW.edge[0], LOW.edge[1]),
-    ...gaps(LOW.bridges, LOW.canal[0], LOW.canal[1]).map((o) => ({ ...o, water: true })),
-    ...LOW.benches.map(([x, y]) => ({ b: [x - 80, y - 26, x + 80, y + 6] })),
-    ...LOW.beds.map(([x, y]) => ({ e: [x, y, 96, 30] })),
-    ...LOW.lamps.map(([x, y]) => ({ e: [x, y, 12, 7] })),
-    ...LOW.decor.map(([x, y]) => ({ e: [x, y, 40, 16] })),
-    { e: [LOW.statue[0], LOW.statue[1], 110, 36] },
-    { b: [LOW.storage.x0, LOW.edge[1], LOW.storage.x1, LOW.storage.base] },   // 22.10: Склад — от стены до основания (сквозь здание не ходят)
+  const lowerObst = (L) => [
+    ...gaps(L.stairs, L.edge[0], L.edge[1]),
+    ...gaps(L.bridges, L.canal[0], L.canal[1]).map((o) => ({ ...o, water: true })),
+    ...L.benches.map(([x, y]) => ({ b: [x - 80, y - 26, x + 80, y + 6] })),
+    ...L.beds.map(([x, y]) => ({ e: [x, y, 96, 30] })),
+    ...L.lamps.map(([x, y]) => ({ e: [x, y, 12, 7] })),
+    ...L.decor.map(([x, y]) => ({ e: [x, y, 40, 16] })),
+    { e: [L.statue[0], L.statue[1], 110, 36] },
+    { b: [L.storage.x0, L.edge[1], L.storage.x1, L.storage.base] },   // 22.10: Склад — от стены до основания (сквозь здание не ходят)
   ];
+  const LOWER_OBST = lowerObst(LOW);
+  // 30.10 (тюрьма): здание и клетка - от стены до основания (сквозь них не ходят)
+  const JAIL_OBST = [{ b: [LOW.jail.x0, LOW.edge[1], LOW.jail.x1, LOW.jail.base] }, { b: [LOW.jail.c0 - 6, LOW.edge[1], LOW.jail.c1 + 6, LOW.jail.fy + 4] }];
   // препятствия Ярмарки «Легиона» (координаты Ярмарки, без сдвига) — для сервера и тестов; страница берёт их из стиля канала
   // e — эллипс (основание предмета), r — [x0, x1, y1]: от верха сцены до y1 (прилавки и торговцы — пройти можно только спереди)
   const FAIR_OBST = [
@@ -81,6 +94,8 @@
     // 23.10: доска итогов шахты у входа: этаж недели, рекорд, лучшие копатели, итоги прошлой недели (mine.js → LGMine.board)
     { id: 'mineboard', title: 'Итоги шахты', sub: 'лучшие копатели', icon: '📋', mine: true, hit: [1062, 1148, 1150, 1330], door: { x: 1104, y: 1366 } },
     { id: 'storage', title: 'Склад', sub: 'хранение вещей', icon: '📦', soon: true, hit: [80, 500, 1050, 1340], door: { x: 290, y: 1368 } },
+    // 30.10: Тюрьма - внутрь не войти; нажатие на здание или клетку - окно со списком заключённых (city.js). jail - только когда тюрьма открыта
+    { id: 'jail', title: 'Тюрьма', sub: 'заключённые канала', icon: '⛓', jail: true, hit: [1540, 2240, 1060, 1352], door: { x: 1670, y: 1376 } },
     // 20.10: заточка — на улице, у наковальни под навесом Кузни (наковальня во всех fair.js — x 150, низ 810); раньше Кузни в списке —
     // клик по наковальне не уходит в Кузню. Внутри Кузни — только лавка кузнеца
     { id: 'anvil', title: 'Заточка', sub: 'наковальня у Кузни', icon: '🔨', fair: true, hit: [QW + 20, QW + 300, 600, 880], door: { x: QW + 250, y: 900 }, tag: [QW + 130, 552] },
@@ -116,9 +131,11 @@
   // o.magic — у зрителя открыта магическая лавка: её здание есть (и кликается), тележки с сеном нет (её препятствие — у стиля: cart)
   function make(fairObst, o) {
     const mg = !!(o && o.magic), mn = !!(o && o.mine), FO = fairObst && fairObst.length ? fairObst : FAIR_OBST;
-    const [bedA, bedB] = LOW.mineBed, LO = mn ? LOWER_OBST.map((x) => (x.e && x.e[0] === bedA[0] && x.e[1] === bedA[1] ? { e: [bedB[0], bedB[1], x.e[2], x.e[3]] } : x)) : LOWER_OBST;
-    const OB = [...QUARTER_OBST, ...LO, ...(mn ? [{ b: [LOW.mine.x0, LOW.edge[1], LOW.mine.x1, LOW.mine.base] }] : []), ...shift(mg ? FO.filter((x) => !x.cart).concat([o.magicObst || MAGIC_OBST]) : FO, QW)];
-    const BLD = BUILDINGS.filter((b) => (!b.magic || mg) && (!b.mine || mn));
+    // 30.10: тюрьма - скамейка и бочки сдвинуты
+    const jl = !!(o && o.jail), LB = jl ? lowerObst(lowJail()) : LOWER_OBST;
+    const [bedA, bedB] = LOW.mineBed, LO = mn ? LB.map((x) => (x.e && x.e[0] === bedA[0] && x.e[1] === bedA[1] ? { e: [bedB[0], bedB[1], x.e[2], x.e[3]] } : x)) : LB;
+    const OB = [...QUARTER_OBST, ...LO, ...(jl ? JAIL_OBST : []), ...(mn ? [{ b: [LOW.mine.x0, LOW.edge[1], LOW.mine.x1, LOW.mine.base] }] : []), ...shift(mg ? FO.filter((x) => !x.cart).concat([o.magicObst || MAGIC_OBST]) : FO, QW)];
+    const BLD = BUILDINGS.filter((b) => (!b.magic || mg) && (!b.mine || mn) && (!b.jail || jl));
     // HW-NPC: хэллоуинские НПС на улице (legacy/site/public/hwnpc.js) - их препятствия и «здания» (где кликать, куда идти)
     if (o && o.hwObst) OB.push(...o.hwObst);
     if (o && o.hwB) BLD.push(...o.hwB);
@@ -315,5 +332,5 @@
     const lag = path ? pathLen([[x, y], ...path]) - real.restLen : 0;
     return { x, y, path, lag, fade: false };
   }
-  return { QW, FAIR_W, W, H, WALL_L, HARD_OBST, hard, ROWS_DX, END_DX, AREA, LOW, FAIR_OBST, MAGIC_OBST, QUARTER_OBST, LOWER_OBST, BUILDINGS, HOT, SCALE, SPEED, CATCH, SLOW, FAR_S, scaleAt, shift, make, makeFrom, pathLen, stepAlong, follow };
+  return { QW, FAIR_W, W, H, WALL_L, HARD_OBST, hard, ROWS_DX, END_DX, AREA, LOW, lowJail, JAIL_OBST, FAIR_OBST, MAGIC_OBST, QUARTER_OBST, LOWER_OBST, BUILDINGS, HOT, SCALE, SPEED, CATCH, SLOW, FAR_S, scaleAt, shift, make, makeFrom, pathLen, stepAlong, follow };
 });

@@ -13,6 +13,7 @@ body.mn-on { overflow: hidden; }
 .mn-bg .mn-nm, .mn-nm { font-family: Golos Text, Arial, sans-serif; font-weight: 800; fill: #ffe27a; stroke: #15122e; stroke-width: 4px; paint-order: stroke; }
 .mn-bars { position: absolute; inset: 0; pointer-events: none; }
 .mn-bar { position: absolute; width: 88px; height: 12px; border-radius: 6px; background: rgba(21,18,46,.82); padding: 2px; box-sizing: border-box; }
+.mn-bar .mn-hpt { display: block; height: 100%; border-radius: 4px; overflow: hidden; text-decoration: none; }   /* 30.10: дорожка - прячет уехавшую заливку (mine.js hpGo) */
 .mn-bar i { display: block; height: 100%; border-radius: 4px; background: #7ff07a; }
 .mn-bar.me i { background: #ffe27a; }
 .mn-bar em { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); white-space: nowrap; font: 800 17px Golos Text, Arial, sans-serif; font-style: normal; color: #ffe27a; background: #15122e; border: 2px solid #ffe27a; border-radius: 10px; padding: 1px 9px; }
@@ -534,6 +535,8 @@ html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); 
 .mn3 [data-i].open { cursor: pointer; }
 .mn3 [data-i].far { opacity: .72; }
 .mn3 [data-i].dg .rk { opacity: 0; }
+/* 30.10 (лаги при сдвиге камеры): копающий за краем кадра не рисуется и не анимируется (mine.js cullHeroes) */
+.mn-h.mn-off { display: none; }
 .mn-mm { position: absolute; left: 16px; top: 104px; z-index: 7; background: rgba(14, 12, 20, .86); border: 2px solid rgba(243, 239, 216, .3); border-radius: 10px; padding: 6px; pointer-events: none; }
 .mn-mm-t { font: 600 12px/1.2 system-ui, sans-serif; color: #f3efd8; opacity: .85; margin: 0 0 4px 2px; }
 .mn-mm svg { display: block; }
@@ -719,3 +722,9 @@ html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); 
 .mn-win .mb-head, .mn-win .sp-head, .mn-win .mb-foot { padding: 0; background: none; box-shadow: none; }
 .mn-win .mb-head .h3 { padding-right: 30px; }
 .mn-win .mb-say { margin-top: 2px; }
+
+/* 30.10: телефон, чат открыт - плашки внизу шахты («Выбери камень», «Копаешь» и др.) над окном чата, не на поле ввода (--mn-chb ставит mine.js chatFit) */
+@media (max-width: 720px) {
+  .mn[style*="--mn-chb"] .mn-tip { bottom: var(--mn-chb); }
+  .mn[style*="--mn-chb"] .mn-hat { bottom: calc(var(--mn-chb) + 34px); }
+}

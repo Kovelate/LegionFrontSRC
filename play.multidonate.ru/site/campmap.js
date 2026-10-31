@@ -1,4 +1,4 @@
-/* 26.10 (art/camp): стартовая локация «Перепутье» - палаточный лагерь новобранцев Легиона (решение стримера: до пролога у канала
+/* 26.10 (art/camp): стартовая локация «Перепутье» (30.10: модуль «Пролог»; страница берёт файл по прежнему адресу /site/campmap.js) - палаточный лагерь новобранцев Легиона (решение стримера: до пролога у канала
    нет своего города, все начинают здесь; после пролога жребий уводит канал в свой округ). Одна раскладка у всех стилей и каналов
    (у каждого канала - своя копия: свой склад, свои зрители; это решают сайт и сервер, не этот файл).
    Здания, в которые заходят (id - как у «Города», citymap.js BUILDINGS: те же помещения и окна city.js): Склад, Кузня (лавка кузнеца),
@@ -9,7 +9,8 @@
    Один файл для страницы (window.LGCampMap) и для сервера / тестов (require): раскладка + карта проходимости (citymap.js makeFrom - та же
    сетка и A*). Рисунок по стилям - legacy/site/public/campart.js. Как устроено - docs/reports/camp.md. */
 (function (root, factory) {
-  if (typeof module === 'object' && module.exports) module.exports = factory(require('./citymap.js'));
+  // 30.10 (модуль «Пролог»): лагерь - в products/legion/modules/prologue/client, раскладка городов (citymap.js) - в модуле «Мир» (world/lib)
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('../../world/lib/citymap.js'));
   else root.LGCampMap = factory(root.LGCityMap);
 })(typeof self !== 'undefined' ? self : this, function (CM) {
   'use strict';

@@ -475,8 +475,8 @@
         + `<path d="M${sx - 52} ${sy - 140} V${sy - 320}" stroke="#2a0d14" stroke-width="11" stroke-linecap="round"/><path d="M${sx - 52} ${sy - 140} V${sy - 320}" stroke="#5a2a1a" stroke-width="5" stroke-linecap="round"/><path d="M${sx - 70} ${sy - 320} V${sy - 346} M${sx - 52} ${sy - 322} V${sy - 356} M${sx - 34} ${sy - 320} V${sy - 346} M${sx - 72} ${sy - 318} H${sx - 32}" stroke="#2a0d14" stroke-width="10" stroke-linecap="round"/><path d="M${sx - 70} ${sy - 320} V${sy - 346} M${sx - 52} ${sy - 322} V${sy - 356} M${sx - 34} ${sy - 320} V${sy - 346} M${sx - 72} ${sy - 318} H${sx - 32}" stroke="#ffc83d" stroke-width="5" stroke-linecap="round"/>`,
       extra: (a, b, top, O) => tusk(a - 6, top, -1, O, '#e8d8b8') + tusk(b + 6, top, 1, O, '#e8d8b8') },
   };
-  function lower(style, M, opt = {}) {   // opt.storage — Склад открыт (тестерам): без досок на воротах и таблички «СКОРО»
-    const K = PAL[style] || PAL.legion, L = M.LOW, W = M.W, H = M.H, T = L.top, Kt = kitOf(style, K), X = LOWX[style];
+  function lower(style, M, opt = {}) {   // opt.storage — Склад открыт (тестерам): без досок на воротах и таблички «СКОРО»; 30.10: opt.jail — Тюрьма (скамейка и бочки сдвинуты)
+    const K = PAL[style] || PAL.legion, L = opt.jail && M.lowJail ? M.lowJail() : M.LOW, W = M.W, H = M.H, T = L.top, Kt = kitOf(style, K), X = LOWX[style];
     let seed = 29; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
     const O = (w = 5) => `stroke="${K.line}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"`;
     const [e0, e1] = L.edge, [c0, c1] = L.canal;
@@ -675,6 +675,91 @@
         g += Kt.thing && Kt !== STUB ? Kt.thing('barrel', b - 8, B + 4, 0.66) + Kt.thing('barrel', b + 40, B + 6, 0.66) : barrel(b - 8, B + 4) + barrel(b + 40, B + 6);
         // фонарь у ворот
         g += `<circle cx="${d1 + 30}" cy="${dt + 20}" r="40" fill="url(#lwGlow)" opacity=".7"/><path d="M${d1 + 14} ${dt + 4} h16 v10" stroke="${K.ink}" stroke-width="4" fill="none"/><path d="M${d1 + 20} ${dt + 14} h20 l-3 24 h-14 Z" fill="${K.glass}" ${O(3)}/>`;
+        return g + '</g>';
+      } });
+    }
+    // 30.10 (тюрьма, legionary.jailPublic): здание «ТЮРЬМА» у подпорной стены и клетка рядом (citymap.js LOW.jail). Клетка - два предмета:
+    // пол и задние прутья (за героями, z - у стены) и передние прутья (перед героями, z - линия прутьев). Дверца клетки и «+N» - city.js
+    // (зависят от того, сидит ли кто-то): в передних прутьях на месте дверцы - проём
+    if (opt.jail && L.jail) { const J = L.jail, B = J.base, e1w = L.edge[1];
+      const tx = (x, y, t, size, fill = K.signTx) => `<text x="${x}" y="${y}" text-anchor="middle" font-family="Russo One, Arial Black, sans-serif" font-size="${size}" fill="${fill}" stroke="${K.ink}" stroke-width="${Math.max(3, size / 7)}" paint-order="stroke" letter-spacing="3">${t}</text>`;
+      const stone = X ? X.plinth : style === 'cats' ? '#8a7a8e' : style === 'monkeys' ? '#8a8270' : '#7d7a8a', stoneL = style === 'cats' ? '#a898aa' : style === 'monkeys' ? '#a89e88' : '#9a97a8', stoneD = '#4e4b5a';
+      const iron = '#2e2b36', ironL = '#8a8e9e';
+      // здание: каменный дом с зубцами, решётка на окне, кованая дверь, вывеска, факел
+      props.push({ x: J.x0 - 30, y: 1030, w: J.x1 - J.x0 + 60, h: B - 1030 + 24, z: B, svg: () => {
+        const a = J.x0 + 10, b = J.x1 - 10, top = 1150, cx = (a + b) / 2;
+        let g = `<g data-ol="jail"><ellipse cx="${cx}" cy="${B}" rx="${(b - a) / 2 + 18}" ry="15" fill="${K.ink}" opacity=".3"/>`;
+        g += `<rect x="${a}" y="${top}" width="${b - a}" height="${B - top}" fill="${stone}" ${O(5)}/>`;
+        if (Kt !== STUB) g += Kt.wall([a + 2, top + 2, b - 2, B - 2], { pal: 'light', scale: 0.38, seed: 131 }) + `<rect x="${a}" y="${top}" width="${b - a}" height="${B - top}" fill="none" ${O(5)}/>`;
+        else for (let r = 0; r < 6; r++) for (let c = a + (r % 2) * 22; c < b - 8; c += 44) g += `<rect x="${c + 3}" y="${top + 8 + r * 30}" width="38" height="22" rx="3" fill="none" stroke="${stoneD}" stroke-width="2" opacity=".6"/>`;
+        // зубцы по верху
+        for (let x = a - 6, i = 0; x < b; x += 34, i++) if (i % 2 === 0) g += `<rect x="${x}" y="${top - 30}" width="28" height="34" fill="${stoneL}" ${O(4)}/>`;
+        g += `<rect x="${a - 10}" y="${top - 6}" width="${b - a + 20}" height="16" fill="${stoneL}" ${O(4)}/>`;
+        // окно с решёткой (по бокам двери)
+        for (const wx of [a + 22]) {
+          g += `<rect x="${wx}" y="${top + 44}" width="46" height="54" rx="6" fill="#151220" ${O(4)}/><rect x="${wx + 4}" y="${top + 48}" width="38" height="20" fill="#3a3460" opacity=".55"/>`;
+          g += `<path d="M${wx + 12} ${top + 44} V${top + 98} M${wx + 23} ${top + 44} V${top + 98} M${wx + 34} ${top + 44} V${top + 98} M${wx} ${top + 66} H${wx + 46}" stroke="${iron}" stroke-width="5"/><path d="M${wx + 11} ${top + 46} V${top + 96} M${wx + 22} ${top + 46} V${top + 96} M${wx + 33} ${top + 46} V${top + 96}" stroke="${ironL}" stroke-width="1.5" opacity=".7"/>`;
+        }
+        // дверь: тёмный проём, кованая дверь с заклёпками и засовом
+        const d0 = cx - 40, d1 = cx + 40, dt = top + 70;
+        g += `<path d="M${d0 - 8} ${B} V${dt + 14} Q${cx} ${dt - 22} ${d1 + 8} ${dt + 14} V${B} Z" fill="${stoneD}" ${O(4)}/>`;
+        g += `<path d="M${d0} ${B} V${dt + 18} Q${cx} ${dt - 10} ${d1} ${dt + 18} V${B} Z" fill="#4a4250" ${O(4)}/>`;
+        g += [dt + 36, dt + 80, B - 18].map((yy) => `<path d="M${d0 + 2} ${yy} H${d1 - 2}" stroke="${iron}" stroke-width="7"/>`).join('');
+        g += [dt + 36, dt + 80, B - 18].map((yy) => [d0 + 12, cx, d1 - 12].map((xx) => `<circle cx="${xx}" cy="${yy}" r="3.2" fill="${ironL}"/>`).join('')).join('');
+        g += `<rect x="${d1 - 24}" y="${dt + 52}" width="14" height="18" rx="3" fill="#c9a33a" ${O(2.5)}/><circle cx="${d1 - 17}" cy="${dt + 59}" r="2.5" fill="${K.ink}"/>`;
+        // вывеска «ТЮРЬМА»
+        g += `<rect x="${cx - 100}" y="${top + 8}" width="200" height="34" rx="8" fill="${K.sign}" ${O(4)}/><rect x="${cx - 93}" y="${top + 13}" width="186" height="24" rx="6" fill="none" stroke="${K.signTx}" stroke-width="2"/>` + tx(cx, top + 34, 'ТЮРЬМА', 22);
+        // факел у двери
+        { const fx = d1 + 30; g += `<circle cx="${fx}" cy="${dt + 10}" r="36" fill="url(#lwGlow)" opacity=".75"/><path d="M${fx} ${dt + 44} V${dt + 18}" stroke="${K.woodD}" stroke-width="7" stroke-linecap="round"/><path d="M${fx - 8} ${dt + 18} q8 -26 8 -30 q8 10 8 30 Z" fill="#ffb03a" ${O(2.5)}/><path d="M${fx - 3} ${dt + 16} q3 -12 3 -14 q4 6 3 14 Z" fill="#ffe59a"/>`; }
+        // цепь на стене и табличка-ярлык (как у других зданий)
+        g += `<path d="M${b - 16} ${top + 120} q-8 14 0 28 q8 14 0 28" fill="none" stroke="${iron}" stroke-width="5" stroke-dasharray="7 4"/>`;
+        return g + '</g>';
+      } });
+      // клетка - задняя часть (за героями): каменный пол в перспективе, задняя рама у стены, боковые прутья, солома, миска, тень от прутьев
+      const c0 = J.c0, c1 = J.c1, fy = J.fy, ct = 1150, back = e1w + 14, bt = ct - 46, inset = 36;
+      props.push({ x: c0 - 30, y: bt - 30, w: c1 - c0 + 60, h: fy - bt + 50, z: back, svg: () => {
+        const b0 = c0 + inset, b1 = c1 - inset;
+        let g = `<g data-ol="jail"><ellipse cx="${(c0 + c1) / 2}" cy="${fy + 6}" rx="${(c1 - c0) / 2 + 24}" ry="15" fill="${K.ink}" opacity=".32"/>`;
+        // пол: плиты
+        g += `<path d="M${c0} ${fy} L${b0} ${back} H${b1} L${c1} ${fy} Z" fill="${stone}" ${O(4)}/>`;
+        for (let r = 1; r < 4; r++) { const t = r / 4, yy = back + (fy - back) * t, xa = b0 + (c0 - b0) * t, xb = b1 + (c1 - b1) * t; g += `<path d="M${xa.toFixed(0)} ${yy.toFixed(0)} H${xb.toFixed(0)}" stroke="${stoneD}" stroke-width="2.5" opacity=".5"/>`; }
+        for (let k = 1; k < 6; k++) { const t = k / 6, xb = b0 + (b1 - b0) * t, xf = c0 + (c1 - c0) * t; g += `<path d="M${xb.toFixed(0)} ${back} L${xf.toFixed(0)} ${fy}" stroke="${stoneD}" stroke-width="2" opacity=".35"/>`; }
+        // задняя стенка (тёмная) и рама
+        g += `<rect x="${b0}" y="${bt}" width="${b1 - b0}" height="${back - bt}" fill="#25212e" opacity=".55"/>`;
+        let bars = ''; for (let x = b0 + 14; x < b1 - 6; x += 22) bars += `M${x} ${back} V${bt} `;
+        g += `<path d="${bars}" stroke="#3e3a48" stroke-width="4"/><path d="M${b0} ${bt} H${b1} M${b0} ${back} H${b1}" stroke="#3e3a48" stroke-width="6"/>`;
+        // боковые стенки: прутья в перспективе (от передней стойки к задней)
+        for (const [fx, bx] of [[c0, b0], [c1, b1]]) {
+          let sd = ''; for (let k = 1; k < 4; k++) { const t = k / 4, x = fx + (bx - fx) * t, yb = fy + (back - fy) * t, yt = ct + (bt - ct) * t; sd += `M${x.toFixed(0)} ${yb.toFixed(0)} V${yt.toFixed(0)} `; }
+          g += `<path d="${sd}" stroke="${iron}" stroke-width="5"/><path d="M${fx} ${ct} L${bx} ${bt} M${fx} ${fy} L${bx} ${back}" stroke="${iron}" stroke-width="6"/><path d="M${bx} ${back} V${bt}" stroke="${iron}" stroke-width="7"/>`;
+        }
+        // солома, миска, полоски тени от передних прутьев на полу
+        for (const [sx, sy, rx] of [[c0 + 70, fy - 30, 56], [c1 - 90, back + 40, 64], [(c0 + c1) / 2, fy - 60, 70]]) g += `<ellipse cx="${sx}" cy="${sy}" rx="${rx}" ry="${(rx * 0.28).toFixed(0)}" fill="#d9b768" ${O(2.5)}/><path d="M${sx - rx * 0.7} ${sy - 2} l14 -8 M${sx - rx * 0.2} ${sy + 3} l12 -9 M${sx + rx * 0.3} ${sy - 1} l14 -7" stroke="#a8843e" stroke-width="2.5"/>`;
+        g += `<ellipse cx="${c1 - 54}" cy="${fy - 18}" rx="18" ry="7" fill="#8a8e9e" ${O(2.5)}/><ellipse cx="${c1 - 54}" cy="${fy - 20}" rx="12" ry="4" fill="#5a5e6e"/>`;
+        let sh = ''; for (let x = c0 + 20; x < c1 - 10; x += 24) sh += `M${x} ${fy - 4} L${x + 14} ${fy - 40} `;
+        g += `<path d="${sh}" stroke="#000" stroke-width="5" opacity=".12"/>`;
+        return g + '</g>';
+      } });
+      // клетка - передняя решётка: прутья от пола до бруса, на месте дверцы (J.door) - проём; брус с заклёпками и табличкой
+      props.push({ x: c0 - 30, y: ct - 60, w: c1 - c0 + 60, h: fy - ct + 80, z: fy + 2, svg: () => {
+        // 30.10 (стример: «клетка закрыта полностью»): прутья сплошные, дверца - в решётке, закрыта на висячий замок
+        const [dx0, dx1] = J.door;
+        let d = '', h = '';
+        for (let x = c0 + 6; x <= c1 - 6; x += 24) { d += `M${x} ${fy} V${ct + 2} `; h += `M${x - 2} ${fy - 4} V${ct + 6} `; }
+        let g = `<g data-ol="jail"><path d="${d}" stroke="${K.ink}" stroke-width="9" stroke-linecap="round"/><path d="${d}" stroke="${iron}" stroke-width="6" stroke-linecap="round"/><path d="${h}" stroke="${ironL}" stroke-width="1.6" opacity=".75"/>`;
+        g += `<path d="M${c0} ${ct} H${c1}" stroke="${K.ink}" stroke-width="16" stroke-linecap="round"/><path d="M${c0} ${ct} H${c1}" stroke="#4a4552" stroke-width="11" stroke-linecap="round"/><path d="M${c0 + 4} ${ct - 3} H${c1 - 4}" stroke="${ironL}" stroke-width="2" opacity=".6"/>`;
+        g += `<path d="M${c0} ${fy} H${c1}" stroke="${K.ink}" stroke-width="12" stroke-linecap="round"/><path d="M${c0} ${fy} H${c1}" stroke="#4a4552" stroke-width="8" stroke-linecap="round"/>`;
+        for (let x = c0 + 18; x < c1; x += 48) g += `<circle cx="${x}" cy="${ct}" r="2.6" fill="${ironL}"/>`;
+        // дверца: рама поверх прутьев, петли, засов и висячий замок
+        { const my = (ct + fy) / 2;
+          g += `<rect x="${dx0}" y="${ct + 14}" width="${dx1 - dx0}" height="${fy - ct - 26}" fill="none" stroke="${K.ink}" stroke-width="11" rx="3"/><rect x="${dx0}" y="${ct + 14}" width="${dx1 - dx0}" height="${fy - ct - 26}" fill="none" stroke="#5a5462" stroke-width="7" rx="3"/>`;
+          g += `<path d="M${dx0} ${my} H${dx1}" stroke="${K.ink}" stroke-width="10"/><path d="M${dx0} ${my} H${dx1}" stroke="#5a5462" stroke-width="6"/>`;
+          g += [ct + 34, fy - 30].map((yy) => `<rect x="${dx0 - 9}" y="${yy - 6}" width="14" height="12" rx="2" fill="${iron}" ${O(2)}/>`).join('');
+          g += `<path d="M${dx1 - 14} ${my - 2} h30" stroke="${K.ink}" stroke-width="9" stroke-linecap="round"/><path d="M${dx1 - 14} ${my - 2} h30" stroke="${ironL}" stroke-width="5" stroke-linecap="round"/>`;
+          g += `<path d="M${dx1 + 4} ${my + 4} v-12 a9 9 0 0 1 18 0 v12" fill="none" stroke="${K.ink}" stroke-width="7"/><path d="M${dx1 + 4} ${my + 4} v-12 a9 9 0 0 1 18 0 v12" fill="none" stroke="#c9ccd6" stroke-width="3.5"/>`;
+          g += `<rect x="${dx1 - 2}" y="${my + 2}" width="30" height="26" rx="5" fill="#c9a33a" ${O(3)}/><circle cx="${dx1 + 13}" cy="${my + 13}" r="3.5" fill="${K.ink}"/><path d="M${dx1 + 13} ${my + 15} v7" stroke="${K.ink}" stroke-width="2.5"/>`; }
+        g += `<path d="M${c0 + 4} ${ct - 6} L${c0 + 40} ${ct - 50} H${c1 - 40} L${c1 - 4} ${ct - 6} Z" fill="#3a3644" opacity=".55" ${O(3)}/><path d="M${c0 + 40} ${ct - 50} H${c1 - 40}" stroke="${ironL}" stroke-width="2" opacity=".5"/>`;
+        g += `<path d="M${c0} ${fy + 4} V${ct - 6} M${c1} ${fy + 4} V${ct - 6}" stroke="${K.ink}" stroke-width="15" stroke-linecap="round"/><path d="M${c0} ${fy + 4} V${ct - 6} M${c1} ${fy + 4} V${ct - 6}" stroke="#4a4552" stroke-width="10" stroke-linecap="round"/>`;
         return g + '</g>';
       } });
     }

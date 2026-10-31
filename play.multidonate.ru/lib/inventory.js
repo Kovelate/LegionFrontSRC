@@ -28,6 +28,7 @@
 //          dragRoot / dropSel / dropOk(it, цель) + actions.drop(it, цель) - режим 'pick': ещё и перетащить вещь на цель страницы;
 //          menu(cellEl, it, e) - правая кнопка: меню вещи страницы (нет - встроенная карточка); Shift + правая - быстро надеть / снять;
 //          dollEl - кукла (слоты и человечек) в отдельном элементе страницы (тогда нужен dragRoot - общий предок с el);
+//          slots (режим storage) - в шапке сетки «Сумка» / «Склад» место [data-lgi="gx-bag" | "gx-st"] и между столбцами колонка [data-lgi="mid"] под кнопки страницы,
 //          label - подпись сетки для экранного диктора, onDragEnd() - перетаскивание кончилось (страница дорисует отложенное), sortDefault. actions.reorder(fromUid, toUid) - свой порядок сумки: ячейку на ячейку
 //          (порядок «как в сумке», фильтр «Все») и Alt+стрелки.
 (function (root, factory) {
@@ -607,14 +608,16 @@
       const vit = doll() && O.vitals !== false ? '<div class="lgi-vit" data-lgi="vit"></div>' : '';
       const fl = filters() || O.sort !== false && v !== 'inline' ? `<div class="lgi-f" role="group" aria-label="Тип вещей" data-lgi="f"></div>` : '';
       // цель броска - вся область сетки (и пустое место под ячейками), а не только ряды ячеек
-      const g = (from, label) => `<div class="lgi-g" data-lgi="g-${from}"${mode === 'equip' || mode === 'storage' ? ` data-igdrop="${from}"` : ''}>${mode === 'storage' ? `<div class="lgi-gh"><b>${esc(label)}</b><span data-lgi="cap-${from}"></span></div>` : ''}<div class="cy-grid ig-grid" role="group" aria-label="${esc(label)}" data-lgi="grid-${from}"></div><p class="lgi-empty muted" data-lgi="empty-${from}" hidden>${esc(t.empty)}</p></div>`;
+      // 30.10 (окно Склада): options.slots - в шапке каждой сетки место под кнопки страницы (gx-bag / gx-st), а между столбцами - узкая колонка (mid); наполняет страница
+      const slotsOn = mode === 'storage' && !!O.slots;
+      const g = (from, label) => `<div class="lgi-g" data-lgi="g-${from}"${mode === 'equip' || mode === 'storage' ? ` data-igdrop="${from}"` : ''}>${mode === 'storage' ? `<div class="lgi-gh${slotsOn && from !== 'ob' ? ' lgi-gh2' : ''}"><b>${esc(label)}</b><span data-lgi="cap-${from}"></span>${slotsOn && from !== 'ob' ? `<span class="lgi-gx" data-lgi="gx-${from}"></span>` : ''}</div>` : ''}<div class="cy-grid ig-grid" role="group" aria-label="${esc(label)}" data-lgi="grid-${from}"></div><p class="lgi-empty muted" data-lgi="empty-${from}" hidden>${esc(t.empty)}</p></div>`;
       // 30.10 (склад в два столбца): заголовок рудной сумки - кнопка «свернуть / развернуть» (aria-expanded), выбор помним (lgOreBagFold)
       const obT = esc(t.oreBag || 'Рудная сумка');
       const obG = obOn() ? `<div class="lgi-g lgi-ob${S.fold ? ' lgi-fold' : ''}" data-lgi="g-ob"${mode === 'storage' ? ' data-igdrop="ob"' : ''}><button type="button" class="lgi-gh lgi-foldbt" data-lgi-fold aria-expanded="${!S.fold}" aria-controls="lgi-ob-${ID}" title="${esc(S.fold ? t.obOpen || 'Развернуть' : t.obShut || 'Свернуть')}"><b>${obT}</b><span data-lgi="cap-ob"></span><i class="lgi-chev" aria-hidden="true"></i></button><div class="cy-grid ig-grid" id="lgi-ob-${ID}" role="group" aria-label="${obT}" data-lgi="grid-ob"></div></div>` : '';
       // 28.10 (bag-trash): слот «Выбросить» под сеткой - только если страница дала actions.discard (вкладка «Поход»)
       const tr = trashOn() ? `<button type="button" class="lgi-trash" data-lgi="trash" data-igdrop="trash" aria-label="${esc(t.trash)}: ${esc(t.trashPick)}" title="${esc(t.trashPick)}"><span class="lgi-tri" aria-hidden="true">🗑</span><b>${esc(t.trash)}</b><small>${esc(t.trashSub)}</small></button>` : '';
       // 30.10: склад - два столбца-обёртки (слева сумка и рудная сумка, справа склад); без места (телефон) обёртки «прозрачны» и сетки идут столбиком, как раньше
-      const grids = (mode === 'storage' ? `<div class="lgi-cols"><div class="lgi-col lgi-col-l">${g('bag', t.bag)}${obG}</div><div class="lgi-col lgi-col-r">${g('st', t.storage)}</div></div>` : g('bag', O.gridLabel || t.bag) + obG) + tr;
+      const grids = (mode === 'storage' ? `<div class="lgi-cols"><div class="lgi-col lgi-col-l">${g('bag', t.bag)}${obG}</div>${slotsOn ? '<div class="lgi-mid" data-lgi="mid"></div>' : ''}<div class="lgi-col lgi-col-r">${g('st', t.storage)}</div></div>` : g('bag', O.gridLabel || t.bag) + obG) + tr;
       S.ob = obOn(); el.classList.toggle('lgi-wob', S.ob && (v === 'compact' || v === 'sheet'));   // 28.10 (mine-orebag-scroll): с рудной сумкой прокручивается вся карточка - иначе блок руды обрезан (телефон) или не доскроллить из сумки (ПК)
       const foot = '<footer class="lgi-a" data-lgi="a"></footer>';
       const hd = O.header === false ? '' : head, det = O.detail === false ? '' : '<aside class="lgi-det" data-lgi="det" aria-live="polite"></aside>';

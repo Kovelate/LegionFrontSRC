@@ -1291,6 +1291,7 @@
   const pc = (t, T) => +((Math.max(0, Math.min(T, t)) / T) * 100).toFixed(2);
   // сглаживание участка: удар - разгон (ease-in), отдача - резко и с затуханием (ease-out), прочее - мягко
   const ease = (a, b) => (b - a > 60 ? 'cubic-bezier(.7,0,1,1)' : a - b > 15 && a > 40 ? 'cubic-bezier(.1,.9,.3,1)' : 'cubic-bezier(.35,0,.45,1)');
+  const DU = (u) => `${Math.round((u / 170) * 100000) / 1000}%`;
   function digCss() {
     let c = '';
     const build = (id, names, M, up) => {
@@ -1304,7 +1305,8 @@
         // вспышка и искры: мгновенно, разлёт, гаснут за 0,2 с
         hk.push(`${pc(t - 0.01, T)}%{opacity:0;transform:scale(.2)}`, `${pc(t, T)}%{opacity:1;transform:scale(${(big * 0.7).toFixed(2)})}`, `${end(0.07)}%{opacity:1;transform:scale(${big})}`, `${end(h === 2 ? 0.26 : 0.2)}%{opacity:0;transform:scale(${(big * 1.2).toFixed(2)})}`);
         // крошка: разлетается и падает
-        ck.push(`${pc(t - 0.01, T)}%{opacity:0;transform:translate(0,0) scale(.3)}`, `${pc(t, T)}%{opacity:1;transform:translate(0,0) scale(.5)}`, `${end(0.1)}%{opacity:1;transform:translate(0,-4px) scale(${(big * 0.9).toFixed(2)})}`, `${end(h === 2 ? 0.42 : 0.34)}%{opacity:0;transform:translate(0,${h === 2 ? 22 : 15}px) scale(${(big * 1.3).toFixed(2)})}`);
+        // 30.10: крошка - свой <svg> (digFig), сдвиг - в долях его высоты (170 ед. рисунка = 100%): те же 4 / 15 / 22 ед. рисунка, что раньше в px группы
+        ck.push(`${pc(t - 0.01, T)}%{opacity:0;transform:translate(0,0) scale(.3)}`, `${pc(t, T)}%{opacity:1;transform:translate(0,0) scale(.5)}`, `${end(0.1)}%{opacity:1;transform:translate(0,${DU(-4)}) scale(${(big * 0.9).toFixed(2)})}`, `${end(h === 2 ? 0.42 : 0.34)}%{opacity:0;transform:translate(0,${DU(h === 2 ? 22 : 15)}) scale(${(big * 1.3).toFixed(2)})}`);
         // камень: дёрнулся от удара, сплющился и вернулся
         sk.push(`${pc(t - 0.01, T)}%{transform:translate(0,0) scale(1,1)}`, `${pc(t, T)}%{transform:translate(${sh}px,1px) scale(${(2 - q).toFixed(2)},${q})}`, `${end(0.04)}%{transform:translate(${(-sh * 0.7).toFixed(1)}px,0) scale(1,1)}`, `${end(0.08)}%{transform:translate(${(sh * 0.35).toFixed(1)}px,0) scale(1,1.01)}`, `${end(0.13)}%{transform:translate(0,0) scale(1,1)}`);
       });
@@ -1316,9 +1318,10 @@
     };
     SEQS.forEach((s, k) => build(String(k), s, MOVES, false));
     SEQ_UP.forEach((s, k) => build('u' + k, s, MOVES_UP, true));
-    return c + '.mn-fig.has-d>svg.mna-dfig{display:none}.mn-h.dig .mn-fig.has-d>svg.mna-dfig{display:block}.mn-h.dig .mn-fig.has-d>svg:not(.mna-dfig){display:none}'
+    return c + '.mna-dfig{position:absolute;left:0;top:0;width:100%;height:100%}.mna-dfig>svg,.mna-ht>svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}'
+      + '.mn-fig.has-d>.mna-dfig{display:none}.mn-h.dig .mn-fig.has-d>.mna-dfig{display:block}.mn-h.dig .mn-fig.has-d>svg{display:none}'
       + '.mn[data-m2="1"] .mn-h.dig .mn-fig.has-d::after,.mn[data-m2="1"] .mn-h.dig .mn-fig.has-d::before{display:none}'
-      + '.mna-dfig{transform-origin:50% 100%}.mn[data-m2="1"] .mn-rk.hit{transform-origin:50% 90%}.mna-ht>g{opacity:0}.mna-ht.u{display:none}.mn-h.dig.up .mna-ht.u{display:inline}.mn-h.dig.up .mna-ht:not(.u){display:none}.mn-h.nb .mna-ht{display:none}'
+      + '.mna-dfig{transform-origin:50% 100%}.mn[data-m2="1"] .mn-rk.hit{transform-origin:50% 90%}.mna-ht>svg{opacity:0}.mna-ht.u{display:none}.mn-h.dig.up .mna-ht.u{display:inline}.mn-h.dig.up .mna-ht:not(.u){display:none}.mn-h.nb .mna-ht{display:none}'
       + '@media (prefers-reduced-motion:reduce){.mn[data-m2="1"] .mn-h.dig .mna-dfig,.mn[data-m2="1"] .mn-h.dig .mna-dfig *,.mn[data-m2="1"] .mn-rk.hit{animation:none!important}.mna-ht{display:none!important}}';
   }
   // кирка в лапе: в осях кисти (u - вдоль черенка к головке, n - вперёд); в покое черенок почти вертикально (−100°), клюв вперёд;
@@ -1366,13 +1369,19 @@
   // общие символы копания (один раз на страницу): кирка, искры, крошка (и они же повёрнутые - для камня сверху)
   const symV = (id, body) => `<symbol id="${id}" overflow="visible">${body}</symbol>`;
   const DIG_DEFS = symV('mna-pick', PICK_SVG) + PICK_TIER.map((T, k) => symV('mna-pick' + k, pickSvg(k >= 4 ? T.concat([1]) : T))).join('') + symV('mna-sp', BURST.s) + symV('mna-ch', BURST.c) + symV('mna-sp-u', `<g transform="rotate(-125)">${BURST.s}</g>`) + symV('mna-ch-u', `<g transform="rotate(-125)">${BURST.c}</g>`);
+  /* 30.10 (лаги при сдвиге камеры на людном этаже): кирка в лапе и сноп у копающего - не <use> общего символа, а сам рисунок (тот же,
+     что в символе; символ без viewBox и с overflow visible - <use x y> рисует его со сдвигом, то же, что <g translate>): рука и сноп -
+     отдельные слои видеокарты (digFig), у каждого слоя - свой рисунок, без ссылки на скрытый <svg> с символами. Символы в DIG_DEFS остаются */
+  const DIG_IN = { 'mna-pick': PICK_SVG, 'mna-sp': BURST.s, 'mna-ch': BURST.c, 'mna-sp-u': `<g transform="rotate(-125)">${BURST.s}</g>`, 'mna-ch-u': `<g transform="rotate(-125)">${BURST.c}</g>` };
+  PICK_TIER.forEach((T, k) => { DIG_IN['mna-pick' + k] = pickSvg(k >= 4 ? T.concat([1]) : T); });
   let digDefsDone = false;
   function digDefs() {
     if (digDefsDone || typeof document === 'undefined' || !document.body) return; digDefsDone = true;
     document.body.insertAdjacentHTML('afterbegin', `<svg class="mna-ddefs" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">${DIG_DEFS}</svg>`);
   }
   // сноп: .s - искры, .c - крошка (анимации CSS на этих группах), рисунок - <use> общего символа
-  const burstAt = (p, cls, u) => `<g class="${cls}" transform="translate(${f1(p[0])} ${f1(p[1])})" data-x="${f1(p[0])}" data-y="${f1(p[1])}"><g class="s"><use href="#mna-sp${u}"/></g><g class="c"><use href="#mna-ch${u}"/></g></g>`;
+  // 30.10: искры (.s) и крошка (.c) - каждая своим <svg> поверх тела (ov - слой в осях рисунка, см. digFig), анимация - у самого <svg>
+  const burstAt = (p, cls, u, ov) => { const t = `<g transform="translate(${f1(p[0])} ${f1(p[1])})">`; return `<span class="${cls}" data-x="${f1(p[0])}" data-y="${f1(p[1])}">${ov('s', p, t + DIG_IN['mna-sp' + u] + '</g>')}${ov('c', p, t + DIG_IN['mna-ch' + u] + '</g>')}</span>`; };
   // вырезать <g class="…batR…">…</g> целиком (с вложенными g)
   function cutGroup(svg, re) {
     const m = re.exec(svg); if (!m) return null; let i = m.index + m[0].length, depth = 1;
@@ -1399,22 +1408,33 @@
     const tip = [hx + PICK_TIP[0], hy + PICK_TIP[1]], hs1 = rot2(tip, S0, 66), hs2 = rot2(tip, S0, -15);
     // 26.10 (release-2510c): кирка в лапе - рисунок LGPickArt.held(уровень) (art/mine-gear), если он загружен; иначе символ ступени #mna-pickN (mine/pickaxe)
     const pLv = o.pick != null ? o.pick : o.pk, PA = pLv != null && pickTierOf(pLv) >= 0 && typeof window !== 'undefined' && window.LGPickArt;
-    const pick = PA ? `<g class="mna-pk" data-pk="${pickTierOf(pLv)}" transform="translate(${f1(hx)} ${f1(hy)})">${PA.held(pickTierOf(pLv))}</g>` : `<use class="mna-pk" data-pk="${Math.max(0, pickTierOf(pLv))}" href="#mna-pick${pickTierOf(pLv) >= 0 ? pickTierOf(pLv) : ''}" x="${f1(hx)}" y="${f1(hy)}"/>`;
-    const armG = `<g class="mna-arm" style="transform-origin:${f1(S0[0])}px ${f1(S0[1])}px">${arm.g}${pick}${wg.g}</g>`;
-    const hit = burstAt(hs1, 'mna-ht', '') + burstAt(hs2, 'mna-ht u', '-u');   // камень сверху: искры и крошка - вниз
-    svg = wg.rest.replace(/<\/svg>\s*$/, armG + hit + '</svg>');
+    const pick = PA ? `<g class="mna-pk" data-pk="${pickTierOf(pLv)}" transform="translate(${f1(hx)} ${f1(hy)})">${PA.held(pickTierOf(pLv))}</g>` : `<g class="mna-pk" data-pk="${Math.max(0, pickTierOf(pLv))}" transform="translate(${f1(hx)} ${f1(hy)})">${DIG_IN['mna-pick' + (pickTierOf(pLv) >= 0 ? pickTierOf(pLv) : '')]}</g>`;
+    /* 30.10 (стример: «на 10 этаже лаги, когда двигают экран»): рука с киркой и сноп - не группы внутри SVG человечка, а свои <svg>
+       поверх него в тех же осях и масштабе (центр поворота - та же точка рисунка). Анимация части рисунка внутри
+       SVG стоила главному потоку браузера пересчёт стиля и перерисовку человечка на каждом кадре (80 копающих - ~10 мс кадра на слабом
+       ПК); анимацию отдельного <svg> двигает видеокарта. Тело - <svg class="mna-db">, всё вместе - в .mna-dfig (тело качается вместе с рукой) */
+    const vb = (/^<svg [^>]*viewBox="([^"]+)"/.exec(wg.rest) || [])[1] || '0 0 120 170', [vx, vy, vw, vh] = vb.split(/[ ,]+/).map(Number);
+    // слой - рамка 2 × 2 ед. рисунка вокруг центра поворота (рисунок - за рамкой, overflow visible): слой видеокарты - по самому рисунку,
+    // а не во всю рамку человечка (телефон: память слоёв); масштаб - тот же, что у тела (доли той же рамки 120 × 170)
+    const pcv = (v, d) => Math.round((v / d) * 100000) / 1000;
+    const ov = (cls, at, body) => `<svg class="${cls}" viewBox="${f1(at[0] - 1)} ${f1(at[1] - 1)} 2 2" overflow="visible" aria-hidden="true" focusable="false" style="left:${pcv(at[0] - 1 - vx, vw)}%;top:${pcv(at[1] - 1 - vy, vh)}%;width:${pcv(2, vw)}%;height:${pcv(2, vh)}%;transform-origin:50% 50%">${body}</svg>`;
+    const armS = ov('mna-arm', S0, arm.g + pick + wg.g);
+    // камень сверху: искры и крошка - вниз
+    const hit = burstAt(hs1, 'mna-ht', '', ov) + burstAt(hs2, 'mna-ht u', '-u', ov);
     const bucket = Math.floor(Date.now() / 300000), q = hs(login + ':' + bucket);
-    return svg.replace(/^<svg /, `<svg data-sq="${q % SEQS.length}" data-squ="${(q >>> 3) % SEQ_UP.length}" `).replace(/class="jl-doodle/, 'class="mna-dfig jl-doodle');
+    return `<span class="mna-dfig" data-sq="${q % SEQS.length}" data-squ="${(q >>> 3) % SEQ_UP.length}">${wg.rest.replace(/class="jl-doodle/, 'class="mna-db jl-doodle')}${armS}${hit}</span>`;
   }
   /** После обновления героев (mine.js heroes): сноп - у поверхности своего камня, камень вздрагивает в такт копателю, ≤ 40 снопов. */
   function digSync(heroesEl, barsEl) {
     if (!heroesEl) return;
     const rocks = barsEl ? [...barsEl.querySelectorAll('.mn-rk')].map((el) => ({ el, x: parseFloat(el.style.left) + 90, y: parseFloat(el.style.top) + 170, done: false })) : [];
-    let n = 0;
+    let n = 0; const sync = [];
     for (const h of heroesEl.querySelectorAll('.mn-h.dig')) {
-      const f = h.querySelector('svg.mna-dfig'); if (!f) continue;
+      const f = h.querySelector('.mna-dfig'); if (!f) continue;
       const up = h.classList.contains('up');
       h.classList.toggle('nb', ++n > 40);
+      // 30.10: за краем кадра (mine.js cullHeroes, display: none) - не рисуется; вернётся в кадр - digSync позовут снова
+      if (h.classList.contains('mn-off')) continue;
       const m = /translate\(([-\d.]+)px, ([-\d.]+)px\)/.exec(h.style.transform || ''); if (!m || !rocks.length) continue;
       const hx = +m[1], hy = +m[2], fl = h.classList.contains('fl') ? -1 : 1;
       let best = null, bd = 1e9; for (const r of rocks) { const dx = (r.x - hx) * fl, dd = up ? Math.abs(r.x - hx) + Math.abs(hy - r.y - 40) : Math.abs(dx - 90) + Math.abs(r.y - hy) * 0.7; if ((up ? r.y < hy : dx > 0) && dd < bd) { bd = dd; best = r; } }
@@ -1433,9 +1453,18 @@
         best.done = true; const sq = up ? 'u' + f.dataset.squ : f.dataset.sq;
         if (best.el.dataset.sq !== sq) best.el.dataset.sq = sq;
         for (const v of ['--dd', '--dl']) best.el.style.setProperty(v, h.style.getPropertyValue(v) || (v === '--dd' ? '1.2s' : '0s'));
-        try { const a = f.getAnimations()[0], b = best.el.getAnimations()[0]; if (a && b && a.currentTime != null) b.currentTime = a.currentTime; } catch (e) {}
+        sync.push([f, best.el]);
       }
     }
+    // 30.10 (лаги): время анимаций - после всех записей и после кадра: getAnimations пересчитывает стили, если их тронули, - раньше это
+    // было на каждом камне (запись → чтение → запись…) прямо посреди перестройки героев. Теперь - сразу после ближайшего кадра (стили уже
+    // посчитаны браузером, чтение ничего не стоит): сначала все чтения, потом все записи
+    if (!sync.length) return;
+    const run = () => {
+      const tm = sync.map(([f, r]) => { try { if (!f.isConnected || !r.isConnected) return null; const a = f.getAnimations()[0], b = r.getAnimations()[0]; return a && b && a.currentTime != null ? [b, a.currentTime] : null; } catch (e) { return null; } });
+      for (const q of tm) if (q) { try { q[0].currentTime = q[1]; } catch (e) { /* анимация уже снята */ } }
+    };
+    if (typeof requestAnimationFrame === 'function' && typeof document !== 'undefined' && document.visibilityState === 'visible') requestAnimationFrame(() => setTimeout(run, 0)); else run();
   }
   /* --- рамки рисунков (тест «табличка не закрыта»): непрозрачная часть (прозрачнее 0,3 - ореолы, свечение - не в счёт) --- */
   function arcBox(x1, y1, rx, ry, phi, fa, fs, x2, y2, add) {

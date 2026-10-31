@@ -146,7 +146,7 @@
     bindCamera(); bindHover();
     window.addEventListener('resize', fit);
     chatWatch();   // 25.10: чат шахты - не на предметах (chatFit)
-    // 26.10: чат шахты на ПК можно перетащить за заголовок; 29.10: единый чат - закреплён (один способ везде)
+    // 26.10: чат шахты на ПК можно перетащить за заголовок; 30.10: и единый чат (его окно встаёт сюда позже - mchatIn)
     if (!one()) chatDrag();
     // 30.10: размер чата тянут за края (chat.js) - и у единого чата
     el.addEventListener('cy-chat-size', chatSized);
@@ -187,13 +187,14 @@
     onError: (er) => { if (/не в шахте/.test(er) && S) enter(true); } }) : null);
   // 29.10 (новинка chatone): единый чат страницы - своего чата шахты нет, окно встаёт на его место (раскладка chatFit - та же)
   const one = () => !!(window.LGChatOne && window.LGChatOne.on());
-  function mchatIn(r) { if (!S || !r || !r.mchat) return; if (one()) { window.LGChatOne.dock('mine', S.el); window.LGChatOne.enterFeed('mine', r.mchat); if (S.chatMo) S.chatMo.disconnect(); chatWatch(); chatFit(); return; } const c = mchat(); if (!c) return; S.mchatOn = true; c.init(); c.enter(r.mchat); panel(); }
+  function mchatIn(r) { if (!S || !r || !r.mchat) return; if (one()) { window.LGChatOne.dock('mine', S.el); window.LGChatOne.enterFeed('mine', r.mchat); if (S.chatMo) S.chatMo.disconnect(); chatWatch(); chatDrag(); chatFit(); return; } const c = mchat(); if (!c) return; S.mchatOn = true; c.init(); c.enter(r.mchat); panel(); }
   function exit() { try { close(); } finally { try { if (X && X.close) X.close(); } catch (e) {} } }
   function close() {
     if (!S) return;
     liftMenu(false);
     try { X.api('/api/mine/leave' + q(), {}); } catch (e) {}
     cancelAnimationFrame(S.raf); clearInterval(S.pollT); clearInterval(S.pingT); if (S.chatMo) S.chatMo.disconnect(); clearTimeout(S.chatFitT); clearTimeout(S.chatT); clearTimeout(S.failT); clearTimeout(S.entT);
+    if (S.chatRo) S.chatRo.disconnect(); clearTimeout(S.chatHT); if (S.viewRo) S.viewRo.disconnect();
     window.removeEventListener('resize', fit); document.removeEventListener('visibilitychange', vis); document.removeEventListener('keydown', key); document.removeEventListener('pointerdown', outDown, true); tlOff();
     try { if (CHM) CHM.menuClose(); } catch (e) {}
     if (BD && BD.mine && BD.d.isConnected) try { BD.shut(); } catch (e) { BD.d.remove(); }   // 29.10: итоги, открытые из шахты, - закрыть вместе с ней
@@ -551,6 +552,7 @@
     const key = ['v3', lch, (S.st.drills || []).map((d) => d[0] + d[3] + d[4]).join(','), S.st.seed, S.st.n, S.st.dug, (S.st.front || []).join('.'), S.dark ? 1 : 0, (S.st.fl.c || []).length, pickOn() ? 1 : 0, window.LGMineBiome ? 1 : 0].join('|');
     drillMenuFill(); tmrDraw();
     if (key === S.svgKey) { bars(); heroes(); mmap(); return; }
+    const forced = !S.svgKey;
     S.svgKey = key;
     // 30.10 (репорт #2148: «фон сохранился с прошлой шахты»): шахту открыли на прежнем этаже (Шахта 2.0), потом пришла неделя Шахты 3.0 -
     // фон прежнего этажа (картинка стен с крепью и кристаллами, плитка породы, виньетка, частицы - mine-biome.js) оставался под новым
@@ -563,6 +565,12 @@
     S.svg.classList.add('v3');   // пустое место слоя предметов не ловит нажатия - камни в кусках сцены под ним
     S.world.style.width = Wd.W + 'px'; S.world.style.height = Wd.H + 'px';
     S.view.style.background = Wd.theme.wallD;
+    /* 30.10 (лаги на людном этаже): выкопали камень (на канале с сотней копающих - каждые несколько секунд) - зал лифта (клеть, лавки,
+       доска, НПС, подписи, их копии в слое героев) раньше собирался заново целиком. Теперь - только если поменялось то, из чего он
+       рисуется: этаж, природа, темнота, кирки, лифт, догрузились рисунки; перерисовку по ошибке или новому облику (svgKey '') - всегда */
+    const hallK = [Wd.W, Wd.H, F.n, S.st.seed, S.st.biome, S.dark ? 1 : 0, pickOn() ? 1 : 0, lch, onDeep ? 1 : 0, JSON.stringify(S.st.lift || {}), S.st.deep || 0, window.LGMineBiome ? 1 : 0, window.LGPickArt ? 1 : 0, A.TRADER_LOOK ? 1 : 0].join('|');
+    if (!forced && hallK === S.hallK && S.svg.firstChild && S.heroes.querySelector('.mn-oc')) { S.barKey = ''; bars(); heroes(); mmap(); S.failed = ''; return; }
+    S.hallK = hallK;
     const lbl = [], occ = [];
     const npcG = (n, id, seed) => { if (!n) return ''; const nk = 0.8, sv = still(X.doodle(seed, n.look || { look: { hat: 'none' }, minerHat: true }, 'happy', 'peace')); lbl.push(`<span class="mn-lbl" data-for="${id}" style="left:${n.x}px;top:${(n.y - 170 * nk - 2).toFixed(0)}px">${esc(n.name)}</span>`); occ.push({ k: id === 'buy' ? 'npcBuy' : 'npcLamp', svg: figSvg(n.x, n.y, sv, nk), z: Math.round(n.y) }); return `<g data-npc="${id}" class="mn-npc">${figSvg(n.x, n.y, sv, nk)}</g>`; };
     let npcSvg = npcG(Wd.npc, 'buy', 'npc:skupshik:' + (S.st.biome || '')) + npcG(Wd.lampNpc, 'lamp', 'npc:fonarshik');
@@ -644,10 +652,14 @@
   const hx2 = (c) => [1, 3, 5].map((k) => parseInt(c.slice(k, k + 2), 16));
   const mixC = (a, b, k) => { const A = hx2(a), B = hx2(b); return '#' + A.map((v, j) => Math.round(v + (B[j] - v) * k).toString(16).padStart(2, '0')).join(''); };
   const hpCol = (r) => (r > 0.5 ? mixC('#ffd23f', '#5fd35f', (r - 0.5) * 2) : mixC('#ff4d3d', '#ffd23f', Math.max(0, r) * 2));
+  /* 30.10 (лаги): полоска уходила к 0 переходом ширины - его браузер считает сам на каждом кадре (раскладка), и пока хоть одна полоска
+     идёт, страница рисовала кадр за кадром и заново считала все анимации копающих (в покое - треть ядра слабого ПК). Теперь заливка (той же ширины, с тем же
+     скруглением) уезжает влево на свою ширину за то же время (transform - видеокарта), её левый край прячет дорожка .mn-hpt
+     (overflow: hidden, то же скругление): видно то же самое - полоска со скруглёнными краями, правый край идёт к нулю */
   function hpGo(el, rem, eta) {
     if (!(eta > 0 && rem > 0)) return;
     const D = eta / rem;
-    el.style.transition = `width ${eta.toFixed(1)}s linear`; el.style.width = '0%';
+    el.style.transition = `transform ${eta.toFixed(1)}s linear`; el.style.transform = 'translateX(-100%)';
     el.style.animation = `mnHp ${D.toFixed(1)}s linear ${(-(D - eta)).toFixed(1)}s 1 both`;
   }
   /* 30.10 (стример: убрать правую панель): что копаю - прямо над своим камнем: «Руда 2 ур. · железо», «ещё N мин» и маленькая «Стоп».
@@ -664,12 +676,14 @@
     if (b && b[2] > 0) { const eta = Math.max(0, b[0] / b[2] - (Date.now() - (S.st.at || Date.now())) / 60000) * 60000, v = String(Date.now() + eta); lt.dataset.left = v; const tx2 = leftTxt(eta); if (lt.textContent !== tx2) lt.textContent = tx2; }
     else if (lt.textContent) { lt.textContent = ''; delete lt.dataset.left; }
     if (el.hidden) el.hidden = false;
-    nowPlace();
+    S.nowWH = null; nowPlace();
   }
   function nowPlace() {
     const el = S.el.querySelector('.mn-nowl'), a = S.nowA; if (!el || !a || el.hidden) return;
     // над камнем, но целиком на экране (камень у края - подпись прижата к краю)
-    const w = el.offsetWidth, h = el.offsetHeight, vw = S.view.clientWidth, x = Math.max(4, Math.min(vw - w - 4, S.tx + a.x * S.z - w / 2)), y = Math.max(4, S.ty + a.y * S.z - 6 - h);
+    // размер подписи - один раз после смены текста (nowDraw), не на каждый сдвиг камеры
+    if (!S.nowWH) S.nowWH = [el.offsetWidth, el.offsetHeight];
+    const [w, h] = S.nowWH, vw = vSize().w, x = Math.max(4, Math.min(vw - w - 4, S.tx + a.x * S.z - w / 2)), y = Math.max(4, S.ty + a.y * S.z - 6 - h);
     el.style.transform = `translate(${x.toFixed(0)}px, ${y.toFixed(0)}px)`;
   }
   async function stopDig() {
@@ -690,7 +704,7 @@
       const age = (now - (st.at || now)) / 60000, l2 = Math.max(0, left - rate * Math.max(0, age)), p = Math.max(0, Math.min(1, 1 - l2 / w)), eta = rate > 0 ? (l2 / rate) * 60 : 0;
       const c = W.cellXY(i), cell = S.F.cells[i], sc = 1.0 + Math.max(0, (cell.lv || S.F.n) - S.F.n) * 0.1;
       // над своим камнем — сколько ещё копать (обновляется раз в 20 с, без кадров)
-      h += `<div class="mn-bar${i === S.myI ? ' me' : ''}" style="left:${c.x - 44}px;top:${c.y - 70 * sc}px"><i style="width:${((1 - p) * 100).toFixed(1)}%;background-color:${hpCol(1 - p)}" data-eta="${eta.toFixed(1)}" data-rem="${(1 - p).toFixed(4)}"></i>${n > 4 ? `<b>+${n - 4}</b>` : ''}</div>`;
+      h += `<div class="mn-bar${i === S.myI ? ' me' : ''}" style="left:${c.x - 44}px;top:${c.y - 70 * sc}px"><s class="mn-hpt"><i style="width:${((1 - p) * 100).toFixed(1)}%;background-color:${hpCol(1 - p)}" data-eta="${eta.toFixed(1)}" data-rem="${(1 - p).toFixed(4)}"></i></s>${n > 4 ? `<b>+${n - 4}</b>` : ''}</div>`;
     }
     // 25.10 (mine2): камни, которые копают, - копией поверх сцены: трещины растут с прогрессом, камень вздрагивает от ударов (CSS)
     const A = S.Wd && S.Wd.rk && !S.dark ? window.LGMineArt : null; S.digL = [];
@@ -726,7 +740,8 @@
     if (dig && login[0] !== '~') d.title = login;   // 29.10 (антибот): «~…» - копающий без открытого сайта, ника сервер не даёт
     return d;
   }
-  function place(d, x, y) { d.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`; if (!(d._zTo > Date.now())) d.style.zIndex = String(Math.round(y)); }   // z = линия ног (пока идёт - zSteps)
+  // z = линия ног (пока идёт - zSteps)
+  function place(d, x, y) { d._x = x; d._y = y; d.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`; if (!(d._zTo > Date.now())) d.style.zIndex = String(Math.round(y)); }
   // 25.10: стоит внутри камня (этаж сменился, а шаг ещё не пришёл) — рисуем на площадке у входа, а не в камне
   // 25.10 (mine/walk): на площадке входа - не внутри предметов (stop: где стоит; false - откуда идёт, может быть за предметом)
   const walkPt = (p, stop = true) => MW().walkPt(S.dug, p, stop, ft());
@@ -760,8 +775,33 @@
       nm.style.transform = `translate(${S.pos.x.toFixed(1)}px, ${(S.pos.y - 112).toFixed(1)}px) translateX(-50%)`;
     }
     for (const [k, d] of have) if (!want.has(k)) d.remove();
+    cullHeroes();
     if (art2On() && window.LGMineArt && window.LGMineArt.digSync) window.LGMineArt.digSync(S.heroes, S.bars);   // 26.10: сноп у камня, камень в такт
     mmap();   // 29.10: «ты» на мини-карте большого этажа
+  }
+  /* 30.10 (стример: «на 10 этаже лаги, когда двигают экран»): удар киркой у копающих - 4 CSS-анимации на каждого (тело, рука, искры,
+     крошка). Двигает их видеокарта (mine-art.js digFig), но пока идут кадры страницы (камеру тащат), браузер на каждом кадре заново
+     считает стиль каждой идущей анимации - и у копающих далеко за краем экрана тоже. Копающий вне кадра (с запасом CULL px мира) -
+     display: none (класс mn-off): ни анимаций, ни стиля; вернулся в кадр - снова рисуется (анимация - с начала, камень - в такт по digSync).
+     Проверка - по камере (camMoved, раз за кадр, только смена класса) и после героев. Гуляющих не трогаем: у них анимаций внутри нет */
+  const CULL = 320;
+  function cullHeroes() {
+    if (!S || !S.heroes || !S.z) return 0;
+    const v = vSize(), x0 = -S.tx / S.z - CULL, y0 = -S.ty / S.z - CULL, x1 = x0 + v.w / S.z + 2 * CULL, y1 = y0 + v.h / S.z + 2 * CULL;
+    let shown = 0;
+    for (const d of S.heroes.children) {
+      if (d._x == null || !d.classList.contains('dig') || d.dataset.k === 'me') continue;
+      const off = d._x < x0 || d._x > x1 || d._y < y0 || d._y > y1;
+      if (off !== d.classList.contains('mn-off')) { d.classList.toggle('mn-off', off); if (!off) shown++; }
+    }
+    return shown;
+  }
+  // размер вида - из кэша (ResizeObserver сбрасывает): чтение clientWidth на каждый сдвиг камеры заставляло браузер пересчитывать стили
+  // посреди кадра (с анимациями копающих - дорого); fresh - прочитать заново (fit, смена раскладки чата)
+  function vSize(fresh) {
+    if (fresh || !S.vsz) S.vsz = { w: S.view.clientWidth, h: S.view.clientHeight };
+    if (!S.viewRo && window.ResizeObserver) { S.viewRo = new ResizeObserver(() => { if (S) S.vsz = null; }); S.viewRo.observe(S.view); }
+    return S.vsz;
   }
   // стоит у камня i: не дальше REACH (200 px мира) от его центра (библиотека мира - та же у сервера: site.ts MINE_REACH) и камень ещё не выкопан
   function atRock(i) { if (!S.pos || i < 0 || S.dug[i]) return false; const c = GX().cellXY(i); return Math.hypot(S.pos.x - c.cx, S.pos.y - c.cy) <= MW().REACH; }
@@ -1613,7 +1653,7 @@
   /* ---------- камера: этаж по ширине, ~7 рядов по высоте; листать вверх-вниз ---------- */
   // масштаб сцены по множителю «−» / «+» / колеса (zk): старая шахта - этаж по ширине, ~9 рядов; большая - ~15 клеток по ширине (телефон - 7), не дальше, чем этаж заполняет экран
   function zFor(zk) {
-    const W = S.Wd, vw = S.view.clientWidth, vh = S.view.clientHeight;
+    const W = S.Wd, { w: vw, h: vh } = vSize();
     if (W.v3) {
       // 30.10: не отдаляем дальше, чем этаж заполняет экран (иначе по краям - пустой фон); внешняя половина поля вокруг этажа в кадр не попадает
       const phone = vw < 720, z0 = phone ? vw / (7.2 * W.CW) : Math.min(1, vw / (15 * W.CW), vh / (6.5 * W.RH));
@@ -1628,6 +1668,7 @@
   }
   function fit(reset) {
     if (!S || !S.Wd) return;
+    vSize(true);
     if (S.Wd.v3) return fit3(reset);
     const W = S.Wd, vw = S.view.clientWidth, vh = S.view.clientHeight;
     // 25.10: «вид сильно приближен» — на ПК видно ~9 рядов и не крупнее 1:1 (было ~7 рядов и до 1,6); «−» / «+» — свой масштаб
@@ -1709,6 +1750,15 @@
       // 30.10 (репорт #2140): свёрнутый чат - только язычок и «−/+»: сцену не укорачиваем (была тёмная полоса во всю ширину под шахтой),
       // кнопки лежат поверх сцены, а камера у нижнего края может поднять вход над ними (padB)
       if (!box.classList.contains('open')) { padC = res; res = 0; }
+      // 30.10 (стример: «чат на телефоне занимает полэкрана»): открытый чат на телефоне - компактное окно поверх сцены (city.css, ≤ 30%
+      // высоты), сцену не укорачивает. Низ этажа (подъёмник, Фонарщик, лавка) - над окном: запас снизу как у свёрнутого (padC), камера
+      // у входа остаётся у входа, а этаж не опускается под чат (предметы шахты 2 и 3 им не закрыты)
+      else if (phone) { res = 0; padC = Math.round(64 + box.offsetHeight + 6); }
+    }
+    // телефон, чат открыт: плашки шахты («Выбери камень» и др.) встают над окном чата (--mn-chb - его верхний край от низа шахты), свёрнут - как раньше
+    {
+      const up = phone && m2 && shown(box) && box.classList.contains('open') ? Math.round(64 + box.offsetHeight + 8) + 'px' : '';
+      if ((S.el.style.getPropertyValue('--mn-chb') || '') !== up) { if (up) S.el.style.setProperty('--mn-chb', up); else S.el.style.removeProperty('--mn-chb'); }
     }
     if (res === (S.res || 0) && padC === (S.padC || 0) && padA === (S.padA || 0)) return;
     // камера у входа - и останется у входа (запас под чатом, padA, камеру не двигает)
@@ -1772,7 +1822,10 @@
     const box = S.el.querySelector('.cy-chat'), hd = box && box.querySelector('.cy-chat-h');
     if (!hd) return;
     S.chatPos = chatPosLoad();
-    const can = () => !!S && S.el.dataset.m2 === '1' && !window.LGSiteUi.is('phone') && (S.el.dataset.chat === 'side' || S.el.dataset.chat === 'free');
+    // 30.10: окно единого чата живёт дольше шахты и одно на страницу - слушатели вешаются один раз, шахта берётся текущая (S)
+    if (hd.dataset.mnDrag) return;
+    hd.dataset.mnDrag = '1';
+    const can = () => !!S && S.el.contains(box) && S.el.dataset.m2 === '1' && !window.LGSiteUi.is('phone') && (S.el.dataset.chat === 'side' || S.el.dataset.chat === 'free');
     const noDrag = (t) => !!(t && t.closest && t.closest('button, input, a, select, textarea'));
     let d = null;
     hd.addEventListener('pointerdown', (e) => {
@@ -1822,7 +1875,7 @@
   /* 29.10 (Шахта 3.0): камера во все стороны. Масштаб: телефон - ~7 клеток по ширине, ПК - до 15 клеток и не крупнее 1:1 («−» / «+» - свой).
      Начало - на своём герое (зал лифта). Края - не дальше края пещеры (за ней - сплошная порода). */
   function fit3(reset) {
-    const vw = S.view.clientWidth, vh = S.view.clientHeight;
+    const { w: vw, h: vh } = vSize(true);
     S.z = zFor(S.zk || 1);
     if (reset === true || S.tx == null) { const p = S.pos || spawnPt(); S.tx = vw / 2 - p.x * S.z; S.ty = (vh - padB()) / 2 - (p.y - 60) * S.z; }
     clamp3(); apply();
@@ -1830,12 +1883,21 @@
   }
   const m3Margin = () => { const G3 = S.Wd && S.Wd.G; return G3 ? G3.PAD * G3.CW * 0.5 : 0; };
   function clamp3() {
-    const W = S.Wd, vw = S.view.clientWidth, vh = S.view.clientHeight - padB(), mg = m3Margin() * S.z, w = W.W * S.z, h = W.H * S.z, pa = Math.max(0, ((S && S.padA) || 0) - padB());
+    const W = S.Wd, v = vSize(), vw = v.w, vh = v.h - padB(), mg = m3Margin() * S.z, w = W.W * S.z, h = W.H * S.z, pa = Math.max(0, ((S && S.padA) || 0) - padB());
     S.tx = w - 2 * mg <= vw ? (vw - w) / 2 : Math.min(-mg, Math.max(vw - w + mg, S.tx));
     S.ty = h - 2 * mg <= vh ? (vh - h) / 2 : Math.min(-mg, Math.max(vh - h + mg - pa, S.ty));
   }
   // смена камеры на большом этаже: дорисовать куски, вошедшие в кадр (раз за кадр браузера)
-  function camMoved() { if (!V3() || !S.m3 || S.camRaf) return; S.camRaf = requestAnimationFrame(() => { if (!S) return; S.camRaf = 0; S.m3.ensure(); if (S.st && S.F) bars(); }); }
+  // 30.10: куски и полоски - только когда сменился набор кусков в кадре (раньше - каждый кадр: ключи кусков и полосок); копающие вне кадра - скрыть
+  function camMoved() {
+    if (!S || S.camRaf) return;
+    S.camRaf = requestAnimationFrame(() => {
+      if (!S) return; S.camRaf = 0; vSize();
+      let re = false;
+      if (V3() && S.m3) { const vk = S.m3.viewKey(); if (vk !== S.camVK) { S.camVK = vk; S.m3.ensure(); if (S.st && S.F) { bars(); re = true; } } }
+      if ((cullHeroes() || re) && art2On() && window.LGMineArt && window.LGMineArt.digSync) window.LGMineArt.digSync(S.heroes, S.bars);
+    });
+  }
   function apply() { S.world.style.transform = `translate(${S.tx.toFixed(1)}px, ${S.ty.toFixed(1)}px) scale(${S.z})`; if (S.lm) liftPlace(); if (S.nowA) nowPlace(); if (S.npcOpen) winPlace(); camMoved(); }
   const WHEEL_OWN = '.mn-win, .mn-wg, .cy-chat, .mn-lm, input, textarea, select, [data-wheel]';
   // зум колесом: S.zk (пределы 0,6…1,8 - как у кнопок), точка мира под курсором остаётся на месте; дорогое (чат, плитка фона) - после паузы
@@ -1857,18 +1919,56 @@
   }
   function bindCamera() {
     const v = S.view; let drag = null;
-    v.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY, tx: S.tx, ty: S.ty, moved: false, id: e.pointerId, at: Date.now() }; });
+    /* 30.10 (pinchZoomPublic, тестерам): щипок двумя пальцами - масштаб вокруг точки между пальцами, та же точка мира ведёт вид, поэтому
+       щипок одновременно сдвигает (как «Город», city.js). Пределы - те же, что у «−» / «+» и колеса (S.zk 0,6…1,8; zFor не отдаляет
+       дальше, чем этаж заполняет экран - пустоты за картой нет). Только transform слоя мира: события пальцев лишь запоминают положение,
+       слой пишется один раз за кадр (requestAnimationFrame, только пока пальцы двигаются). Поднял палец после щипка - ни хода, ни нажатия по камню */
+    const fingers = new Map();
+    const pinchOf = () => { const [a, b] = [...fingers.values()], r = v.getBoundingClientRect(); return { d: Math.max(10, Math.hypot(a.x - b.x, a.y - b.y)), mx: (a.x + b.x) / 2 - r.left, my: (a.y + b.y) / 2 - r.top }; };
+    const pzOn = () => { try { const h = X.hero(); return !!(h && h.pz); } catch (e) { return false; } };
+    function pinchFrame() {
+      const P = S && S.pinch; if (!P) return;
+      S.pinchRaf = 0;
+      if (fingers.size !== 2 || !S.Wd) return;
+      const q = pinchOf();
+      if (Math.abs(S.z - zFor(S.zk || 1)) > 1e-3) fit();
+      // старый этаж (до Шахты 3.0) уже по ширине экрана - отдалять щипком ниже этого нельзя (по бокам была бы пустота)
+      const z0 = S.z, zk1 = Math.max(S.Wd.v3 ? 0.6 : 1, Math.min(1.8, P.zk0 * q.d / P.d0)), z1 = zFor(zk1);
+      const wx = (P.mx - S.tx) / z0, wy = (P.my - S.ty) / z0;
+      S.zk = zk1; S.z = z1;
+      S.tx = q.mx - wx * z1; S.ty = q.my - wy * z1;
+      P.mx = q.mx; P.my = q.my;
+      if (!S.Wd.v3) S.tx = (S.view.clientWidth - S.Wd.W * S.z) / 2;
+      clampY(); apply();
+      clearTimeout(S.zfT); S.zfT = setTimeout(() => { if (!S) return; S.el.style.setProperty('--mnb-ts', (200 * S.z).toFixed(1) + 'px'); dockFit(); chatFit(); }, 160);
+    }
+    const unfinger = (e) => { if (!fingers.delete(e.pointerId)) return; if (fingers.size < 2 && S && S.pinch) { S.pinch = null; S.pinchEnd = Date.now(); } };
+    v.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'touch' && pzOn()) {
+        fingers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        if (fingers.size === 2) { const q = pinchOf(); S.pinch = { d0: q.d, zk0: S.zk || 1, mx: q.mx, my: q.my }; drag = null; return; }
+        if (fingers.size > 2) return;
+      }
+      drag = { x: e.clientX, y: e.clientY, tx: S.tx, ty: S.ty, moved: false, id: e.pointerId, at: Date.now() };
+    }, { passive: true });
     // 29.10: большой этаж - перетаскивание во все стороны
-    v.addEventListener('pointermove', (e) => { if (!drag) return; const v3 = !!(S.Wd && S.Wd.v3), dx = v3 ? e.clientX - drag.x : 0, dy = e.clientY - drag.y; if (Math.hypot(dx, dy) > 6) { drag.moved = true; try { v.setPointerCapture(drag.id); } catch (x) {} } if (drag.moved) { if (v3) S.tx = drag.tx + dx; S.ty = drag.ty + dy; clampY(); apply(); } });
-    v.addEventListener('pointerup', (e) => { const d = drag; drag = null; if (d && !d.moved) click({ target: e.target, clientX: e.clientX, clientY: e.clientY, shiftKey: e.shiftKey, long: Date.now() - d.at > 550, tr: e.isTrusted }); });
-    v.addEventListener('pointercancel', () => { drag = null; });
+    v.addEventListener('pointermove', (e) => {
+      if (fingers.has(e.pointerId)) { fingers.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (S.pinch) { if (!S.pinchRaf) S.pinchRaf = requestAnimationFrame(pinchFrame); return; } }
+      if (!drag) return; const v3 = !!(S.Wd && S.Wd.v3), dx = v3 ? e.clientX - drag.x : 0, dy = e.clientY - drag.y; if (Math.hypot(dx, dy) > 6) { drag.moved = true; try { v.setPointerCapture(drag.id); } catch (x) {} } if (drag.moved) { if (v3) S.tx = drag.tx + dx; S.ty = drag.ty + dy; clampY(); apply(); }
+    }, { passive: true });
+    v.addEventListener('pointerup', (e) => { unfinger(e); const d = drag; drag = null; if (d && !d.moved) click({ target: e.target, clientX: e.clientX, clientY: e.clientY, shiftKey: e.shiftKey, long: Date.now() - d.at > 550, tr: e.isTrusted }); });
+    v.addEventListener('pointercancel', (e) => { unfinger(e); drag = null; });
+    // после щипка настоящий click (кнопки внутри вида) не пропускаем
+    v.addEventListener('click', (e) => { if (S && S.pinchEnd && Date.now() - S.pinchEnd < 400) { e.stopPropagation(); e.preventDefault(); } }, true);
     /* 30.10 (просьба стримера, как в «Городе», city.js): колесо мыши - ЗУМ вокруг курсора (пределы и множитель - те же, что у «−» / «+», S.zk);
        Ctrl+колесо и щипок тачпада - тоже зум; Shift+колесо и тачпад вбок - сдвиг вида вбок (большая шахта; в старой этаж по ширине).
        Вверх-вниз - перетаскиванием. Прокручиваемое поверх сцены (чат, панель, окна) колесо забирает себе. Только transform слоя мира. */
     v.addEventListener('wheel', (e) => {
       if (e.target.closest && e.target.closest(WHEEL_OWN)) return;
       e.preventDefault();
-      const r = v.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top, px = e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 400 : 1, dy = e.deltaY * px, dx0 = e.deltaX * px;
+      // место вида на странице - одно чтение за кадр (колесо тачпада шлёт событий больше, чем кадров)
+      if (!S.vr) { S.vr = v.getBoundingClientRect(); requestAnimationFrame(() => { if (S) S.vr = null; }); }
+      const r = S.vr, mx = e.clientX - r.left, my = e.clientY - r.top, px = e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 400 : 1, dy = e.deltaY * px, dx0 = e.deltaX * px;
       if (e.ctrlKey || e.metaKey) { zoomWheel(Math.exp(-Math.max(-60, Math.min(60, dy)) * 0.01), mx, my); return; }
       if (e.shiftKey || Math.abs(dx0) > Math.abs(dy)) { if (S.Wd && S.Wd.v3) { S.tx -= e.shiftKey ? dy || dx0 : dx0; clampY(); apply(); } return; }
       // щелчок колеса (~100) - ×1,2 / ×0,84, как «+» / «−»

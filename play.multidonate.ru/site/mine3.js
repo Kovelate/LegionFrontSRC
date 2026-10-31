@@ -528,7 +528,9 @@
     // какие куски в кадре (и на кусок вокруг)
     function inView(cx, cy) {
       if (!S.view || !S.z) return true;
-      const vw = S.view.clientWidth, vh = S.view.clientHeight, x0 = -S.tx / S.z, y0 = -S.ty / S.z, x1 = x0 + vw / S.z, y1 = y0 + vh / S.z;
+      // 30.10: размер вида - из кэша mine.js (S.vsz, сбрасывает ResizeObserver): чтение clientWidth на каждый кусок и каждую полоску за кадр
+      // заставляло браузер пересчитывать стили посреди кадра
+      const vs = S.vsz || { w: S.view.clientWidth, h: S.view.clientHeight }, vw = vs.w, vh = vs.h, x0 = -S.tx / S.z, y0 = -S.ty / S.z, x1 = x0 + vw / S.z, y1 = y0 + vh / S.z;
       const bx = G.X0 + cx * SCR.w * G.CW, by = G.Y0 + cy * SCR.h * G.RH, bw = SCR.w * G.CW, bh = SCR.h * G.RH, m = 300;
       return bx < x1 + m && bx + bw > x0 - m && by < y1 + m && by + bh > y0 - m;
     }

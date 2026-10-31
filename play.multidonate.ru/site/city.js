@@ -11,6 +11,9 @@
   'use strict';
   const M = window.LGCityMap, ART = window.LGCityArt;
   if (!M || !ART) return;
+  // 31.10 (D1): окна зданий - файлы модуля «Город» (fair/client/cityshop.js и buildings/*.js), app.js грузит их до этого файла
+  const CITY_B = ['forge', 'tent', 'shop', 'magic', 'hall', 'board', 'trainer'];
+  if (!window.LGCityShop || !CITY_B.every((id) => typeof (window.LGCityBuildings || {})[id] === 'function')) { console.warn('[город] нет файлов окон зданий (модуль «Город»)'); return; }
   const TOP = 170;                 // верх неба, который не показываем (сцена 1080 — видно 910)
     const IDS = { anvil: 1, forge: 1, tent: 1, shop: 1, trainer: 1, board: 1, hall: 1, auction: 1, gate: 1, storage: 1, magic: 1, mine: 1, mineboard: 1 };
   IDS.hwshop = 1; IDS.hwpass = 1;   // HW-NPC: хэллоуинские НПС (hwnpc.js) - окна поверх города
@@ -30,16 +33,18 @@
   const CAMP = 'camp';
   const isCamp = () => TOWN.id === CAMP && !!TOWN.L;
   // 26.10 (district-draw): лагерь открыт и каналу в Прологе при жребии края (hm.camp) - без campPublic; после жребия - закрыт всем
+  // 30.10 (E2): hm.camp ставит сервер сайта по этапу канала из выгрузки комнаты (towns.stage = pre) - своей проверки Пролога здесь нет
   const cpOn = () => !!(X && X.hero() && (X.hero().cp || (X.hero().hm && X.hero().hm.camp))) && !fairGone();
   const campName = () => { try { const n = (D().names || {})[X.style()] || {}, c = n.places && n.places.camp; return { name: (c && c.name) || 'Перепутье', sub: (c && c.sub) || 'лагерь новобранцев Легиона' }; } catch { return { name: 'Перепутье', sub: 'лагерь новобранцев Легиона' }; } };
   const foreignK = () => (inTown() && TOWN.acc && (!TOWN.acc.own || TOWN.acc.home) ? Math.max(1, +TOWN.acc.k || (TOWN.acc.home ? 1 : 2)) : 1);   // 26.10: край канала - своя наценка (k)
   // START: district-draw (quest/draw.js) - какой город показывать каналу. hm - с сервера (/api/me → hm; нет - всё как раньше):
-  //   hm.camp - канал в Прологе: «Город» открывается в лагере «Перепутье» (город camp - раскладка и рисунок art/camp выше), Ярмарка - в списке;
+  //   hm.camp - этап канала pre (сервер, towns.stage): «Город» открывается в лагере «Перепутье» (город camp - раскладка и рисунок art/camp выше), Ярмарка - в списке;
   //   hm.id (округ) - город края канала: «Город» открывает его сразу, Перепутье и Ярмарка закрыты; k - наценка до победы над боссом округа.
   const homeOf = () => (X && X.hero() && X.hero().hm) || null;
-  function homePick(hm) { if (!hm || !hm.id) return null; return { id: hm.camp ? 'camp' : String(hm.id) }; }
+  function homePick(hm) { if (!hm || !hm.id) return null; return { id: String(hm.id) }; }
   const homeHere = () => inTown() && !!(TOWN.acc && TOWN.acc.home);
-  const fairGone = () => { const hm = homeOf(); return !!(hm && hm.id && !hm.camp && hm.id !== 'fair' && hm.id !== 'camp'); };
+  // город канала - свой край (не лагерь и не Ярмарка): Перепутье и Ярмарка позади (то же правило - quest/towns.js fairGone)
+  const fairGone = () => { const hm = homeOf(); return !!(hm && hm.id && hm.id !== 'fair' && hm.id !== CAMP); };
   let S = null;                    // построенный город: DOM, карта, камера, человечки
   // 22.10: один MediaQueryList на всё (reduce() зовётся каждый кадр — matchMedia каждый раз создавал новый)
   const RM = window.LGSiteUi.media('reduced');   // 25.10: packages/site-ui
@@ -241,8 +246,9 @@
     const MS = msOn() && !!L.magic;
     if (TOWN.L) return isCamp() ? buildCamp(root, gl, st, L, MS) : buildTown(root, gl, st, L, MS);
     WD = M;
-    const mk = (hw) => M.make((L.obstacles || []).filter((o) => !o.divider), { magic: MS, magicObst: L.magic && L.magic.obstacle, mine: mnOn(), ...(hw || {}) });   // HW-NPC: mk - карта с НПС ивента (hwNpc)
-    const map = mk(), Q = ART.quarter(st, M.QW, { auction: auOpen() }), LW = ART.lower(st, M, { storage: stOpen(), mine: mnOn() });
+    // 30.10: jail - Тюрьма и клетка
+    const mk = (hw) => M.make((L.obstacles || []).filter((o) => !o.divider), { magic: MS, magicObst: L.magic && L.magic.obstacle, mine: mnOn(), jail: jlOn(), ...(hw || {}) });   // HW-NPC: mk - карта с НПС ивента (hwNpc)
+    const map = mk(), Q = ART.quarter(st, M.QW, { auction: auOpen() }), LW = ART.lower(st, M, { storage: stOpen(), mine: mnOn(), jail: jlOn() });
     // небо: у стиля Ярмарки своё (.fr-skybg в css стиля), нет — как у квартала
     const skyM = /\.fr-skybg\{background:([^}]+)\}/.exec(L.css || ''), sky = skyM ? skyM[1] : Q.sky;
     // 28.10 (hw-npc-ghosts): НПС Ярмарки - и призраками рядом (скрыты): их покажут мёртвые плитки хэллоуинского города (citygl)
@@ -670,6 +676,8 @@
     for (const w of S.others.values()) drop(w);
     S.others.clear(); S.ghosts.clear();
     chatEnter(r);
+    // 30.10 (тюрьма): кто в клетке
+    jailLoad();
     if (window.LGTrade) window.LGTrade.mount(X, S.el);   // 23.10: обмен между игроками
     apply(r);
     timers(true);
@@ -804,6 +812,8 @@
       if (!S || !S.inCity || document.hidden) return;
       S.tick++;
       if (!X.live()) { const r = await X.api('/api/city/state' + (S.chat && S.chat.on ? '?c=' + S.chat.c : '')); if (r && r.ok) apply(r); else if (r && /не в городе/.test(r.error || '')) { S.inCity = false; enter(); } }
+      // 30.10 (тюрьма): без живого канала - список раз в 30 с
+      if (S.tick % 10 === 0 && !X.live()) jailLoad();
       else if (S.tick % 20 === 0) { const r = await X.api('/api/city/ping', {}); if (r && r.ok === false && /не в городе/.test(r.error || '')) { S.inCity = false; enter(); } }
     }, 3000);
   }
@@ -864,6 +874,9 @@
       // 23.10: по чужому герою — меню «Предложить обмен» (если обмен открыт); иначе — как раньше
       // 24.10 (стример): мышью - только правой кнопкой (левая - просто идти); на телефоне - тапом, как было
       // 30.10: меню открывается и без обмена, если открыты друзья (window.LGFriends): в нём «Добавить в друзья» и «Заблокировать»
+      // 30.10 (тюрьма): по заключённому - окно Тюрьмы (меню друзей, лички и обмена для него не открывается); сам заключённый - только смотрит
+      if (jailAt(x, y)) { jwOpen(); return; }
+      if (meJail()) { const bj = S.map.hoverAt(x, y); if (bj && bj.id === 'jail') jwOpen(); return; }
       const wh = window.LGTrade && ((X.hero() && X.hero().tr) || window.LGFriends) && (e.pointerType !== 'mouse' || e.button === 2) ? walkerAt(x, y) : null;
       if (wh) { window.LGTrade.mount(X, S.el); window.LGTrade.menu(wh.l, wh.v, e.clientX, e.clientY); return; }
       const b = S.map.hoverAt(x, y);
@@ -880,6 +893,8 @@
       const ab = awAt(x, y, 3), k = ab ? 'cy:' + ab.l + ':' + ab.i : '';
       if (k !== (S.awK || '')) { S.awK = k; v.style.cursor = ab ? 'help' : ''; if (ab) awShow(ab); else if (X.awHide) X.awHide('cy:'); }
       if (ab) { hover(null); return; }
+      // 30.10 (тюрьма): над заключённым - «ник - в тюрьме канала» (без причины)
+      { const jw = jailAt(x, y); if (jw) { const J = WD.LOW.jail; hover({ id: 'jail', ol: 'jail', r: [J.c0, J.c1, 1100, J.fy], tip: `${jw.v.n || jw.l} - в тюрьме канала` }, x, jw.y - 150 * scaleAt(jw.y) * HS); return; } }
       hover(S.map.hoverAt(x, y), x, y);
     });
     v.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') { hover(null); if (S.awK) { S.awK = ''; v.style.cursor = ''; if (X.awHide) X.awHide('cy:'); } } });   // палец «уходит» сразу после тапа — подсветка тапа остаётся
@@ -929,7 +944,7 @@
   // что делает место — в подсказке при наведении
   const ACT = { mineboard: 'кто копает лучше всех', magic: 'посохи, мантии, амулеты', anvil: 'наточить оружие', forge: 'лавка кузнеца', tent: 'примерить облик', shop: 'еда, зелья, материалы', trainer: 'дерево навыков', board: 'новости игры', gate: 'в поход — только на стриме', hall: 'скоро: оборона города', auction: 'торговля между игроками', storage: 'хранение вещей', mine: 'промысел: руда' };
   function hover(t, x, y) {
-    const key = t ? t.id + '|' + t.r.join(',') : '';
+    const key = t ? t.id + '|' + t.r.join(',') + (t.tip || '') : '';
     if (!S || key === (S.hovK || '')) return;
     S.hovK = key;
     const box = S.el.querySelector('.cy-hov'); if (!box) return;
@@ -938,7 +953,7 @@
     if (!t) { box.classList.remove('on'); return; }
     const B = WD.BUILDINGS.find((b) => b.id === t.id) || {}, [x0, x1, y0] = t.r, top = Math.max(y0, S.camY + 20);
     const tip = box.lastChild;
-    tip.textContent = `${t.what ? t.what + ' · ' : ''}${titleOf(B)} — ${(t.id === 'auction' || t.id === 'storage' || t.id === 'mine') && soonB(B) ? 'скоро: ' + (ACT[t.id] || B.sub || '') : ACT[t.id] || B.sub || ''}`;
+    tip.textContent = t.tip ? t.tip : `${t.what ? t.what + ' · ' : ''}${titleOf(B)} — ${(t.id === 'auction' || t.id === 'storage' || t.id === 'mine') && soonB(B) ? 'скоро: ' + (ACT[t.id] || B.sub || '') : ACT[t.id] || B.sub || ''}`;
     tip.style.cssText = `left:${x != null ? x : (x0 + x1) / 2}px;top:${(y != null ? y : top) - 26 / S.z}px`;
     box.classList.add('on');
   }
@@ -975,7 +990,8 @@
     S.cam.classList.add('glide'); applyCam(); setTimeout(() => S && S.cam.classList.remove('glide'), 420);
   }
   function goPoint(x, y) {
-    if (!S.me) return;
+    // 30.10 (тюрьма): из клетки не ходят
+    if (!S.me || meJail()) return;
     closePanel(); S.el.classList.add('went');
     S.arrive = null; S.freeUntil = 0;
     const end = walkTo(S.me, x, y);
@@ -983,6 +999,10 @@
     ripple(end[0], end[1]);
   }
   function goBuilding(id) {
+    // 30.10: Тюрьма - внутрь не войти, окно со списком
+    if (id === 'jail') { jwOpen(); return; }
+    // 30.10 (тюрьма): заключённый в здания не заходит
+    if (meJail()) return;
     const B = WD.BUILDINGS.find((b) => b.id === id); if (!B || !bOk(B) || !S.me) return;
     S.freeUntil = 0;
     if (id === 'mine') { const end = walkTo(S.me, B.door.x, B.door.y); sendGo(end[0], end[1]); closePanel(); if (!S.me.path) mineOpen(); else S.arrive = mineOpen; return; }
@@ -1006,7 +1026,8 @@
   // поверх «Города» открыто окно, меню или поле ввода - клавиши ему, а не герою
   const KW_OWN = '[role="dialog"], [role="alertdialog"], [role="menu"], [aria-modal="true"]';
   function kwBusy(e) {
-    if (!S || !S.me || !S.root || !S.root.isConnected || !S.root.classList.contains('on') || S.panelId || document.hidden) return true;
+    // 30.10: заключённый не ходит
+    if (!S || !S.me || !S.root || !S.root.isConnected || !S.root.classList.contains('on') || S.panelId || document.hidden || meJail()) return true;
     if (e && (e.ctrlKey || e.metaKey || e.altKey)) return true;
     const t = e && e.target;
     if (t && t.closest && (t.closest('input, textarea, select, [contenteditable]') || t.isContentEditable)) return true;
@@ -1137,39 +1158,6 @@
     storage: { hero: [760, 1010], npc: [1260, 1010, 'Кладовщик', 'happy', {}, { hat: 'cap' }], focus: 1000, ui: 'l', art: 'storage', keep: 250 },   // 22.10; 23.10: keep — вывеска (верх 260) не уходит за край окна и под шапку
     gate: { hero: [760, 1010], npc: [1240, 1010, 'Страж ворот', 'stern', { armed: true, gear: { w: 'spear', s: 'scutum' } }, { hat: 'legion' }], focus: 1000, ui: 'l', art: 'plain' },
   };
-  // 23.10 (решение стримера): лавки — на весь экран, без панели слева: интерьер с полками во всё окно (телефон — по высоте,
-  // вбок — прокрутка внутри лавки), сверху — тонкая полоса (кошелёк, сумка, «К наковальне»), реплика продавца — снизу справа
-  const FULL = { forge: 1, magic: 1, tent: 1, shop: 1 };
-  let STOCK = null;   // товар Кузни и Шатра (тот же, что на стриме) — один раз за открытие города
-  const loadStock = () => (STOCK ? Promise.resolve(STOCK) : X.api('/api/city/stock').then((r) => { if (r && r.ok) STOCK = r; return STOCK; }).catch(() => null));
-  // 22.10: сцена «во всю ширину» (ROOM.fit) ниже окна — над ней место. Раньше — ровная заливка с размытым стыком, и верх
-  // сцены обрывался. Теперь стена продолжается вверх: полоска сцены у самого верха (y 4…6) растянута вверх на WALL_UP —
-  // гофра, скотч, столбы света, труба горна, верёвки вывески идут дальше без стыка. Рисуется один раз (статичный SVG).
-  const WALL_UP = 2400;
-  const ROOM_HEAD = 64;   // 23.10: шапка зала (название и «Выйти», city.css .cy-rh) — столько сверху окна закрыто
-  const WALL_S = (WALL_UP + 4) / 2, WALL_TY = -WALL_UP - 4 * WALL_S;
-  // 23.10 (баг от зрителя): товар под мышью — контур самой вещи (группа data-it у рисунка стиля, fair.js), а не рамка поверх ценников.
-  // Альфа рисунка порогом (полупрозрачные ореолы и свечение редкости не обводятся) → расширить → золотая обводка и мягкий свет вокруг
-  const OL_DEFS = '<defs>' + [['cy-itol', '#ffe9a0', 0.55], ['cy-itol2', '#ffc94d', 0.8]].map(([id, c, o]) => `<filter id="${id}" x="-25%" y="-25%" width="150%" height="150%" color-interpolation-filters="sRGB"><feComponentTransfer in="SourceAlpha" result="a"><feFuncA type="discrete" tableValues="0 1"/></feComponentTransfer><feMorphology class="cy-olm" in="a" operator="dilate" radius="4" result="d"/><feFlood flood-color="${c}"/><feComposite in2="d" operator="in" result="o"/><feGaussianBlur in="o" stdDeviation="4" result="b"/><feComponentTransfer in="b" result="g"><feFuncA type="linear" slope="${o}"/></feComponentTransfer><feMerge><feMergeNode in="g"/><feMergeNode in="o"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`).join('') + '</defs>';
-  const doodSize = (r, street) => r.querySelectorAll(street ? '.cy-rbg svg svg.jl-doodle' : '.cy-rbg svg.jl-doodle').forEach((d) => { const w = d.getAttribute('width'), hh = d.getAttribute('height'); if (w) d.style.width = parseFloat(w) + 'px'; if (hh) d.style.height = parseFloat(hh) + 'px'; if (street) { d.style.position = 'static'; d.style.filter = 'none'; } });
-  function roomSvg(id) {
-    const inner = OL_DEFS + roomBg(id);
-    if (!ROOM[id] || !ROOM[id].fit) return inner;
-    return `<defs><clipPath id="cy-wall-top" clipPathUnits="userSpaceOnUse"><rect x="0" y="4" width="1920" height="2"/></clipPath></defs>`
-      + `<g id="cy-room-scene">${inner}</g><use href="#cy-room-scene" clip-path="url(#cy-wall-top)" transform="translate(0 ${WALL_TY}) scale(1 ${WALL_S})"/>`;
-  }
-  function roomBg(id) {
-    const R = ROOM[id], L = S.L;
-    if (R.art === 'street') return streetBg();
-    try {
-      if (!R.art && L.rooms && L.rooms[id] && typeof L.rooms[id].svg === 'function') {
-        const st = shopView(id, stockOf(id)) || (id === 'forge' || id === 'magic' ? { stands: [], shelf1: [], shelf2: [], case: [], mats: [] } : { booths: [], amulets: [] });
-        S.itemPos = {};   // 23.10: где на полках какая вещь — туда кладём кнопки товара (наведение — карточка, двойной клик — купить)
-        return `<rect width="1920" height="1080" fill="${esc(L.rooms[id].artBg || '#1d1626')}"/>` + scopeIds(still(npcAs(hwDead() ? 'ghost' : '', () => L.rooms[id].svg(st, S.itemPos))), 'cyr-');   // 28.10 (hw-npc-ghosts)
-      }
-    } catch (e) { console.warn('[город] интерьер', id, e); }
-    return scopeIds(ART.room(S.st, R.art || 'plain'), 'cyr-');
-  }
   // кусок улицы вокруг наковальни (мир x QW−330…QW+630, y 430…970) в масштабе 2 — наковальня в (960, 660) сцены
   const ANV0 = { ox: M.QW - 330, oy: 430, k: 2 };
   function streetBg() {
@@ -1199,7 +1187,7 @@
     newsClose();   // 22.10: ушёл от доски — и новость закрылась
     if (!S || S.panelId == null) return;
     const was = S.panelId;
-    S.panelId = null; inSay(null); X.forgeClose && X.forgeClose(); FX.reset(); if (X.tipHide) X.tipHide(); igOff(); stOff();
+    S.panelId = null; inSay(null); X.forgeClose && X.forgeClose(); FX.reset(); if (X.tipHide) X.tipHide(); igOff(); ST.off();
     if (was === 'auction' && window.LGAuction) window.LGAuction.close();
     if (was === 'tent' && tentMine()) { try { X.api('/api/tentShop', { on: false }); } catch (e) {} }   // 24.10: стример вышел из Будуара - награды за баллы убираются
     S.view.style.visibility = '';
@@ -1254,129 +1242,8 @@
     try { if (S.roomRO) S.roomRO.disconnect(); S.roomRO = new ResizeObserver(() => fitRoom()); S.roomRO.observe(S.panel); } catch {}
     if (fresh) try { r.querySelector('[data-cyexit]').focus({ preventScroll: true }); } catch {}
     // товар для полок — один раз; пришёл — перерисовать фон (полки Кузни и кабинки Шатра — как на стриме)
-    if (!STOCK && (id === 'forge' || id === 'tent' || id === 'magic' || id === 'shop')) loadStock().then((st) => { if (st && S && S.panelId === id) { const bg = S.room.querySelector('.cy-rbg'); if (bg && id !== 'shop') { bg.innerHTML = roomSvg(id); doodSize(S.room, false); } goodsHots(id); if (id === 'forge' || id === 'magic' || id === 'shop') rerenderUi(id); } });
+    if (!SH.STOCK && (id === 'forge' || id === 'tent' || id === 'magic' || id === 'shop')) loadStock().then((st) => { if (st && S && S.panelId === id) { const bg = S.room.querySelector('.cy-rbg'); if (bg && id !== 'shop') { bg.innerHTML = roomSvg(id); doodSize(S.room, false); } goodsHots(id); if (id === 'forge' || id === 'magic' || id === 'shop') rerenderUi(id); } });
   }
-  // сцена 1920×1080 «по размеру»: заполняет место, свободное от интерфейса; герой и продавец — в середине этого места
-  function fitRoom() {
-    if (!S || !S.panelId) return;
-    const r = S.room, inn = r.querySelector('.cy-rin'), ui = r.querySelector('.cy-rui'), R = ROOM[S.panelId]; if (!inn || !ui) return;
-    const vw = r.clientWidth || innerWidth, vh = r.clientHeight || innerHeight, ur = ui.getBoundingClientRect(), mob = vw <= 720 || vh <= 500;   // как в city.css (max-width: 720px; телефон боком — max-height: 500px)
-    if (FULL[S.panelId]) { fitFull(r, inn, vw, vh, mob, R); return; }
-    let x0 = 0, x1 = vw, y1 = vh;
-    if (mob) y1 = Math.max(160, vh - ur.height);
-    else if (R.ui === 'l') x0 = ur.right; else if (R.ui === 'r') x1 = ur.left;   // 'o' — интерфейс поверх доски в самой сцене
-    let k = mob ? Math.max(y1 / 1080, vw / 1920) : Math.max(vw / 1920, vh / 1080);
-    let left, top;
-    // 21.10: fit — вся ширина сцены в месте рядом с интерфейсом (полки Кузни не уходят под панель); сверху остаётся стена цвета artBg.
-    // Не мельче 0.6 высоты окна: на узком окне лучше отрезать край, чем показать крошечную сцену
-    if (R.fit && !mob) {
-      k = Math.max(Math.min(k, (x1 - x0) / 1920), 0.6 * vh / 1080);
-      const w = 1920 * k;
-      left = w <= x1 - x0 ? x0 + (x1 - x0 - w) / 2 : Math.min(x0, Math.max(x1 - w, (x0 + x1) / 2 - R.focus * k));
-      top = y1 - 1080 * k;   // пол — у низа окна
-    } else {
-      left = (x0 + x1) / 2 - R.focus * k; left = Math.min(0, Math.max(vw - 1920 * k, left));
-      top = Math.min(0, y1 - 1080 * k);
-      if (R.keep) top = Math.min(0, Math.max(top, ROOM_HEAD - R.keep * k));   // 23.10: не срезать сцену выше keep (вывеска) — пол чуть ниже края, герой виден
-    }
-    // цвет стены над сценой: artBg стиля (Кузня, Шатёр), иначе — фон самой сцены (первый прямоугольник во всю ширину: Лавка из cityart)
-    let bg = R.fit && !mob && top > 0 && ((S.L.rooms && S.L.rooms[S.panelId] && S.L.rooms[S.panelId].artBg) || '');
-    if (R.fit && !mob && top > 0 && !bg) { const rc = r.querySelector('.cy-rbg rect[width="1920"]'), f = rc && rc.getAttribute('fill'); if (f && /^#[\da-f]{3,8}$/i.test(f)) bg = f; }
-    r.classList.toggle('cy-fit', !!bg); r.style.setProperty('--cy-fitbg', bg || 'transparent');
-    panRoom(r, inn, k, left, top, 0, vw, R.keep ? ROOM_HEAD : 0, y1, vw, vh);   // место — окно (под панелью сбоку сцена и раньше была закрыта панелью)
-  }
-  /* 23.10 (баг с телефона): сцена не влезла в своё место (узкое окно, телефон) — край интерьера раньше просто срезался, без
-     способа его увидеть. Теперь срезанное можно досмотреть прокруткой внутри зала (палец — вбок, мышь — колесо / полоса):
-     сначала — тот же вид, что раньше (left, top), а прокрутка доходит до любого края сцены в месте [x0…x1]×[y0…y1].
-     Страница сама не прокручивается (зал — position: fixed). Влезла целиком — без прокрутки, как было */
-  function panRoom(r, inn, k, left, top, x0, x1, y0, y1, vw, vh) {
-    const rs = r.querySelector('.cy-rs'), sz = r.querySelector('.cy-rsz'), w = 1920 * k, h = 1080 * k;
-    const ox = Math.min(0, left - x0), oy = Math.min(0, top - y0);   // насколько сцена ушла за левый / верхний край места
-    const bx = left - ox, by = top - oy;   // положение сцены при прокрутке 0
-    // 23.10 (с телефона, Тренер): лишние несколько пикселей (сцена чуть шире / выше места) — не прокрутка, а обрезка: раньше зал
-    // «дрожал» вбок на 2–20 px, как будто сломан
-    const sx0 = Math.max(0, Math.max(bx + w - x1, -ox)), sy0 = Math.max(0, Math.max(by + h - y1, -oy));
-    const sx = sx0 < 24 ? 0 : sx0, sy = sy0 < 24 ? 0 : sy0;   // сколько прокручивать
-    const pan = sx > 1 || sy > 1;
-    if (rs) { rs.classList.toggle('cy-pan', pan); rs.style.overflowX = pan && !sx ? 'hidden' : ''; rs.style.overflowY = pan && !sy ? 'hidden' : ''; }   // листается только туда, где есть что листать
-    if (!pan || !rs || !sz) {
-      if (sz) { sz.style.width = '0'; sz.style.height = '0'; }
-      inn.style.transform = `translate(${left.toFixed(1)}px, ${top.toFixed(1)}px) scale(${k.toFixed(4)})`;
-      return;
-    }
-    sz.style.width = Math.ceil(vw + sx) + 'px'; sz.style.height = Math.ceil(vh + sy) + 'px';
-    inn.style.transform = `translate(${bx.toFixed(1)}px, ${by.toFixed(1)}px) scale(${k.toFixed(4)})`;
-    if (!S.roomUser) { rs.scrollLeft = Math.round(-ox); rs.scrollTop = Math.round(-oy); }   // пока зритель сам не листал — прежний вид
-  }
-  // лавка на весь экран: ПК и телефон боком — вся сцена целиком, телефон стоя — по высоте места под шапкой, вбок — прокрутка
-  /* 23.10 (с телефона стримера): сцена — ПОД шапкой лавки (название, «Выйти», кошелёк, сумка — раньше закрывали
-     таблички стендов «Котоармеец», «Рогаточник»…). ПК и телефон боком — вся сцена в окне (по меньшей стороне, края — цветом стены).
-     Телефон стоя — по высоте места под шапкой, вбок — прокрутка внутри лавки (как в Будуаре котиков — она удобная); но колонка товара
-     (стенд Кузни / магической лавки, кабинка Шатра) не шире экрана: шире — сцена мельче, чтобы колонка влезала целиком, по вертикали — по центру
-     (пустота — цветом стены), и листание останавливается на колонках (scroll-snap). Щипок / Ctrl+колесо — приблизить товар (S.roomZ). */
-  function roomHead(r) {
-    const rr = r.getBoundingClientRect(); let b = 0;
-    for (const el of r.querySelectorAll('.cy-rh, .cy-rui.cy-rbar .cy-bar2')) { const q = el.getBoundingClientRect(); if (q.height) b = Math.max(b, q.bottom - rr.top); }
-    return Math.round(b + 6);
-  }
-  // колонки товара в сцене (x0…x1, координаты 1920×1080): стенды Кузни и магической лавки (stands). Шатёр (кабинки) и Лавка — как были
-  function roomCols(id) {
-    const pos = S.itemPos || {}, st = stockOf(id) || {}, groups = [];
-    const at = (list) => (list || []).map((it) => it && pos[it.id]).filter(Boolean);
-    for (const s of st.stands || []) groups.push(at([...(s.top || []), ...(s.mid || []), ...(s.case || [])]));
-    const cols = groups.filter((g) => g.length).map((g) => [Math.min(...g.map((p) => p.x)) - 150, Math.max(...g.map((p) => p.x)) + 150]);
-    return cols.map(([a, b]) => [Math.max(0, a), Math.min(1920, b)]).sort((a, b) => a[0] - b[0]);
-  }
-  function fitFull(r, inn, vw, vh, mob, R) {
-    const rs = r.querySelector('.cy-rs'), sz = r.querySelector('.cy-rsz');
-    const bg = (S.L.rooms && S.L.rooms[S.panelId] && S.L.rooms[S.panelId].artBg) || ((r.querySelector('.cy-rbg rect[width="1920"]') || { getAttribute: () => '' }).getAttribute('fill')) || '#15122e';
-    r.classList.add('cy-fit'); r.style.setProperty('--cy-fitbg', /^#[\da-f]{3,8}$/i.test(bg) ? bg : '#15122e');
-    const head = roomHead(r), avail = Math.max(120, vh - head), zr = S.roomZ || 1;
-    const port = mob && vh > vw;
-    let k, cols = [];
-    if (port) {
-      k = Math.max(avail / 1080, vw / 1920);
-      cols = roomCols(S.panelId);
-      const cw = cols.length ? Math.max(...cols.map((c) => c[1] - c[0])) : 0;
-      if (cw && cw * k > vw - 12) k = Math.max(vw / 1920, (vw - 12) / cw);
-    } else k = Math.min(vw / 1920, avail / 1080);
-    const k0 = k; k *= zr;
-    const w = 1920 * k, h = 1080 * k;
-    const left = w < vw ? (vw - w) / 2 : 0, top = head + Math.max(0, (avail - h) / 2);
-    const pan = w > vw + 1 || top + h > vh + 1;
-    if (rs) { rs.classList.toggle('cy-pan', pan); rs.classList.toggle('cy-snap', port && zr === 1 && cols.length > 1); }
-    if (sz) { sz.style.width = (pan ? Math.ceil(Math.max(vw, left + w)) : 0) + 'px'; sz.style.height = (pan ? Math.ceil(Math.max(vh, top + h)) : 0) + 'px'; }
-    inn.style.transform = `translate(${left.toFixed(1)}px, ${top.toFixed(1)}px) scale(${k.toFixed(4)})`;
-    S.roomK = { k, k0, left, top };
-    // точки остановки листания — середины колонок (телефон стоя)
-    if (rs) { let sn = rs.querySelector('.cy-snaps'); if (!sn) { sn = document.createElement('div'); sn.className = 'cy-snaps'; sn.setAttribute('aria-hidden', 'true'); rs.appendChild(sn); }
-      sn.innerHTML = port && zr === 1 ? cols.map(([a, b]) => `<i style="left:${Math.round(left + a * k)}px;width:${Math.round((b - a) * k)}px"></i>`).join('') : ''; }
-    if (rs && S.roomScroll == null) { S.roomScroll = 1; rs.scrollLeft = port && cols.length ? Math.max(0, Math.round(cols[0][0] * k - (vw - (cols[0][1] - cols[0][0]) * k) / 2)) : 0; rs.scrollTop = 0; }   // товар — слева (первая колонка целиком)
-  }
-  // 23.10: зум внутри лавки — щипок двумя пальцами / Ctrl+колесо: масштаб вокруг точки, сцена листается в обе стороны (1…3×)
-  function roomZoom(z, cx, cy) {
-    const rs = S.room.querySelector('.cy-rs'), K = S.roomK; if (!rs || !K) return;
-    z = Math.max(1, Math.min(3, z)); if (Math.abs(z - (S.roomZ || 1)) < 0.005) return;
-    const rr = rs.getBoundingClientRect(), mx = cx - rr.left, my = cy - rr.top;
-    const sx = (rs.scrollLeft + mx - K.left) / K.k, sy = (rs.scrollTop + my - K.top) / K.k;   // точка сцены под пальцами
-    S.roomZ = z; S.roomUser = true; fitRoom();
-    const N = S.roomK; rs.scrollLeft = Math.round(sx * N.k + N.left - mx); rs.scrollTop = Math.round(sy * N.k + N.top - my);
-  }
-  function roomPinch(rs) {
-    let P = null;
-    const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
-    rs.addEventListener('touchstart', (e) => { if (e.touches.length === 2) P = { d: dist(e.touches), z: S.roomZ || 1 }; }, { passive: true });
-    rs.addEventListener('touchmove', (e) => { if (!P || e.touches.length !== 2 || !S) return; e.preventDefault(); roomZoom(P.z * dist(e.touches) / P.d, (e.touches[0].clientX + e.touches[1].clientX) / 2, (e.touches[0].clientY + e.touches[1].clientY) / 2); }, { passive: false });
-    rs.addEventListener('touchend', (e) => { if (e.touches.length < 2) P = null; }, { passive: true });
-    // ПК: колесо над сценой лавки — зум (24.10, как на улице); Shift+колесо — листать вбок; Ctrl+колесо / щипок тачпада — зум
-    rs.addEventListener('wheel', (e) => {
-      if (!S || !FULL[S.panelId] || !S.roomK || e.shiftKey || (!(e.ctrlKey || e.metaKey) && Math.abs(e.deltaX) > Math.abs(e.deltaY))) return;
-      e.preventDefault();
-      const dy = e.deltaY * (e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 400 : 1);
-      roomZoom((S.roomZ || 1) * Math.exp(-Math.max(-120, Math.min(120, dy)) * (e.ctrlKey || e.metaKey ? 0.01 : 0.0018)), e.clientX, e.clientY);
-    }, { passive: false });
-  }
-  window.addEventListener('resize', () => fitRoom());
   // приветствие продавца — из стиля (те же реплики, что на стриме), иначе — своё
   function helloOf(id) {
     if (id === 'anvil') {   // у наковальни — свои реплики (у стиля реплики — для лавки Кузни)
@@ -1405,56 +1272,45 @@
   const npc = (seed, mood, extra, look) => { try { const gh = hwDead(); const v = still(D().jDoodle(D().jhash(seed), mood, false, gh ? { ...(extra || {}), ghost: true } : extra || {}, look)); return gh ? ghostSvg(v) : v; } catch { return ''; } };   // 28.10 (hw-npc-ghosts): в хэллоуинском виде - призрак
   const say = (t) => `<p class="cy-say">${esc(t)}</p>`;
   function body(id, h) {
-    if (id === 'hall' && inTown() && TOWN.acc && !TOWN.acc.own) return `${say('Ратуша закрыта: этот округ не принадлежит каналу. Стража пускает только своих.')}<p class="note">Захватите округ на стриме — Ратуша откроется (и цены в лавках станут обычными).</p>`;   // 23.10: quest/towns.js townRoom
-    if (id === 'hall') return `${say('Склад Ратуши: сюда скупщик шахты этого города свозит всё, что сдали игроки. Потратить на город можно будет позже.')}<div class="cy-hall" aria-busy="true"><p class="note">Писарь листает книгу склада…</p></div><p class="note">Скоро: город можно будет укреплять всем каналом — и защищать от набегов.</p>`;   // 24.10: склад города
+    // 31.10 (D1): окна зданий - файлы модуля «Город» (fair/client/buildings/*.js), здесь - только какое окно и в каком порядке
+    if (id === 'hall') return BLD.hall.body(h);
     if (id === 'auction' && h && h.au) return '<div class="au-root" aria-busy="true"><p class="note">Аукционист раскладывает лоты…</p></div>';
     if (id === 'auction') return `${say('Аукцион скоро откроется: здесь игроки будут продавать и покупать вещи, звёзды, сферы и печати.')}<p class="note">Пока торговать можно только на Ярмарке во время стрима.</p>`;
     if (id === 'storage' && !(h && h.sg)) return `${say('Склад скоро откроется: здесь можно будет хранить вещи, которые не помещаются в сумку.')}<p class="note">Пока сумка без предела — носи всё с собой.</p>`;
     if (id === 'gate') return `${say('В поход отсюда не выйти — отряд собирает стример на стриме.')}<p class="note">Ворота откроются, когда начнётся поход. А пока — заточи оружие, загляни к Тренеру и в Шатёр.</p>`;
-    if (id === 'board') return `<div class="cy-news" aria-busy="true"><p class="note">Срываем свежие листки с доски…</p></div>`;
+    if (id === 'board') return BLD.board.body();
     if (!h) return say('Героя пока нет — он появится, когда ты напишешь в чат на стриме.');
-    if (id === 'trainer') {
-      if (!h.sk || !window.LGSkills) return `${say('Тренер скоро начнёт обучение. Приходи позже — покажу пару приёмов.')}<p class="note">Дерево навыков пока открыто только тестерам.</p>`;
-      return `<div class="cy-sk sk-wrap">${window.LGSkills.html(h, X.skx(() => rerenderUi('trainer')), { tree: true })}</div>`;
-    }
-    if (id === 'anvil') return forgeBody(h);
-    if (id === 'forge') return forgeShop(h);
-    if (id === 'magic') return magicBody(h);
-    if (id === 'tent') return tentBody(h);
-    if (id === 'shop') return shopBody(h);
-    if (id === 'storage') return storageBody(h);
+    if (id === 'trainer') return BLD.trainer.body(h);
+    if (id === 'anvil') return BLD.forge.body(h);
+    if (id === 'forge') return BLD.forge.shop(h);
+    if (id === 'magic') return BLD.magic.body(h);
+    if (id === 'tent') return BLD.tent.body(h);
+    if (id === 'shop') return BLD.shop.body(h);
+    if (id === 'storage') return ST.body(h);
     return '';
   }
-  // 22.10: воровская наценка (app.js → window.LGThief); без неё — как раньше
-  const TH = { k: (h) => (window.LGThief ? window.LGThief.k(h) : 1), price: (h, b) => (window.LGThief ? window.LGThief.price(h, b) : b), note: (h) => (window.LGThief ? window.LGThief.note(h) : ''), arm: (b, h, base) => (window.LGThief ? window.LGThief.arm(b, h, base) : true) };
   function after(id, h) {
-    if (id === 'board') loadNews();
-    if (id === 'hall') hallLoad();
+    if (id === 'board') BLD.board.after();
+    if (id === 'hall') BLD.hall.after();
     if (id === 'auction' && h && h.au) auctionOpen();
-    if (id === 'trainer' && h && h.sk && window.LGSkills) window.LGSkills.bind(S.panel, X.skx(() => rerenderUi('trainer')));
-    if (id === 'anvil') forgeAfter(h);
-    if (id === 'forge') { const g = S.panel.querySelector('[data-goanvil]'); if (g) g.onclick = () => goBuilding('anvil'); }
-    if (id === 'shop') S.panel.querySelectorAll('[data-good]').forEach((b) => bindGood(b, 'shop', b.dataset.good));   // 23.10: товар прилавка — карточка и покупка
-    if (id === 'shop') { const pb = S.panel.querySelector('[data-pantry]'); if (pb) pb.onclick = () => { PANTRY = !PANTRY; rerenderUi('shop'); }; }
-    if (id === 'tent') tentAfter(h);
-    if (id === 'storage' && h && h.sg) storageAfter(h);
-    if (id === 'shop') {
-      S.panel.querySelectorAll('[data-use]').forEach((b) => b.onclick = () => X.act('/api/use', { uid: b.dataset.use }, b.dataset.ok || 'Готово', b));
-      // 22.10: воровская наценка — цена для вора и второе нажатие (window.LGThief из app.js)
-      // 23.10: и здесь — «Купить … за …? Да / Нет» (цена для вора — сразу в вопросе)
-      S.panel.querySelectorAll('[data-buymat]').forEach((b) => b.onclick = () => { const E = X.ench ? X.ench() : null, mat = b.dataset.buymat, id = mat === 'star' ? 'enchant_star' : 'enchant_sphere'; buyAsk({ id, mat, name: (X.itemName(id) || (mat === 'star' ? 'Счастливая звезда' : 'Сфера сохранения')), slot: 'material', rarity: mat === 'star' ? 'uncommon' : 'rare' }, 'shop', b, E && E.coins ? E.coins[mat] : 0); });
-    }
+    if (id === 'trainer') BLD.trainer.after(h);
+    if (id === 'anvil') BLD.forge.after(h);
+    if (id === 'forge') BLD.forge.shopAfter();
+    if (id === 'tent') BLD.tent.after(h);
+    if (id === 'storage' && h && h.sg) ST.after(h);
+    if (id === 'shop') BLD.shop.after(h);
   }
   // интерфейс места перерисовать, сцену (герой, продавец, наковальня) — не трогать
   function rerenderUi(id) {
     if (!S || S.panelId !== id) return;
-    if (id === 'storage' && STD && STD.dragging && STD.dragging() && STP) { STP.dataset.stdirty = '1'; return; }   // 23.10: тащат вещь — перерисуем после
-    if (id === 'storage' && STI && STI.inv.dragging()) { STI.dirty = true; return; }   // 25.10: новая сумка (inv2) — так же
+    // 23.10: тащат вещь — перерисуем после; 25.10: новая сумка (inv2) — так же (окно Склада - fair/client/citystore.js)
+    if (id === 'storage' && ST.hold()) return;
     const pb = S.panel.querySelector('.cy-pb'), sc = pb ? pb.scrollTop : 0;
-    S.panel.innerHTML = `<div class="cy-pb">${body(id, X.hero())}</div>`;
+    // пока окно перерисовывается, потеря фокуса полем окошка монет - не выбор человека (STM_RE), фокус вернёт stMoneyBind
+    ST.quiet(() => { S.panel.innerHTML = `<div class="cy-pb">${body(id, X.hero())}</div>`; });
     after(id, X.hero());   // (сцену подстроит ResizeObserver панели)
     const pb2 = S.panel.querySelector('.cy-pb'); if (pb2) pb2.scrollTop = sc;
-    if (id === 'tent') { const f = S.room.querySelector('.cy-fig2.me'); const h = X.hero(); if (f && h) f.innerHTML = still(X.doodle(X.login(), { ...h, look: { ...((h.wardrobe && h.wardrobe.cur) || {}), ...TRY }, gear: {} }, 'happy', 'peace')); }
+    if (id === 'tent') { const f = S.room.querySelector('.cy-fig2.me'); const h = X.hero(); if (f && h) f.innerHTML = still(X.doodle(X.login(), { ...h, look: { ...((h.wardrobe && h.wardrobe.cur) || {}), ...BLD.tent.TRY }, gear: {} }, 'happy', 'peace')); }
     fitRoom();
   }
   // герой поменялся (пришёл ответ игры) — перерисовать интерфейс места (Кузня — только список вещей: у неё своё окно; Тренер — сам)
@@ -1516,7 +1372,7 @@
     }
     // 29.10: все лавки с кошельком (FULL: Кузня, Магическая лавка, шатёр, ряды) - после покупки «у тебя N» было старым в Кузне и Магической лавке
     if (FULL[S.panelId] || S.panelId === 'storage') rerenderUi(S.panelId);
-    if (S.panelId === 'anvil') forgeList(h);
+    if (S.panelId === 'anvil') BLD.forge.list(h);
     if (S.panelId === 'auction' && window.LGAuction) window.LGAuction.update(h);
   }
   // 20.10: зал Аукциона — свой модуль (auction.js / auction.css), грузится при первом входе
@@ -1532,896 +1388,121 @@
       .catch(() => { box.innerHTML = '<p class="note">Аукцион не загрузился — проверь связь и зайди ещё раз.</p>'; });
   }
 
-  /* ----- 24.10: Ратуша — склад города: что сдали скупщику шахты этого города (Ярмарка — домашняя шахта), кто сколько сдал.
-     Данные — GET /api/mine/hall?c= (ETag); пока Ратуша открыта — раз в 30 с. Тратить склад — позже. ----- */
-  let hallT = 0;
-  async function hallLoad() {
-    clearTimeout(hallT);
-    const box = S && S.panel && S.panel.querySelector('.cy-hall'); if (!box) return;
-    const c = inTown() ? TOWN.id : 'home';
-    try { if (X.mineFiles) await X.mineFiles(); } catch {}   // цвета ресурсов — из craftworld.js (как в сумке шахты)
-    const r = await X.api('/api/mine/hall?c=' + encodeURIComponent(c));
-    if (!S || S.panelId !== 'hall' || !box.isConnected) return;
-    box.removeAttribute('aria-busy');
-    if (!(box.contains(document.activeElement) && /^(INPUT|SELECT)$/.test(document.activeElement.tagName))) { box.innerHTML = hallHtml(r && r.ok ? r : null); hallBind(box); }
-    // 29.10 (Шахта 3.0): Ратуша уже не заглушка - старые «потратить можно будет позже» и «скоро» убираем
-    // 29.10: поле ника / лимита в фокусе - не перерисовываем
-    if (r && r.hall) { const nx = box.nextElementSibling; if (nx && nx.classList.contains('note')) { nx.hidden = true; nx.style.display = 'none'; } const pv = box.previousElementSibling; if (pv && !pv.dataset.h3) { pv.dataset.h3 = '1'; const t = pv.querySelector('p') || pv; t.textContent = 'Ратуша: казна канала, мэр и стройки города. Казну пополняют скупщик, сборы на лифт и буровые и взносы зрителей.'; } }
-    hallT = setTimeout(() => { if (S && S.panelId === 'hall') hallLoad(); }, 30000);
-  }
-  function hallHtml(r) {
-    if (!r) return '<p class="note">Книга склада не открылась - попробуй ещё раз.</p>';
-    const RES = (window.LGCraftWorld && window.LGCraftWorld.RES) || {}, me = X.login();
-    const group = (kind, title) => { const a = r.res.filter((x) => x.kind === kind); return a.length ? `<h4>${esc(title)}</h4><ul class="cy-hres">${a.map((x) => `<li class="${kind}" data-res="${esc(x.id)}"><i style="background:${esc(RES[x.id] || '#a89c88')}"></i><span>${esc(x.name)}</span><b>${x.q}</b></li>`).join('')}</ul>` : ''; };
-    const res = r.res.length ? group('gem', 'Самоцветы') + group('rare', 'Редкое') + group('ore', 'Руда и камень') : '<p class="note">Склад пока пуст: сдай руду скупщику в шахте этого города - она приедет сюда.</p>';
-    const top = r.gv.length ? `<h4>Больше всех сдали</h4><ol class="cy-hgv">${r.gv.slice(0, 50).map(([l, n], i) => `<li class="${l === me ? 'me' : ''}"><span>${i + 1}</span><b>${esc(l === me ? l + ' (ты)' : l)}</b><em>${n}</em></li>`).join('')}</ol>` : '';
-    if (r.hall) return hall3Html(r, RES, top, res);   // 29.10 (Шахта 3.0, шаг 5): казна канала, мэр, улучшения зданий, склад на 100 ячеек
-    return `<h3 class="h3">Склад города</h3>${res}${top}`;
-  }
-  /* ----- 29.10 (Шахта 3.0, шаг 5): Ратуша - казна канала (одна на все города, не сбрасывается), склад на 100 ячеек, мэр (назначает
-     стример; нет мэра - стример), улучшения зданий 1-5 (цена - из казны, рудой по ценам скупщика), лимит мэра в сутки (ставит стример).
-     Склад и траты - только стримеру и мэру; остальным - что в казне и кто сколько сдал. Действия - /api/mineHall, комната проверяет права. ----- */
-  const BLD_NAMES = { gate: 'Ворота', hall: 'Ратуша', auction: 'Аукцион', trainer: 'Тренер', board: 'Доска объявлений', storage: 'Склад', anvil: 'Наковальня', forge: 'Кузня', tent: 'Шатёр', shop: 'Лавка', magic: 'Магическая лавка' };
-  function hall3Html(r, RES, top, resList) {
-    const H = r.hall, role = r.role || '', M = (n) => (X.money ? X.money(n) : String(n)), can = !!role, now = Date.now();
-    const cells = []; for (const x of r.res) { let q = x.q; while (q > 0 && cells.length < 400) { const n = Math.min(q, H.stack); cells.push([x, n]); q -= n; } }
-    const used = cells.length, grid = Array.from({ length: Math.max(Math.min(H.slots, 20), used) }, (_, i) => { const c = cells[i]; return c ? `<li class="cy-hs ${c[0].kind}${i >= H.slots ? ' over' : ''}" title="${esc(c[0].name)} ×${c[1]}"><i style="background:${esc(RES[c[0].id] || '#c8b89a')}"></i><b>${c[1]}</b>${can ? `<button type="button" class="cy-htk" data-htake="${esc(c[0].id)}" data-q="${c[1]}" aria-label="Забрать ${esc(c[0].name)} в сумку">↓</button>` : ''}</li>` : '<li class="cy-hs empty"></li>'; }).join('');
-    const who = H.mayor ? `Мэр - <b>${esc(H.mayor)}</b>` : `Мэра нет - казной управляет стример <b>${esc(H.ch || '')}</b>`;
-    let mayorBox = `<p>${who}.${H.mayor ? ` Лимит мэра - ${M(H.lim)} ${H.per === 'week' ? 'в неделю, на этой неделе' : 'в сутки, сегодня'} потрачено ${M(H.sp)}` : ''}</p>`;
-    if (role === 'streamer') mayorBox += `<div class="cy-hrow"><input class="input" data-hmayor placeholder="ник мэра" maxlength="25" value="${esc(H.mayor)}"><button type="button" class="btn primary sm" data-hset>Назначить</button>${H.mayor ? '<button type="button" class="btn ghost sm" data-hunset>Снять</button>' : ''}</div>
-      <div class="cy-hrow"><label>Лимит мэра <input class="input" data-hlim type="number" min="0" step="100" value="${H.lim}"></label><select class="input" data-hper><option value="day"${H.per !== 'week' ? ' selected' : ''}>в сутки</option><option value="week"${H.per === 'week' ? ' selected' : ''}>в неделю</option></select><button type="button" class="btn ghost sm" data-hlimset>Сохранить</button></div>`;
-    let bld = '';
-    if (H.town) bld = `<h4>Здания города</h4><ul class="cy-hbld">${Object.keys(BLD_NAMES).filter((k) => H.lv[k]).map((k) => { const lv = H.lv[k], b = H.b[k], to = lv + 1, cost = H.cost[to - 2];
-      const st = b && b.until > now ? `стройка до ур. ${b.to}: ${Math.ceil((b.until - now) / 3600e3)} ч` : lv >= 5 ? 'ур. 5 - лучше не бывает' : `ур. ${lv} → ${to}: ${M(cost)}, ${H.hours[to - 2]} ч`;
-      return `<li><span><b>${esc(BLD_NAMES[k])}</b> · ур. ${lv}</span><em>${st}</em>${can && !(b && b.until > now) && lv < 5 ? `<button type="button" class="btn ghost sm" data-hup="${k}"${cost > H.val ? ' disabled title="в казне не хватает"' : ''}>Улучшить</button>` : ''}</li>`; }).join('')}</ul>
-      <p class="note">Лучше здание - лучше товар: на ур. 5 в лавках появляются эпические вещи.</p>`;
-    const ore = can ? (X.hero().items || []).filter((it) => it && it.qty && it.q > 0 && it.res) : [];
-    // взнос в казну - всем: руда из сумки вместо продажи скупщику (по ценам скупщика), доска почёта
-    // 30.10 (репорт #2177): у каждой кучки - сколько её; «Отдать» - в два нажатия (hallGiveAsk), отданная кучка сразу пропадает из списка
-    const P = r.bp || {}, mine = (X.hero().items || []).filter((it) => it && it.qty && it.q > 0 && it.res && +P[it.res] > 0 && !hallGone(it.uid));
-    const give = mine.length ? `<h4>Взнос в казну</h4><p class="note">Отдай руду городу вместо продажи скупщику - попадёшь на доску почёта. Уходит только та кучка, у которой нажал «Отдать» и подтвердил, - вся целиком.</p><ul class="cy-hput">${mine.slice(0, 10).map((it) => `<li><span>${esc(it.name)} <small>${esc(oreQ(it.q))}</small></span><button type="button" class="btn ${hallAsked(it.uid) ? 'primary' : 'ghost'} sm" data-hgive="${esc(it.uid)}" data-q="${it.q}" data-qt="${esc(oreQ(it.q))}" data-v="${esc(M(Math.floor(it.q * P[it.res] / 100)))}">${hallAsked(it.uid) ? `Точно отдать ${esc(oreQ(it.q))}?` : `Отдать ≈${M(Math.floor(it.q * P[it.res] / 100))}`}</button></li>`).join('')}</ul>` : '';
-    const me0 = X.login(), board = (H.donors || []).length ? `<h4>Доска почёта казны</h4><ol class="cy-hgv">${H.donors.map(([l, v], i) => `<li class="${l === me0 ? 'me' : ''}"><span>${i + 1}</span><b>${esc(l === me0 ? l + ' (ты)' : l)}</b><em>${M(v)}</em></li>`).join('')}</ol>` : '';
-    const put = can && ore.length ? `<h4>Положить из сумки</h4><ul class="cy-hput">${ore.slice(0, 12).map((it) => `<li><span>${esc(it.name)}</span><button type="button" class="btn ghost sm" data-hput="${esc(it.uid)}" data-q="${it.q}">Положить</button></li>`).join('')}</ul>` : '';
-    const log = (H.log || []).length ? `<details class="cy-hlog"><summary>Журнал Ратуши</summary><ul>${H.log.map((e) => `<li>${esc(e.t)}</li>`).join('')}</ul></details>` : '';
-    return `<h3 class="h3">Казна канала</h3><p class="note">Одна на все города канала, не сбрасывается. Сюда - то, что сдают скупщику, руда со сборов на лифт и буровые, доля буровых. В казне руды на ${M(H.val)}</p>
-      <div class="m2-k">Склад Ратуши <small>${used} из ${H.slots} ячеек${used > H.slots ? ' - склад полон, лишнее лежит во дворе' : ''}${can ? ' · ↓ - забрать в сумку' : ''}</small></div><ul class="cy-hgrid">${grid}</ul>
-      ${can ? '' : '<p class="note">Брать со склада и тратить казну могут стример и мэр.</p>'}
-      <details class="cy-hlist"><summary>Склад города по видам</summary>${resList}</details>
-      <h4>Мэр</h4>${mayorBox}${bld}${put}${give}${board}${log}${top}`;
-  }
-  /* 30.10 (репорт #2177: «нажал сдать известняк - пропали ещё железо и уголь»): взнос в казну - в два нажатия, подтверждение привязано
-     к кучке (uid), а не к месту кнопки: после взноса список сдвигается вверх, и повторное нажатие на то же место раньше отдавало
-     следующий вид руды. Первое нажатие - «Точно отдать 1,5 шт.?», второе (через 0,35…8 с) - взнос. Отданную кучку прячем сразу:
-     снимок героя на сайте догоняет через 10-20 с */
-  const HALL_ASK_MS = 8000, HALL_ASK_MIN = 350, HG = { ask: null, gone: new Map() };
-  const oreQ = (q) => (window.LGInventory && window.LGInventory.oreQty ? window.LGInventory.oreQty(q) : `${Math.floor(q / 100)} шт.${q % 100 ? ` + ${q % 100} оск.` : ''}`);
-  const hallAsked = (uid) => !!(HG.ask && HG.ask.uid === uid && Date.now() - HG.ask.at < HALL_ASK_MS);
-  const hallGone = (uid) => { const t = HG.gone.get(uid); return !!(t && Date.now() - t < 60000); };
-  function hallGiveAsk(box, b) {
-    const uid = b.dataset.hgive, a = HG.ask, dt = a && a.uid === uid ? Date.now() - a.at : -1;
-    const plain = (x) => { x.classList.remove('primary'); x.classList.add('ghost'); x.textContent = `Отдать ≈${x.dataset.v}`; };
-    if (dt >= HALL_ASK_MIN && dt < HALL_ASK_MS) { HG.ask = null; b.disabled = true; hallAct({ a: 'give', lines: [[uid, +b.dataset.q]] }, uid); return; }
-    // двойной клик - это не подтверждение
-    if (dt >= 0 && dt < HALL_ASK_MIN) return;
-    box.querySelectorAll('[data-hgive]').forEach((x) => { if (x !== b) plain(x); });
-    HG.ask = { uid, at: Date.now() }; b.classList.remove('ghost'); b.classList.add('primary'); b.textContent = `Точно отдать ${b.dataset.qt}?`;
-    setTimeout(() => { if (HG.ask && HG.ask.uid === uid && Date.now() - HG.ask.at >= HALL_ASK_MS) { HG.ask = null; if (b.isConnected) plain(b); } }, HALL_ASK_MS + 50);
-  }
-  async function hallAct(b, gaveUid) {
-    const c = inTown() ? TOWN.id : 'home';
-    const r = await X.api('/api/mineHall', { c, ...b });
-    const tell = (t, bad) => { if (X.toast) X.toast(t, bad); };   // say() здесь - разметка реплики, не сообщение
-    if (!r || !r.ok) { tell((r && r.error) || 'Не получилось', true); if (gaveUid && S && S.panelId === 'hall') hallLoad(); return; }
-    if (gaveUid) { HG.gone.set(gaveUid, Date.now()); const box = S && S.panel && S.panel.querySelector('.cy-hall'), li = box && box.querySelector(`[data-hgive="${CSS.escape(gaveUid)}"]`); if (li && li.closest('li')) li.closest('li').remove(); }
-    tell((r.x && r.x.t) || 'Готово - Ратуша обновится через пару секунд'); setTimeout(() => { if (S && S.panelId === 'hall') hallLoad(); }, 2500);
-  }
-  function hallBind(box) {
-    const q = (sel) => box.querySelector(sel);
-    box.querySelectorAll('[data-htake]').forEach((b) => { b.onclick = () => hallAct({ a: 'take', item: b.dataset.htake, n: +b.dataset.q }); });   // ↓ - ячейка целиком
-    box.querySelectorAll('[data-hup]').forEach((b) => { b.onclick = () => hallAct({ a: 'up', item: b.dataset.hup }); });
-    box.querySelectorAll('[data-hput]').forEach((b) => { b.onclick = () => hallAct({ a: 'put', lines: [[b.dataset.hput, +b.dataset.q]] }); });
-    box.querySelectorAll('[data-hgive]').forEach((b) => { b.onclick = () => hallGiveAsk(box, b); });
-    const st = q('[data-hset]'); if (st) st.onclick = () => hallAct({ a: 'mayor', item: (q('[data-hmayor]') || {}).value || '' });
-    const un = q('[data-hunset]'); if (un) un.onclick = () => hallAct({ a: 'mayor', item: '' });
-    const lm = q('[data-hlimset]'); if (lm) lm.onclick = () => hallAct({ a: 'lim', n: +((q('[data-hlim]') || {}).value || 0), item: (q('[data-hper]') || {}).value || 'day' });
-  }
-  /* ----- Доска объявлений: последние новости игры (то же, что вкладка «Новости») ----- */
-  /* ----- Доска объявлений (22.10, решение стримера): на доске — короткие листки (тема, дата, пара строк), по нажатию —
-     новость на весь экран: обложка, весь текст, листать соседние (кнопками и стрелками), Esc — закрыть. Полная лента — «Новости». */
-  const NEWS_TAGS = { update: 'Обновление', balance: 'Баланс', event: 'Событие', fix: 'Исправления' };
-  let NEWS = [];
-  const newsDay = (t) => (t ? new Date(t).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }) : '');
-  const newsText = (html) => { const d = document.createElement('div'); d.innerHTML = html || ''; d.querySelectorAll('figure').forEach((f) => f.remove()); return (d.textContent || '').replace(/\s+/g, ' ').trim(); };
-  async function loadNews() {
-    const box = S.panel.querySelector('.cy-news'); if (!box) return;
-    let r = null; try { r = await (await fetch((window.LG_BASE || '') + '/api/news', { credentials: 'same-origin' })).json(); } catch {}
-    if (!S || S.panelId !== 'board') return;
-    box.removeAttribute('aria-busy');
-    newsBoard(box, (r && r.list) || []);
-  }
-  function newsBoard(box, list) {
-    NEWS = list.slice(0, 10);
-    if (!NEWS.length) { box.innerHTML = '<p class="note">На доске пока пусто.</p>'; return; }
-    box.innerHTML = `<ul class="cy-notes">${NEWS.slice(0, 6).map((p, i) => { const t = newsText(p.html), tag = NEWS_TAGS[p.tag];
-      // 22.10 (баг со стрима): на каждом листке — явная кнопка «Читать полностью»; нажатие на сам листок — то же самое
-      return `<li class="cy-note" data-read="${i}" style="--r:${[-1.5, 1, -0.5, 1.5, -1, 0.5][i]}deg"><div class="cy-nin"><span class="cy-ntop">${tag ? `<em>${esc(tag)}</em>` : ''}<time>${esc(newsDay(p.at))}</time></span><b id="cyn-${i}">${esc(p.title)}</b><p>${esc(t.length > 140 ? t.slice(0, 138) + '…' : t)}</p><button type="button" class="cy-nr" aria-describedby="cyn-${i}">Читать полностью</button></div></li>`; }).join('')}</ul>`
-      + `<div class="cy-nbtn"><button type="button" class="btn primary" data-read="0">Читать на весь экран</button><button type="button" class="btn ghost" data-news>Все новости</button></div>`;
-    // листок целиком и кнопка на нём (нажатие всплывает до листка) — один обработчик; фокус потом — обратно на кнопку
-    box.querySelectorAll('[data-read]').forEach((b) => { b.onclick = () => newsRead(+b.dataset.read, b.querySelector('.cy-nr') || b); });
-    box.querySelector('[data-news]').onclick = () => X && X.tab('news');
-  }
-  // новость на весь экран (поверх Города): тот же текст, что во вкладке «Новости» (html собирает сервер), читать удобно и на телефоне
-  let readEl = null, readBack = null;
-  function newsRead(i, from) {
-    if (!NEWS.length) return;
-    i = (i + NEWS.length) % NEWS.length;
-    const p = NEWS[i], html = p.html || '', m = /<figure class="nw-fig">[\s\S]*?<\/figure>/.exec(html);
-    const cover = m ? m[0].replace('<figure class="nw-fig">', '<figure class="nw-fig nw-cover">') : '', bodyHtml = m ? (html.slice(0, m.index) + html.slice(m.index + m[0].length)).replace(/^\s+/, '') : html;
-    if (!readEl) {
-      readBack = from || document.activeElement;
-      readEl = document.createElement('div'); readEl.className = 'cy-read'; readEl.setAttribute('role', 'dialog'); readEl.setAttribute('aria-modal', 'true'); readEl.setAttribute('aria-labelledby', 'cyr-t');
-      (document.fullscreenElement || document.body).appendChild(readEl); document.documentElement.classList.add('cy-reading');   // Город во весь экран — окно внутри него
-      readEl.addEventListener('keydown', newsKeys);
-    }
-    readEl.dataset.i = String(i);
-    const tag = NEWS_TAGS[p.tag];
-    readEl.innerHTML = `<div class="cy-rd-top"><b>Доска объявлений</b><span>${i + 1} из ${NEWS.length}</span><button type="button" class="cy-rd-x" aria-label="Закрыть"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>`
-      + `<div class="cy-rd-in">${NEWS.length > 1 ? `<nav class="cy-rd-list" aria-label="Новости на доске">${NEWS.map((x, k) => `<button type="button" data-go="${k}"${k === i ? ' aria-current="true"' : ''}><time>${esc(newsDay(x.at))}</time>${esc(x.title)}</button>`).join('')}</nav>` : ''}`
-      + `<article class="cy-rd-paper">${cover}<div class="nw-meta">${tag ? `<span class="nw-tag" data-tag="${esc(p.tag)}">${esc(tag)}</span>` : ''}<time>${esc(newsDay(p.at))}</time></div><h2 class="nw-t" id="cyr-t">${esc(p.title)}</h2><div class="nw-body">${bodyHtml}</div>`
-      + `<div class="cy-rd-nav">${NEWS.length > 1 ? `<button type="button" class="btn ghost" data-go="${i - 1}">← Новее</button><button type="button" class="btn ghost" data-go="${i + 1}">Старее →</button>` : ''}<button type="button" class="btn ghost" data-talk>Обсудить в «Новостях»</button></div></article></div>`;
-    readEl.querySelector('.cy-rd-x').onclick = newsClose;
-    readEl.onclick = (e) => { if (e.target === readEl || e.target.classList.contains('cy-rd-in')) newsClose(); };   // нажал мимо листа — закрыть (удобно на телефоне)
-    readEl.querySelectorAll('[data-go]').forEach((b) => { b.onclick = () => newsRead(+b.dataset.go); });
-    readEl.querySelector('[data-talk]').onclick = () => { newsClose(); if (X) X.tab('news'); };
-    const paper = readEl.querySelector('.cy-rd-paper'); if (paper) paper.scrollTop = 0;
-    readEl.querySelector('.cy-rd-in').scrollTop = 0;
-    readEl.querySelector('.cy-rd-x').focus();
-  }
-  function newsKeys(e) {
-    if (e.key === 'Escape') { e.preventDefault(); newsClose(); return; }
-    if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && NEWS.length > 1 && !/^(INPUT|TEXTAREA)$/.test((e.target && e.target.tagName) || '')) { e.preventDefault(); newsRead(+readEl.dataset.i + (e.key === 'ArrowLeft' ? -1 : 1)); return; }
-    if (e.key === 'Tab') {   // фокус — внутри окна
-      const f = [...readEl.querySelectorAll('button, a[href]')].filter((x) => x.offsetParent !== null); if (!f.length) return;
-      const a = f[0], z = f[f.length - 1];
-      if (e.shiftKey && document.activeElement === a) { e.preventDefault(); z.focus(); } else if (!e.shiftKey && document.activeElement === z) { e.preventDefault(); a.focus(); }
-    }
-  }
-  function newsClose() {
-    if (!readEl) return;
-    readEl.remove(); readEl = null; document.documentElement.classList.remove('cy-reading');
-    try { if (readBack && readBack.isConnected) readBack.focus(); } catch {}
-    readBack = null;
-  }
-
-  /* ----- Лавка: еда и зелья (своё — съесть; купить — на стриме), материалы заточки — тестерам ----- */
-  // товар Торговых рядов (как ROWS в modules/fair/server.js); названия — из стиля, нет — «легионские»
-  const ROWS = { potion_small: 'Малое зелье здоровья', potion_hp: 'Большое зелье здоровья', apple: 'Яблоко', pretzel: 'Баранка', bread: 'Хлеб', cheese: 'Сыр', pie: 'Пирог', ham: 'Окорок', roast: 'Жареный гусь', honey_cake: 'Медовая лепёшка', sage_tea: 'Шалфейный отвар', spicy_stew: 'Острая похлёбка' };
-  let PANTRY = false;   // открыт ли список своих припасов (полоса Лавки)
-  function shopBody(h) {
-    if (FULL.shop) {
-      const mine = h ? (h.items || []).filter((it) => !it.on && (it.slot === 'food' || it.slot === 'potion') && it.effect && !it.effect.revive) : [];
-      const seen = new Set(), stack = []; for (const it of mine) { if (seen.has(it.id)) { stack.find((x) => x.id === it.id).n++; continue; } seen.add(it.id); stack.push({ ...it, n: 1 }); }
-      const cd = h && h.eatUntil && h.eatUntil > Date.now();
-      const list = PANTRY ? `<div class="cy-pantry panel">${stack.length ? `<ul class="cy-goods">${stack.map((it) => `<li><span class="cy-gi">${X.art(it)}</span><span><b>${esc(it.name)}</b>${it.n > 1 ? ` <small>×${it.n}</small>` : ''}<em>${esc(X.eff(it))}</em></span><button type="button" class="btn ghost sm" data-use="${esc(it.uid)}" data-ok="${it.slot === 'potion' || it.drink ? 'Выпито' : 'Съедено'}"${cd || h.ghost ? ' disabled' : ''}>${it.slot === 'potion' || it.drink ? 'Выпить' : 'Съесть'}</button></li>`).join('')}</ul>${cd ? '<p class="note">Еда и зелья ещё не готовы — пауза после прошлого.</p>' : ''}` : '<p class="note">Припасов нет.</p>'}</div>` : '';
-      return shopBar(h, h ? `<button type="button" class="btn ghost sm" data-pantry aria-expanded="${PANTRY}">🍎 Мои припасы (${mine.length})</button>` : '') + list;
-    }
-    return shopBody0(h);
-  }
-  function shopBody0(h) {
-    const mine = (h.items || []).filter((it) => !it.on && (it.slot === 'food' || it.slot === 'potion') && it.effect && !it.effect.revive);
-    const seen = new Set(), stack = [];
-    for (const it of mine) { if (seen.has(it.id)) { stack.find((x) => x.id === it.id).n++; continue; } seen.add(it.id); stack.push({ ...it, n: 1 }); }
-    const cd = h.eatUntil && h.eatUntil > Date.now();
-    const rs = stockOf('shop'), goods = rs ? [...(rs.potions || []), ...(rs.food || [])] : Object.keys(ROWS).map((id) => ({ id, slot: /^potion/.test(id) ? 'potion' : 'food', name: X.itemName(id) || ROWS[id] }));
-    const E = X.ench(), m = X.mats(h);
-    return `<div class="cy-shop">
-      <div class="cy-soon">${npc('Лавочница', 'happy', {}, { hat: 'chef' })}<div>${say(csOn() ? 'Еда лечит раны, зелья — быстрее. Нажми на товар — расскажу, дважды — продам за монеты.' : 'Еда лечит раны, зелья — быстрее. Купить можно на стриме — в Торговых рядах за баллы канала.')}</div></div>
-      <h3 class="h3">Твои припасы</h3>
-      ${stack.length ? `<ul class="cy-goods">${stack.map((it) => `<li><span class="cy-gi">${X.art(it)}</span><span><b>${esc(it.name)}</b>${it.n > 1 ? ` <small>×${it.n}</small>` : ''}<em>${esc(X.eff(it))}</em></span><button type="button" class="btn ghost sm" data-use="${esc(it.uid)}" data-ok="${it.slot === 'potion' || it.drink ? 'Выпито' : 'Съедено'}"${cd || h.ghost ? ' disabled' : ''}>${it.slot === 'potion' || it.drink ? 'Выпить' : 'Съесть'}</button></li>`).join('')}</ul>${cd ? '<p class="note">Еда и зелья ещё не готовы — пауза после прошлого.</p>' : ''}` : '<p class="note">Припасов нет.</p>'}
-      <h3 class="h3">На прилавке</h3>
-      <ul class="cy-goods cy-goods-c">${goods.map((it) => `<li><button type="button" class="cy-good" data-good="${esc(it.id)}" aria-label="${esc(X.itemName(it.id) || it.name)} — ${csOn() && it.coins ? esc(plainMoney(TH.price(h, it.coins))) : 'купить на стриме'}"><span class="cy-gi">${X.art(it)}</span><span><b>${esc(X.itemName(it.id) || it.name)}</b><em>${csOn() && it.coins ? X.money(TH.price(h, it.coins)) : 'на стриме'}</em></span></button></li>`).join('')}</ul>
-      ${goodsHelp(h)}
-      ${h.ef && !msOn() ? `<h3 class="h3">Для заточки</h3><div class="cy-mats"><span>Звёзд: <b>${m.star}</b> · сфер: <b>${m.sphere}</b></span>
-        <button type="button" class="btn ghost sm" data-buymat="star"${(+h.money || 0) < TH.price(h, E.coins.star) || h.ghost ? ' disabled' : ''}>Счастливая звезда · ${X.money(TH.price(h, E.coins.star))}</button>
-        <button type="button" class="btn ghost sm" data-buymat="sphere"${(+h.money || 0) < TH.price(h, E.coins.sphere) || h.ghost ? ' disabled' : ''}>Сфера сохранения · ${X.money(TH.price(h, E.coins.sphere))}</button></div>${TH.note(h)}` : ''}
-    </div>`;
-  }
-
-  /* ----- 22.10: Склад — сумка и склад ячейками (одинаковые расходники — стопкой), положить / забрать, расширить за монеты -----
-     23.10: перетаскивание между сумкой и складом (мышь и палец; на телефоне — удержание, у края окно прокручивается), «Положить всё ↓» /
-     «Взять всё ↑» (одно действие, итог «перенесено N, не влезло M»), «Разложить» (порядок хранит игра), подсказка-карточка вещи.
-     Ячейки и перетаскивание — общие с наковальней (itemgrid.js → window.LGItems), подсказка — общая карточка сайта (X.cardTip) */
-  let STSEL = null;   // выбранная ячейка: { from: 'b' | 's', uid }
-  let STRES = null;   // итог «всё разом» / сообщение перетаскивания: { t, bad }
-  let STCELLS = {};   // 'b:uid' / 's:uid' → { it, n, uids } — для подсказки и перетаскивания
-  let STD = null, STP = null, STTAP = '';   // перетаскивание (LGItems.drag) в окне Склада, его окно, чем нажали последний раз
-  const STCOARSE = () => window.LGSiteUi.is('touch');   // 24.10: телефон — подсказка про удержание
-  // ячейки — как у игры (legionary/storage.js): снаряжение по одной, расходники стопками; порядок — как в игре (keep)
-  const stCellsOf = (list, stack) => IGW().cells(list, stack, { keep: true });
-  // влезет ли ячейка c (из from) на другую сторону: свободная ячейка или неполная стопка того же (как кнопки и игра)
-  function stCan(h, from, c) {
-    const G = h.sg, toSt = from === 'b';
-    if (c.it.event && !c.it.wearable) return true;
-    const list = toSt ? stCellsOf(G.store || [], G.ss) : stCellsOf(h.items || [], G.bs), cap = toSt ? G.scap : G.cap, used = toSt ? G.sused : G.used, stack = toSt ? G.ss : G.bs;
-    return used < cap || (!c.it.wearable && list.some((x) => x.it.id === c.it.id && x.n < stack));
-  }
-  // одна дорога и для кнопок, и для перетаскивания: /api/stPut · /api/stTake (uid + сколько из стопки)
-  function stMove(from, uid, n, btn) {
-    const toSt = from === 'b'; STSEL = null;
-    return stAct(toSt ? '/api/stPut' : '/api/stTake', { uid, n }, toSt ? 'Положено на склад' : 'Забрано в сумку', btn);
-  }
-  /* 29.10 (баг: «с телефона двойное касание на вещи Склада - перенос не виден, пока не закроешь окно»): ответ игры (X.act) обновляет
-     героя и вкладку «Персонаж», но окно Города перерисовывалось только живым обновлением героя (heroChanged из SSE) - а на телефоне
-     канал часто закрыт (вкладка в фоне, сеть). Теперь окно Склада перерисовывается само, когда ответ пришёл: и при успехе, и при ошибке
-     (вещь остаётся на месте, причина - в уведомлении act) */
-  function stSync() { if (S && S.panelId === 'storage') rerenderUi('storage'); }
-  function stAct(path, body, ok, btn) {
-    return Promise.resolve(X.act(path, body, ok, btn)).then(stSync, (e) => {
-      stSync(); stResShow('Не получилось - попробуй ещё раз', true);
-      console.warn('[склад]', e);
-    });
-  }
-  // 24.10: сколько одинаковых на этой стороне (снаряжение — одна) и «половина» (не меньше 1)
-  function stAllOf(h, from, c) {
-    if (!h || !h.sg || !c) return 1; if (c.it.wearable) return 1;
-    return (from === 'b' ? (h.items || []).filter((x) => !x.on) : h.sg.store || []).filter((x) => x.id === c.it.id).length || 1;
-  }
-  const stHalf = (all) => Math.max(1, Math.floor(all / 2));
-  // 24.10: перенести n из ячейки (Shift — всё, Ctrl — половина, меню): бой / нет места — строкой, без запроса
-  function stGo(from, uid, n) {
-    const h = X.hero(), c = STCELLS[from + ':' + uid]; if (!h || !h.sg || !c) return;
-    if (h.busy) { stResShow('Идёт бой - склад после боя', true); return; }
-    if (!stCan(h, from, c)) { stResShow(from === 'b' ? 'На складе нет места - расширь склад или забери что-нибудь' : 'Сумка полна - освободи место', true); return; }
-    stResShow('', false); return stMove(from, uid, Math.max(1, Math.min(stAllOf(h, from, c), Math.floor(n) || 1)), null);   // 25.10: ответ ждёт новая сумка (inv2)
-  }
-  // 24.10: меню ячейки (ПКМ, клавиша меню / Shift+F10, на телефоне — удержать и отпустить): 1 / половина / всё / N…
-  function stMenu(el, from, uid, xy) {
-    const h = X.hero(), c = STCELLS[from + ':' + uid]; if (!h || !h.sg || !c || !IGW().menu) return;
-    const all = stAllOf(h, from, c), toSt = from === 'b', verb = toSt ? 'На склад' : 'В сумку';
-    const items = all > 1 ? [{ t: `${verb}: 1`, v: 1 }, ...(all > 2 ? [{ t: `${verb}: половину (${stHalf(all)})`, v: stHalf(all) }] : []), { t: `${verb}: всё (${all})`, v: all }, { t: `${verb}: сколько…`, v: 'n' }] : [{ t: verb, v: 1 }];
-    IGW().menu(xy && !(xy.x === 0 && xy.y === 0) ? xy : el, items, { title: `${c.it.name}${all > 1 ? ' ×' + all : ''}`, label: `${c.it.name}: ${toSt ? 'положить на склад' : 'забрать в сумку'}`, max: all, def: stHalf(all), pick: (n) => stGo(from, uid, n) });
-  }
-  /* 25.10: новая сумка (новинка inv2 — флаг i2 у героя): обе сетки Склада — библиотека инвентаря (packages/inventory, режим
-     'storage'): перетаскивание между сеткой и сеткой, Shift+клик / правая кнопка / двойной клик — вся стопка, удержание пальцем —
-     «1 / половина / всё / сколько», кнопки переноса внизу. Перенос — та же дорога stGo → stMove (/api/stPut · /api/stTake), «всё разом»,
-     «Разложить» и «+N ячеек» — как были. Библиотека живёт в своём элементе между перерисовками окна (обновляются только ячейки) */
-  let STI = null;   // { host, inv }
-  const stInv2 = (h) => !!(h && h.i2 && window.LGInventory);
-  const stData2 = (h) => ({ hero: h, items: h.items || [], storage: h.sg.store || [], bagCap: h.sg.cap, storageCap: h.sg.scap, stack: h.sg.bs, storageStack: h.sg.ss, ...(+h.ob > 0 ? { obCap: +h.ob } : {}) });   // 26.10: рудная сумка - своей сеткой (руда со склада - туда)
-  function stInvOff() { if (STI) { try { STI.inv.destroy(); } catch (e) { /* уже снят */ } STI = null; } }
-  function storageBody2(h, G, bag, st) {
-    const full = G.used >= G.cap, sfull = G.sused >= G.scap;
-    const canPut = !h.busy && bag.some((c) => stCan(h, 'b', c)), canTake = !h.busy && st.some((c) => stCan(h, 's', c));
-    const sortBtn = (box, n) => `<button type="button" class="btn ghost sm cy-sort" data-stsort="${box}"${h.busy || n < 2 ? ' disabled' : ''}>⇅ Разложить ${box === 'b' ? 'сумку' : 'склад'}</button>`;
-    return `<div class="cy-store cy-store2">
-      <div class="cy-soon">${npc('Кладовщик', 'happy', {}, { hat: 'cap' })}<div>${say('Сумка у героя небольшая. Что не нужно в походе — оставь у меня: здесь не потеряется, даже если герой падёт.')}</div></div>
-      ${h.busy ? '<p class="note cy-warn">Идёт бой — склад после боя.</p>' : ''}
-      ${full ? '<p class="note cy-warn">Сумка полна: в походе новые вещи достанутся другим, пока не освободишь место.</p>' : ''}
-      <div class="cy-stall" role="group" aria-label="Перенести всё разом">
-        <button type="button" class="btn ghost sm" data-stall="put"${canPut ? '' : ' disabled'} aria-label="Положить всё из сумки на склад">Положить всё ↓</button>
-        <button type="button" class="btn ghost sm" data-stall="take"${canTake ? '' : ' disabled'} aria-label="Взять всё со склада в сумку">Взять всё ↑</button>
-        ${sortBtn('b', bag.length)}${sortBtn('s', st.length)}
-        ${G.price ? `<button type="button" class="btn ${stxSure(G) ? 'primary' : 'ghost'} sm${stxSure(G) ? ' cy-sure' : ''}" data-stx${(+h.money || 0) < G.price || h.busy ? ' disabled' : ''}>${stxSure(G) ? `Точно? ${X.money(G.price)}` : `+${G.step} ячеек склада · ${X.money(G.price)}`}</button>` : ''}
-        <p class="cy-stres${STRES && STRES.bad ? ' bad' : ''}" role="status" aria-live="polite">${STRES ? esc(STRES.t) : ''}</p>
-      </div>
-      ${G.price && X.bal ? X.bal(G.price, h.money, 'cy-lack') : ''}${stMoneyRow(h, G)}${sfull ? '<p class="note cy-warn">Склад полон — расширь его или забери что-нибудь.</p>' : ''}
-      <div data-stinv></div>
-      <p class="note">Надетое и угощения особых событий (Хэллоуин и другие) места не занимают. Одинаковые еда, зелья и материалы лежат стопкой: в сумке — до ${G.bs}, на складе — до ${G.ss}.</p>
-    </div>`;
-  }
-  function stMount2(h, P) {
-    const ph = P.querySelector('[data-stinv]'); if (!ph) return;
-    if (STI) { ph.replaceWith(STI.host); STI.inv.update(stData2(h)); return; }
-    STI = { host: ph, inv: window.LGInventory.mount(ph, { variant: 'full', mode: 'storage', data: stData2(h),
-      actions: { move: (uid, from, to, n) => stGo(from === 'st' ? 's' : 'b', uid, n) },
-      options: { header: false, detail: false, art: X.art, storeKey: 'lgInv2St', sortDefault: 'new', filters: ['all', 'weapon', 'armor', 'helmet', 'shield', 'trinket', 'use', 'other'],
-        cardTip: X.cardTip ? (el, it) => X.cardTip(el, it, X.hero()) : null, tipHide: X.tipHide ? () => X.tipHide() : null,
-        say: (t) => stResShow(t, true), labels: { full: 'Нет места', storage: 'Склад' },
-        onDragEnd: () => { if (STI && STI.dirty) { STI.dirty = false; rerenderUi('storage'); } } } }) };
-  }
-  // 24.10: подтверждение «+N ячеек» — до 4 с и только для той же цены
-  let STX = null, STX_T = 0;
-  /* 30.10 (решение стримера): монеты на складе - строка «На складе: N» и «Положить монеты» / «Забрать монеты»: поле суммы (в самых мелких
-     монетах, как в обмене) и «Всё». Только если игра прислала vm (флаг vaultMoneyPublic или тестер); в походе и в бою - закрыто, решает игра
-     (legionary/storage.js moneyPut / moneyTake). Открытая форма и введённое помним вне окна (STM) - окно перерисовывается на каждое обновление героя */
-  let STM = null;
-  function stMoneyRow(h, G) {
-    if (!G || G.vm == null) return '';
-    const vm = Math.max(0, Math.floor(+G.vm || 0)), wal = Math.max(0, Math.floor(+h.money || 0)), off = !!h.busy || !!G.vq;
-    // «У тебя: …» уже есть рядом, пока склад можно расширить (X.bal); склад самый большой - кошелёк в этой же строке
-    const head = `<div class="cy-vm"><p class="note cy-vmn">${G.price ? '' : `У тебя: ${X.money(wal)} · `}На складе: ${X.money(vm)}</p>
-      <button type="button" class="btn ghost sm" data-vmopen="put"${off || wal < 1 ? ' disabled' : ''}${STM && STM.put ? ' aria-pressed="true"' : ''}>Положить монеты</button>
-      <button type="button" class="btn ghost sm" data-vmopen="take"${off || vm < 1 ? ' disabled' : ''}${STM && !STM.put ? ' aria-pressed="true"' : ''}>Забрать монеты</button>
-      ${G.vq ? '<p class="note cy-warn">В походе склад закрыт для монет - после похода.</p>' : ''}</div>`;
-    if (!STM || off) return head;
-    const max = STM.put ? wal : vm, v = Math.max(0, Math.min(max, Math.floor(+STM.v || 0)));
-    return head + `<div class="cy-vmf" role="group" aria-label="${STM.put ? 'Положить монеты на склад' : 'Забрать монеты со склада'}">
-      <label class="tr-coins"><span>Монеты (медь)</span><input type="number" inputmode="numeric" min="1" max="${max}" step="1" value="${v || ''}" data-vmn aria-label="Сколько монет (в медных)"><em>${v ? X.money(v) : 'есть ' + X.money(max)}</em></label>
-      <button type="button" class="btn primary sm" data-vmgo${v >= 1 && v <= max ? '' : ' disabled'}>${STM.put ? 'Положить' : 'Забрать'}</button>
-      <button type="button" class="btn ghost sm" data-vmall${max >= 1 ? '' : ' disabled'}>Всё (${X.money(max)})</button>
-      <button type="button" class="btn ghost sm" data-vmno>Отмена</button></div>`;
-  }
-  function stMoneyBind(P) {
-    P.querySelectorAll('[data-vmopen]').forEach((b) => b.onclick = () => { const put = b.dataset.vmopen === 'put'; STM = STM && STM.put === put ? null : { put, v: 0, focus: true }; rerenderUi('storage'); });
-    const no = P.querySelector('[data-vmno]'); if (no) no.onclick = () => { STM = null; rerenderUi('storage'); };
-    const send = (body, btn) => { const put = STM && STM.put; if (STM == null) return; STM = null; stAct(put ? '/api/stMoneyPut' : '/api/stMoneyTake', body, put ? 'Монеты на складе' : 'Монеты в кошельке', btn); };
-    const all = P.querySelector('[data-vmall]'); if (all) all.onclick = () => send({ all: 1 }, all);
-    const go = P.querySelector('[data-vmgo]'), inp = P.querySelector('[data-vmn]');
-    if (go) go.onclick = () => { const n = Math.floor(+(inp && inp.value) || 0); if (n >= 1) send({ n }, go); };
-    if (inp) {
-      inp.oninput = () => { if (!STM) return; STM.v = Math.max(0, Math.floor(+inp.value || 0)); const max = +inp.max || 0, ok = STM.v >= 1 && STM.v <= max, em = inp.parentElement && inp.parentElement.querySelector('em'); if (go) go.disabled = !ok; if (em) em.textContent = STM.v ? X.moneyText(STM.v) : 'есть ' + X.moneyText(max); };
-      inp.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (go && !go.disabled) go.click(); } else if (e.key === 'Escape') { e.preventDefault(); STM = null; rerenderUi('storage'); } };
-      inp.onfocus = () => { if (STM) STM.focus = true; }; inp.onblur = () => { if (STM && inp.isConnected) STM.focus = false; };
-      if (STM && STM.focus) { inp.focus(); const L0 = String(inp.value).length; try { inp.setSelectionRange(L0, L0); } catch (e) { /* number - без выделения, это нормально */ } }
-    }
-  }
-  const stxSure = (G) => !!(STX && STX.until > Date.now() && G && STX.price === G.price);
-  function storageBody(h) {
-    if (!IGW()) return '<p class="note">Склад раскладывается… обнови страницу, если не появится.</p>';
-    const G = h.sg, bag = stCellsOf(h.items || [], G.bs), st = stCellsOf(G.store || [], G.ss);
-    STCELLS = {}; for (const c of bag) STCELLS['b:' + c.uids[0]] = c; for (const c of st) STCELLS['s:' + c.uids[0]] = c;
-    if (stInv2(h)) return storageBody2(h, G, bag, st);   // 25.10: новая сумка (новинка inv2) — библиотека инвентаря
-    const full = G.used >= G.cap, sfull = G.sused >= G.scap;
-    const grid = (cs, from, cap, label) => IGW().grid(cs, { art: X.art, cap, label, low: (it) => it.dur != null && +it.dur <= (X.durLow ? X.durLow() : 30),
-      gattr: `data-igdrop="${from}" data-stgrid="${from}"`, drag: true, on: (c) => !!STSEL && STSEL.from === from && c.uids.includes(STSEL.uid), attr: (c) => `data-st="${from}:${esc(c.uids[0])}"` });
-    // выбранное: что это и куда
-    let pick = '<p class="note">Выбери вещь или перетащи её в сумку / на склад (на телефоне — нажми и подержи).</p>';
-    if (STSEL) {
-      const list = STSEL.from === 'b' ? bag : st, c = list.find((x) => x.uids.includes(STSEL.uid));
-      if (!c) STSEL = null;
-      else {
-        const toSt = STSEL.from === 'b', all = (toSt ? (h.items || []).filter((x) => !x.on) : G.store).filter((x) => x.id === c.it.id && !c.it.wearable).length;
-        const can = stCan(h, STSEL.from, c);
-        pick = `<div class="cy-stp"><span class="cy-gi">${X.art(c.it)}</span><div><b>${esc(c.it.name)}</b>${all > 1 ? ` <small>×${all}</small>` : ''}<em>${toSt ? 'в сумке' : 'на складе'}</em></div>
-          <div class="cy-stb">${all > 1 ? `<button type="button" class="btn ghost sm" data-stgo="1"${can && !h.busy ? '' : ' disabled'}>${toSt ? 'Положить 1' : 'Забрать 1'}</button>` : ''}${all > 2 ? `<button type="button" class="btn ghost sm" data-stgo="${stHalf(all)}"${can && !h.busy ? '' : ' disabled'}>Половину (${stHalf(all)})</button>` : ''}
-          <button type="button" class="btn primary sm" data-stgo="${all > 1 ? all : 1}"${can && !h.busy ? '' : ' disabled'}>${toSt ? (all > 1 ? 'Положить все' : 'На склад') : (all > 1 ? 'Забрать все' : 'В сумку')}</button></div></div>
-          ${!can ? `<p class="note cy-warn">${toSt ? 'На складе нет места — расширь склад или забери что-нибудь.' : 'Сумка полна — освободи место.'}</p>` : ''}`;
-      }
-    }
-    const canPut = !h.busy && bag.some((c) => stCan(h, 'b', c)), canTake = !h.busy && st.some((c) => stCan(h, 's', c));
-    const sortBtn = (box, n) => `<button type="button" class="btn ghost sm cy-sort" data-stsort="${box}"${h.busy || n < 2 ? ' disabled' : ''} aria-label="Разложить ${box === 'b' ? 'сумку' : 'склад'}: оружие, доспехи, шлемы, щиты, амулеты, расходники, материалы; лучшие первыми">⇅ Разложить</button>`;
-    return `<div class="cy-store">
-      <div class="cy-soon">${npc('Кладовщик', 'happy', {}, { hat: 'cap' })}<div>${say('Сумка у героя небольшая. Что не нужно в походе — оставь у меня: здесь не потеряется, даже если герой падёт.')}</div></div>
-      ${h.busy ? '<p class="note cy-warn">Идёт бой — склад после боя.</p>' : ''}
-      <div class="cy-stsel" aria-live="polite">${pick}</div>
-      <div class="cy-sth"><h3 class="h3">Сумка</h3><span class="cy-cnt${full ? ' full' : ''}">${G.used} / ${G.cap}</span>${sortBtn('b', bag.length)}</div>
-      ${full ? '<p class="note cy-warn">Сумка полна: в походе новые вещи достанутся другим, пока не освободишь место.</p>' : ''}
-      ${grid(bag, 'b', G.cap, 'Сумка')}
-      <p class="cy-sthint">${STCOARSE() ? 'Нажми и подержи вещь - меню: 1 / половина / всё / сколько; подержи и тяни - перенести стопку.' : 'Shift+клик - весь стак, Ctrl+клик - половина, правая кнопка - меню (1 / половина / всё / сколько).'}</p>
-      <div class="cy-stall" role="group" aria-label="Перенести всё разом">
-        <button type="button" class="btn ghost sm" data-stall="put"${canPut ? '' : ' disabled'} aria-label="Положить всё из сумки на склад">Положить всё ↓</button>
-        <button type="button" class="btn ghost sm" data-stall="take"${canTake ? '' : ' disabled'} aria-label="Взять всё со склада в сумку">Взять всё ↑</button>
-        <p class="cy-stres${STRES && STRES.bad ? ' bad' : ''}" role="status" aria-live="polite">${STRES ? esc(STRES.t) : ''}</p>
-      </div>
-      <div class="cy-sth"><h3 class="h3">Склад</h3><span class="cy-cnt${sfull ? ' full' : ''}">${G.sused} / ${G.scap}</span>${sortBtn('s', st.length)}
-        ${G.price ? `<button type="button" class="btn ${stxSure(G) ? 'primary' : 'ghost'} sm${stxSure(G) ? ' cy-sure' : ''}" data-stx${(+h.money || 0) < G.price || h.busy ? ' disabled' : ''}>${stxSure(G) ? `Точно? ${X.money(G.price)}` : `+${G.step} ячеек · ${X.money(G.price)}`}</button>` : ''}</div>
-      ${G.price && X.bal ? X.bal(G.price, h.money, 'cy-lack') : ''}${stMoneyRow(h, G)}
-      ${grid(st, 's', G.scap, 'Склад')}
-      <p class="note">Надетое и угощения особых событий (Хэллоуин и другие) места не занимают. Одинаковые еда, зелья и материалы лежат стопкой: в сумке — до ${G.bs}, на складе — до ${G.ss}.</p>
-    </div>`;
-  }
-  function stResShow(t, bad) {
-    STRES = t ? { t, bad: !!bad } : null;
-    const el = S && S.panel && S.panel.querySelector('.cy-stres'); if (el) { el.textContent = t || ''; el.classList.toggle('bad', !!bad); }
-  }
-  // итог «всё разом» из игры (app.js storeNote → LGCity.storeRes)
-  function storeRes(x) { if (x && (x.op === 'stPutAll' || x.op === 'stTakeAll')) stResShow(`Перенесено ${x.n || 0}${x.left ? `, не влезло ${x.left}` : ''}`); }
-  const stItem = (el) => { const c = el && STCELLS[el.dataset.st]; return c ? { ...c.it, n: c.n, uids: c.uids } : null; };
-  function stTipShow(el) { if (X.cardTip && el && !(STD && STD.active())) { const it = stItem(el); if (it) X.cardTip(el, it, X.hero()); } }
-  function stTipHide() { if (X.tipHide) X.tipHide(); }
-  const stTipOn = () => (X.tipFor ? X.tipFor() : null);
-  const stOff = () => { if (STD) { STD.off(); STD = null; STP = null; } stInvOff(); };   // 25.10: и новая сумка (inv2)
-  // перетаскивание и подсказки — один раз на окно зала (окно новое при каждом входе)
-  function stBind(P) {
-    if (STP === P) return;
-    stOff(); STP = P;
-    const SEL = '.cy-store .cy-sc[data-st]', mine = () => S && S.panelId === 'storage' && S.panel === P;
-    const why = (src, t) => { const h = X.hero(), from = src.dataset.st.slice(0, 1), c = STCELLS[src.dataset.st]; if (!h || !h.sg || !c || t.dataset.igdrop === from) return 'same'; if (h.busy) return 'busy'; return stCan(h, from, c) ? '' : 'full'; };
-    STD = IGW().drag(P, {
-      src: '.cy-store [data-igdrag][data-st]', drop: '.cy-store [data-igdrop]', tapSel: '.cy-store [data-st]', snap: true, scroll: true,
-      ok: (src, t) => !why(src, t),
-      onStart: () => stTipHide(),
-      onDrop: (src) => { const [from, uid] = src.dataset.st.split(':'), c = STCELLS[src.dataset.st]; if (!c) return; stResShow('', false); stMove(from, uid, c.n, null); },
-      reject: (src, t) => { const w = why(src, t), from = src.dataset.st.slice(0, 1); if (w === 'busy') stResShow('Идёт бой — склад после боя', true); else if (w === 'full') stResShow(from === 'b' ? 'На складе нет места — расширь склад или забери что-нибудь' : 'Сумка полна — освободи место', true); },
-      onEnd: () => { if (STP && STP.dataset.stdirty) { delete STP.dataset.stdirty; rerenderUi('storage'); } },   // пока тащили, пришёл новый вид героя
-      // нажатие без перетаскивания — выбрать ячейку (кнопки «На склад» / «В сумку» ниже); пальцем — ещё и карточка вещи
-      // 24.10: Shift+клик — вся стопка (все одинаковые на этой стороне), Ctrl / ⌘+клик — половина; без клавиш — выбрать, как раньше
-      hold: (src) => { const [from, uid] = src.dataset.st.split(':'); stTipHide(); stMenu(src, from, uid); },
-      tap: (src, e) => { const [from, uid] = src.dataset.st.split(':');
-        if (e && (e.shiftKey || e.ctrlKey || e.metaKey)) { const h = X.hero(), all = stAllOf(h, from, STCELLS[src.dataset.st]); stGo(from, uid, e.shiftKey ? all : stHalf(all)); return; }
-        STSEL = STSEL && STSEL.from === from && STSEL.uid === uid ? null : { from, uid }; rerenderUi('storage'); },
-    });
-    // 24.10: правая кнопка (и клавиша меню / Shift+F10 на ячейке) — меню «1 / половина / всё / N…»
-    P.addEventListener('contextmenu', (e) => { if (!mine()) return; const el = e.target.closest(SEL); if (!el) return; e.preventDefault(); if (STD && STD.dragging()) return; const [from, uid] = el.dataset.st.split(':'); stTipHide(); stMenu(el, from, uid, e.pointerType === 'touch' ? null : { x: e.clientX, y: e.clientY }); });
-    P.addEventListener('pointerdown', (e) => { if (!mine()) return; STTAP = e.pointerType || 'mouse'; if (e.pointerType === 'mouse' || !e.target.closest(SEL)) stTipHide(); });
-    P.addEventListener('pointerover', (e) => { if (!mine() || e.pointerType !== 'mouse' || STD.active()) return; const el = e.target.closest(SEL); if (el && stTipOn() !== el) stTipShow(el); });
-    P.addEventListener('pointerout', (e) => { if (!mine() || e.pointerType !== 'mouse') return; const el = e.target.closest(SEL); if (el && !(e.relatedTarget && el.contains(e.relatedTarget))) stTipHide(); });
-    P.addEventListener('focusin', (e) => { if (!mine()) return; const el = e.target.closest(SEL); if (el && el.matches(':focus-visible')) stTipShow(el); });
-    P.addEventListener('focusout', (e) => { if (mine() && e.target.closest(SEL)) stTipHide(); });
-    P.addEventListener('scroll', () => { if (mine()) stTipHide(); }, { passive: true, capture: true });
-  }
-  function storageAfter(h) {
-    const P = S.panel; if (!IGW()) return;
-    if (stInv2(h)) stMount2(h, P); else { stInvOff(); stBind(P); }
-    stMoneyBind(P);
-    const f = stTipOn(); if (f && !f.isConnected) stTipHide();
-    P.querySelectorAll('[data-stgo]').forEach((b) => b.onclick = () => { if (!STSEL) return; stMove(STSEL.from, STSEL.uid, +b.dataset.stgo || 1, b); });
-    P.querySelectorAll('[data-stall]').forEach((b) => b.onclick = () => { const put = b.dataset.stall === 'put'; stResShow('', false); stAct(put ? '/api/stPutAll' : '/api/stTakeAll', {}, put ? 'Кладовщик относит всё на склад' : 'Кладовщик несёт всё в сумку', b); });
-    P.querySelectorAll('[data-stsort]').forEach((b) => b.onclick = () => stAct('/api/stSort', { box: b.dataset.stsort }, b.dataset.stsort === 'b' ? 'Сумка разложена' : 'Склад разложен', b));
-    // 24.10 (баг тестера): «Точно?» помним вне кнопки (STX) — склад перерисовывается на каждое обновление героя, и второе нажатие
-    // попадало в новую кнопку без пометки. Через 4 с без ответа — снова «+N ячеек»
-    const x = P.querySelector('[data-stx]'); if (x) x.onclick = () => {
-      const H = X.hero(), G = H && H.sg; if (!G || !G.price) return;
-      if (!stxSure(G)) { STX = { until: Date.now() + 4000, price: G.price }; clearTimeout(STX_T); STX_T = setTimeout(() => { STX = null; rerenderUi('storage'); }, 4000); rerenderUi('storage'); const b = S && S.panel && S.panel.querySelector('[data-stx]'); if (b) b.focus(); return; }
-      STX = null; clearTimeout(STX_T);
-      stAct('/api/stExpand', { price: G.price }, `Склад расширен: +${G.step} ячеек`, x);
-    };
-    // на телефоне подсказка — по нажатию: выбранная ячейка показывает карточку вещи
-    if (STTAP && STTAP !== 'mouse' && STSEL) { const el = P.querySelector(`[data-st="${STSEL.from}:${CSS.escape(STSEL.uid)}"]`); if (el) stTipShow(el); }
-  }
-
-  /* ----- Шатёр: облик — примерка на своём герое; своё — надеть, новое — купить на стриме ----- */
-  const TENT = [['shape', 'Форма', 'shapes'], ['color', 'Цвет', 'colors'], ['eyes', 'Глаза', 'eyes'], ['mouth', 'Рот', 'mouths'], ['hat', 'Шапка', 'hats'], ['acc', 'Аксессуар', 'acc']];
-  let TRY = {}, TF = 'hat';
-  function tentBody(h) {
-    if (FULL.tent) return shopBar(h, Object.keys(TRY).length ? '<button type="button" class="btn ghost sm" data-untry>Снять примерку</button>' : '');
-    return tentBody0(h);
-  }
-  function tentBody0(h) {
-    const W0 = h.wardrobe || { cur: {}, own: {} }, cur = W0.cur || {}, own = W0.own || {};
-        const C = (D() && D().CATALOG) || {};
-    const [f, , cat] = TENT.find((x) => x[0] === TF) || TENT[0];
-    const list = (C[cat] || []).filter(([id]) => id !== 'none');
-    const has = (v) => (own[f] || []).some((x) => String(x).toLowerCase() === String(v).toLowerCase());
-    const worn = (v) => (f === 'acc' ? (Array.isArray(cur.acc) ? cur.acc : []).includes(v) : String(cur[f] || '').toLowerCase() === String(v).toLowerCase());
-    const sel = TRY[f] != null ? (f === 'acc' ? TRY.acc[0] : TRY[f]) : null;
-    const pick = sel != null ? list.find(([id]) => String(id).toLowerCase() === String(sel).toLowerCase()) : null;
-    const act = pick ? (worn(pick[0]) ? '<p class="note">Уже надето.</p>' : has(pick[0]) ? `<button type="button" class="btn primary wide" data-wear="${esc(f)}" data-v="${esc(pick[0])}"${h.busy ? ' disabled' : ''}>Надеть «${esc(pick[1])}»</button>` : `<p class="note cy-buy">Купить — на стриме, в Шатре: кабинка «${esc((TENT.find((x) => x[0] === f) || [])[1] || '')}», образец «${esc(pick[1])}» (баллы канала).</p>`) : '<p class="note">Выбери образец — примерим на твоём герое.</p>';
-    // 21.10: на телефоне герой в сцене мелкий (а то и за краем) — примерку показываем ещё и тут, крупно (CSS: только на телефоне)
-    const fig = `<div class="cy-tryfig" aria-hidden="true">${still(X.doodle(X.login(), { ...h, look: { ...cur, ...TRY }, gear: {} }, 'happy', 'peace'))}</div>`;
-    return `<div class="cy-tent">
-      <div class="cy-trytop">${fig}${Object.keys(TRY).length ? '<button type="button" class="btn ghost sm" data-untry>Снять примерку</button>' : '<p class="note">Примерка — прямо на твоём герое в Шатре.</p>'}</div>
-      <div class="cy-try">
-        <div class="filters" role="group" aria-label="Что примерить">${TENT.map(([k, l]) => `<button type="button" data-tf="${k}" aria-pressed="${TF === k}">${l}</button>`).join('')}</div>
-        <div class="cy-opts">${list.map(([id, nm]) => `<button type="button" class="cy-opt${has(id) ? ' own' : ''}${sel != null && String(sel).toLowerCase() === String(id).toLowerCase() ? ' on' : ''}" data-try="${esc(id)}" title="${esc(nm)}">${cat === 'colors' ? `<i style="background:${esc(id)}"></i>` : ''}${esc(nm)}${has(id) ? '<small>есть</small>' : ''}</button>`).join('')}</div>
-        ${act}
-      </div>
-    </div>`;
-  }
-  function tentAfter(h) {
-    const P = S.panel;
-    if (FULL.tent) { const u0 = P.querySelector('[data-untry]'); if (u0) u0.onclick = () => { TRY = {}; GSEL = null; cardDrop(); rerenderUi('tent'); }; return; }
-    P.querySelectorAll('[data-tf]').forEach((b) => b.onclick = () => { TF = b.dataset.tf; rerenderUi('tent'); });
-    P.querySelectorAll('[data-try]').forEach((b) => b.onclick = () => { const v = b.dataset.try; if (TF === 'acc') TRY.acc = [v]; else TRY[TF] = v; rerenderUi('tent'); });
-    const u = P.querySelector('[data-untry]'); if (u) u.onclick = () => { TRY = {}; rerenderUi('tent'); };
-    const w = P.querySelector('[data-wear]'); if (w) w.onclick = () => { const f = w.dataset.wear, v = w.dataset.v; delete TRY[f]; X.act('/api/wear', { field: f, value: v }, 'Надето', w); };
-  }
-
-  /* ----- 23.10: лавки «Города» — товар на полках (Кузня, магическая лавка, амулеты Шатра) и на прилавке Лавки -----
-     Наведение мыши (ПК) или нажатие (телефон) — карточка вещи (общая карточка сайта X.itemBody: характеристики, новые — только кому открыты,
-     класс, тип брони, описание) и цена. Двойной клик или второе нажатие — табличка «Купить … за …? Да / Нет»; без «Да» ничего не покупается.
-     Покупки за монеты (cs у героя: cityShopPublic или тестер) — в любое время, и без стрима (очередь действий сайта → комната канала:
-     modules/site/server.js → cityBuyOp). Нет cs — в табличке «Купить можно на стриме» (за баллы канала). Облик Шатра — только за баллы. */
-  const WEARS = ['weapon', 'armor', 'shield', 'helmet', 'trinket'];
-  // товар места: у кого открыта магическая лавка — Кузня и Шатёр без её товара (forgeM / tentM)
-  const stockOf = (id) => { if (!STOCK) return null; if (id === 'magic') return STOCK.magic || null; if (id === 'forge') return (msOn() && STOCK.forgeM) || STOCK.forge || null; if (id === 'tent') return (msOn() && STOCK.tentM) || STOCK.tent || null; if (id === 'shop') return STOCK.rows || null; return null; };
-  const goodsOf = (id, st) => (!st ? [] : id === 'tent' ? st.amulets || [] : id === 'shop' ? [...(st.potions || []), ...(st.food || [])] : [...(st.shelf1 || []), ...(st.shelf2 || []), ...(st.case || []), ...(st.mats || [])]);
-  const matCoins = (it) => { const E = X.ench ? X.ench() : null; return it.mat && E && E.coins ? +E.coins[it.mat] || 0 : 0; };
-  // цена в монетах (с воровской наценкой) — 0: за монеты не продаётся (звёзды и сферы — пока заточка закрыта)
-  // 23.10: город чужого округа (quest/towns.js): цена ×k, лучшие сделки (эпические и легендарные, верхний ряд стендов) и материалы заточки закрыты
-  const coinsFor = (it, h) => { const b = it.mat ? (h && h.ef ? matCoins(it) : 0) : +it.coins || 0; return b > 0 ? Math.round(TH.price(h, b) * (it.mat ? 1 : foreignK())) : 0; };
-  const topIds = () => { const o = new Set(); for (const k of ['forge', 'forgeM', 'magic']) for (const x of ((STOCK && STOCK[k] && STOCK[k].stands) || [])) for (const it of x.top || []) o.add(it.id); return o; };
-  const lockedHere = (it) => foreignK() > 1 && !homeHere() && !!it && (!!it.mat || ['epic', 'legendary'].includes(it.rarity) || topIds().has(it.id));
-  const LOCK_T = 'Откроется после захвата';
-  const plainMoney = (n) => { const d = document.createElement('div'); d.innerHTML = X.money(n); return d.textContent.replace(/\s+/g, ' ').trim(); };
-  const shortMoney = (n) => { n = Math.max(0, Math.floor(+n || 0)); const g = Math.floor(n / 10000), s2 = Math.floor(n / 100) % 100, b = n % 100; return [g && g + 'з', s2 && s2 + 'с', (b || (!g && !s2)) && b + 'м'].filter(Boolean).join(' '); };
-  // рисунок полок с ценами в монетах (кому покупки за монеты открыты); иначе — баллы, как на стриме
-  function shopView(id, st) {
-    if (!st || !csOn()) return st;
-    const h = X.hero(), conv = (it) => { if (it && it.out) return { ...it, priceText: 'Закончились' };   // 27.10: звёзды и сферы закончились (enchantMatsOut)
-      if (lockedHere(it)) return { ...it, priceText: '🔒' }; const c = coinsFor(it, h); return c ? { ...it, price: c, priceText: shortMoney(c) } : it; };
-    // 29.10 (Шахта 3.0, шаг 5): в городе с Ратушей нового образца товар - по уровню здания (towngen.goodsOk): лучше здание - больше вещей, эпик - на ур. 5
-    const lvB = inTown() && TOWN.meta && TOWN.meta.lv3 && window.LGTownGen && window.LGTownGen.goodsOk ? +((TOWN.meta.levels || {})[id] || 1) : 0;
-    const keep = (it) => !lvB || !it || it.mat || window.LGTownGen.goodsOk(it.id, it.rarity, lvB);
-    const L2 = (a) => (a || []).filter(keep).map(conv);
-    return { ...st, stands: (st.stands || []).map((x) => ({ ...x, top: L2(x.top), mid: L2(x.mid), case: L2(x.case) })), shelf1: L2(st.shelf1), shelf2: L2(st.shelf2), case: L2(st.case), mats: L2(st.mats), amulets: L2(st.amulets) };
-  }
-  // 25.10: названия редкостей и слотов - из данных игры (packages/game-data), как в сумке сайта (было своё «Броня» вместо «Доспех»)
-  const RAR_RU = window.LGGameData.rarityNames();
-  const SLOT_RU = window.LGGameData.slotNames();
-  const placeName = (b) => (b === 'magic' ? (msOn() ? String(X.hero().ms) : 'магической лавке') : b === 'tent' ? 'Шатре' : b === 'shop' ? 'Торговых рядах' : 'Кузне');
-  function cardHtml(it, b, h) {
-    // характеристики и описание — общая подсказка-карточка сайта (app.js cardTip у вещи); здесь — цена и покупка
-    const nm = X.itemName(it.id) || it.name, c = coinsFor(it, h), body = X.cardTip ? '' : (it.desc ? `<p class="d-desc">${esc(it.desc)}</p>` : '');
-    const k = TH.k(h);
-    const price = lockedHere(it) ? `<p class="cy-icp pts">🔒 ${LOCK_T}</p>` : csOn() && c ? `<p class="cy-icp">${X.money(c)}${k > 1 ? ` <small class="thiefl">для вора ×${String(k).replace('.', ',')}</small>` : ''}${foreignK() > 1 ? ` <small class="thiefl">${homeHere() ? 'край' : 'чужой округ'} ×${String(foreignK()).replace('.', ',')}</small>` : ''}</p>`
-      : `<p class="cy-icp pts">${it.price ? (+it.price).toLocaleString('ru-RU') + ' баллов канала' : ''} <small>на стриме, в ${esc(placeName(b))}${it.rank ? `, звание не ниже «${esc(it.rank)}»` : ''}</small></p>`;
-    return `<div class="cy-ich"><b data-r="${esc(it.rarity || 'common')}">${esc(nm)}</b><small>${RAR_RU[it.rarity] || ''}${SLOT_RU[it.slot] ? ' · ' + SLOT_RU[it.slot] : ''}</small></div>${body}${price}<p class="cy-ichint">${touchy() ? 'Нажми на вещь ещё раз — купить' : 'Двойной клик — купить'}</p><button type="button" class="btn primary sm wide cy-icbuy" data-cardbuy>Купить…</button>`;
-  }
-  const touchy = () => !!((S && S.touch) || window.LGSiteUi.is('nohover'));
-  // подсказка под интерфейсом места: как покупать (и воровская наценка)
-  const goodsHelp = (h) => `<p class="note cy-gh">${csOn() ? 'Покупки — за монеты героя, в любое время: двойной клик по товару (на телефоне — нажми дважды) и «Да».' : 'Купить можно на стриме, за баллы канала. Здесь — посмотреть, что даёт вещь (наведи или нажми).'}</p>${csOn() ? TH.note(h) : ''}`;
-  let GSEL = null;   // выбранный товар: { b, id }
-  const card = () => { let c = S.room.querySelector('.cy-icard'); if (!c) { c = document.createElement('div'); c.className = 'cy-icard panel'; c.setAttribute('role', 'tooltip'); S.room.appendChild(c); } return c; };
-  function cardShow(el, it, b, pinned) {
-    const h = X.hero();
-    if (X.cardTip) { try { X.cardTip(el, tipItem(it), h); } catch (e) {} }   // характеристики — общей карточкой рядом с вещью
-    if (!pinned && X.cardTip) return;
-    const c = card(); c.innerHTML = cardHtml(it, b, h); c.classList.add('on'); c.classList.toggle('pin', !!pinned);
-    const cb = c.querySelector('[data-cardbuy]'); if (cb) cb.onclick = () => buyAsk(it, b, el);
-    if (pinned) { const x = document.createElement('button'); x.type = 'button'; x.className = 'cy-icx'; x.setAttribute('aria-label', 'Закрыть'); x.textContent = '×'; x.onclick = (e) => { e.stopPropagation(); unselect(); }; c.appendChild(x); }   // 23.10: закрыть карточку   // выбранная вещь — и кнопкой (телефон, клавиатура)
-    // цена и «Купить…» — внизу слева (ПК) или внизу (телефон): не на полках и не поверх общей карточки у вещи
-    const rr = S.room.getBoundingClientRect(), w = c.offsetWidth;
-    c.style.top = 'auto'; c.style.bottom = rr.width <= 720 ? '8px' : '16px'; c.style.left = (rr.width <= 720 ? Math.max(8, (rr.width - w) / 2) : 16) + 'px';
-  }
-  const cardHide = () => { const c = S && S.room && S.room.querySelector('.cy-icard'); if (c && !c.classList.contains('pin')) c.classList.remove('on'); };
-  const cardDrop = () => { if (X && X.tipHide) X.tipHide(); const c = S && S.room && S.room.querySelector('.cy-icard'); if (c) c.classList.remove('on', 'pin'); };
-  const tipItem = (it) => ({ ...it, name: X.itemName(it.id) || it.name, stats: it.stats || {}, wearable: WEARS.includes(it.slot), on: false, uids: [] });
-  const findGood = (b, id) => goodsOf(b, stockOf(b)).find((x) => x.id === id) || null;
-  // одна кнопка товара: наведение — карточка, нажатие — выбрать (второе нажатие или двойной клик — «Купить?»)
-  function bindGood(el, b, id) {
-    // наведение мыши — общая подсказка-карточка сайта (app.js cardTip, как у склада и наковальни); выбранная вещь — своя карточка с ценой и «Купить…»
-    el.addEventListener('pointerenter', (e) => { if (e.pointerType !== 'mouse' || !S || S.panelId == null || buyOpen() || (GSEL && GSEL.id === id)) return; const it = findGood(b, id); if (!it) return; if (X.cardTip) X.cardTip(el, tipItem(it), X.hero()); else cardShow(el, it, b, false); });
-    el.addEventListener('pointerleave', (e) => { if (e.pointerType !== 'mouse') return; if (X.tipHide) X.tipHide(); if (!(GSEL && GSEL.id === id)) cardHide(); });
-    el.addEventListener('click', () => {
-      const it = findGood(b, id); if (!it) return; if (X.tipHide) X.tipHide();
-      if (GSEL && GSEL.id === id && GSEL.b === b) { buyAsk(it, b, el); return; }
-      GSEL = { b, id }; S.room.querySelectorAll('.cy-hot.on, .cy-good.on').forEach((x) => x.classList.remove('on')); el.classList.add('on'); cardShow(el, it, b, true);
-    });
-    el.addEventListener('dblclick', (e) => { e.preventDefault(); const it = findGood(b, id); if (it && !buyOpen()) buyAsk(it, b, el); });
-  }
-  // кнопки поверх полок сцены (в координатах сцены — масштабируются вместе с ней)
-  function goodsHots(id) {
-    GSEL = null; cardDrop(); buyClose();
-    const inn = S.room.querySelector('.cy-rin'); if (!inn) return;
-    const old = inn.querySelector('.cy-hots'); if (old) old.remove();
-    if (!(id === 'forge' || id === 'magic' || id === 'tent' || id === 'shop')) return;
-    const st = stockOf(id), h = X.hero();
-    if (id === 'shop' && FULL.shop) { shopTiles(inn, st, h); return; }
-    const pos = S.itemPos || {}, list = goodsOf(id, st).filter((it) => pos[it.id]);
-    if (id === 'tent' && FULL.tent) tentHots(inn, st, pos);
-    if (!list.length) return;
-    const box = document.createElement('div'); box.className = 'cy-hots';
-    box.innerHTML = list.map((it) => { const p = pos[it.id], c = coinsFor(it, h); return `<button type="button" class="cy-hot${lockedHere(it) ? ' lock' : ''}" data-good="${esc(it.id)}" style="left:${Math.round(p.x - 64)}px;top:${Math.round(p.y - 92)}px" aria-label="${esc(X.itemName(it.id) || it.name)} — ${csOn() && c ? esc(plainMoney(c)) : 'купить на стриме'}"></button>`; }).join('');
-    inn.appendChild(box);
-    box.querySelectorAll('[data-good]').forEach((el) => bindGood(el, id, el.dataset.good));
-    olHots(box);
-  }
-  /* 23.10 (баг от зрителя): кнопка товара — ровно по рисунку вещи на сцене (раньше — 128×210 от точки itemPos: залезала на ценники полки выше),
-     наведение / фокус — контур вещи (.cy-olh), выбранная (.on) — контур ярче (.cy-olo). Толщина — по масштабу сцены: на телефоне тоже видно.
-     У стиля нет группы data-it — кнопка как была, мягкий свет (city.css) */
-  const dIt = (id) => String(id).replace(/[^\w:.-]/g, '_');
-  function olHots(box) {
-    const svg = S && S.room && S.room.querySelector('.cy-rbg'); if (!svg || !box.isConnected) return;
-    const k = () => { const r = svg.getBoundingClientRect(); return r.width > 0 ? r.width / 1920 : 0; };
-    const olR = () => { const kk = k(); if (!kk) return; const r = Math.min(9, Math.max(3, 2.6 / kk)); svg.querySelectorAll('#cy-itol .cy-olm, #cy-itol2 .cy-olm').forEach((m, i) => m.setAttribute('radius', (i ? r * 1.35 : r).toFixed(1))); };
-    // рисунок вещи (в координатах сцены) ∩ прежняя зона кнопки: у человечков-образцов рамка рисунка огромная (вложенные svg) — тогда зона как была
-    const place = () => {
-      const kk = k(), sr = svg.getBoundingClientRect(); if (!kk) return;
-      box.querySelectorAll('.cy-hot.ol').forEach((el) => {
-        const r = el._ol.getBoundingClientRect(); if (!(r.width > 0 && r.height > 0)) return;
-        const d = el._z || (el._z = [el.offsetLeft, el.offsetTop, el.offsetLeft + el.offsetWidth, el.offsetTop + el.offsetHeight]), p = 8;
-        let L = Math.max(d[0], (r.left - sr.left) / kk - p), T = Math.max(d[1], (r.top - sr.top) / kk - p), R = Math.min(d[2], (r.right - sr.left) / kk + p), B = Math.min(d[3], (r.bottom - sr.top) / kk + p);
-        if (R - L < 24 || B - T < 24) return;   // рисунок не там, где кнопка — не трогаем
-        const mw = Math.min(56, d[2] - d[0]), mh = Math.min(56, d[3] - d[1]);   // мелкую вещь — не меньше 56
-        if (R - L < mw) { const c = (L + R) / 2; L = c - mw / 2; R = c + mw / 2; }
-        if (B - T < mh) { const c = (T + B) / 2; T = c - mh / 2; B = c + mh / 2; }
-        Object.assign(el.style, { left: Math.round(L) + 'px', top: Math.round(T) + 'px', width: Math.round(R - L) + 'px', height: Math.round(B - T) + 'px' });
-      });
-    };
-    box.querySelectorAll('[data-good], [data-smp]').forEach((el) => {
-      const g = svg.querySelector(`[data-it="${dIt(el.dataset.good || el.dataset.smp).replace(/["\\]/g, '')}"]`), a = g && g.querySelector(':scope > [data-ia]');
-      if (!a) return;
-      el._ol = a; el.classList.add('ol');
-      const hl = (on) => { if (on) olR(); g.classList.toggle('cy-olh', on); };
-      el.addEventListener('pointerenter', () => hl(true)); el.addEventListener('pointerleave', () => hl(false));
-      el.addEventListener('focus', () => hl(true)); el.addEventListener('blur', () => hl(false));
-    });
-    // выбор (.on) ставят и снимают в разных местах (bindGood, unselect, кабинки Шатра) — следим за классом кнопок
-    const sync = () => box.querySelectorAll('.cy-hot.ol').forEach((el) => { const g = el._ol.parentNode, on = el.classList.contains('on'); if (on) olR(); if (g.classList.contains('cy-olo') !== on) g.classList.toggle('cy-olo', on); });
-    new MutationObserver(sync).observe(box, { subtree: true, attributes: true, attributeFilter: ['class'] });
-    place(); olR(); if (!k()) requestAnimationFrame(() => { place(); olR(); });
-  }
-  // Лавка: товар прилавка — плитками на полках слева (рисунок Лавки — cityart: полки x 80…640, y 330 и 560), звёзды и сферы — справа
-  function shopTiles(inn, st, h) {
-    const goods = st ? [...(st.potions || []), ...(st.food || [])] : [];
-    const mats = h && h.ef && !msOn() ? [{ id: 'enchant_star', mat: 'star', slot: 'material', rarity: 'uncommon', name: X.itemName('enchant_star') || 'Счастливая звезда' }, { id: 'enchant_sphere', mat: 'sphere', slot: 'material', rarity: 'rare', name: X.itemName('enchant_sphere') || 'Сфера сохранения' }] : [];
-    if (!goods.length && !mats.length) return;
-    const tile = (it, x, y) => { const c = coinsFor(it, h), nm = X.itemName(it.id) || it.name, pr = csOn() && c ? shortMoney(c) : it.price ? (+it.price).toLocaleString('ru-RU') + ' б.' : '';
-      return `<button type="button" class="cy-hot cy-tile${lockedHere(it) ? ' lock' : ''}" data-good="${esc(it.id)}" data-r="${esc(it.rarity || 'common')}" style="left:${x - 44}px;top:${y - 118}px" aria-label="${esc(nm)} — ${csOn() && c ? esc(plainMoney(c)) : 'купить на стриме'}"><span class="cy-gi">${X.art(it)}</span><b>${esc(nm)}</b><i>${esc(pr)}</i></button>`; };
-    const box = document.createElement('div'); box.className = 'cy-hots';
-    box.innerHTML = goods.slice(0, 12).map((it, i) => tile(it, 80 + 50 + (i % 6) * 92, i < 6 ? 330 : 560)).join('') + mats.map((it, i) => tile(it, 1300 + 50 + i * 92, 330)).join('');
-    inn.appendChild(box);
-    const all = [...goods, ...mats];
-    box.querySelectorAll('[data-good]').forEach((el) => { const id = el.dataset.good, it = all.find((x) => x.id === id); if (it && it.mat) { el.addEventListener('click', () => { if (GSEL && GSEL.id === id) buyAsk(it, 'shop', el); else { GSEL = { b: 'shop', id }; box.querySelectorAll('.on').forEach((x) => x.classList.remove('on')); el.classList.add('on'); cardShow(el, it, 'shop', true); } }); el.addEventListener('dblclick', () => { if (!buyOpen()) buyAsk(it, 'shop', el); }); el.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse' && !buyOpen()) cardShow(el, it, 'shop', GSEL && GSEL.id === id); }); el.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse' && !(GSEL && GSEL.id === id)) cardHide(); }); } else bindGood(el, 'shop', id); });
-  }
-  // Шатёр: образцы кабинок на сцене — нажать: примерить на своём герое и карточка (своё — «Надеть», новое — за баллы на стриме)
-  const BOOTH_RU = { shape: 'Форма тела', color: 'Цвет тела', eyes: 'Глаза', mouth: 'Рот', blush: 'Румянец', hat: 'Головной убор', acc: 'Аксессуар', aura: 'Аура' };
-  function tentHots(inn, st, pos) {
-    const smps = []; for (const b of (st && st.booths) || []) for (const smp of b.samples || []) if (pos[smp.pos]) smps.push([b, smp]);
-    if (!smps.length) return;
-    const box = document.createElement('div'); box.className = 'cy-hots';
-    box.innerHTML = smps.map(([b, smp]) => { const p = pos[smp.pos]; return `<button type="button" class="cy-hot sm" data-smp="${esc(smp.pos)}" style="left:${Math.round(p.x - 34)}px;top:${Math.round(p.y - 44)}px" aria-label="${esc(b.title)}: ${esc(smp.name)}"></button>`; }).join('');
-    inn.appendChild(box);
-    const valOf = (b, smp) => (b.key === 'blush' ? String(!!(smp.look && smp.look.blush)) : smp.id);
-    const owned = (b, smp) => { const h = X.hero(), own = (h && h.wardrobe && h.wardrobe.own && h.wardrobe.own[b.key]) || []; const v = valOf(b, smp); return own.some((x) => String(x).toLowerCase() === String(v).toLowerCase()); };
-    const html = (b, smp) => `<div class="cy-ich"><b>${esc(smp.name)}</b><small>${esc(b.title || BOOTH_RU[b.key] || '')} · образец №${smp.n}</small></div><p class="d-desc">Только внешность — на характеристики не влияет. Примерено на твоём герое.</p>`
-      + (owned(b, smp) ? `<p class="cy-icp">Уже есть в гардеробе</p><button type="button" class="btn primary sm wide" data-tentwear>Надеть</button>` : `<p class="cy-icp pts">${(+b.price || 0).toLocaleString('ru-RU')} баллов канала <small>на стриме, в Шатре: кабинка «${esc(b.title || '')}», образец №${smp.n}</small></p><p class="cy-ichint">${touchy() ? 'Нажми ещё раз' : 'Двойной клик'} — как купить</p>`);
-    const tryOn = (b, smp) => { const f = b.key; if (f === 'acc') TRY.acc = [smp.id]; else if (f === 'blush') TRY.blush = !!(smp.look && smp.look.blush); else TRY[f] = smp.id; const fg = S.room.querySelector('.cy-fig2.me'), h = X.hero(); if (fg && h) fg.innerHTML = still(X.doodle(X.login(), { ...h, look: { ...((h.wardrobe && h.wardrobe.cur) || {}), ...TRY }, gear: {} }, 'happy', 'peace')); };
-    const ask = (b, smp, el) => { if (owned(b, smp)) { delete TRY[b.key]; X.act('/api/wear', { field: b.key, value: valOf(b, smp) }, 'Надето', null); cardDrop(); return; } buyAsk({ id: smp.pos, name: smp.name, price: b.price, look: true }, 'tent', el); };
-    box.querySelectorAll('[data-smp]').forEach((el) => {
-      const [b, smp] = smps.find(([, x]) => x.pos === el.dataset.smp);
-      const show = (pin) => { const c = card(); c.innerHTML = html(b, smp); c.classList.add('on'); c.classList.toggle('pin', pin); const w = c.querySelector('[data-tentwear]'); if (w) w.onclick = () => ask(b, smp, el); cardPlace(c, el); };
-      el.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse' && !buyOpen()) show(GSEL && GSEL.id === smp.pos); });
-      el.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse' && !(GSEL && GSEL.id === smp.pos)) cardHide(); });
-      el.addEventListener('click', () => { if (GSEL && GSEL.id === smp.pos) { ask(b, smp, el); return; } GSEL = { b: 'tent', id: smp.pos }; box.querySelectorAll('.on').forEach((x) => x.classList.remove('on')); el.classList.add('on'); tryOn(b, smp); show(true); rerenderUi('tent'); });
-      el.addEventListener('dblclick', (e) => { e.preventDefault(); if (!buyOpen()) ask(b, smp, el); });
-    });
-    olHots(box);
-  }
-  // карточка рядом с местом (ПК) или внизу (телефон)
-  function cardPlace(c, el) {
-    const rr = S.room.getBoundingClientRect(), r = el.getBoundingClientRect(), w = c.offsetWidth, hh = c.offsetHeight;
-    if (rr.width <= 720) { c.style.left = Math.max(8, (rr.width - w) / 2) + 'px'; c.style.top = 'auto'; c.style.bottom = '8px'; return; }
-    c.style.bottom = ''; let x = r.right - rr.left + 10; if (x + w > rr.width - 8) x = r.left - rr.left - w - 10;
-    c.style.left = Math.max(8, x) + 'px'; c.style.top = Math.max(64, Math.min(rr.height - hh - 8, r.top - rr.top + r.height / 2 - hh / 2)) + 'px';
-  }
-  const buyOpen = () => !!(S && S.room && S.room.querySelector('.cy-buyq'));
-  function buyClose() { const q = S && S.room && S.room.querySelector('.cy-buyq'); if (q) q.remove(); }
-  // 23.10 (баг зрителя): после «Понятно» / «Нет» карточка выбранного товара оставалась и закрывала полки — снимаем выбор целиком
-  // нажатие мимо товара, карточки и таблички «Купить?» — выбор снимается (карточка не закрывает полки)
-  document.addEventListener('pointerdown', (e) => { if (!GSEL || !S || !S.room || S.room.hidden) return; if (e.target.closest && e.target.closest('.cy-icard, .cy-hot, .cy-good, .cy-buyq')) return; unselect(); }, { capture: true, passive: true });
-  function unselect() { buyClose(); cardDrop(); GSEL = null; if (S && S.room) S.room.querySelectorAll('.cy-hot.on, .cy-good.on').forEach((x) => x.classList.remove('on')); }
-  // «Купить … за …? Да / Нет»; покупки на сайте закрыты (или за монеты не продаётся) — «Купить можно на стриме»
-  function buyAsk(it, b, from, matBase) {
-    buyClose();
-    const h = X.hero(), nm = X.itemName(it.id) || it.name;
-    if (lockedHere(it)) {   // 23.10: чужой округ — лучшие сделки закрыты (сервер тоже не продаст)
-      const q = document.createElement('div'); q.className = 'cy-buyq'; q.setAttribute('role', 'dialog'); q.setAttribute('aria-modal', 'true'); q.setAttribute('aria-label', 'Покупка');
-      q.innerHTML = `<div class="cy-buyb panel"><p class="lead">🔒 «${esc(nm)}» — ${LOCK_T.toLowerCase()}</p><p class="note">Этот округ не принадлежит каналу: лучшие вещи торговец бережёт для своих. Захватите округ на стриме — откроется всё и по обычной цене.</p><div class="cy-buyr"><button type="button" class="btn primary" data-no>Понятно</button></div></div>`;
-      S.room.appendChild(q); const no = q.querySelector('[data-no]'); no.onclick = () => { unselect(); try { from && from.focus(); } catch {} }; q.addEventListener('click', (e) => { if (e.target === q) unselect(); }); try { no.focus(); } catch {}
-      return;
-    }
-    const mb = matBase || (it.mat ? matCoins(it) : 0), c = it.mat ? (h && h.ef && mb ? TH.price(h, mb) : 0) : coinsFor(it, h);
-    const can = it.look !== true && !!h && (it.mat ? !!(h.ef && c) : csOn() && c > 0);   // облик (кабинки Шатра) — только за баллы на стриме
-    // 29.10: расходники (еда, зелья) - сразу N штук, если открыто (h.bq - предел за раз); не больше, чем хватает монет
-    const qmax = !it.mat && h && +h.bq > 1 && c > 0 && (b === 'shop' || it.slot === 'food' || it.slot === 'potion') ? Math.max(1, Math.min(+h.bq, Math.floor((+h.money || 0) / c))) : 1;
-    let qn = 1;
-    const q = document.createElement('div'); q.className = 'cy-buyq'; q.setAttribute('role', 'dialog'); q.setAttribute('aria-modal', 'true'); q.setAttribute('aria-label', 'Покупка');
-    // 24.10 (баг тестера): не хватает — две строки обычным текстом: «У тебя: …» и «Не хватает: …» (единицы — как у цены)
-    const poor = !!h && !h.ghost && (+h.money || 0) < c;
-    const why = !h ? 'Героя пока нет.' : h.ghost ? 'Призраку не продают.' : poor ? 'Не хватает монет' : '';
-    q.innerHTML = `<div class="cy-buyb panel">${can
-      ? `<p class="lead">Купить «${esc(nm)}» за <span data-qt>${X.money(c)}</span>?</p>${qmax > 1 ? `<div class="cy-qty" role="group" aria-label="Сколько штук"><button type="button" class="btn ghost" data-q="-1" aria-label="Меньше">−</button><b data-qn aria-live="polite">1</b><button type="button" class="btn ghost" data-q="1" aria-label="Больше">+</button><small>шт., до ${qmax}</small></div>` : ''}${TH.k(h) > 1 ? `<p class="note thiefl">Для тебя за воровство цена ×${String(TH.k(h)).replace('.', ',')}.</p>` : ''}${why && !poor ? `<p class="note cy-warn">${why}</p>` : h && X.bal ? X.bal(c, h.money, 'cy-lack') : poor ? `<p class="note cy-warn">${why}</p>` : ''}<div class="cy-buyr"><button type="button" class="btn primary" data-yes${why ? ' disabled' : ''}>Да</button><button type="button" class="btn ghost" data-no>Нет</button></div>`
-      : `<p class="lead">«${esc(nm)}» — купить можно на стриме</p><p class="note">${it.look === true ? `Облик — только за баллы канала: на стриме, в Шатре, ${(+it.price || 0).toLocaleString('ru-RU')} баллов.` : it.price && !it.mat ? `В ${esc(placeName(b))} на Ярмарке за ${(+it.price).toLocaleString('ru-RU')} баллов канала.` : it.mat ? 'На стриме — за баллы канала; за монеты — когда откроется заточка.' : 'На Ярмарке во время стрима.'}</p><div class="cy-buyr"><button type="button" class="btn primary" data-no>Понятно</button></div>`}</div>`;
-    S.room.appendChild(q);
-    const no = q.querySelector('[data-no]'), yes = q.querySelector('[data-yes]');
-    q.querySelectorAll('[data-q]').forEach((bt) => bt.onclick = () => { qn = Math.max(1, Math.min(qmax, qn + +bt.dataset.q)); q.querySelector('[data-qn]').textContent = String(qn); q.querySelector('[data-qt]').innerHTML = X.money(c * qn); });
-    q.addEventListener('click', (e) => { if (e.target === q) unselect(); });
-    q.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.stopPropagation(); unselect(); try { from && from.focus(); } catch {} } });
-    no.onclick = () => { unselect(); try { from && from.focus(); } catch {} };
-    if (yes) yes.onclick = () => {
-      buyClose(); cardDrop(); GSEL = null;
-      const btn = from && from.classList && from.classList.contains('btn') ? from : null;   // кнопка товара на полке — без «Секунду…» в ней
-      if (it.mat) X.act('/api/buymat', { mat: it.mat, ...(TH.k(h) > 1 ? { ack: 1 } : {}) }, `Заказано: «${nm}» — принесут через пару секунд`, btn);
-      else X.act('/api/cityBuy', { item: it.id, price: c, ...(qn > 1 ? { n: qn } : {}), ...(inTown() ? { town: TOWN.id } : {}) }, `Куплено: «${nm}»${qn > 1 ? ` ×${qn}` : ''} — сейчас будет в сумке`, btn);
-    };
-    try { (yes || no).focus(); } catch {}
-  }
-  // полоса лавки: кошелёк, сумка (склад: N / предел), воровская наценка, свои кнопки места
-  function shopBar(h, extra) {
-    if (!h) return `<div class="cy-bar2"><span class="cy-bnote">Героя пока нет — он появится, когда ты напишешь в чат на стриме.</span></div>`;
-    const G = h.sg, n = (h.items || []).filter((x) => !x.on).length, k = TH.k(h);
-    const bag = G ? `${G.used} / ${G.cap}` : String(n), full = !!(G && G.used >= G.cap);
-    return `<div class="cy-bar2"><span class="cy-wal" title="Кошелёк героя">у тебя ${X.money(+h.money || 0)}</span><span class="cy-bagc${full ? ' full' : ''}" title="${full ? 'Сумка полна — разгрузи на склад' : 'Сумка'}">🎒 Сумка ${bag}</span>${k > 1 ? `<span class="cy-thk thiefl" title="Тебя ловили на краже — торговцы продают дороже">для тебя цены ×${String(k).replace('.', ',')}</span>` : ''}${foreignK() > 1 ? (homeHere() ? `<span class="cy-thk thiefl" title="Край отряда: пока не побеждён босс округа, торговцы продают дороже (продажа - как обычно)">край: цены ×${String(foreignK()).replace('.', ',')} до победы над боссом округа</span>` : `<span class="cy-thk thiefl" title="Округ не принадлежит каналу: лучшие вещи закрыты, остальное дороже">чужой округ: цены ×${String(foreignK()).replace('.', ',')}, лучшее — после захвата</span>`) : ''}${extra || ''}</div>`;
-  }
-  function magicBody(h) {
-    return shopBar(h, stockOf('magic') ? '' : '<span class="cy-bnote">Звездочёт раскладывает товар…</span>');
-  }
-
-  /* ----- Кузня: сцена с наковальней — кузнец бьёт 2–5 раз, искры, свечение растёт; итог — вспышка «+8», трещины, «−1» ----- */
-  /* ----- Кузня внутри — лавка кузнеца: товар стоек (тот же, что на стриме), покупка — на стриме; точить — у наковальни на улице ----- */
-  // 26.10 (art/camp): в лагере «Перепутье» наковальни нет - заточка откроется в городе канала после пролога
-  const goAnvil = () => (isCamp() ? '<span class="cy-bnote">Заточка - в городе канала, после пролога</span>' : '<button type="button" class="btn primary sm cy-goanvil" data-goanvil>🔨 К наковальне — заточка</button>');
-  function forgeShop(h) {
-    const st = STOCK && STOCK.forge;
-    if (!st) return shopBar(h, `<span class="cy-bnote">Кузнец раскладывает товар…</span>${goAnvil()}`);
-    // 23.10 (решение стримера): лавка на весь экран — товар на стойках (наведение / нажатие — карточка, двойной клик — «Купить? Да / Нет»),
-    // сверху — полоса: кошелёк, сумка и «К наковальне»
-    return shopBar(h, `${goAnvil()}`);
-  }
-  /* 23.10: окно наковальни — кукла героя (как во вкладке «Персонаж»), сумка ячейками (как на Складе), слот наковальни посередине.
-     Вещь — перетащить на наковальню (мышь; палец — удержать) или просто нажать на неё. Подсказка — общая карточка вещи сайта.
-     Ячейки и перетаскивание — общие (itemgrid.js → window.LGItems), способ заточки, шанс, цена — окно Кузни app.js (forgeOpen) */
-  function forgeBody(h) {
-    const rp = X.repBlock ? X.repBlock(h) : '';   // 22.10: починка — всем, даже пока заточка закрыта
-    if (!h.ef) return `${say('Чиню снаряжение после походов. А заточку открою позже — загляни!')}${rp}<p class="note">Заточка пока открыта только тестерам.</p>`;
-    return `<div class="cyf-wrap">
-      <div class="cyf-anvbox" aria-live="polite"></div>
-      <div class="cyf-dollbox" role="group" aria-label="Надето"></div>
-      <div class="cyf-bagbox"></div>
-      <div class="cyf-matbox"></div>
-      <div class="cyf-ctl"><p class="note cyf-hint">${IGW() && window.LGSiteUi.is('touch') ? 'Нажми на вещь на герое или в сумке — кузнец положит её на наковальню. Или удерживай и перетащи.' : 'Перетащи вещь с героя или из сумки на наковальню — или просто нажми на неё.'}</p></div>
-    </div>${rp}`;
-  }
+  /* ----- 30.10 (D1): Склад - окно модуля «Город»: products/legion/modules/fair/client/citystore.js (адрес /site/citystore.js, app.js грузит его
+     перед city.js). Здесь - только подключение: что окну нужно от города (C) и запасной вид, если файл не загрузился ----- */
+  const ST = (window.LGCityStore && window.LGCityStore({ get S() { return S; }, get X() { return X; }, npc: (...a) => npc(...a), say: (t) => say(t), IGW: () => IGW(), rerender: (id) => rerenderUi(id) }))
+    || { body: () => '<p class="note">Склад не загрузился - обнови страницу.</p>', after() {}, off() {}, res() {}, hold: () => false, quiet: (fn) => fn() };
+  // ячейки и перетаскивание - общие (itemgrid.js → window.LGItems): окно Склада и наковальня
   const IGW = () => window.LGItems;
-  let IGD = null;   // перетаскивание в окне наковальни (снимаем при выходе)
-  const igOff = () => { if (IGD) { IGD.off(); IGD = null; } if (FGI) { try { FGI.destroy(); } catch (e) { /* уже снята */ } FGI = null; } };
-  /* 25.10: новая сумка (новинка inv2 — флаг i2 у героя): кукла и сумка у наковальни — библиотека инвентаря, режим 'pick': нажатие
-     или перетаскивание на наковальню — та же pickForge (окно Кузни app.js с этим uid); что не точится — тусклое. */
-  let FGI = null;
-  const fgInv2 = (h) => !!(h && h.i2 && window.LGInventory);
-  function fgMount2(h, box, P) {
-    const bb = box.querySelector('.cyf-bagbox'); if (!bb) return;
-    const data = { hero: h, items: h.items || [], stack: h.sg ? h.sg.bs : 20, bagCap: h.sg ? h.sg.cap : null };
-    if (FGI && FGI.el.isConnected && bb.contains(FGI.el)) { FGI.update(data); FGI.select(FX.uid || ''); return; }
-    if (FGI) { try { FGI.destroy(); } catch (e) { /* уже снята */ } }
-    bb.innerHTML = '<div class="cyf-inv2"></div>'; bb.dataset.k = '';
-    FGI = window.LGInventory.mount(bb.firstChild, { variant: 'full', mode: 'pick', data,
-      actions: { pick: (it) => pickForge(it.uid, P), drop: (it) => pickForge(it.uid, P) },
-      options: { header: false, vitals: false, detail: false, art: X.art, storeKey: 'lgInv2Fg', dragRoot: P, dropSel: '[data-igdrop="anvil"]', dropOk: () => !FX.busy,
-        can: (it) => { const hh = X.hero() || {}; return !X.canEnch(it) ? 'Это не точится' : hh.ghost ? 'Призрак не точит' : hh.busy ? 'Идёт бой - заточка после боя' : true; },
-        figure: (hh) => (X.still && X.doodle ? X.still(X.doodle(X.login(), X.heroLook ? X.heroLook(hh) : hh, 'stern', 'battle')) : ''),
-        cardTip: X.cardTip ? (el, it) => X.cardTip(el, it, X.hero()) : null, tipHide: X.tipHide ? () => X.tipHide() : null, sel: FX.uid || '' } });
-  }
-  const itemOf = (h, uid) => (h && (h.items || []).find((x) => x.uid === uid)) || null;
-  // наковальня: вещь на ней (или пустой слот), под ней — наковальня Кузни
-  function anvilHtml(h) {
-    const it = itemOf(h, FX.uid) || FX.keep, gone = !!it && it === FX.keep;
-    const cls = FX.busy ? ' work' : FX.anim && FX.anim.t > Date.now() ? ' ' + FX.anim.c : '';
-    return `<div class="cyf-anv${it ? ' full' : ''}" data-igdrop="anvil">
-      <div class="cyf-anvslot cy-sc${gone ? ' gone' : ''}${cls}" style="--n:${FX.n || 2}" data-r="${esc((it && it.rarity) || 'common')}">${it ? `${gone ? '' : `<button type="button" class="cyf-anvit" data-ig="${esc(it.uid)}" aria-label="На наковальне: ${esc(it.name)}">`}<span class="cy-gi">${X.art(it)}</span>${it.en > 0 ? `<i class="en">+${+it.en}</i>` : ''}${it.dur != null ? `<i class="du${+it.dur <= (X.durLow ? X.durLow() : 30) ? ' br' : ''}">${+it.dur}%</i>` : ''}${gone ? '' : '</button>'}` : '<span class="cyf-anvph" aria-hidden="true">+</span>'}</div>
-      <div class="cyf-anvsvg" aria-hidden="true">${anvilSvg()}</div>
-      <div class="cyf-anvn">${it ? `<b data-r="${esc(it.rarity)}">${esc(it.name)}</b><small>${gone ? 'сломалась' : it.on ? 'надето' : 'из сумки'}</small>` : '<b>Наковальня пуста</b><small>положи сюда вещь</small>'}${FX.last && it ? `<small class="cyf-anvres ${FX.last.c}" role="status">${esc(FX.last.t)}</small>` : ''}
-        ${it && !FX.busy ? '<button type="button" class="btn ghost sm" data-anvoff>Убрать</button>' : ''}${it && !gone ? '<button type="button" class="btn ghost sm cyf-toctl" data-anvgo>К заточке ↓</button>' : ''}</div>
-    </div>`;
-  }
-  function matsHtml(h) {
-    const m = X.mats(h), seals = Object.keys(m.seals).map(Number).sort((a, b) => a - b);
-    const one = (it, n, nm) => `<span class="cyf-mat${n ? '' : ' none'}" title="${esc(nm)}: ${n}"><span class="cy-gi">${X.art(it)}</span><b>×${n}</b><small>${esc(nm)}</small></span>`;
-    return `<div class="cyf-mats" role="group" aria-label="Материалы заточки">${one({ slot: 'material', mat: 'star', rarity: 'uncommon' }, m.star, 'Счастливая звезда')}${one({ slot: 'material', mat: 'sphere', rarity: 'rare' }, m.sphere, 'Сфера сохранения')}`
-      + `${seals.length ? seals.map((n) => one({ slot: 'material', mat: 'seal', seal: n, rarity: 'epic' }, m.seals[n], `Печать Ауруса ${n}`)).join('') : one({ slot: 'material', mat: 'seal', seal: 5, rarity: 'epic' }, 0, 'Печать Ауруса')}</div>`;
-  }
-  // перерисовать куклу, сумку, наковальню и материалы (окно способа заточки — своё, не трогаем); то, что не поменялось, — не трогаем
-  // P — окно (панель места); по умолчанию — открытая панель «Города»
-  function forgeList(h, P = S && S.panel) {
-    const box = P && P.querySelector('.cyf-wrap'); if (!box || !h || !IGW()) return;
-    if (IGD && IGD.active()) { FX.later(() => forgeList(X.hero(), P), 400); return; }   // тянут вещь — перерисуем после
-    if (FX.uid && !itemOf(h, FX.uid) && !FX.busy) FX.uid = null;
-    const L = IGW(), can = (it) => X.canEnch(it), drag = (it) => can(it) && !h.ghost && !h.busy;
-    const put = (sel, html) => { const e = box.querySelector(sel); if (e && e.dataset.k !== html) { e.innerHTML = html; e.dataset.k = html; } };
-    put('.cyf-anvbox', anvilHtml(h));
-    box.classList.toggle('cyf-i2', fgInv2(h));   // 29.10: новая сумка - кукла внутри сумки (.cyf-bagbox): сетка без пустой области «doll»
-    if (fgInv2(h)) { put('.cyf-dollbox', ''); fgMount2(h, box, P); put('.cyf-matbox', matsHtml(h)); forgeAway(box); return; }   // 25.10: новая сумка (inv2)
-    put('.cyf-dollbox', !X.doll ? '' : X.doll(h, { forge: true, sel: FX.uid, can, still: true, kit: 'battle' }));
-    const cs = L.cells(h.items || [], h.sg ? h.sg.bs : 20);
-    put('.cyf-bagbox', `<div class="cy-sth"><h3 class="h3">Сумка</h3>${h.sg ? `<span class="cy-cnt${h.sg.used >= h.sg.cap ? ' full' : ''}">${h.sg.used} / ${h.sg.cap}</span>` : ''}</div>`
-      + L.grid(cs, { art: X.art, cap: h.sg ? h.sg.cap : 20, label: 'Сумка', on: (c) => c.uids.includes(FX.uid), drag: (c) => drag(c.it), off: (c) => !can(c.it) }));
-    put('.cyf-matbox', matsHtml(h));
-    forgeAway(box);
-  }
-  // 24.10 (просьба стримера): вещь на наковальне — её место (слот на герое или ячейка сумки) пустое: блёклая рамка и значок наковальни.
-  // Только вид: вещь остаётся надетой / в сумке. «Убрать» или закрыли окно — место снова с вещью (перерисовка без FX.uid)
-  const AWAY_I = '<span class="cyf-awayi" aria-hidden="true"><svg viewBox="-80 -60 160 80"><path d="M-70 -50 H50 Q78 -50 78 -38 Q60 -34 44 -30 V-22 H-44 V-30 Q-62 -34 -70 -50 Z M-30 -22 H30 L38 10 H-38 Z" fill="currentColor"/></svg></span>';
-  function forgeAway(box) {
-    const uid = FX.uid ? String(FX.uid) : '';
-    box.querySelectorAll('.cyf-dollbox [data-ig], .cyf-bagbox [data-ig]').forEach((el) => {
-      const on = !!uid && el.dataset.ig === uid, was = el.classList.contains('cyf-away');
-      if (on === was) return;
-      el.classList.toggle('cyf-away', on);
-      const ic = el.querySelector(':scope > .cyf-awayi'); if (ic) ic.remove();
-      if (on) { el.insertAdjacentHTML('beforeend', AWAY_I); el.dataset.al = el.getAttribute('aria-label') || ''; el.setAttribute('aria-label', `${el.dataset.al.split(' — ')[0]} - сейчас на наковальне`); }
-      else if (el.dataset.al != null) { el.setAttribute('aria-label', el.dataset.al); delete el.dataset.al; }
-    });
-  }
-  function forgeAfter(h, P = S && S.panel) {
-    try { if (X.repBind && P) X.repBind(P); } catch (e) { /* починка — не обязательна */ }
-    igOff();
-    if (!h || !h.ef || !IGW() || !P) return;
-    forgeList(h, P);
-    if (P.dataset.igb) return; P.dataset.igb = '1';   // обработчики — один раз на окно
-    let pt = 'mouse';
-    IGD = fgInv2(h) ? null : IGW().drag(P, {   // 25.10: новая сумка (inv2) — перетаскивание у библиотеки
-      ok: (src, t) => t.dataset.igdrop === 'anvil' && !FX.busy,
-      onStart: () => X.tipHide && X.tipHide(),
-      onDrop: (src) => pickForge(src.dataset.ig, P),
-      // нажатие без перетаскивания — на наковальню; пальцем — ещё и карточка вещи
-      tap: (src) => {
-        const hh = X.hero(), it = itemOf(hh, src.dataset.ig); if (!it) return;
-        if (!src.classList.contains('cyf-anvit') && X.canEnch(it)) pickForge(it.uid, P);
-        if (pt !== 'mouse' && X.cardTip) { const el = P.querySelector(`[data-ig="${String(it.uid).replace(/["\\]/g, '')}"]${src.classList.contains('cyf-anvit') ? '.cyf-anvit' : ''}`) || src; X.cardTip(el, it, hh); }
-      },
-    });
-    P.addEventListener('pointerdown', (e) => { pt = e.pointerType || 'mouse'; if (X.tipHide && !e.target.closest('[data-ig]')) X.tipHide(); });
-    // подсказка: мышь — при наведении, клавиатура — при фокусе
-    const tipEl = (e) => e.target.closest && e.target.closest('[data-ig]');
-    P.addEventListener('pointerover', (e) => { if (e.pointerType !== 'mouse' || (IGD && IGD.active())) return; const el = tipEl(e); if (el && X.cardTip && X.tipFor() !== el) X.cardTip(el, itemOf(X.hero(), el.dataset.ig), X.hero()); });
-    P.addEventListener('pointerout', (e) => { const f = X.tipFor && X.tipFor(); if (f && P.contains(f) && (!e.relatedTarget || !f.contains(e.relatedTarget))) X.tipHide(); });
-    P.addEventListener('focusin', (e) => { const el = tipEl(e); if (el && el.matches(':focus-visible') && X.cardTip) X.cardTip(el, itemOf(X.hero(), el.dataset.ig), X.hero()); });
-    P.addEventListener('focusout', () => { const f = X.tipFor && X.tipFor(); if (f && P.contains(f)) X.tipHide(); });
-    P.addEventListener('scroll', () => { const f = X.tipFor && X.tipFor(); if (f && P.contains(f)) X.tipHide(); }, { passive: true, capture: true });
-    P.addEventListener('click', (e) => {
-      if (e.target.closest('[data-anvoff]')) { if (FX.busy) return; FX.uid = null; FX.keep = null; FX.last = null; X.forgeClose && X.forgeClose(); forgeList(X.hero(), P); FX.item(null); return; }
-      if (e.target.closest('[data-anvgo]')) { const c = P.querySelector('.cyf-ctl'); if (c) c.scrollIntoView({ behavior: reduce() ? 'auto' : 'smooth', block: 'start' }); }
-    });
-  }
-  function pickForge(uid, P = S && S.panel) {
-    const h = X.hero(), it = itemOf(h, uid); if (!it || FX.busy || !X.canEnch(it) || !P) return;
-    FX.uid = uid; FX.keep = null; FX.anim = null; FX.last = null;
-    forgeList(h, P);
-    FX.item(it);
-    const host = P.querySelector('.cyf-ctl'); if (host) X.forgeOpen(uid, host);   // способ, шанс, цена — окно Кузни app.js; заточка уйдёт с этим uid
-    // 25.10: узкая панель (телефон) — вещь выбрали в кукле или сумке ниже; показать способ, шанс, цену и кнопку (они сразу под наковальней)
-    try { if (host && window.LGSiteUi.is('narrow') && host.scrollIntoView) host.scrollIntoView({ behavior: 'auto', block: 'start' }); } catch (e) {}
-  }
-  // наковальня у горна: вещь, молот кузнеца (бьёт по вещи), искры, свечение, крупный итог — в координатах интерьера 1920×1080
-  // 20.10: на улице — над наковальней Ярмарки: та же сцена (координаты интерьера, верх наковальни — 1620, 944), сдвинутая на настоящую
-  // наковальню (960, 660 сцены «Заточка»); своя нарисованная наковальня не нужна
-  const forgeStage = () => `<div class="cyf-out" style="transform:translate(${960 - 1620}px, ${660 - 944}px)">` + forgeStage0() + '</div>';
-  const forgeStage0 = () => `<div class="cyf-stage cyf-r" aria-hidden="true"><div class="cyf-anvil">${anvilSvg()}</div><div class="cyf-item"><i class="cyf-glow"></i><div class="cyf-ia"></div><div class="cyf-ia2"></div><i class="cyf-crack"></i></div><div class="cyf-ham">${hammerSvg()}</div><div class="cyf-sparks"></div><div class="cyf-big"></div><div class="cyf-flash"></div></div>`;
-  const anvilSvg = () => `<svg viewBox="-80 -60 160 80" width="180" height="90"><path d="M-70 -50 H50 Q78 -50 78 -38 Q60 -34 44 -30 V-22 H-44 V-30 Q-62 -34 -70 -50 Z" fill="#5a5768" stroke="#f5f2ff" stroke-width="4" stroke-linejoin="round"/><path d="M-30 -22 H30 L38 10 H-38 Z" fill="#4a4759" stroke="#f5f2ff" stroke-width="4" stroke-linejoin="round"/><path d="M-60 -46 H40" stroke="#8b8796" stroke-width="4"/></svg>`;
-  // молот кузнеца: точка вращения — рука кузнеца (справа), боёк — слева (бьёт по вещи на наковальне)
-  const hammerSvg = () => `<svg viewBox="-150 -30 160 60" width="160" height="60"><rect x="-112" y="-5" width="116" height="10" rx="4" fill="#8a5a2b" stroke="#f5f2ff" stroke-width="3"/><rect x="-142" y="-24" width="40" height="48" rx="6" fill="#a9b1b6" stroke="#f5f2ff" stroke-width="4"/><path d="M-134 -16 V16" stroke="#6e7a80" stroke-width="3"/></svg>`;
-  // анимация Кузни: только transform/opacity, всё конечное (таймеры — по счёту ударов, без бесконечных циклов)
-  const FX = {
-    uid: null, busy: false, T: [], res: null, done: false, keep: null, anim: null, cur: null, n: 0,   // 23.10: keep — сломанная вещь (видна на наковальне), anim — итог на слоте
-    q: (s) => S && S.room.querySelector(s),
-    reset() { FX.T.forEach(clearTimeout); FX.T = []; FX.busy = false; FX.res = null; FX.uid = null; FX.keep = null; FX.anim = null; FX.cur = null; FX.last = null; },
-    slot: () => S && S.panel && S.panel.querySelector('.cyf-anvslot'),
-    later(fn, ms) { FX.T.push(setTimeout(fn, ms)); },
-    item(it) {
-      const ia = FX.q('.cyf-ia'), st = FX.q('.cyf-stage'); if (!ia || !st) return;
-      if (!it) { ia.innerHTML = ''; const b = FX.q('.cyf-ia2'); if (b) b.innerHTML = ''; st.classList.remove('ok', 'bad', 'save', 'work', 'gone'); return; }   // 23.10: наковальню очистили
-      ia.innerHTML = X.art(it); st.dataset.r = it.rarity || 'common';
-      const ia2 = FX.q('.cyf-ia2'); if (ia2) ia2.innerHTML = ia.innerHTML;   // вторая половинка — для поломки
-      st.style.setProperty('--glow', String(Math.min(1, 0.15 + (+it.en || 0) / 15 * 0.85)));
-      st.classList.remove('ok', 'bad', 'save', 'work', 'gone');
-      const big = FX.q('.cyf-big'); if (big) big.textContent = '';
-    },
-    // отправили заточку: n ударов (2–5 — чем выше уровень, тем дольше куёт), свечение растёт с каждым ударом
-    start(it, tg) {
-      const st = FX.q('.cyf-stage'); if (!st) return;
-      FX.T.forEach(clearTimeout); FX.T = []; FX.busy = true; FX.res = null; FX.done = false;
-      st.classList.remove('ok', 'bad', 'save', 'gone'); st.classList.add('work');
-      const big = FX.q('.cyf-big'); if (big) big.textContent = '';
-      const n = tg <= 3 ? 2 : tg <= 6 ? 3 : tg <= 10 ? 4 : 5, beat = reduce() ? 250 : 620;
-      FX.cur = it ? { ...it } : null; FX.n = n; FX.anim = null; FX.last = null;
-      const sl = FX.slot(); if (sl) { sl.classList.remove('ok', 'bad', 'save'); sl.style.setProperty('--n', n); sl.classList.add('work'); }   // 23.10: вещь на наковальне вздрагивает от ударов (n раз)
-      if (S && S.panel) { const off = S.panel.querySelector('[data-anvoff]'); if (off) off.hidden = true; }
-      const g0 = Math.min(1, 0.15 + (tg - 1) / 15 * 0.85);
-      for (let i = 0; i < n; i++) FX.later(() => FX.strike(g0 + (i + 1) / n * 0.5), i * beat);
-      FX.later(() => { FX.done = true; if (FX.res) FX.show(FX.res); else st.classList.add('wait'); }, n * beat + 120);
-    },
-    strike(g) {
-      const st = FX.q('.cyf-stage'), sp = FX.q('.cyf-sparks'); if (!st || !sp) return;
-      st.style.setProperty('--glow', String(Math.min(1.4, g)));
-      const ham = FX.q('.cyf-ham'); if (ham) { ham.classList.remove('hit'); void ham.offsetWidth; ham.classList.add('hit'); }
-      // на улице бьёт сам кузнец Ярмарки своим молотком (летающего молота нет)
-      const sm = FX.q('[data-smith]'); if (sm && !reduce()) try { sm.beginElement(); } catch {}
-      if (reduce()) return;
-      // искры: 8 точек разлетаются (одна CSS-анимация на каждую), потом удаляются
-      const big = st.classList.contains('cyf-r') ? 2.2 : 1;   // в интерьере Кузни — крупнее
-      let s = ''; for (let i = 0; i < 8; i++) { const a = -160 + i * 20 + Math.random() * 14, d = (50 + Math.random() * 60) * big; s += `<i style="--dx:${(Math.cos(a * Math.PI / 180) * d).toFixed(0)}px;--dy:${(Math.sin(a * Math.PI / 180) * d).toFixed(0)}px;animation-delay:${(0.27 + Math.random() * 0.05).toFixed(2)}s"></i>`; }
-      sp.innerHTML = s; FX.later(() => { if (sp.isConnected) sp.innerHTML = ''; }, 1000);
-    },
-    // итог из игры; удары ещё идут — покажем после них
-    result(x) { FX.res = x; if (FX.done || !FX.busy) FX.show(x); },
-    show(x) {
-      const st = FX.q('.cyf-stage'), big = FX.q('.cyf-big'); FX.busy = false;
-      if (!st || !big) return;
-      st.classList.remove('work', 'wait');
-      // 23.10: итог и на слоте наковальни (одна анимация; сломанная вещь остаётся видна, пока не положат другую)
-      const c = x.out === 'up' ? 'ok' : x.out === 'broken' ? 'bad' : 'save';
-      FX.anim = { c, t: Date.now() + 1500 }; if (x.out === 'broken') FX.keep = FX.cur;
-      FX.last = { c, t: x.out === 'up' ? `Удалось: +${x.to}` : x.out === 'broken' ? 'Не выдержала заточки' : x.out === 'down' ? 'Не вышло — сфера сберегла, −1' : 'Не вышло — вещь цела' };   // итог — и у наковальни (на телефоне окно способа ниже)
-      const sl = FX.slot(); if (sl) { sl.classList.remove('work', 'ok', 'bad', 'save'); void sl.offsetWidth; sl.classList.add(c); }
-      if (S && S.panel) forgeList(X.hero());
-      if (x.out === 'up') { st.classList.add('ok'); big.textContent = '+' + x.to; st.style.setProperty('--glow', String(Math.min(1.4, 0.4 + x.to / 15))); }
-      else if (x.out === 'broken') { st.classList.add('bad'); big.textContent = 'Сломалось'; FX.later(() => st.classList.add('gone'), reduce() ? 0 : 900); }
-      else if (x.out === 'down') { st.classList.add('save'); big.textContent = '−1'; }
-      else { st.classList.add('save'); big.textContent = 'Цела'; }
-    },
+
+  /* ----- 31.10 (D1): окна зданий - модуль «Город»: общее (сцена зала, товар, карточка, «Купить? Да / Нет») - fair/client/cityshop.js
+     (адрес /site/cityshop.js), здания - fair/client/buildings/<здание>.js (адреса /site/b-<здание>.js); app.js грузит их перед city.js.
+     Здесь - только подключение: что окнам нужно от города (CC) и имена, которыми их зовёт улица ----- */
+  const CC = {
+    get S() { return S; }, get X() { return X; }, get TOWN() { return TOWN; },
+    ROOM, ART, D, esc, still, scopeIds, npcAs, reduce: () => reduce(), hwDead: () => hwDead(), isCamp: () => isCamp(),
+    csOn: () => csOn(), msOn: () => msOn(), inTown: () => inTown(), homeHere: () => homeHere(), foreignK: () => foreignK(),
+    npc: (...a) => npc(...a), say: (t) => say(t), IGW: () => IGW(), rerender: (id) => rerenderUi(id), goBuilding: (id) => goBuilding(id), streetBg: () => streetBg(),
+    bld: (id) => BLD[id],
   };
+  const SH = window.LGCityShop(CC);
+  const BLD = {};
+  for (const id of CITY_B) BLD[id] = window.LGCityBuildings[id](CC, SH);
+  const { FULL, loadStock, doodSize, roomSvg, fitRoom, roomPinch, goodsHots } = SH;
+  const FX = BLD.forge.FX, forgeStage = () => BLD.forge.stage(), forgeBody = (h) => BLD.forge.body(h), forgeAfter = (h, P) => BLD.forge.after(h, P), pickForge = (uid, P) => BLD.forge.pick(uid, P), igOff = () => BLD.forge.igOff();
+  const newsClose = () => BLD.board.close(), newsBoard = (box, list) => BLD.board.render(box, list), newsRead = (i) => BLD.board.read(i);
+
+  /* ===================== 30.10: тюрьма (флаг legionary.jailPublic; сервер - src/site/jail.ts) =====================
+     Тюрьма и клетка - на нижней улице Ярмарки (citymap.js LOW.jail, рисунок - cityart.js lower(…, { jail })), только кому тюрьма открыта.
+     Заключённые - не из присутствия Города, а по списку /api/jail (и событию «jail» живого канала): до 8 в клетке (места LOW.jail.seats),
+     остальные - «+N» на табличке; свой герой у заключённого - всегда среди первых восьми. Иногда вздыхают (только transform, только
+     пока Город открыт). Нажатие на Тюрьму, клетку или заключённого - окно со списком и когда выйдут (стримеру, модераторам и админу -
+     причина и кто выдал). Сам заключённый: стоит в клетке, ходить и заходить в здания нельзя (goPoint / goBuilding / WASD - нет). */
+  const jlOn = () => !!(X && X.jailOn && X.jailOn());
+  const meJail = () => (X && X.jail && X.jail()) || null;
+  let JAIL = { list: [], n: 0 };
+  const jailHere = () => !!(S && !inTown() && jlOn() && WD && WD.LOW && WD.LOW.jail);
+  const jailDay = (u) => { if (u == null) return 'бессрочно'; try { const d = new Date(u); return 'выйдет ' + d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', timeZone: 'Europe/Moscow' }) + ', ' + d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow' }); } catch (e) { return ''; } };
+  async function jailLoad() {
+    if (!jailHere()) return;
+    const r = await X.api('/api/jail');
+    if (r && r.ok) jailSet(r);
+  }
+  function jailSet(d) {
+    if (!d) return;
+    JAIL = { list: Array.isArray(d.list) ? d.list : [], n: +d.n || 0, staff: d.staff ? JAIL.staff || !!d.staff : JAIL.staff, why: d.why || JAIL.why, me: d.me || JAIL.me };
+    if (d.staff) { JAIL.staff = true; JAIL.why = d.why; }
+    if (!S || !jailHere()) return;
+    jailDraw();
+    if (S.jw) jwRender();
+  }
+  function jailDraw() {
+    if (!S.jail) S.jail = new Map();
+    const J = WD.LOW.jail, me = X.login(), mj = meJail();
+    const show = mj ? [{ self: 1 }] : [];
+    for (const e of JAIL.list) { if (show.length >= J.seats.length) break; if (e.l !== me) show.push(e); }
+    const keep = new Set();
+    show.forEach((e, i) => {
+      const [sx, sy] = J.seats[i];
+      if (e.self) { if (S.me) { S.me.path = null; S.me.x = sx; S.me.y = sy; S.me.face = i % 2 ? -1 : 1; setMoving(S.me, false); S.me.sc = 0; place(S.me); } return; }
+      keep.add(e.l);
+      const vk = JSON.stringify([e.n, e.lv, e.lk, e.g, e.gh, e.aw]);
+      let w = S.jail.get(e.l);
+      if (w && w.vk !== vk) { drop(w); S.jail.delete(e.l); w = null; }
+      if (!w) { w = addWalker(e.l, e, sx, sy, false); w.jail = 1; w.vk = vk; S.jail.set(e.l, w); }
+      w.x = sx; w.y = sy; w.face = i % 2 ? -1 : 1; w.sc = 0; w.u = e.u; place(w);
+    });
+    for (const [l, w] of S.jail) if (!keep.has(l)) { drop(w); S.jail.delete(l); }
+    // табличка «+N» над клеткой (как «+N» у камней шахты)
+    const total = JAIL.n + (mj && !JAIL.list.some((e) => e.l === me) ? 1 : 0), more = Math.max(0, total - show.length);
+    const host = S.walk || S.cam;
+    let pl = S.jailPl;
+    if (more > 0) {
+      if (!pl || !pl.isConnected) { pl = S.jailPl = document.createElement('div'); pl.className = 'cy-jmore'; pl.setAttribute('aria-hidden', 'true'); host.appendChild(pl); }
+      pl.textContent = '+' + more;
+      // справа от клетки - не на никах
+      pl.style.cssText = `left:${J.c1 + 44}px;top:${1200}px;z-index:${J.fy + 3}`;
+    } else if (pl) { pl.remove(); S.jailPl = null; }
+    if (!S.sighT && (show.length || mj)) S.sighT = setInterval(jailSigh, 3200);
+    kick();
+  }
+  // вздох: кто-то из сидящих на полсекунды чуть оседает (масштаб по высоте), только пока «Город» на экране
+  function jailSigh() {
+    if (!S || !S.root || !S.root.classList.contains('on') || document.hidden || reduce()) return;
+    const ws = [...(S.jail ? S.jail.values() : [])]; if (meJail() && S.me) ws.push(S.me);
+    if (!ws.length) return;
+    const w = ws[Math.floor(Math.random() * ws.length)], sc = scaleAt(w.y) * HS;
+    if (S.gl) { if (w.gl) { w.gl.body.scale.set(w.face * sc, sc * 0.94); if (S.gl.dirty) S.gl.dirty(); kick(); } }
+    else if (w.body) w.body.style.transform = `scale(${(w.face * sc).toFixed(3)},${(sc * 0.94).toFixed(3)})`;
+    setTimeout(() => { if (!S) return; w.sc = 0; place(w); kick(); }, 520);
+  }
+  const jailAt = (x, y) => { if (!S || !S.jail) return null; let best = null; for (const w of S.jail.values()) { const sc = scaleAt(w.y) * HS; if (Math.abs(x - w.x) <= 36 * sc && y <= w.y + 8 && y >= w.y - 150 * sc && (!best || w.y > best.y)) best = w; } return best; };
+  // окно Тюрьмы: список и срок - всем; причина и кто выдал - стримеру, модераторам и админу (сервер даёт why только им)
+  function jwOpen() {
+    if (!S) return;
+    if (!S.jw) {
+      const w = S.jw = document.createElement('div');
+      w.className = 'cy-jw'; w.setAttribute('role', 'dialog'); w.setAttribute('aria-modal', 'false'); w.setAttribute('aria-labelledby', 'cyjw-t');
+      w.addEventListener('click', (e) => { if (e.target.closest('[data-jw-x]')) jwClose(); });
+      w.addEventListener('keydown', (e) => { if (e.key === 'Escape') jwClose(); });
+      S.el.appendChild(w);
+    }
+    jwRender(); jailLoad();
+    const x = S.jw.querySelector('[data-jw-x]'); if (x) x.focus();
+  }
+  function jwClose() { if (S && S.jw) { S.jw.remove(); S.jw = null; } }
+  function jwRender() {
+    const w = S && S.jw; if (!w) return;
+    const me = X.login(), mj = meJail(), list = JAIL.list.slice();
+    if (mj && !list.some((e) => e.l === me)) list.unshift({ l: me, n: (X.hero() && X.hero().name) || me, u: mj.until });
+    const row = (e) => { const why = JAIL.staff && JAIL.why ? JAIL.why[e.l] : null, self = e.l === me;
+      return `<li class="${self ? 'me' : ''}"><b>${esc(e.n || e.l)}${self ? ' (ты)' : ''}</b><span>${esc(jailDay(e.u))}</span>`
+        + (self && mj && mj.reason ? `<em>Причина: ${esc(mj.reason)}</em>` : '')
+        + (why ? `<em>${why.reason ? 'Причина: ' + esc(why.reason) : 'Причина не указана'}${why.by ? ' · выдал ' + esc(why.by) : ''} · ${why.src === 'channel' ? 'бан канала' : 'бан платформы'}</em>` : '') + '</li>'; };
+    w.innerHTML = `<div class="cy-jw-h"><b id="cyjw-t">Тюрьма канала</b><button type="button" class="cy-jw-x" data-jw-x aria-label="Закрыть">×</button></div>`
+      + (list.length ? `<p class="cy-jw-n">Сидят: ${list.length}</p><ul class="cy-jw-l">${list.map(row).join('')}</ul>` : '<p class="cy-jw-n">Клетка пуста.</p>')
+      + (JAIL.staff ? '<p class="cy-jw-f">Снять бан - стример или модератор канала.</p>' : '');
+  }
 
   /* ===================== свой герой ===================== */
   function mineView(h) {
@@ -2435,10 +1516,12 @@
     const [x, y] = S.map.nearest(p ? p[0] : d0[0], p ? p[1] : d0[1]);
     const v = mineView(h);
     S.me = addWalker(X.login(), v, x, y, true); S.me.vKey = JSON.stringify(v);
+    // 30.10 (тюрьма): заключённый - в клетке, камера - на клетке
+    if (meJail() && jailHere()) { const J = WD.LOW.jail; S.me.x = J.seats[0][0]; S.me.y = J.seats[0][1]; place(S.me); centerOn((J.c0 + J.c1) / 2, J.fy - 40); return; }
     centerOn(x, y);
   }
   const posKey = () => 'lgCityPos' + (S && S.town && S.town !== 'fair' ? ':' + S.town : '');   // 23.10: у каждого города — своё место
-  const savePos = () => { try { if (S && S.me) sessionStorage.setItem(posKey(), JSON.stringify([Math.round(S.me.path ? S.me.path[S.me.path.length - 1][0] : S.me.x), Math.round(S.me.path ? S.me.path[S.me.path.length - 1][1] : S.me.y)])); } catch {} };
+  const savePos = () => { try { if (S && S.me && !meJail()) sessionStorage.setItem(posKey(), JSON.stringify([Math.round(S.me.path ? S.me.path[S.me.path.length - 1][0] : S.me.x), Math.round(S.me.path ? S.me.path[S.me.path.length - 1][1] : S.me.y)])); } catch {} };
 
   // 24.10: шахта: город округа — его шахта (id округа), Ярмарка — домашняя шахта канала (home); локация — mine.js (app.js X.openMine)
   function mineOpen() {
@@ -2594,7 +1677,9 @@
       const hp0 = homePick(h && h.hm); if (hp0 && hp0.id === CAMP && t === 'fair') t = CAMP;   // 26.10 (district-draw): канал в Прологе - «Город» открывается в лагере
       if (t !== 'fair' && h && (t === CAMP ? cpOn() : h.tw) && TOWN.id === 'fair') TOWN = { id: t, L: null, acc: null, meta: null };
     }
-    { const hp = homePick(h && h.hm); if (hp && hp.id !== CAMP && (TOWN.id === 'fair' || TOWN.id === CAMP)) { TOWN = { id: hp.id, L: null, acc: null, meta: null }; townSet(hp.id); } }   // 26.10 (district-draw): город края - сразу (Перепутье и Ярмарка позади)
+    // 30.10 (тюрьма): заключённый - только в Ярмарке, у клетки
+    if (meJail() && TOWN.id !== 'fair') TOWN = { id: 'fair', L: null, acc: null, meta: null };
+    if (!meJail()) { const hp = homePick(h && h.hm); if (hp && hp.id !== CAMP && (TOWN.id === 'fair' || TOWN.id === CAMP)) { TOWN = { id: hp.id, L: null, acc: null, meta: null }; townSet(hp.id); } }   // 26.10 (district-draw): город края - сразу (Перепутье и Ярмарка позади)
     if (TOWN.id !== 'fair' && !TOWN.L) { townPrep(root); return; }
     if (!S || !S.root.isConnected || S.root !== root || S.st !== X.style() || S.town !== TOWN.id) {
       // Pixi грузим только здесь — при первом открытии «Города» (остальные страницы сайта его не качают)
@@ -2607,7 +1692,7 @@
         }
         return;
       }
-      if (S) { leave(); timers(false); if (S.raf) cancelAnimationFrame(S.raf); if (S.gl) try { S.gl.destroy(); } catch {} }
+      if (S) { leave(); timers(false); clearInterval(S.sighT); jwClose(); if (S.raf) cancelAnimationFrame(S.raf); if (S.gl) try { S.gl.destroy(); } catch {} }
       S = build(root, useGL()); if (!S) return;
       { const cs = S.el.querySelector('.cy-cap'); if (cs) { cs.value = String(S.capV || 0); cs.onchange = () => { if (!S) return; S.capV = +cs.value || 0; capSet(S.capV); lodPick(performance.now()); if (S.gl) S.gl.dirty(); hud(); kick(); }; } }   // 24.10: «Показывать: всех / 50 / 25 / 10 / 5»
       bindInput(); olWarm(); othBtn(); fsBtn(); townBtn();
@@ -2619,6 +1704,8 @@
     layout();
     chatInit();   // 21.10: чат «Города»
     if (!S.me && h) spawnMe();
+    // 30.10 (тюрьма): выпустили (или открыл «Город» уже свободным, а стоит в клетке) - выходит рядом с Тюрьмой, у двери
+    if (S.me && !meJail() && WD && WD.LOW && WD.LOW.jail && !inTown()) { const J = WD.LOW.jail; if (S.me.x >= J.c0 - 10 && S.me.x <= J.c1 + 10 && S.me.y <= J.fy + 4 && S.me.y >= 1124) { const B = WD.BUILDINGS.find((b) => b.id === 'jail'); const [x, y] = S.map.nearest(B ? B.door.x + 120 : J.c0, B ? B.door.y : J.fy + 30); S.me.x = x; S.me.y = y; S.me.path = null; S.me.face = 1; S.me.sc = 0; place(S.me); centerOn(x, y); } }
     if (!h) { hud('Героя пока нет — он появится, когда ты напишешь в чат на стриме'); return; }
     hud(); enter();
     hwApply();   // 28.10 (hw-city)
@@ -2637,7 +1724,7 @@
     S.el.classList.toggle('cy-fsm', on);
     layout();
   });
-  function close() { clearInterval(BT); BT = 0; newsClose(); document.documentElement.classList.remove('cy-full'); try { if (S && document.fullscreenElement === S.el) document.exitFullscreen(); } catch {} if (!S) return; savePos(); leave(); timers(false); closePanel(); if (S.raf) cancelAnimationFrame(S.raf); S.raf = 0; }
+  function close() { clearInterval(BT); BT = 0; newsClose(); if (S) { clearInterval(S.sighT); S.sighT = 0; jwClose(); } document.documentElement.classList.remove('cy-full'); try { if (S && document.fullscreenElement === S.el) document.exitFullscreen(); } catch {} if (!S) return; savePos(); leave(); timers(false); closePanel(); if (S.raf) cancelAnimationFrame(S.raf); S.raf = 0; }
   /* 26.10 (iPhone 13: вкладка падала при входе в шахту - WebKit убивал её по памяти): пока открыта шахта (она во весь экран поверх
      «Города»), «Город» не держит свою сцену - холст Pixi (WebGL), плитки фона (до 28 Мп ≈ 110 МБ), человечков, слои и DOM улицы, и
      не рисует кадры под шахтой. sleep - как смена города (townGo): ушёл из «Города» (место героя запомнено), всё отпущено; wake
@@ -2648,7 +1735,7 @@
     const root = S.root;
     if (document.fullscreenElement && root.contains(document.fullscreenElement)) return;
     clearInterval(BT); BT = 0;
-    try { savePos(); closePanel(); newsClose(); leave(); timers(false); } catch (e) { console.warn('[город] sleep', e); }
+    try { savePos(); closePanel(); newsClose(); leave(); timers(false); clearInterval(S.sighT); S.sighT = 0; jwClose(); } catch (e) { console.warn('[город] sleep', e); }
     if (S.raf) cancelAnimationFrame(S.raf); if (S.gl) try { S.gl.destroy(); } catch {}
     S = null; SLEPT = root; root.innerHTML = '';
     // 29.10: единый чат - не пропадает вместе со сценой
@@ -2664,6 +1751,10 @@
   });
   window.addEventListener('pagehide', () => { if (S && S.inCity) { savePos(); leave(); } });
   window.LGCity = {
+    // 30.10 (тюрьма): событие «jail» живого канала (app.js)
+    jail: (d) => jailSet(d),
+    // 30.10: окно Тюрьмы (для проверок)
+    jailOpen: () => jwOpen(),
     board: { render: (box, list) => newsBoard(box, list), read: (i) => newsRead(i) },   // 22.10: доска объявлений (и для проверки без Города)
     open, close, sleep, wake,
     onEvent: (d) => { if (S && S.inCity) apply(d); },
@@ -2674,13 +1765,13 @@
     forgeFx: (x) => { if (S && S.panelId === 'anvil') FX.result(x); },
     // 25.10: итог потерялся или заказ отменён - кузнец перестаёт бить, вещь снова на наковальне
     forgeCancel: () => { try { if (!S || S.panelId !== 'anvil') return; const st = FX.q('.cyf-stage'), sl = FX.slot(), it = FX.cur; FX.reset(); if (st) st.classList.remove('work', 'wait'); if (sl) sl.classList.remove('work'); if (it) FX.item(it); } catch (e) {} },
-    storeRes: (x) => storeRes(x),   // 23.10: итог «Положить всё» / «Взять всё»
+    storeRes: (x) => ST.res(x),   // 23.10: итог «Положить всё» / «Взять всё»
     // 23.10: окно наковальни отдельно от сцены — для проверок (test/enchant-ui.test.ts): разметка, подключение к панели, выбор вещи
     anvil: { body: (h) => forgeBody(h), mount: (P, ctx) => { X = X || ctx; forgeAfter(X.hero(), P); }, pick: (uid, P) => pickForge(uid, P), uid: () => FX.uid, off: () => igOff() },
     // для проверок и снимков: где мой герой, кто виден
     npcs: () => (S && S.gl && S.gl.npcs ? S.gl.npcs() : []),
     room: (id) => openPanel(id),   // 28.10 (hw-npc-ghosts): открыть помещение - для снимков   // 28.10 (hw-npc-ghosts): НПС Ярмарки на улице (рамки)
-    debug: () => S && { me: S.me && [S.me.x, S.me.y], others: [...S.others.keys()], hidden: S.hidden, ghosts: S.ghosts.size, n: S.n, camX: S.camX, camY: S.camY, z: S.z, inCity: S.inCity, render: S.gl ? (S.gl.mode || 'pixi…') : 'svg', fail: GLFAIL, lod: { lv: S.q.lv, r: S.q.r && +S.q.r.toFixed(2), lock: S.q.lock, res: S.gl && S.gl.res ? S.gl.res() : null, cull: [...S.others.values()].filter((w) => w.cull).length, nolab: [...S.others.values()].filter((w) => w.nolab).length }, gl: S.gl && S.gl.stats(), ol: S.ol && S.ol.stats(), npc: WD.BUILDINGS.filter((b) => b.hw).map((b) => b.id) },   // HW-NPC: npc - хэллоуинские НПС на улице
+    debug: () => S && { jl: jlOn(), jb: !!(S.map && S.map.BUILDINGS.some((b) => b.id === 'jail')), me: S.me && [S.me.x, S.me.y], others: [...S.others.keys()], hidden: S.hidden, ghosts: S.ghosts.size, n: S.n, camX: S.camX, camY: S.camY, z: S.z, inCity: S.inCity, render: S.gl ? (S.gl.mode || 'pixi…') : 'svg', fail: GLFAIL, lod: { lv: S.q.lv, r: S.q.r && +S.q.r.toFixed(2), lock: S.q.lock, res: S.gl && S.gl.res ? S.gl.res() : null, cull: [...S.others.values()].filter((w) => w.cull).length, nolab: [...S.others.values()].filter((w) => w.nolab).length }, gl: S.gl && S.gl.stats(), ol: S.ol && S.ol.stats(), npc: WD.BUILDINGS.filter((b) => b.hw).map((b) => b.id) },   // HW-NPC: npc - хэллоуинские НПС на улице
     // 23.10: для замера плавности — где сейчас другие (после кадра): ник, x, y, идёт, убран качеством, нарисован, прозрачность; nf — номер кадра Pixi
     peek: () => S && { nf: S.gl ? (S.gl.nf || 0) : -1, z: S.z, w: [...S.others.values()].map((w) => [w.l, w.x, w.y, w.path ? 1 : 0, w.cull ? 1 : 0, w.gl ? (w.gl.root.visible ? 1 : 0) : (w.shown ? 1 : 0), w.gl ? w.gl.root.alpha : 1]) },
     // 29.10 (city-wasd): для проверок - можно ли стоять в точке (карта города), какое здание откроет E, открыто ли здание
