@@ -4,6 +4,8 @@
 window.NewsEdit = (() => {
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const TAGS = { update: 'Обновление', balance: 'Баланс', event: 'Событие', fix: 'Исправления' };
+  // 01.11: у записи может быть несколько тегов (tags, порядок - как в TAGS); старая запись (или старый сервер) - только tag
+  const tagsOf = (x) => (x && Array.isArray(x.tags) ? x.tags : x && x.tag ? [x.tag] : []).filter((k, i, a) => TAGS[k] && a.indexOf(k) === i);
   const LIM = { title: 200, body: 20000 };
   // цвета текста — те же имена, что понимает сервер (src/site/news.ts NEWS_COLORS); цвет в каждом оформлении — CSS (.nc-*)
   const COLORS = [['gold', 'Золотой'], ['red', 'Красный'], ['green', 'Зелёный'], ['blue', 'Синий'], ['purple', 'Фиолетовый'], ['orange', 'Оранжевый'], ['grey', 'Серый']];
@@ -115,15 +117,15 @@ window.NewsEdit = (() => {
    */
   function editor(box, post, o) {
     const id0 = 'ne' + (++uid);
-    const ed = { id: post ? post.id : null, tag: post ? post.tag || '' : '', published: !!(post && post.published), publishedAt: post ? post.publishedAt : null, dirty: false };
+    const ed = { id: post ? post.id : null, tags: tagsOf(post), published: !!(post && post.published), publishedAt: post ? post.publishedAt : null, dirty: false };
     const H = o.titleTag || 'h3', closeLabel = o.closeLabel || 'К списку';
     box.innerHTML = `<div class="nwa-ed">
       <div class="card nwa-form">
         <div class="card-head"><${H} id="${id0}-h" data-head>${post ? 'Правка записи' : 'Новый пост'}</${H}><span class="nwa-st-ed" data-state></span></div>
         <div class="nwa-f"><label for="${id0}-t">Заголовок</label><small data-tc></small>
           <input type="text" id="${id0}-t" data-title maxlength="${LIM.title}" placeholder="Например: Новый босс в Шахте" value="${esc(post ? post.title : '')}" aria-describedby="${id0}-err" autocomplete="off"></div>
-        <div class="nwa-f"><span id="${id0}-tl">Метка</span><div class="nwa-tags" role="radiogroup" aria-labelledby="${id0}-tl">
-          ${[['', 'Без метки'], ...Object.entries(TAGS)].map(([k, t]) => `<label><input type="radio" name="${id0}-tag" value="${k}"${ed.tag === k ? ' checked' : ''}><span${k ? ` data-tag="${k}"` : ''}>${t}</span></label>`).join('')}</div></div>
+        <div class="nwa-f"><span id="${id0}-tl">Теги</span><small id="${id0}-th">можно несколько или ни одного</small><div class="nwa-tags" role="group" aria-labelledby="${id0}-tl" aria-describedby="${id0}-th">
+          ${Object.entries(TAGS).map(([k, t]) => `<label><input type="checkbox" name="${id0}-tag" value="${k}"${ed.tags.includes(k) ? ' checked' : ''}><span data-tag="${k}">${t}</span></label>`).join('')}</div></div>
         <div class="nwa-f"><label for="${id0}-b">Текст</label><small data-bc></small>
           <div class="nwa-tools" role="toolbar" aria-label="Оформление текста"><button type="button" class="small" data-fx="b" aria-label="Жирный" title="Жирный: **текст**"><b>Ж</b></button><button type="button" class="small" data-fx="i" aria-label="Курсив" title="Курсив: *текст*"><i>К</i></button><button type="button" class="small" data-fx="ul" title="Список: строки с «- »">• Список</button><button type="button" class="small" data-fx="ol" title="Нумерованный: «1. »">1. Список</button><button type="button" class="small" data-fx="h" title="Подзаголовок: «## »">Подзаголовок</button><button type="button" class="small" data-fx="a" title="Ссылка: [текст](https://…)">Ссылка</button><button type="button" class="small nwe-imgb" data-img aria-controls="${id0}-b" title="Картинка: PNG, JPG, WebP или GIF до 8 МБ. Можно вставить из буфера (Ctrl+V) или перетащить в текст"><svg class="nwe-ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l5-4.5 3.5 3 3-2.5L20 17"/></svg>Картинка</button><input type="file" data-imgf accept="image/png,image/jpeg,image/webp,image/gif" hidden><span class="nwe-cwrap"><button type="button" class="small nwe-cbtn" data-color aria-haspopup="true" aria-expanded="false" aria-controls="${id0}-pal" title="Цвет выделенного текста"><i class="nwe-cdot" aria-hidden="true"></i>Цвет</button>
             <span class="nwe-pal" id="${id0}-pal" role="group" aria-label="Цвет выделенного текста" hidden>${COLORS.map(([k, t]) => `<button type="button" class="nwe-sw nc-${k}" data-col="${k}" aria-label="${t}" title="${t}"><i aria-hidden="true"></i></button>`).join('')}<button type="button" class="nwe-sw nwe-none" data-col="" title="Убрать цвет с выделения">Без цвета</button></span></span></div>
@@ -170,8 +172,7 @@ window.NewsEdit = (() => {
     // предпросмотр — тем же кодом сервера, что у зрителей (с задержкой, чтобы не слать каждую букву)
     let pt = 0, pseq = 0;
     async function preview() {
-      const tag = ed.tag && TAGS[ed.tag];
-      $('[data-ptag]').innerHTML = tag ? `<span class="nwa-tag" data-tag="${esc(ed.tag)}">${tag}</span>` : '';
+      $('[data-ptag]').innerHTML = ed.tags.map((k) => `<span class="nwa-tag" data-tag="${esc(k)}">${TAGS[k]}</span>`).join('');
       $('[data-pdate]').textContent = day(ed.publishedAt || Date.now());
       $('[data-ptitle]').textContent = ti.value.trim() || 'Заголовок новости';
       $('[data-ptitle]').classList.toggle('is-ph', !ti.value.trim());
@@ -186,7 +187,8 @@ window.NewsEdit = (() => {
     };
     ti.oninput = changed; tx.oninput = changed;
     ti.addEventListener('blur', () => { if (ed.dirty && !ti.value.trim()) { err.textContent = 'Нужен заголовок'; ti.setAttribute('aria-invalid', 'true'); } });
-    $$(`input[name="${id0}-tag"]`).forEach((r) => { r.onchange = () => { ed.tag = r.value; ed.dirty = true; state(); preview(); }; });
+    // теги - переключатели: отмеченные по порядку на странице - как в TAGS (так же сохраняет сервер)
+    $$(`input[name="${id0}-tag"]`).forEach((r) => { r.onchange = () => { ed.tags = tagsOf({ tags: $$(`input[name="${id0}-tag"]:checked`).map((x) => x.value) }); ed.dirty = true; state(); preview(); }; });
     // кнопки оформления: оборачивают выделение или вставляют заготовку
     $$('[data-fx]').forEach((b) => b.addEventListener('click', () => {
       const a = tx.selectionStart, z = tx.selectionEnd, sel = tx.value.slice(a, z), fx = b.dataset.fx;
@@ -267,7 +269,7 @@ window.NewsEdit = (() => {
       const btns = $$('[data-btns] button'); btns.forEach((x) => { x.disabled = true; });
       const sv = $('[data-save]'), svl = sv.textContent; sv.textContent = 'Сохраняю…';
       try {
-        const j = await call('/admin/api/news/save', { id: ed.id || undefined, title, body: tx.value, tag: ed.tag || null });
+        const j = await call('/admin/api/news/save', { id: ed.id || undefined, title, body: tx.value, tags: ed.tags, tag: ed.tags[0] || null });
         if (!j.ok) { err.textContent = j.text; return false; }
         ed.dirty = false;
         $('[data-head]').textContent = 'Правка записи';
@@ -280,5 +282,5 @@ window.NewsEdit = (() => {
     return { dirty: () => ed.dirty, close, focus: () => (ed.id ? tx : ti).focus(), headId: id0 + '-h' };
   }
 
-  return { TAGS, LIM, COLORS, esc, when, day, stateOf, call, confirmBtn, setPub, del, trash, restore, purge, left, editor };
+  return { TAGS, tagsOf, LIM, COLORS, esc, when, day, stateOf, call, confirmBtn, setPub, del, trash, restore, purge, left, editor };
 })();

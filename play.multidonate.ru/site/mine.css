@@ -79,6 +79,8 @@ body.mn-on { overflow: hidden; }
 @keyframes mn-up { 0% { transform: translate(-50%, 10px) scale(.7); opacity: 0; } 15% { transform: translate(-50%, 0) scale(1.1); opacity: 1; } 70% { opacity: 1; } 100% { transform: translate(-50%, -50px) scale(1); opacity: 0; } }
 .mn-burst b.mn-loot { white-space: normal; width: min(260px, 70vw); text-align: center; font-size: 16px; line-height: 1.2; }   /* 25.10: сундук - несколько ресурсов */
 @media (prefers-reduced-motion: reduce) { .mn-burst i { display: none; } .mn-burst b { animation-duration: 2s; } }
+/* 1.11 (feat/mine-candy): Хэллоуин - «+N 🍬» над героем (mine.js hwCandy), выше и чуть позже «+руды»; только transform / opacity */
+.mn-burst.mn-hwc b { top: -78px; color: #ffb347; opacity: 0; animation: mn-up 1.6s ease-out .35s forwards; }
 
 /* 26.10 (тестерам - mineShardFxPublic): осколок из камня - внешний span летит вбок (X), внутренний - дугой вверх и вниз (Y), крутится и гаснет.
    Только transform / opacity; цвет руды - --c, контур и грани - как у значков (тёмный контур, плоский тон, светлая грань) */
@@ -841,9 +843,16 @@ html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); 
 .mn[data-m2="1"] .mn-win .mb-counter { gap: 4px; padding: 6px 8px; }
 .mn[data-m2="1"] .mn-win .mb-counter.empty .m2-k { display: none; }
 .mn[data-m2="1"] .mn-win .mb-empty { padding: 2px 0; font-size: 12px; text-align: left; }
-.mn[data-m2="1"] .mn-win .mb-deal { display: flex; align-items: center; gap: 6px; }
-.mn[data-m2="1"] .mn-win .mb-offer { flex: 1 1 auto; min-width: 0; align-items: center; justify-content: flex-start; gap: 6px; padding: 4px 8px; border-radius: 9px; font-size: 12px; }
-.mn[data-m2="1"] .mn-win .mb-offer b { font: 700 15px/1.1 var(--hd, sans-serif); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 01.11 (стример, скриншот ~350 px: «Дас / т», «8 чеш…»): «Даст:» и сумма значками монет (●8) - без переноса и многоточия;
+   не помещаются вместе с кнопками - кнопки переходят на строку ниже (flex-wrap), а не сжимают сумму */
+.mn[data-m2="1"] .mn-win .mb-deal { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.mn[data-m2="1"] .mn-win .mb-offer { flex: 1 0 auto; min-width: max-content; align-items: center; justify-content: flex-start; gap: 6px; padding: 4px 8px; border-radius: 9px; font-size: 12px; white-space: nowrap; }
+.mn[data-m2="1"] .mn-win .mb-offer > span { flex: none; }
+.mn[data-m2="1"] .mn-win .mb-offer b { font: 700 15px/1.1 var(--hd, sans-serif); white-space: nowrap; }
+.mn[data-m2="1"] .mn-win .mb-offer .mn-qc2 { font: inherit; gap: 4px; color: inherit; }
+.mn[data-m2="1"] .mn-win .mb-offer .mn-cn { width: 12px; height: 12px; }
+.mn[data-m2="1"] .mn-win .mb-deal > .btn { margin-left: auto; }
+.mn[data-m2="1"] .mn-win .mb-deal > .btn ~ .btn { margin-left: 0; }
 .mn[data-m2="1"] .mn-win .mb-deal .btn { flex: none; min-height: 34px; padding: 0 12px; }
 .mn[data-m2="1"] .mn-win .mb-deal .mb-back { min-height: 30px; padding: 0 8px; font-size: 12px; }
 .mn[data-m2="1"] .mn-win .mb-ln { grid-template-columns: 30px minmax(0, 1fr) auto; gap: 2px 6px; padding: 4px 6px; border-radius: 9px; }
@@ -852,6 +861,18 @@ html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); 
 .mn[data-m2="1"] .mn-win .mb-nm b { font-size: 12.5px; }
 .mn[data-m2="1"] .mn-win .mb-nm small { font-size: 11px; }
 .mn[data-m2="1"] .mn-win .mb-lb .btn { min-width: 30px; min-height: 28px; }
+/* 01.11: сколько класть - поле «штук» с кнопками − / + (как обмен монет на конфеты в Ступе); слева в ряду кнопок строки */
+/* ряд кнопок строки - на всю ширину (и под значком): поле, «½», «Всё» и × помещаются в один ряд в окне ~350 px */
+.mn[data-m2="1"] .mb-lb { flex-wrap: wrap; align-items: center; }
+.mn[data-m2="1"] .mb-lb:has(.mb-num) { grid-column: 1 / -1; }
+.mn[data-m2="1"] .mb-num { display: inline-flex; align-items: stretch; margin-right: auto; border-radius: 9px; border: 1px solid rgba(255,207,106,.35); background: rgba(0,0,0,.35); overflow: hidden; }
+.mn[data-m2="1"] .mb-nb { flex: none; min-width: 30px; min-height: 28px; padding: 0; border: 0; background: rgba(255,207,106,.14); color: var(--m2-gold, #ffcf6a); font: 800 17px/1 var(--hd, sans-serif); cursor: pointer; touch-action: manipulation; }
+.mn[data-m2="1"] .mb-nb:disabled { opacity: .35; cursor: default; }
+.mn[data-m2="1"] .mb-nb:focus-visible { outline: 2px solid var(--m2-gold, #ffcf6a); outline-offset: -2px; }
+.mn[data-m2="1"] .mb-ni { width: 44px; min-height: 28px; padding: 0 2px; border: 0; border-radius: 0; background: none; color: var(--ink, #f7eadf); text-align: center; font: 800 14px var(--tx, sans-serif); font-variant-numeric: tabular-nums; }
+.mn[data-m2="1"] .mb-ni:focus-visible { outline: 2px solid var(--m2-gold, #ffcf6a); outline-offset: -2px; }
+.mn[data-m2="1"] .mb-ni.bad { color: #ff8a7a; box-shadow: inset 0 -2px 0 #ff8a7a; }
+@media (pointer: coarse) { .mn[data-m2="1"] .mb-nb, .mn[data-m2="1"] .mb-ni { min-height: 34px; } .mn[data-m2="1"] .mb-nb { min-width: 34px; } .mn[data-m2="1"] .mb-ni { font-size: 16px; } }
 .mn[data-m2="1"] .mn-win .mb-inv { gap: 4px; }
 /* сумка окна: плитки мельче, без пустого места снизу (сетка библиотеки - не ниже 100 px, пустой подвал - 40 px) */
 .mn[data-m2="1"] .mn-win .mb-inv .lgi--full .lgi-g { min-height: 0; padding: 0; }

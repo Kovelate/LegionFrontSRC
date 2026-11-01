@@ -11,6 +11,9 @@
   // 19.10: значок звания у ника автора (награды платформы), как на сайте канала (.awb в style.css)
   const awbN = (aw) => (Array.isArray(aw) ? aw.slice(0, 3).map((a) => `<span class="awb aw-${esc(String(a.t || a.id).replace(/[^a-z0-9-]/gi, ''))}" role="img" title="${esc(a.n)}: ${esc(a.d)}" aria-label="${esc(a.n)}: ${esc(a.d)}">${(a.i || '✦') === '✦' ? '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0.8 9.7 6.3 15.2 8 9.7 9.7 8 15.2 6.3 9.7 0.8 8 6.3 6.3Z" fill="currentColor"/></svg>' : esc(a.i)}</span>`).join('') : '');
   const TAGS = { update: 'Обновление', balance: 'Баланс', event: 'Событие', fix: 'Исправления' };
+  // 01.11: у записи может быть несколько тегов (tags); старая запись (или старый сервер) - только tag
+  const tagsOf = (x) => (Array.isArray(x.tags) ? x.tags : x.tag ? [x.tag] : []).filter((k, i, a) => TAGS[k] && a.indexOf(k) === i);
+  const tagsHtml = (x) => tagsOf(x).map((k) => `<span class="nw-tag" data-tag="${esc(k)}">${TAGS[k]}</span>`).join('');
   const KEY = 'lgNewsSeen';   // время самой свежей новости, которую зритель уже видел (у каждого браузера своё)
   const seenGet = () => { try { return +localStorage.getItem(KEY) || 0; } catch { return 0; } };
   const seenSet = (t) => { try { if (t > seenGet()) localStorage.setItem(KEY, String(t)); } catch {} };
@@ -77,7 +80,7 @@
     return { cover: m[0].replace('<figure class="nw-fig">', '<figure class="nw-fig nw-cover">'), body: (html.slice(0, m.index) + html.slice(m.index + m[0].length)).replace(/^\s+/, '') };
   }
   function post(x, draft) {
-    const tag = TAGS[x.tag] ? `<span class="nw-tag" data-tag="${esc(x.tag)}">${TAGS[x.tag]}</span>` : '';
+    const tag = tagsHtml(x);
     const fresh = !draft && st.prevSeen && x.at > st.prevSeen ? '<span class="nw-new">Новое</span>' : '';
     const when = draft ? `<span class="nw-draft-l">${x.publishedAt ? 'Снято с публикации' : 'Черновик'}</span><span>видишь только ты</span>`
       : `<time datetime="${new Date(x.at || 0).toISOString()}">${esc(dayOf(x.at))}</time>${fresh}`;
@@ -487,8 +490,8 @@
     if (!want) { if (ADM) { ADM = null; render(); } admWant = false; return; }
     if (ADM || admWant) return;
     admWant = true;
-    addCss('/platform/newsedit.css?v=3'); addCss('/site/newssite.css?v=4');
-    addJs('/platform/newsedit.js?v=4').then(() => addJs('/site/newssite.js?v=4')).then(async () => {
+    addCss('/platform/newsedit.css?v=4'); addCss('/site/newssite.css?v=4');
+    addJs('/platform/newsedit.js?v=5').then(() => addJs('/site/newssite.js?v=5')).then(async () => {
       if (!admWant || !window.NewsEdit || !window.LGNewsSite) return;
       ADM = window.LGNewsSite({ reload: () => { st.at = 0; return load(); }, render: () => { if (st.list) render(); } });
       await ADM.refresh();

@@ -72,12 +72,12 @@ window.LGNewsSite = (feed) => {
   const trashBody = () => `<div class="nw-trash" role="region" aria-label="Удалённые записи">
       <p class="muted nw-trash-h">Удалённые записи видишь только ты. Через 30 дней запись удаляется сама — вместе с лайками и комментариями. <button type="button" class="nw-link" data-bin-back>К ленте</button></p>
       ${bin.length ? `<div class="nw-list">${bin.map((x) => `<article class="nw-post nw-draft nw-del" data-id="${esc(x.id)}" aria-labelledby="nw-t-${esc(x.id)}">
-        <div class="nw-meta">${N.TAGS[x.tag] ? `<span class="nw-tag" data-tag="${esc(x.tag)}">${N.TAGS[x.tag]}</span>` : ''}<span class="nw-draft-l">Удалено</span><span>${esc(N.day(x.deletedAt))} · ${esc(N.left(x.purgeAt))}</span></div>
+        <div class="nw-meta">${N.tagsOf(x).map((k) => `<span class="nw-tag" data-tag="${esc(k)}">${N.TAGS[k]}</span>`).join('')}<span class="nw-draft-l">Удалено</span><span>${esc(N.day(x.deletedAt))} · ${esc(N.left(x.purgeAt))}</span></div>
         <h2 class="nw-t" id="nw-t-${esc(x.id)}">${esc(x.title)}</h2>
         <p class="muted nw-del-i">${x.published ? `Была опубликована ${esc(N.day(x.publishedAt))} · нравится ${x.likes ?? 0} · комментарии ${x.comments ?? 0}` : 'Черновик'}</p>
         ${admBar('<button type="button" class="nw-act" data-na="restore">Вернуть</button>', '<button type="button" class="nw-act is-del" data-na="purge">Удалить навсегда</button>', 'Удалённая запись (видишь только ты)')}
       </article>`).join('')}</div>` : '<p class="empty">Здесь пусто. Удалённые записи лежат тут 30 дней — их можно вернуть.</p>'}</div>`;
-  const drafts = () => all.filter((x) => !x.published).map((x) => ({ id: x.id, title: x.title, tag: x.tag, html: x.html, publishedAt: x.publishedAt }));
+  const drafts = () => all.filter((x) => !x.published).map((x) => ({ id: x.id, title: x.title, tag: x.tag, tags: x.tags, html: x.html, publishedAt: x.publishedAt }));
   // 20.10: инструменты админа — отдельной компактной панелью с подписью «Админ», чтобы не путались с «Нравится» и «Комментарии» зрителей;
   // «Удалить» — красным и отдельно от остальных
   const SHIELD = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l7 2.6v5.2c0 4.3-2.9 7.7-7 9.2-4.1-1.5-7-4.9-7-9.2V6.1z"/><path d="M9 12l2 2 4-4"/></svg>';

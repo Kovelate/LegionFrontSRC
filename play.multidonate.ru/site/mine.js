@@ -402,6 +402,7 @@
     if (S.myI >= 0 && S.pos && !S.path && !atRock(S.myI) && !(S.want && S.want.i < 0)) { const sp = digSpot(S.myI); if (sp != null && pathTo(cellOfPt(S.pos.x, S.pos.y), sp)) walkTo(sp); }
     if (S.me && S.me.fx && S.me.fx.sh) sfxArt();   // 26.10: рисунки осколков (shard-art.js) - заранее, до первого выкопанного камня
     if (S.burst && S.burst.length) { for (const b of S.burst) burst(b); S.burst = null; }
+    hwCandy();
     // 25.10: «Понятно» нажато — та же сводка не всплывает снова из запоздавшего снимка героя (перекрывала шахту)
     // 26.10: «Пока тебя не было» - только при входе (первые секунды). Пришло позже, пока игрок здесь, - не всплывает поверх игры
     // (закрывало кнопки панели и лавку посреди дела): отмечаем прочитанным молча
@@ -432,6 +433,21 @@
     ding();
     const other = cell.r && g && !mineGot && g.any ? ` ${resName(cell.r)} досталась другим копавшим (по вкладу) — тебе монеты за работу.` : '';
     tip(cell.t === 'rare' ? (mineGot ? (cell.r === S.st.gem ? `Самоцвет! ${resName(cell.r)} — такой есть только в шахтах этой природы` : `${tx().rare}: ${resName(cell.r)}!`) : `Жила вскрыта.${other}`) : cell.t === 'chest' ? (lootT ? `${lootT}. Загляни в журнал — вдруг там ещё и приз` : 'Клад вскрыт! Загляни в журнал — вдруг там приз') : tx().done + (other ? '.' + other : ''));
+  }
+  /* 1.11 (feat/mine-candy): Хэллоуин - конфеты за секунды копания (сервер: mine/hwcandy.js, me.hc = [[номер, конфет]] - закрытые окна
+     по 4 с за последние минуты): над героем «+N 🍬» - сводно за опрос и не чаще раза в HC_MS (только transform / opacity, mine.css .mn-hwc).
+     Что выпало до входа в шахту - не всплывает (первый снимок только запоминаем); не успели показать - добавится к следующей */
+  const HC_MS = 4000;
+  function hwCandy() {
+    const L = S.me && Array.isArray(S.me.hc) ? S.me.hc : [];
+    if (!S.hcSeen) { S.hcSeen = new Set(L.map((x) => x && x[0])); S.hcN = 0; S.hcAt = 0; return; }
+    for (const x of L) { if (!Array.isArray(x) || S.hcSeen.has(x[0])) continue; S.hcSeen.add(x[0]); S.hcN += Math.max(0, Math.floor(+x[1] || 0)); }
+    if (S.hcSeen.size > 200) S.hcSeen = new Set([...S.hcSeen].slice(-50));
+    if (!(S.hcN > 0) || Date.now() - S.hcAt < HC_MS || !S.pos || !S.heroes) return;
+    const n = S.hcN; S.hcN = 0; S.hcAt = Date.now();
+    const el = document.createElement('div'); el.className = 'mn-burst mn-hwc'; el.style.left = S.pos.x + 'px'; el.style.top = (S.pos.y - 40) + 'px'; el.style.zIndex = String(Math.round(S.pos.y) + 6);
+    el.innerHTML = `<b>+${n} 🍬</b>`;
+    S.heroes.appendChild(el); setTimeout(() => el.remove(), 2200);
   }
   /* 26.10 (новинка, тестерам - mineShardFxPublic, me.fx.sh): «всплывашка с осколком» - из камня вылетает 1-3 осколка цвета руды
      (дуга вверх и наружу, вращение, затухание), рядом «+37 осколков адамантита» со значком. Только CSS (transform / opacity, mine.css
@@ -1366,7 +1382,7 @@
     const first = win.hidden; win.hidden = false; win.dataset.k = S.npcOpen;
     // 25.10 (обновление шахты): меняем только изменившиеся части окна (кнопки рядом не пересоздаются, нажатие не теряется)
     const tp = document.createElement('template'); tp.innerHTML = body; const nw = [...tp.content.children], parts = nw.map((n) => n.outerHTML);
-    if (!first && S.bodyParts && el.children.length === S.bodyParts.length && parts.length === S.bodyParts.length && el.firstChild) nw.forEach((n, k) => { if (parts[k] !== S.bodyParts[k]) el.children[k].replaceWith(n); });
+    if (!first && S.bodyParts && el.children.length === S.bodyParts.length && parts.length === S.bodyParts.length && el.firstChild) nw.forEach((n, k) => { if (parts[k] !== S.bodyParts[k] && !(S.npcOpen === 'buy' && buyMorph(el.children[k], n))) el.children[k].replaceWith(n); });
     else el.innerHTML = body;
     S.bodyHtml = body; S.bodyParts = parts;
     if (first) win.scrollTop = 0;
@@ -1565,6 +1581,8 @@
      из сумки: прилавок — только в окне). Цену и наличие проверяет комната (modules/mine/server.js mineBuy): видела другую цену — отказ
      с новой, окно её покажет. Окно — в панели (на широком ПК — у правой стены зала, на телефоне — снизу). ---------- */
   const B = { lines: new Map(), wait: null, said: null };   // said — 26.10: благодарность скупщика после обмена { t, c, at } (на месте предложения)   // lines: uid → осколков на прилавке; wait — ждём итог игры { at, price }
+  // 01.11: осколков в штуке руды (как ore.js SH)
+  const SH = 100;
   const oreItems = () => { const h = (X && X.hero && X.hero()) || {}; return (h.items || []).filter((it) => it && it.qty && it.q > 0); };
   const bpOf = () => (S && S.st && S.st.bp) || {};
   const priceOf = (lines) => { const P = bpOf(); let t = 0; for (const [uid, q] of lines) { const it = oreItems().find((x) => x.uid === uid); if (it) t += q * (+P[it.res] || 0); } return Math.floor(t / 100 + 1e-9); };
@@ -1575,8 +1593,12 @@
   function buyerHtml(st) {
     buyTidy();
     const P = st.bp || {}, its = oreItems(), lines = [...B.lines].map(([uid, q]) => [its.find((x) => x.uid === uid), q]).filter(([it]) => it), price = priceOf(B.lines), wait = !!B.wait;
-    const row = ([it, q]) => `<li class="mb-ln" data-mb-uid="${esc(it.uid)}"><span class="mb-ic">${X.art ? X.art(it) : ''}</span><span class="mb-nm"><b>${esc(it.name)}</b><small>${esc(oskQ(q))}${q < it.q ? ` из ${esc(oskQ(it.q))}` : ''}</small></span><em class="mb-v" title="Столько это стоит у скупщика">≈ ${val(q * (+P[it.res] || 0) / 100)}</em>`
-      + `<span class="mb-lb"><button type="button" class="btn ghost sm" data-mb-half${q < 2 || wait ? ' disabled' : ''} title="Оставить на прилавке половину">½</button><button type="button" class="btn ghost sm" data-mb-all${q >= it.q || wait ? ' disabled' : ''} title="Всю кучку">Всё</button><button type="button" class="btn ghost sm mb-x" data-mb-x${wait ? ' disabled' : ''} aria-label="Убрать с прилавка">×</button></span></li>`;
+    // 01.11 (стример): сколько класть - любое целое число штук: поле с кнопками − / + (шаг 1 шт., как обмен монет на конфеты в Ступе),
+    // «½» - половина кучки (целыми штуками), «Всё» - вся кучка с осколками; меньше 1 шт. в кучке - только «Всё» и ×
+    const row = ([it, q]) => { const mx = Math.floor(it.q / SH), n = Math.floor(q / SH);
+      const num = mx >= 1 ? `<span class="mb-num"><button type="button" class="mb-nb" data-mb-d="-1"${q <= SH || wait ? ' disabled' : ''} aria-label="Меньше на 1 шт.">−</button><input type="text" inputmode="numeric" class="mb-ni" data-mb-n value="${n}"${wait ? ' disabled' : ''} aria-label="Сколько штук: ${esc(it.name)}, есть ${mx} шт." title="Целых штук на прилавке (есть ${mx})"><button type="button" class="mb-nb" data-mb-d="1"${(n + 1) * SH > it.q || wait ? ' disabled' : ''} aria-label="Больше на 1 шт.">+</button></span>` : '';
+      return `<li class="mb-ln" data-mb-uid="${esc(it.uid)}"><span class="mb-ic">${X.art ? X.art(it) : ''}</span><span class="mb-nm"><b>${esc(it.name)}</b><small>${esc(oskQ(q))}${q < it.q ? ` из ${esc(oskQ(it.q))}` : ''}</small></span><em class="mb-v" title="Столько это стоит у скупщика">≈ ${val(q * (+P[it.res] || 0) / 100)}</em>`
+      + `<span class="mb-lb">${num}<button type="button" class="btn ghost sm" data-mb-half${mx < 2 || wait ? ' disabled' : ''} title="Половину кучки (целыми штуками)">½</button><button type="button" class="btn ghost sm" data-mb-all${q >= it.q || wait ? ' disabled' : ''} title="Всю кучку">Всё</button><button type="button" class="btn ghost sm mb-x" data-mb-x${wait ? ' disabled' : ''} aria-label="Убрать с прилавка">×</button></span></li>`; };
     const thx = B.said && !lines.length && Date.now() - B.said.at < 120000 ? B.said : null;
     const say = thx ? esc(thx.t).replace(/\{coins\}/g, X.money ? X.money(thx.c) : String(thx.c)) : !lines.length ? 'Клади руду на прилавок - скажу, сколько дам.' : price > 0 ? `Дам за это ${X.money ? X.money(price) : price}.` : 'За это и медяка не дам - добавь ещё.';
     const pl = Object.entries(P).filter(([k]) => its.some((it) => it.res === k)).sort((a, b) => b[1] - a[1]);
@@ -1586,7 +1608,7 @@
     return `<section class="m2-card mb-head"><div class="mb-who"><h3 class="h3">${esc(tx().seller)}</h3><p class="mb-say${thx ? ' thx' : ''}" aria-live="polite">«${say}»</p></div></section>
       <section class="m2-card mb-counter${lines.length ? '' : ' empty'}" data-igdrop="buy" aria-label="Прилавок скупщика"><div class="m2-k">Прилавок <small>${lines.length ? `${lines.length} ${lines.length === 1 ? 'вид' : lines.length < 5 ? 'вида' : 'видов'}` : 'пусто'}</small></div>
         ${lines.length ? `<ul class="mb-lines">${lines.map(row).join('')}</ul>` : `<p class="mb-empty">Нажми на руду ниже${fine ? ' или перетащи сюда' : ''}</p>`}
-        <div class="mb-deal"><div class="mb-offer${price > 0 ? ' on' : ''}"><span>Даст</span><b>${X.money ? X.money(price) : price}</b></div>${lines.length ? `<button type="button" class="btn ghost sm mb-back" data-mb-back${wait ? ' disabled' : ''} title="Убрать всё с прилавка обратно в сумку">Забрать</button>` : ''}<button type="button" class="btn primary" data-mb-go${!(price > 0) || wait ? ' disabled' : ''}>${wait ? 'Считает…' : 'Обменять'}</button></div></section>
+        <div class="mb-deal"><div class="mb-offer${price > 0 ? ' on' : ''}"><span>Даст:</span><b>${qCoins(price, '', 'скупщик даст')}</b></div>${lines.length ? `<button type="button" class="btn ghost sm mb-back" data-mb-back${wait ? ' disabled' : ''} title="Убрать всё с прилавка обратно в сумку">Забрать</button>` : ''}<button type="button" class="btn primary" data-mb-go${!(price > 0) || wait ? ' disabled' : ''}>${wait ? 'Считает…' : 'Обменять'}</button></div></section>
       <section class="m2-card mb-inv"><div class="m2-k">Руда в сумке <small>100 осколков = 1 шт.</small></div><div class="mb-grid" data-mn-buyinv></div></section>
       <section class="mb-foot">${pl.length ? `<details class="mb-prices"><summary>Цены скупщика</summary><ul>${pl.map(([k, v]) => `<li><span>${esc(resName(k))}</span><b>${val(v)}</b></li>`).join('')}</ul><p class="muted">монет за 1 шт.; осколки - долей</p></details>` : ''}
         <p class="muted">Купленное скупщик отправит в казну Ратуши - на развитие города.</p><div class="mn-btns"><button type="button" class="btn ghost" data-mn-back>Назад</button></div></section>`;
@@ -1620,13 +1642,50 @@
       const b = e.target.closest('button'); if (!b || b.disabled) return;
       const li = b.closest('[data-mb-uid]'), uid = li && li.dataset.mbUid, it = uid && oreItems().find((x) => x.uid === uid);
       if (b.hasAttribute('data-mb-x') && uid) B.lines.delete(uid);
-      else if (b.hasAttribute('data-mb-half') && uid) B.lines.set(uid, Math.max(1, Math.ceil((B.lines.get(uid) || 0) / 2)));
+      else if (b.hasAttribute('data-mb-half') && it) B.lines.set(uid, Math.max(1, Math.floor(it.q / SH / 2)) * SH);
       else if (b.hasAttribute('data-mb-all') && it) B.lines.set(uid, it.q);
+      else if (b.hasAttribute('data-mb-d') && it) {
+        // − / +: по 1 шт.; «Всё» с осколками (16 шт. + 14 оск.) - сначала к целым (16), не меньше 1 шт. и не больше, чем есть
+        const q = B.lines.get(uid) || 0, up = b.dataset.mbD === '1', nv = up ? (Math.floor(q / SH) + 1) * SH : Math.max(1, Math.ceil(q / SH) - 1) * SH;
+        if (nv > it.q) { tip(`Больше нет: в сумке ${oskQ(it.q)}`); return; }
+        B.lines.set(uid, nv);
+      }
       else if (b.hasAttribute('data-mb-back')) { B.lines.clear(); tip('Руда снова в сумке'); }
       else if (b.hasAttribute('data-mb-go')) { buyGo(); return; }
       else return;
       S.bodyHtml = ''; panel();
     };
+    // поле «сколько штук»: верное число - сразу на прилавок (цена «≈ N» и «Даст» пересчитываются, курсор остаётся в поле);
+    // дробное, ноль, больше, чем есть, - отказ подсказкой при выходе из поля (Enter), в поле - прежнее число
+    box.oninput = (e) => { const f = e.target.closest('[data-mb-n]'); if (!f || B.wait) return; const v = buyNum(f); f.classList.toggle('bad', !v.ok && f.value.trim() !== ''); if (v.ok && v.q !== B.lines.get(v.uid)) { B.lines.set(v.uid, v.q); buyRedraw(); } };
+    box.onchange = (e) => { const f = e.target.closest('[data-mb-n]'); if (!f || B.wait) return; const v = buyNum(f); if (!v.ok) { if (v.error) tip(v.error); const li = f.closest('[data-mb-uid]'); f.value = String(Math.floor((B.lines.get(li && li.dataset.mbUid) || 0) / SH)); f.classList.remove('bad'); return; } if (v.q !== B.lines.get(v.uid)) { B.lines.set(v.uid, v.q); S.bodyHtml = ''; panel(); } };
+    box.onkeydown = (e) => { const f = e.target.closest('[data-mb-n]'); if (f && e.key === 'Enter') { e.preventDefault(); f.blur(); } };
+  }
+  /** Число из поля «сколько штук»: { ok, uid, q - осколков } или { ok: false, error }. Только целое, от 1 и не больше целых штук в кучке. */
+  function buyNum(f) {
+    const li = f.closest('[data-mb-uid]'), uid = li && li.dataset.mbUid, it = uid && oreItems().find((x) => x.uid === uid);
+    if (!it) return { ok: false, error: '' };
+    const t = String(f.value || '').trim(), mx = Math.floor(it.q / SH);
+    if (!t) return { ok: false, error: '' };
+    if (!/^\d+$/.test(t)) return { ok: false, error: 'Только целые штуки: 1, 2, 5…' };
+    const n = Number(t);
+    if (n < 1) return { ok: false, error: 'Хотя бы 1 шт. - или убери с прилавка (×)' };
+    if (n > mx) return { ok: false, error: `Столько нет: в сумке ${mx} шт.` };
+    return { ok: true, uid, q: n * SH };
+  }
+  // перерисовать прилавок, не теряя поле, в котором печатают (panel: часть с полем в фокусе - buyMorph, а не замена)
+  function buyRedraw() { S.bodyHtml = ''; panel(); }
+  /** Заменить часть окна новой, но поле «сколько штук» в фокусе оставить тем же элементом (иначе на телефоне закрылась бы клавиатура).
+      true - заменено так; false - поля в фокусе нет или вид другой (тогда обычная замена). */
+  function buyMorph(old, nw) {
+    const f = document.activeElement;
+    if (!f || !f.matches || !f.matches('[data-mb-n]') || !old.contains(f)) return false;
+    const same = (a, b) => { if (!b || a.nodeType !== b.nodeType || a.nodeName !== b.nodeName) return false; if (a === f || !a.contains(f)) return true; if (a.childNodes.length !== b.childNodes.length) return false; return [...a.childNodes].every((c, k) => same(c, b.childNodes[k])); };
+    if (!same(old, nw)) return false;
+    const attrs = (a, b, keep) => { for (const n of [...a.attributes]) if (!b.hasAttribute(n.name) && !keep.includes(n.name)) a.removeAttribute(n.name); for (const n of [...b.attributes]) if (!keep.includes(n.name) && a.getAttribute(n.name) !== n.value) a.setAttribute(n.name, n.value); };
+    const go = (a, b) => { attrs(a, b, a === f ? ['value', 'class'] : []); if (a === f) return; [...a.childNodes].forEach((c, k) => { const d = b.childNodes[k]; if (c === f || (c.nodeType === 1 && c.contains(f))) go(c, d); else c.replaceWith(d.cloneNode(true)); }); };
+    go(old, nw);
+    return true;
   }
   async function buyGo() {
     buyTidy();
