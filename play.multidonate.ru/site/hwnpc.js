@@ -194,6 +194,11 @@
      на телефоне - на весь экран. Чего нет с сервера - пишем «пока нет», механику не выдумываем. */
   const LOOK_FIELD = { hats: 'hat', acc: 'acc', eyes: 'eyes', colors: 'color', auras: 'aura' };
   const KIND_NAME = { hat: 'шапка', acc: 'украшение', eyes: 'глаза', color: 'цвет', aura: 'аура', item: 'предмет', candy: 'конфеты', pick: 'оружие на выбор' };
+  // 31.10 (feat/hw-armor-pick): вещь на выбор - оружие или броня (по слоту вещей списка): подписи карточки и окна выбора
+  const PICK_WORD = { weapon: ['оружие на выбор', 'оружие', 'Можно взять оружие любого класса', 'Выбери класс. Конфеты спишутся, только когда оружие ляжет в сумку.'],
+    armor: ['броня на выбор', 'броню', 'Можно взять броню любого класса', 'Выбери класс. Конфеты спишутся, только когда броня ляжет в сумку.'] };
+  const pickSlot = (rows) => ((rows || []).find((r) => r && r.slot) || {}).slot === 'armor' ? 'armor' : 'weapon';
+  const pickKind = (rows) => PICK_WORD[pickSlot(rows)][0];
   // 31.10 (feat/hw-pass20): оружие на выбор (ур. 20 пасса, «Ступа сладостей») - подписи характеристик как в окне героя сайта (app.js)
   const STAT_RU = [['atk', 'Физ. урон', ''], ['mag', 'Маг. урон', ''], ['hp', 'Здоровье', ''], ['def', 'Броня', ''], ['crit', 'Шанс крита', '%'], ['critDmg', 'Сила крита', '%'],
     ['pierce', 'Пробивание', '%'], ['healPow', 'Сила лечения', '%'], ['resist', 'Сопротивление', ''], ['dodge', 'Уклонение', '%']];
@@ -210,6 +215,8 @@
     passDone: ['Все двадцать огней горят! Такого света на улице давно не было.'],
     passZero: ['Ни одного огонька пока... Сходи в Изнанку - там конфеты на каждом шагу.'],
   };
+  // 31.10 (feat/hw-coin-npc): реплики ведьмы на обмен монет на конфеты
+  LINES.backOk = ['Монетки - в котёл, конфетки - тебе! Хи-хи!', 'Звонкая монета превращается... в сладкую! Колдую!', 'Конфеты на монеты? Ох, какой ты нетерпеливый сладкоежка!'];
   const plural = (n, a, b, c) => { const m = Math.abs(n) % 100, k = m % 10; return m > 10 && m < 20 ? c : k === 1 ? a : k > 1 && k < 5 ? b : c; };
   const cnd = (n) => `${n} ${plural(n, 'конфета', 'конфеты', 'конфет')}`;
   const cnm = (n) => `${n} ${plural(n, 'монета', 'монеты', 'монет')}`;
@@ -270,19 +277,97 @@
     const b = (n, label) => `<button type="button" class="hwn-xcb${have != null && n > have ? ' hwn-lack' : ''}" data-n="${n}"><span class="hwn-xcn">${label}</span><span class="hwn-xcc">${cnm(swapPlan(n, rate).coins)}</span></button>`;
     return `<section class="hwn-xc" aria-label="Обмен конфет на монеты"><div class="hwn-xct"><b>Обмен конфет на монеты</b><span>${st} ${art.candyIco} = ${cnm(Math.round(st * rate))}. ${st > 1 ? 'Меняется чётное число конфет - лишняя остаётся у тебя. ' : ''}Уровень пропуска не падает - он считается по всем собранным конфетам.</span></div>`
       + `<div class="hwn-xcr">${steps.map((n) => b(n, n)).join('')}<button type="button" class="hwn-xcb hwn-xcall${swapPlan(have || 0, rate).coins ? '' : ' hwn-lack'}" data-all="1"><span class="hwn-xcn">все</span><span class="hwn-xcc">${have == null ? '' : cnm(swapPlan(have, rate).coins)}</span></button>`
-      + `<label class="hwn-xcf"><input type="number" min="1" step="1" inputmode="numeric" class="hwn-xci" placeholder="сколько" aria-label="Сколько конфет обменять"><button type="button" class="hwn-xcb hwn-xcgo">Обменять</button></label></div></section>`;
+      + `<label class="hwn-xcf">${numBox('Сколько конфет обменять', st)}<button type="button" class="hwn-xcb hwn-xcgo">Обменять</button></label></div></section>`;
+  }
+  /* 31.10 (feat/hw-coin-npc, просьба стримера): поле «сколько» - свои кнопки − / + вместо серых стрелок браузера (одно на обе секции окна).
+     Шаг - шаг обмена (курс 1,5 - по 2: конфеты меняются парами), не меньше шага; число в поле можно и вписать (лишнее отбросит обмен) */
+  // 01.11 (координатор): на телефоне 390 «сколько» обрезалось до «сколькс» - плейсхолдер «кол-во», мельче цифр, поле без боковых отступов 8px
+  function numBox(label, step) {
+    const st = Math.max(1, Math.floor(+step || 1));
+    return `<span class="hwn-num"><button type="button" class="hwn-nb" data-d="-1" aria-label="Меньше на ${st}">−</button><input type="number" min="${st}" step="${st}" inputmode="numeric" class="hwn-xci" placeholder="кол-во" aria-label="${esc(label)}"><button type="button" class="hwn-nb" data-d="1" aria-label="Больше на ${st}">+</button></span>`;
+  }
+  // клик по − / +: к ближайшему кратному шагу в нужную сторону, не меньше шага
+  function numStep(nb) {
+    const inp = nb.parentNode.querySelector('.hwn-xci'); if (!inp) return;
+    const st = Math.max(1, Math.floor(+inp.step || 1)), v = Math.floor(+inp.value || 0), up = nb.dataset.d === '1';
+    const nv = up ? (Math.floor(v / st) + 1) * st : Math.max(st, Math.ceil(v / st) * st - st);
+    inp.value = String(v < 1 && !up ? st : nv);
+  }
+  const NUM_CSS = `.hwn-num{display:inline-flex;align-items:stretch;border-radius:12px;border:2px solid #1c1424;background:#120e24;box-shadow:0 3px 0 #1c1424;overflow:hidden}
+.hwn-num .hwn-xci{width:76px;min-height:44px;border:0;border-radius:0;padding:4px;text-align:center;font-family:'Russo One',sans-serif;font-size:17px;-moz-appearance:textfield;appearance:textfield}
+.hwn-num .hwn-xci::-webkit-inner-spin-button,.hwn-num .hwn-xci::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.hwn-num .hwn-xci:focus-visible{outline:2px solid #ffe08a;outline-offset:-3px}
+.hwn-nb{flex:none;min-width:38px;min-height:44px;padding:0;border:0;background:linear-gradient(180deg,#9b6ef0,#6a3fc4);color:#ffe08a;font-family:'Russo One',sans-serif;font-size:22px;line-height:1;cursor:pointer;touch-action:manipulation}
+.hwn-nb:hover,.hwn-nb:focus-visible{background:linear-gradient(180deg,#b08af6,#7a4fd4);outline:2px solid #ffe08a;outline-offset:-3px}.hwn-nb:active{transform:translateY(1px)}
+.hwn-xb .hwn-xbb{background:linear-gradient(180deg,#b08af6,#7a4fd4);color:#fff3c8}.hwn-xb .hwn-xbb:hover,.hwn-xb .hwn-xbb:focus-visible{background:linear-gradient(180deg,#c4a2fa,#8a5fe0)}
+.hwn-xb .hwn-xbb.hwn-lack{background:#3a3450;color:#a49cbc}.hwn-xb .hwn-xbm{display:block;margin-top:2px;font-size:12px;color:#e8e0f4}.hwn-xb .hwn-xbm b{color:#ffc94d}
+.hwn-xb{border-color:#9b6ef0;margin-top:10px}.hwn-xb .hwn-xct b{color:#c8a8ff}
+.hwn-num .hwn-xci::placeholder{font-size:13px;color:#8f86ad}
+@media (max-width:600px){.hwn-nb{min-width:42px}.hwn-num .hwn-xci{width:70px}.hwn-xc{margin:10px 10px 0;padding:10px}}`;
+  /* 31.10 (feat/hw-coin-npc, просьба стримера): «Обмен монет на конфеты» - вторая секция окна Ступы, под обменом конфет на монеты.
+     Тот же курс (fair.hw.swap.rate) в обратную сторону: сколько конфет получить, цена - целые монеты (backPlan, как у сервера events/core.js),
+     лишние монеты остаются. Открыт - у героя hw.bk (флаг quest.hwCoinBackPublic, пока идёт ивент). Монеты героя - hero.money (бронза) */
+  const backPlan = (n, rate) => { const st = swapStep(rate), got = Math.floor(Math.max(0, n) / st) * st; return { step: st, got, coins: Math.ceil(got * rate - 1e-9) }; };
+  const backAll = (money, rate) => { const st = swapStep(rate); return backPlan(Math.floor(Math.max(0, money) / Math.max(1e-9, st * rate)) * st, rate); };
+  const moneyOf = (el, W) => { if (el && el._money != null) return el._money; const h = W.hero && W.hero(); return Math.max(0, Math.floor(+(h && h.money) || 0)); };
+  function backHtml(W, have) {
+    const hw = hwOf(W), sw = W.data && W.data.swap, rate = sw && +sw.rate > 0 ? +sw.rate : 0; if (!rate || !hw || !hw.bk) return '';
+    const steps = (sw.steps && sw.steps.length ? sw.steps : [100, 500]).map((n) => +n).filter((n) => n > 0), st = swapStep(rate), money = moneyOf(null, W), A = backAll(money, rate);
+    const b = (n) => { const p = backPlan(n, rate); return `<button type="button" class="hwn-xcb hwn-xbb${p.coins > money ? ' hwn-lack' : ''}" data-bn="${n}" data-bc="${p.coins}"><span class="hwn-xcn">${n} ${art.candyIco}</span><span class="hwn-xcc">за ${cnm(p.coins)}</span></button>`; };
+    return `<section class="hwn-xc hwn-xb" aria-label="Обмен монет на конфеты"><div class="hwn-xct"><b>Обмен монет на конфеты</b><span>${cnm(Math.round(st * rate))} = ${st} ${art.candyIco} - тот же курс, что и в обратную сторону. ${st > 1 ? 'Конфеты - парами, лишние монеты остаются у тебя. ' : ''}Купленные конфеты можно тратить в Ступе, но в «собрано за ивент» они не идут - огоньки Фонарщика от них не зажгутся.</span>`
+      + `<span class="hwn-xbm">у тебя: <b class="hwn-xbmv">${cnm(money)}</b> и <b class="hwn-xbcv">${have == null ? 0 : have}</b> ${art.candyIco}</span></div>`
+      + `<div class="hwn-xcr">${steps.map(b).join('')}<button type="button" class="hwn-xcb hwn-xbb hwn-xball${A.got ? '' : ' hwn-lack'}" data-ball="1"><span class="hwn-xcn">все</span><span class="hwn-xcc">${A.got ? `${A.got} за ${cnm(A.coins)}` : 'мало монет'}</span></button>`
+      + `<label class="hwn-xcf">${numBox('Сколько конфет получить', st)}<button type="button" class="hwn-xcb hwn-xbb hwn-xbgo">Обменять</button></label></div></section>`;
+  }
+  // новые монеты и конфеты в секции обмена монет на конфеты (кнопки «не хватает», «все»)
+  function setMoney(el, W, m) {
+    m = Math.max(0, Math.floor(+m || 0)); el._money = m;
+    const sec = el.querySelector('.hwn-xb'); if (!sec) return;
+    const rate = swapRateOf(W), mv = sec.querySelector('.hwn-xbmv'), cv = sec.querySelector('.hwn-xbcv'); if (mv) mv.textContent = cnm(m); if (cv) cv.textContent = String(haveOf(el, W));
+    for (const q of sec.querySelectorAll('.hwn-xbb[data-bn]')) q.classList.toggle('hwn-lack', +q.dataset.bc > m);
+    const al = sec.querySelector('.hwn-xball'); if (al && rate) { const A = backAll(m, rate); al.classList.toggle('hwn-lack', !A.got); const c = al.querySelector('.hwn-xcc'); if (c) c.textContent = A.got ? `${A.got} за ${cnm(A.coins)}` : 'мало монет'; }
+  }
+  // клик в секции обмена монет на конфеты: true - клик съеден
+  function backClick(el, W, e) {
+    const xb = e.target.closest('.hwn-xbb'); if (!xb) return false;
+    const say = el.querySelector('.hwn-say'), rate = swapRateOf(W), money = moneyOf(el, W), st = swapStep(rate || 1);
+    if (el._bpend) { say.textContent = 'Подожди, ведьма ещё считает прошлый обмен.'; return true; }
+    const inp = xb.closest('.hwn-xb').querySelector('.hwn-xci'), all = !!xb.dataset.ball;
+    const want = all ? backAll(money, rate).got : xb.dataset.bn ? +xb.dataset.bn : Math.floor(+(inp && inp.value) || 0);
+    if (!all && !(want >= 1)) { say.textContent = 'Сколько конфет тебе наколдовать? Напиши число.'; return true; }
+    const pl = backPlan(want, rate);
+    if (!(pl.got >= 1)) { say.textContent = all ? `Монет маловато: ${cnd(st)} стоят ${cnm(Math.ceil(st * rate - 1e-9))}.` : `Мало: продаю от ${cnd(pl.step)}.`; return true; }
+    if (pl.coins > money) { say.textContent = `Не-не, в долг не колдую: за ${cnd(pl.got)} - ${cnm(pl.coins)}, а у тебя ${cnm(money)}.`; return true; }
+    if (!W.back) { say.textContent = 'Обмен с сайта пока не открыт - пиши в чат Ярмарки: «обмен на конфеты ' + pl.got + '»'; return true; }
+    el._bpend = { n: pl.got, coins: pl.coins }; clearTimeout(el._bpT); el._bpT = setTimeout(() => { el._bpend = null; }, 15000);
+    Promise.resolve(W.back(all ? { all: true } : { n: pl.got }, xb)).then(() => {
+      // сразу показываем; точное число придёт ответом комнаты (result)
+      say.textContent = pick(LINES.backOk); setHave(el, W, haveOf(el, W) + pl.got); setMoney(el, W, money - pl.coins);
+    }).catch(() => { el._bpend = null; });
+    return true;
+  }
+  // ответ комнаты на обмен монет на конфеты (app.js, ack hwBack)
+  function backResult(el, W, x) {
+    const r = x.x, say = el.querySelector('.hwn-say'), was = el._bpend; el._bpend = null; clearTimeout(el._bpT);
+    if (!x.ok) { if (was && !r.test) { setHave(el, W, haveOf(el, W) - was.n); setMoney(el, W, moneyOf(el, W) + was.coins); } say.textContent = x.error || 'Не вышло.'; return; }
+    if (r.test) { say.textContent = `Тест: ${cnm(r.coins || 0)} -> ${cnd(r.n || 0)} - ничего не списано.`; if (was) { setHave(el, W, haveOf(el, W) - was.n); setMoney(el, W, moneyOf(el, W) + was.coins); } return; }
+    if (r.left != null) setHave(el, W, r.left);
+    setMoney(el, W, moneyOf(el, W));
+    say.textContent = `Держи: ${cnd(r.n || 0)} за ${cnm(r.coins || 0)}!`;
   }
   function shopHtml(W, title) {
     const hw = hwOf(W), have = hw ? +hw.c || 0 : null, list = (W.data && W.data.shop) || [];
     const cards = list.map((it) => {
       const g = it.kind === 'item' ? { item: it.item } : it.kind === 'pick' ? { pick: 1 } : { look: it.look || lookOf(String(it.field || 'hat'), it.id) };
       const kind = it.kind === 'item' || it.kind === 'pick' ? it.kind : it.field, lack = have == null ? 0 : Math.max(0, it.price - have);
-      return `<li class="hwn-g${lack ? ' hwn-lack' : ''}"><b class="hwn-n">${it.n}</b><div class="hwn-pic">${goodsPic(W, g)}</div><div class="hwn-nm">${esc(it.name || it.id || it.item || '')}</div><div class="hwn-kd">${esc(KIND_NAME[kind] || '')}</div>`
-        + `<button type="button" class="hwn-buy" data-n="${it.n}" data-p="${it.price}"${it.kind === 'pick' ? ' data-pick="1"' : ''}><span class="hwn-pr">${art.candyIco}${it.price}</span><span class="hwn-t">${lack ? `не хватает ${lack}` : it.kind === 'pick' ? 'Выбрать' : 'Обменять'}</span></button></li>`;
+      // 31.10 (feat/hw-armor-pick): «на выбор» - подпись по слоту (оружие / броня); once - товар 1 раз за ивент, номера купленных - hw.b
+      const kn = it.kind === 'pick' ? pickKind(it.pick) : KIND_NAME[kind] || '', done = !!(it.once && hw && Array.isArray(hw.b) && hw.b.includes(it.n));
+      return `<li class="hwn-g${lack ? ' hwn-lack' : ''}"><b class="hwn-n">${it.n}</b><div class="hwn-pic">${goodsPic(W, g)}</div><div class="hwn-nm">${esc(it.name || it.id || it.item || '')}</div><div class="hwn-kd">${esc(kn)}</div>`
+        + `<button type="button" class="hwn-buy" data-n="${it.n}" data-p="${it.price}"${it.kind === 'pick' ? ' data-pick="1"' : ''}${done ? ' disabled' : ''}><span class="hwn-pr">${art.candyIco}${it.price}</span><span class="hwn-t">${done ? 'Уже куплено' : lack ? `не хватает ${lack}` : it.kind === 'pick' ? 'Выбрать' : 'Обменять'}</span></button></li>`;
     }).join('');
     return `<div class="hwn-hd hwn-shophd"><div class="hwn-por">${witchHead()}</div><div class="hwn-tt"><h2 class="hwn-title">${esc(title)}</h2><p class="hwn-say" aria-live="polite">${esc(pick(LINES.shopHi))}</p></div>`
       + `<div class="hwn-wallet"><span class="hwn-l">у тебя</span><span class="hwn-v">${art.candyIco}<b>${have == null ? '-' : have}</b></span><span class="hwn-s">${hw ? `собрано за ивент: ${+hw.x || 0}` : 'конфеты придут с сервера в дни ивента'}</span></div></div>`
-      + swapHtml(W, have)
+      + swapHtml(W, have) + backHtml(W, have)
       + (cards ? `<ul class="hwn-grid">${cards}</ul>` : `<p class="hwn-empty">Товар обменника появится в дни ивента.</p>`)
       + `<p class="hwn-foot">Конфеты собирают в Изнанке - походе «Ночи Тыквенной Луны». После ивента остаток конфет обменяется на монеты.</p>`;
   }
@@ -317,27 +402,33 @@
     const next = P.find((s) => s.lv === lv + 1) || null, prevNeed = lv > 0 ? ((P.find((s) => s.lv === lv) || {}).need || 0) : 0;
     const need = next ? next.need : prevNeed, left = next ? Math.max(0, need - x) : 0, pct = next ? Math.max(0, Math.min(100, ((x - prevNeed) / Math.max(1, need - prevNeed)) * 100)) : 100;
     const G = garland(lv);
-    const say = !hw ? pick(LINES.passHi) : lv >= 20 ? LINES.passDone[0] : lv === 0 && x === 0 ? LINES.passZero[0] : next ? fill(pick(LINES.passNext), { n: cnd(left), lv: lv + 1, r: /«/.test(next.name) ? next.name : `«${next.name}»` }) : pick(LINES.passHi);
+    // 31.10 (feat/hw-pass-claim): награды сами не выдаются - каждый зажжённый огонёк ждёт «Получить» (hw.o - такие уровни)
+    const owe = new Set(hw && Array.isArray(hw.o) ? hw.o.map(Number) : []), isPk = (s) => !!(s && s.reward && s.reward.pick);
+    const oweAll = P.filter((s) => owe.has(s.lv) && !isPk(s)).length;
+    const say = hw && owe.size ? `Огоньки горят - ${owe.size === 1 ? 'награда ждёт' : `наград ждёт: ${owe.size}`}. Нажми «Получить»${oweAll > 1 ? ' или «Получить всё»' : ''}!` : !hw ? pick(LINES.passHi) : lv >= 20 ? LINES.passDone[0] : lv === 0 && x === 0 ? LINES.passZero[0] : next ? fill(pick(LINES.passNext), { n: cnd(left), lv: lv + 1, r: /«/.test(next.name) ? next.name : `«${next.name}»` }) : pick(LINES.passHi);
     const rw = (s) => { const r = s.reward || {}; return r.candy ? { candy: r.candy } : r.pick ? { pick: 1 } : r.item ? { item: r.item } : r.look ? { look: lookOf(LOOK_FIELD[r.look[0]] || r.look[0], r.look[1]) } : {}; };
     const kindOf = (s) => { const r = s.reward || {}; return r.candy ? 'candy' : r.pick ? 'pick' : r.item ? 'item' : r.look ? LOOK_FIELD[r.look[0]] : ''; };
-    // 31.10 (feat/hw-pass20): уровни, которые ждут кнопки «Забрать» (hw.o): ур. 20 - оружие на выбор, или вещь, не влезшая в сумку
-    const owe = new Set(hw && Array.isArray(hw.o) ? hw.o.map(Number) : []);
     const cards = P.map((s) => {
       const st = s.lv <= lv ? (owe.has(s.lv) ? 'own' : 'got') : s.lv === lv + 1 ? 'next' : 'lock';
       return `<li class="hwn-r hwn-${st}" data-lv="${s.lv}"><span class="hwn-lamp">${st === 'got' || st === 'own' ? art.lampOn : art.lampOff}<b>${s.lv}</b></span><div class="hwn-pic">${goodsPic(W, rw(s))}</div><div class="hwn-nm">${esc(s.name)}</div>`
-        + (st === 'own' ? `<button type="button" class="hwn-claim" data-lv="${s.lv}"${s.reward && s.reward.pick ? ' data-pick="1"' : ''}>Забрать</button>`
+        + (st === 'own' ? `<button type="button" class="hwn-claim" data-lv="${s.lv}"${s.reward && s.reward.pick ? ' data-pick="1"' : ''}>Получить</button>`
           : `<div class="hwn-kd">${st === 'got' ? '✓ получено' : st === 'next' ? 'следующая' : `${art.lock} ${s.need}${ci()}`}</div>`) + `</li>`;
     }).join('');
     const spot = next ? `<div class="hwn-next"><div class="hwn-pic">${goodsPic(W, rw(next))}</div><div><span class="hwn-l">следующий огонёк - ${next.lv}-й</span><b>${esc(next.name)}</b><span class="hwn-s">${esc(KIND_NAME[kindOf(next)] || '')}</span></div></div>`
       : `<div class="hwn-next hwn-done"><div><span class="hwn-l">гирлянда</span><b>${lv >= 20 ? 'Все 20 огней горят!' : 'Шкала придёт с сервера в дни ивента'}</b></div></div>`;
-    return `<div class="hwn-sw"><h2 class="hwn-title hwn-onscene">Призрачный Фонарщик</h2><div class="hwn-scene"><svg viewBox="0 0 1000 300" preserveAspectRatio="xMidYMid meet" aria-hidden="true">${G.svg}<g class="hwn-ember">${G.next}</g><g class="hwn-gh">${G.ghost}</g></svg></div></div>`
+    // 31.10 (feat/hw-pass-claim): «Получить всё» в шапке - если ждут несколько наград (ур. 20 - отдельно, там нужен выбор)
+    const allBtn = oweAll > 1 ? `<button type="button" class="hwn-claim hwn-all">Получить всё (${oweAll})</button>` : '';
+    return `<style>${PASS_CSS}</style><div class="hwn-sw"><h2 class="hwn-title hwn-onscene">Призрачный Фонарщик</h2>${allBtn}<div class="hwn-scene"><svg viewBox="0 0 1000 300" preserveAspectRatio="xMidYMid meet" aria-hidden="true">${G.svg}<g class="hwn-ember">${G.next}</g><g class="hwn-gh">${G.ghost}</g></svg></div></div>`
       + `<div class="hwn-ps"><div class="hwn-lv"><span class="hwn-l">огней</span><b>${lv}</b><span class="hwn-s">из 20</span></div>`
       + `<div class="hwn-prog"><p class="hwn-say" aria-live="polite">${esc(say)}</p>`
       + `<div class="hwn-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(pct)}"><i style="width:${f1(pct)}%"></i></div>`
       + `<div class="hwn-bl"><span>${hw ? `собрано за ивент: <b>${x}</b>${ci()}` : 'конфеты придут с сервера в дни ивента'}</span><span>${next ? `до ${next.lv}-го огня: ещё <b>${left}</b>${ci()}` : lv >= 20 ? 'пасс пройден' : ''}</span></div></div>${spot}</div>`
       + (cards ? `<ul class="hwn-rw">${cards}</ul>` : `<p class="hwn-empty">Награды пасса появятся в дни ивента.</p>`)
-      + `<p class="hwn-foot">Огоньки зажигаются сами: уровень пасса растёт от конфет, собранных в Изнанке (потраченные в «Ступе сладостей» не уменьшают его). Награда 20-го огня - эпическое оружие любого класса на выбор: нажми «Забрать».</p>`;
+      + `<p class="hwn-foot">Огоньки зажигаются сами: уровень пасса растёт от конфет, собранных в Изнанке (потраченные в «Ступе сладостей» не уменьшают его). Награду каждого огня забирай кнопкой «Получить» - она ждёт, пока не нажмёшь. Награда 20-го огня - эпическое оружие любого класса на выбор.</p>`;
   }
+  // 31.10 (feat/hw-pass-claim): кнопка «Получить всё» в шапке окна пасса
+  const PASS_CSS = `.hwn-sw .hwn-all{position:absolute;z-index:2;left:12px;top:12px;margin:0}
+@media (max-width:820px){.hwn-sw .hwn-all{position:static;display:block;margin:6px 10px 2px}}`;
   const WIN_CSS = `.hwn-back{position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(8,8,20,.72)}
 .hwn-win{position:relative;width:min(1060px,100%);max-height:calc(100vh - 32px);overflow:auto;border-radius:18px;background:linear-gradient(180deg,#1f1938,#141026 60%);border:3px solid #34295c;box-shadow:0 18px 60px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.06);color:#ece6f6;text-align:left}
 .hwn-x{position:absolute;top:10px;right:10px;z-index:3;width:40px;height:40px;border-radius:50%;border:2px solid #4a3d7a;background:#241c40;color:#fff;font-size:22px;line-height:1;cursor:pointer}
@@ -398,9 +489,14 @@
 .hwn-pk .hwn-cfb{width:min(640px,100%);max-height:calc(100% - 8px);overflow:auto;text-align:left}.hwn-pk h3{margin:0 0 4px;font-family:'Russo One',sans-serif;font-size:20px;color:#ffc94d;text-align:center}
 .hwn-pk .hwn-pkh{margin:0 0 12px;font-size:14px;text-align:center;color:#c8bedf}
 .hwn-pkl{list-style:none;margin:0 0 12px;padding:0;display:flex;flex-direction:column;gap:8px}
-.hwn-pki{display:grid;grid-template-columns:1fr auto;gap:2px 12px;align-items:center;padding:10px 12px;border-radius:12px;background:#1a1430;border:2px solid #3a2c66}
-.hwn-pki .hwn-pkc{font-size:12px;color:#ffb347;text-transform:uppercase;letter-spacing:.5px}.hwn-pki .hwn-pkn{font-family:'Russo One',sans-serif;font-size:16px;color:#f3e6c8}
-.hwn-pki .hwn-pks{grid-column:1;font-size:12.5px;color:#9fe8b8}.hwn-pki .hwn-xcb{grid-column:2;grid-row:1/span 3;min-width:104px;font-family:'Russo One',sans-serif;font-size:15px}
+.hwn-pki{display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:2px 12px;align-items:center;padding:10px 12px;border-radius:12px;background:#1a1430;border:2px solid #3a2c66}
+.hwn-pki .hwn-pkc{grid-column:2;font-size:12px;color:#ffb347;text-transform:uppercase;letter-spacing:.5px}.hwn-pki .hwn-pkn{grid-column:2;font-family:'Russo One',sans-serif;font-size:16px;color:#f3e6c8;overflow-wrap:anywhere}
+.hwn-pki .hwn-pks{grid-column:2;font-size:12.5px;color:#9fe8b8}.hwn-pki .hwn-xcb{grid-column:3;grid-row:1/span 3;min-width:104px;font-family:'Russo One',sans-serif;font-size:15px}
+.hwn-pkp{grid-column:1;grid-row:1/span 3;align-self:center;box-sizing:border-box;width:56px;height:56px;padding:4px;display:flex;align-items:center;justify-content:center;border-radius:12px;border:2px solid #3a2c66;background:radial-gradient(closest-side,rgba(255,179,71,.22),#120e24);cursor:help;font:inherit;color:inherit}
+.hwn-pkp[data-r="rare"]{border-color:#3a7ee0}.hwn-pkp[data-r="epic"]{border-color:#9a55e0}.hwn-pkp[data-r="legendary"]{border-color:#e09a2a}
+.hwn-pkp:hover,.hwn-pkp:focus-visible{outline:2px solid #ffe08a;outline-offset:2px}.hwn-pkp svg{display:block;width:100%;height:100%;overflow:visible}
+body.hwn-open .tip.card,body.hwn-open .lgi-tip{z-index:9100}
+.hwn-tip{position:fixed;left:0;top:0;z-index:9100;width:min(260px,calc(100vw - 16px));box-sizing:border-box;padding:8px 10px;border-radius:10px;background:#120e24;border:2px solid #ffc94d;color:#f3e6c8;font-size:13px;line-height:1.35;pointer-events:none}.hwn-tip b{display:block;color:#ffc94d}.hwn-tip span{color:#9fe8b8}
 .hwn-pki.hwn-pkon{border-color:#ffc94d;background:#2a2042}
 .hwn-dd{width:100%;height:100%;object-fit:contain}.hwn-defs{position:absolute;width:0;height:0;overflow:hidden}
 @media (max-width:600px){
@@ -414,43 +510,104 @@
 .hwn-rw{grid-template-columns:minmax(0,1fr);padding:0 10px 12px;gap:6px}
 .hwn-r{flex-direction:row;padding:6px 10px 6px 8px;gap:8px;text-align:left}.hwn-r .hwn-lamp{position:static;transform:none;flex-direction:column;width:26px}.hwn-r .hwn-pic{width:46px;height:52px;flex:none}.hwn-r .hwn-nm{justify-content:flex-start;text-align:left;min-height:0;flex:1}.hwn-r .hwn-kd{margin-left:auto;white-space:nowrap}
 }
-@media (max-width:600px){.hwn-pki{grid-template-columns:1fr}.hwn-pki .hwn-xcb{grid-column:1;grid-row:auto;margin-top:6px}}
+@media (max-width:600px){.hwn-pki{grid-template-columns:48px minmax(0,1fr);gap:2px 10px;padding:10px}.hwn-pkp{width:48px;height:48px}.hwn-pki .hwn-xcb{grid-column:1/-1;grid-row:auto;margin-top:6px}}
 @media (prefers-reduced-motion:reduce){.hwn-gh,.hwn-ember{animation:none}}`;
   let WIN = null;
-  function close() { if (!WIN) return; const w = WIN; WIN = null; try { document.removeEventListener('keydown', w.key, true); w.el.remove(); if (w.back && w.back.focus) w.back.focus(); } catch (e) { /* окна уже нет */ } }
+  function close() { if (!WIN) return; const w = WIN; WIN = null; tipHide(w.W); try { document.body.classList.remove('hwn-open'); document.removeEventListener('keydown', w.key, true); document.removeEventListener('pointerdown', w.down, true); w.el.remove(); if (w.back && w.back.focus) w.back.focus(); } catch (e) { /* окна уже нет */ } }
   const swapRateOf = (W) => { const sw = W.data && W.data.swap; return sw && +sw.rate > 0 ? +sw.rate : 0; };
   // сколько конфет у зрителя сейчас: ответ комнаты (el._have) главнее данных героя
   const haveOf = (el, W) => { if (el._have != null) return el._have; const hw = hwOf(W); return Math.max(0, (hw ? +hw.c || 0 : 0) - (el._spent || 0)); };
   // новый остаток: кошелёк, кнопки покупки («не хватает N») и обмена
   function setHave(el, W, v) {
-    v = Math.max(0, Math.floor(+v || 0)); el._have = v;
+    v = Math.max(0, Math.floor(+v || 0)); el._have = v; backHave(el, v);
     const wb = el.querySelector('.hwn-wallet b'); if (wb) wb.textContent = String(v);
     for (const b of el.querySelectorAll('.hwn-buy')) { const lack = Math.max(0, (+b.dataset.p || 0) - v), t = b.querySelector('.hwn-t'); b.closest('.hwn-g').classList.toggle('hwn-lack', lack > 0); if (t && !b.disabled) t.textContent = lack ? `не хватает ${lack}` : 'Обменять'; }
     const rate = swapRateOf(W);
     for (const q of el.querySelectorAll('.hwn-xcb[data-n]')) q.classList.toggle('hwn-lack', +q.dataset.n > v);
     const al = el.querySelector('.hwn-xcall'); if (al && rate) { al.classList.toggle('hwn-lack', !swapPlan(v, rate).coins); const c = al.querySelector('.hwn-xcc'); if (c) c.textContent = cnm(swapPlan(v, rate).coins); }
   }
+  // 31.10 (feat/hw-coin-npc): конфеты в секции обмена монет на конфеты
+  const backHave = (el, v) => { const cv = el.querySelector('.hwn-xb .hwn-xbcv'); if (cv) cv.textContent = String(v); };
   // 31.10 (feat/hw-pass20): окно выбора оружия поверх окна НПС - список «класс - название - характеристики». o: { kind: 'pass' | 'shop', rows, title, hint, go,
   // lv (пасс) или n, p (лавка: номер и цена) }. Новые классы - только тем, кому они открыты (hero.cb), как и в игре
+  // 31.10 (feat/hw-pick-pics): картинка и подсказка строки выбора - по id вещи для любого слота (оружие, скоро - броня на выбор).
+  // Вещь строки - как вещь сумки: слот с сервера (pickRows), а у старого ответа без слота - по облику (look.weapon - оружие, look.armor - доспех…)
+  const LOOK_SLOT = [['weapon', 'weapon'], ['shield', 'shield'], ['armor', 'armor'], ['hat', 'helmet'], ['charm', 'trinket'], ['aura', 'trinket']];
+  const slotOf = (r) => r.slot || ((LOOK_SLOT.find(([k]) => r.look && r.look[k]) || [])[1]) || 'weapon';
+  const pickItem = (r) => ({ id: r.id, name: r.name || r.id, slot: slotOf(r), rarity: r.rarity || 'common', role: r.role, stats: { ...(r.stats || {}) }, look: r.look || {}, desc: r.desc || '', wearable: true, on: false, uids: [] });
+  // рисунок - тот же, что у вещи в сумке и лавках сайта (W.art = общий рисунок вещей сайта, packages/inventory art); нет его - свой рисунок ивента
+  function pickPic(W, it) {
+    let s = '';
+    try { s = W.art ? W.art(it) || '' : ''; } catch (e) { console.warn('[hwnpc] рисунок вещи', it.id, e); s = ''; }
+    const INV = typeof window !== 'undefined' ? window.LGInventory : null;
+    if (!s && INV && INV.art) { try { s = INV.art(it) || ''; } catch (e) { console.warn('[hwnpc] рисунок вещи (библиотека)', it.id, e); s = ''; } }
+    if (!s && art[it.id]) s = art[it.id]();
+    return s;
+  }
+  // подсказка у картинки: карточка вещи сайта (W.tip = cardTip app.js: характеристики, сравнение с надетым, описание); нет её - встроенная
+  // карточка библиотеки инвентаря; нет и её - простая строка характеристик. Мышь - наведение, телефон - касание (второе касание и касание мимо - закрыть)
+  const TIP = { el: null, tap: false, own: null };
+  function tipOwn(el, it) {
+    if (!TIP.own) { TIP.own = document.createElement('div'); TIP.own.className = 'hwn-tip'; TIP.own.setAttribute('role', 'tooltip'); document.body.appendChild(TIP.own); }
+    const t = TIP.own; t.innerHTML = `<b>${esc(it.name)}</b><span>${esc(statsText(it.stats))}</span>`; t.hidden = false;
+    const b = el.getBoundingClientRect(), vw = document.documentElement.clientWidth, w = t.offsetWidth, hh = t.offsetHeight;
+    const x = Math.max(8, Math.min(vw - w - 8, b.left)), y = b.bottom + 8 + hh > window.innerHeight - 8 ? Math.max(8, b.top - hh - 8) : b.bottom + 8;
+    t.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
+  }
+  function tipShow(W, el, it, tap) {
+    TIP.el = el; TIP.tap = !!tap;
+    const INV = window.LGInventory, h = W.hero && W.hero();
+    try {
+      if (W.tip && h) { W.tip(el, it); return; }
+      if (INV && INV.cardHtml && INV.tipShow) { INV.tipShow(el, INV.cardHtml(it, (h && h.items) || [], {}), it.rarity); return; }
+    } catch (e) { console.warn('[hwnpc] подсказка вещи', it.id, e); }
+    tipOwn(el, it);
+  }
+  function tipHide(W) {
+    if (!TIP.el) return; TIP.el = null; TIP.tap = false;
+    const INV = window.LGInventory;
+    try { if (W && W.tipHide) W.tipHide(); if (INV && INV.tipHide) INV.tipHide(); } catch (e) { console.warn('[hwnpc] подсказка вещи', e); }
+    if (TIP.own) TIP.own.hidden = true;
+  }
   function pickBox(el, W, o) {
     const h = W.hero && W.hero(), cb = !!(h && h.cb), rows = (o.rows || []).filter((r) => r && r.id && (!r.beta || cb));
     const old = el.querySelector('.hwn-cf'); if (old) old.remove();
+    tipHide(W);
     const cf = document.createElement('div'); cf.className = 'hwn-cf hwn-pk'; cf.dataset.kind = o.kind;
     if (o.lv) cf.dataset.lv = String(o.lv); if (o.n) { cf.dataset.n = String(o.n); cf.dataset.p = String(o.p || 0); }
+    const items = rows.map(pickItem);
     cf.innerHTML = `<div class="hwn-cfb" role="dialog" aria-modal="true" aria-label="${esc(o.title)}"><h3>${esc(o.title)}</h3><p class="hwn-pkh">${o.hint}</p>`
-      + (rows.length ? `<ul class="hwn-pkl">${rows.map((r) => `<li class="hwn-pki"><span class="hwn-pkc">${esc(r.cls || r.role || '')}</span><span class="hwn-pkn">${esc(r.name || r.id)}</span>`
+      + (rows.length ? `<ul class="hwn-pkl">${rows.map((r, i) => `<li class="hwn-pki"><button type="button" class="hwn-pkp" data-i="${i}" data-r="${esc(items[i].rarity)}" aria-label="${esc(`Характеристики: ${r.name || r.id}`)}">${pickPic(W, items[i])}</button>`
+        + `<span class="hwn-pkc">${esc(r.cls || r.role || '')}</span><span class="hwn-pkn">${esc(r.name || r.id)}</span>`
         + `<span class="hwn-pks">${esc(statsText(r.stats))}</span><button type="button" class="hwn-xcb hwn-pky" data-id="${esc(r.id)}">${o.go}</button></li>`).join('')}</ul>`
-        : `<p class="hwn-pkh">Список оружия придёт с сервера в дни ивента.</p>`)
+        : `<p class="hwn-pkh">Список ${pickSlot(o.rows) === 'armor' ? 'брони' : 'оружия'} придёт с сервера в дни ивента.</p>`)
       + `<div class="hwn-cfr"><button type="button" class="hwn-xcb hwn-cfn">Отмена</button></div></div>`;
+    const itemOf = (b) => items[+b.dataset.i];
+    cf.addEventListener('pointerover', (e) => { if (e.pointerType !== 'mouse') return; const b = e.target.closest('.hwn-pkp'); if (b && b !== TIP.el) tipShow(W, b, itemOf(b), false); });
+    cf.addEventListener('pointerout', (e) => { if (e.pointerType !== 'mouse' || !TIP.el) return; const to = e.relatedTarget; if (!to || !TIP.el.contains(to)) tipHide(W); });
+    cf.addEventListener('pointerdown', (e) => { cf._pt = e.pointerType; }, { passive: true });
+    cf.addEventListener('click', (e) => {
+      const b = e.target.closest('.hwn-pkp'); if (!b) return;
+      e.stopPropagation();
+      // мышь - подсказка уже по наведению; касание и клавиатура - показать, второе касание той же картинки - закрыть
+      if (cf._pt === 'mouse' && e.detail > 0) return;
+      if (TIP.el === b && TIP.tap) tipHide(W); else tipShow(W, b, itemOf(b), true);
+    });
+    cf.addEventListener('focusin', (e) => { const b = e.target.closest('.hwn-pkp'); if (b && b.matches(':focus-visible')) tipShow(W, b, itemOf(b), false); });
+    cf.addEventListener('focusout', (e) => { if (e.target.closest('.hwn-pkp') && !TIP.tap) tipHide(W); });
+    // окно выбора листается - подсказка не висит над другой строкой
+    cf.querySelector('.hwn-cfb').addEventListener('scroll', () => tipHide(W), { passive: true });
     el.appendChild(cf);
     try { (cf.querySelector('.hwn-pky') || cf.querySelector('.hwn-cfn')).focus({ preventScroll: true }); } catch (e) { /* без фокуса */ }
     return cf;
   }
-  // огонёк пасса забран: «Забрать» → «✓ получено»
+  // огонёк пасса забран: «Получить» → «✓ получено»; ждущих обычных наград меньше двух - «Получить всё» уходит
   function claimDone(el, lv) {
     const li = el.querySelector(`.hwn-r[data-lv="${lv}"]`); if (!li) return;
     li.classList.remove('hwn-own'); li.classList.add('hwn-got');
     const b = li.querySelector('.hwn-claim'); if (b) { const kd = document.createElement('div'); kd.className = 'hwn-kd'; kd.textContent = '✓ получено'; b.replaceWith(kd); }
+    const all = el.querySelector('.hwn-all'), left = el.querySelectorAll('.hwn-r .hwn-claim:not([data-pick])').length;
+    if (all) { if (left > 1) all.textContent = `Получить всё (${left})`; else all.remove(); }
   }
   /** Ответ комнаты на обмен / покупку / «Забрать» (app.js, ack hwBuy / hwSwap / hwPick): обновляет открытое окно. x = { ok, error, x: { op, n, price, left, got, coins, test, fail, lv } } */
   function result(x) {
@@ -458,21 +615,28 @@
     const el = w.el, W = w.W, say = el.querySelector('.hwn-say'), r = x.x;
     if (r.op === 'hwBuy') {
       el._pend = 0;
-      if (!x.ok) { say.textContent = x.error || 'Не вышло.'; return true; }
+      // 31.10 (feat/hw-armor-pick): отказ «уже куплено» (лимит 1 раз за ивент) - кнопка товара «Уже куплено»
+      if (!x.ok) { say.textContent = x.error || 'Не вышло.'; const bo = r.once && el.querySelector(`.hwn-buy[data-n="${r.n}"]`); if (bo) { bo.disabled = true; const t = bo.querySelector('.hwn-t'); if (t) t.textContent = 'Уже куплено'; } return true; }
       if (r.test) { say.textContent = `Тест: «${r.got || 'вещь'}» - ничего не списано.`; return true; }
       setHave(el, W, r.left); say.textContent = `Готово! «${r.got || 'вещь'}» теперь твоя. Осталось ${cnd(r.left)}.`;
       const bt = el.querySelector(`.hwn-buy[data-n="${r.n}"]`);
-      if (bt && !/предмет|оружие/.test((bt.closest('.hwn-g').querySelector('.hwn-kd') || {}).textContent || '')) { bt.disabled = true; const t = bt.querySelector('.hwn-t'); if (t) t.textContent = 'уже есть'; }
+      // 31.10 (feat/hw-armor-pick): товар «на выбор» с лимитом (once) - «Уже куплено»; остальные вещи можно брать снова, облик - «уже есть»
+      const row = ((W.data && W.data.shop) || []).find((s) => s.n === +r.n);
+      if (bt && row && row.once) { bt.disabled = true; const t = bt.querySelector('.hwn-t'); if (t) t.textContent = 'Уже куплено'; }
+      else if (bt && !/предмет|оружие|броня/.test((bt.closest('.hwn-g').querySelector('.hwn-kd') || {}).textContent || '')) { bt.disabled = true; const t = bt.querySelector('.hwn-t'); if (t) t.textContent = 'уже есть'; }
       return true;
     }
     if (r.op === 'hwPick') {
-      el._pend = 0; const cf = el.querySelector('.hwn-pk'); if (cf) cf.remove();
+      el._pend = 0; const cf = el.querySelector('.hwn-pk'); if (cf) { cf.remove(); tipHide(W); }
       for (const b of el.querySelectorAll('.hwn-claim')) b.disabled = false;
-      if (!x.ok) { say.textContent = x.error || 'Не вышло.'; if (r.done && r.lv) claimDone(el, r.lv); return true; }
+      if (!x.ok) { say.textContent = x.error || 'Не вышло.'; if (r.done && r.lv) claimDone(el, r.lv); if (r.all && r.done) { const ab = el.querySelector('.hwn-all'); if (ab) ab.remove(); } return true; }
       if (r.test) { say.textContent = `Тест: «${r.got || 'награда'}» - ничего не выдано.`; return true; }
-      claimDone(el, r.lv); say.textContent = `Держи: «${r.got || 'награда'}»! Уже в сумке.`;
+      // 31.10 (feat/hw-pass-claim): «Получить всё» - lvs; что не влезло в сумку - ждёт дальше (full)
+      if (r.all) { for (const v of r.lvs || []) claimDone(el, v); say.textContent = `Держи: ${r.got || 'награды'}!` + (r.full ? ' Остальное не влезло в сумку - освободи место и нажми «Получить» ещё раз.' : ''); return true; }
+      claimDone(el, r.lv); say.textContent = `Держи: «${r.got || 'награда'}»! Уже у тебя.`;
       return true;
     }
+    if (r.op === 'hwBack') { backResult(el, W, x); return true; }
     if (r.op === 'hwSwap') { if (x.ok && r.left != null && !r.test) setHave(el, W, r.left); say.textContent = !x.ok ? (x.error || 'Не вышло.') : r.coins != null ? `Держи: ${cnm(r.coins)}!` : pick(LINES.shopSwap); return true; }
     return false;
   }
@@ -480,14 +644,19 @@
   function open(id, W) {
     if (typeof document === 'undefined' || !META[id]) return null;
     close();
-    if (!document.getElementById('hwnWinCss')) { const st = document.createElement('style'); st.id = 'hwnWinCss'; st.textContent = WIN_CSS + '\n@keyframes hwnTw{0%,100%{opacity:.25}50%{opacity:1}}@keyframes hwnBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}'; document.head.appendChild(st); }
+    if (!document.getElementById('hwnWinCss')) { const st = document.createElement('style'); st.id = 'hwnWinCss'; st.textContent = WIN_CSS + '\n' + NUM_CSS + '\n@keyframes hwnTw{0%,100%{opacity:.25}50%{opacity:1}}@keyframes hwnBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}'; document.head.appendChild(st); }
     W = W || {};
     const el = document.createElement('div'); el.className = 'hwn-back'; el.dataset.hwn = id;
     const title = id === 'hwshop' ? (W.shopTitle || META.hwshop.title) : META.hwpass.title;
     el.innerHTML = `<div class="hwn-win hwn-${id === 'hwshop' ? 'shop' : 'pass'}" role="dialog" aria-modal="true" aria-label="${esc(title)}"><svg class="hwn-defs" width="0" height="0" aria-hidden="true" focusable="false">${DEFS}</svg><button type="button" class="hwn-x" aria-label="Закрыть">×</button>${id === 'hwshop' ? shopHtml(W, title) : passHtml(W)}</div>`;
-    const back = document.activeElement, key = (e) => { if (e.key === 'Escape') { e.stopPropagation(); const cf = el.querySelector('.hwn-cf'); if (cf) cf.remove(); else close(); } };
+    const back = document.activeElement, key = (e) => { if (e.key === 'Escape') { e.stopPropagation(); tipHide(W); const cf = el.querySelector('.hwn-cf'); if (cf) cf.remove(); else close(); } };
+    // 31.10 (feat/hw-pick-pics): касание мимо картинки вещи закрывает её подсказку (на телефоне наведения нет)
+    const down = (e) => { if (TIP.el && !(e.target && e.target.closest && e.target.closest('.hwn-pkp') === TIP.el)) tipHide(W); };
     el.addEventListener('click', (e) => {
       if (e.target === el || e.target.closest('.hwn-x')) { close(); return; }
+      // 31.10 (feat/hw-coin-npc): кнопки − / + поля «сколько» и секция «Обмен монет на конфеты»
+      const nb = e.target.closest('.hwn-nb'); if (nb) { e.preventDefault(); numStep(nb); return; }
+      if (backClick(el, W, e)) return;
       // 31.10 (feat/hw-pass20): выбор оружия (окно pickBox): пасс - «Забрать» (W.pick), лавка - покупка выбранного (W.buy с pick)
       const pky = e.target.closest('.hwn-pky');
       if (pky) {
@@ -500,6 +669,16 @@
         sayP.textContent = cf.dataset.kind === 'pass' ? 'Фонарщик снимает огонёк с гирлянды...' : 'Ведьма колдует над твоим обменом...';
         const body = cf.dataset.kind === 'pass' ? { lv: +cf.dataset.lv, pick: id } : { n: +cf.dataset.n, price: +cf.dataset.p, pick: id };
         Promise.resolve(fn(body, pky)).then(() => { el._pend = cf.dataset.kind === 'pass' ? -1 : +cf.dataset.n; cf.remove(); }).catch(() => { cf.remove(); sayP.textContent = 'Не вышло - попробуй ещё раз.'; });
+        return;
+      }
+      // 31.10 (feat/hw-pass-claim): «Получить всё» - все ждущие награды пасса, кроме ур. 20 (там выбор оружия)
+      const alb = e.target.closest('.hwn-all');
+      if (alb) {
+        const sayA = el.querySelector('.hwn-say');
+        if (!W.pick) { sayA.textContent = 'С сайта пока нельзя - загляни на стрим.'; return; }
+        for (const q of el.querySelectorAll('.hwn-claim')) q.disabled = true;
+        sayA.textContent = 'Фонарщик снимает огоньки с гирлянды...';
+        Promise.resolve(W.pick({ all: true }, alb)).then(() => { el._pend = -1; }).catch(() => { for (const q of el.querySelectorAll('.hwn-claim')) q.disabled = false; sayA.textContent = 'Не вышло - попробуй ещё раз.'; });
         return;
       }
       const clb = e.target.closest('.hwn-claim');
@@ -518,7 +697,7 @@
       const xb = e.target.closest('.hwn-xcb:not(.hwn-cfy):not(.hwn-cfn)');
       if (xb) {   // 29.10: обмен конфет на монеты
         const left = haveOf(el, W), say0 = el.querySelector('.hwn-say'), rate = swapRateOf(W);
-        const inp = el.querySelector('.hwn-xci'), all = !!xb.dataset.all, n0 = all ? left : xb.dataset.n ? +xb.dataset.n : Math.floor(+(inp && inp.value) || 0);
+        const inp = (xb.closest('.hwn-xc') || el).querySelector('.hwn-xci'), all = !!xb.dataset.all, n0 = all ? left : xb.dataset.n ? +xb.dataset.n : Math.floor(+(inp && inp.value) || 0);
         if (!(n0 >= 1)) { say0.textContent = left < 1 ? 'Конфет нет - нечего менять. Загляни в Изнанку!' : 'Сколько менять-то? Напиши число.'; return; }
         if (n0 > left) { say0.textContent = fill(pick(LINES.shopNo), { n: cnd(n0 - left) }); return; }
         const pl = swapPlan(n0, rate), n = pl.spend;
@@ -526,6 +705,8 @@
         if (!W.swap) { say0.textContent = 'Обмен с сайта пока не открыт - пиши в чат Ярмарки: «обмен монеты ' + n + '»'; return; }
         Promise.resolve(W.swap(all ? { all: true } : { n }, xb)).then(() => {
           say0.textContent = pick(LINES.shopSwap); setHave(el, W, left - n);   // сразу показываем; точное число придёт ответом комнаты (result)
+          // 31.10: монеты в секции обмена монет на конфеты
+          if (el.querySelector('.hwn-xb')) setMoney(el, W, moneyOf(el, W) + pl.coins);
         }).catch(() => { /* ошибку показал сам сайт (toast) */ });
         return;
       }
@@ -547,8 +728,9 @@
       // 31.10: оружие на выбор - сначала выбор класса, конфеты спишутся только после выдачи
       if (b.dataset.pick) {
         const row = ((W.data && W.data.shop) || []).find((x) => x.n === +b.dataset.n) || {};
-        pickBox(el, W, { kind: 'shop', n: +b.dataset.n, p: price, rows: row.pick || [], title: `${row.name || 'Оружие на выбор'} - ${price} 🍬`, go: `Взять за ${price}`,
-          hint: 'Выбери класс. Конфеты спишутся, только когда оружие ляжет в сумку.' });
+        const pw = PICK_WORD[pickSlot(row.pick)];
+        pickBox(el, W, { kind: 'shop', n: +b.dataset.n, p: price, rows: row.pick || [], title: `${row.name || 'Вещь на выбор'} - ${price} 🍬`, go: `Взять за ${price}`,
+          hint: `${pw[2]}. ${pw[3]}${row.once ? ' Один раз за ивент.' : ''}` });
         return;
       }
       // 29.10: покупка кнопкой: подтверждение «Обменять N 🍬 на <вещь>?» → W.buy → ответ комнаты (result)
@@ -559,10 +741,39 @@
       try { cf.querySelector('.hwn-cfy').focus({ preventScroll: true }); } catch (e2) { /* без фокуса */ }
     });
     document.addEventListener('keydown', key, true);
+    document.addEventListener('pointerdown', down, true);
+    // подсказка вещи сайта (.tip.card, z-index 270) - поверх окна НПС (9000), пока оно открыто
+    document.body.classList.add('hwn-open');
     document.body.appendChild(el);
-    WIN = { el, key, back, W };
+    WIN = { el, key, down, back, W };
     try { el.querySelector('.hwn-x').focus({ preventScroll: true }); } catch (e) { /* без фокуса */ }
     return el;
+  }
+
+  /* 31.10 (feat/hw-pass-claim, решение стримера 00:20): выбор оружия без окна НПС - кнопка «Забрать» у записи журнала (награда ур. 20,
+     незабранная до конца ивента). Тот же pickBox, поверх страницы. o: { rows, title, hint, go, hero() - герой (cb - новые классы), pick(id) -
+     Promise (запрос ушёл; отказ - выбор остаётся открытым) }. Возвращает закрыть() */
+  function pickOpen(o) {
+    if (typeof document === 'undefined') return () => {};
+    close();
+    if (!document.getElementById('hwnWinCss')) { const st = document.createElement('style'); st.id = 'hwnWinCss'; st.textContent = WIN_CSS; document.head.appendChild(st); }
+    const el = document.createElement('div'); el.className = 'hwn-back hwn-jpk';
+    const shut = () => { document.removeEventListener('keydown', key, true); el.remove(); };
+    const key = (e) => { if (e.key === 'Escape') { e.stopPropagation(); shut(); } };
+    el.innerHTML = '<div class="hwn-win" style="min-height:min(520px,100%)"></div>';
+    const win = el.firstChild;
+    pickBox(win, { hero: o.hero }, { kind: 'jr', rows: o.rows || [], title: o.title || 'Эпическое оружие на выбор', go: o.go || 'Забрать', hint: o.hint || 'Можно взять оружие любого класса - один раз.' });
+    el.addEventListener('click', (e) => {
+      if (e.target === el || e.target.closest('.hwn-cfn')) { shut(); return; }
+      const b = e.target.closest('.hwn-pky'); if (!b || b.disabled) return;
+      const all = el.querySelectorAll('.hwn-pky'); for (const q of all) q.disabled = true;
+      const it = b.closest('.hwn-pki'); if (it) it.classList.add('hwn-pkon');
+      Promise.resolve(o.pick && o.pick(b.dataset.id)).then(() => shut()).catch(() => { for (const q of all) q.disabled = false; if (it) it.classList.remove('hwn-pkon'); });
+    });
+    document.addEventListener('keydown', key, true);
+    document.body.appendChild(el);
+    try { (el.querySelector('.hwn-pky') || el.querySelector('.hwn-cfn')).focus({ preventScroll: true }); } catch (e) { /* без фокуса */ }
+    return shut;
   }
 
   /* ===================== ПОЯВЛЕНИЕ НПС (30.10, feat/hw-npc-entrance) ===================== */
@@ -741,5 +952,5 @@
 @keyframes hwnBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
 @media (prefers-reduced-motion:reduce){.hwn-live *{animation:none!important}}`;
 
-  return { C, INK, DEFS, META, SHAPE, S_BASE, WEBCAM, LINES, witch, stupaArt, stupaParts, enter, inView, rectOf, polyline, ghostRoute, ghostWalkArt, archArt, ghostArt, ghostBody, garland, lampAt, geo, inWebcam, camView, open, close, result, swapStep, swapPlan, shopHtml, passHtml, LIVE_CSS, WIN_CSS, esc, candy, jar, board, flame, pumpLamp };
+  return { C, INK, DEFS, META, SHAPE, S_BASE, WEBCAM, LINES, witch, stupaArt, stupaParts, enter, inView, rectOf, polyline, ghostRoute, ghostWalkArt, archArt, ghostArt, ghostBody, garland, lampAt, geo, inWebcam, camView, open, close, result, pickOpen, swapStep, swapPlan, backPlan, backAll, shopHtml, passHtml, LIVE_CSS, WIN_CSS, esc, candy, jar, board, flame, pumpLamp };
 });

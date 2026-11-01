@@ -949,14 +949,15 @@
         ${it.qty ? `<span class="cnt">${esc(INV.oreN ? INV.oreN(it.q) : it.q)}</span>` : it.n > 1 ? `<span class="cnt"${h.sg && !it.wearable && it.n > (h.sg.bs || 20) ? ` title="Стопка больше ${h.sg.bs || 20} — занимает ${Math.ceil(it.n / (h.sg.bs || 20))} ячейки сумки"` : ''}>×${it.n}${h.sg && !it.wearable && it.n > (h.sg.bs || 20) ? `<em class="cc"> · ${Math.ceil(it.n / (h.sg.bs || 20))} яч.</em>` : ''}</span>` : ''}${dv.better && !h.ghost ? `<span class="upg" title="Лучше надетого">${ico('up')}</span>` : ''}</button>`;
     };
 
-    el.innerHTML = `<div class="hero-grid${h.ghost ? ' is-ghost' : ''}${i2 ? ' inv2' : ''}">
+    // 01.11: «Облик» конфигуратором (новинка lookConfig) - ник и класс героя внутри карточки, под человечком (эскиз стримера)
+    const lc = view === 'look' && lcOn(h);
+    const plate = `<h1 class="nm">${esc(h.name)}${awb(h.aw)}</h1>${window.LGAch && h.ac ? window.LGAch.plate(h, SKX) : ''}
+          <div class="role"><span class="rl">${h.ghost ? ico('ghost') + 'Призрак' : esc(roleOf(h.role, h.roleName))}</span><span class="lv">Ур. ${h.level}</span></div>`;
+    el.innerHTML = `<div class="hero-grid${h.ghost ? ' is-ghost' : ''}${i2 ? ' inv2' : ''}${lc ? ' lc-on' : ''}">
       <section class="panel stage" aria-label="Герой и снаряжение">
         ${viewsBar}
-        ${view === 'look' ? lookHtml(h) : `${dollHtml(h, { sel: selUid, mood: hpMax && hpNow / hpMax < 0.3 ? 'hurt' : 'stern', kit, off: i2 })}${i2 ? '<div data-inv2-doll></div>' : ''}${h.ghost ? '' : `<div class="kit filters" role="group" aria-label="Вид героя"><button type="button" data-kit="battle" aria-pressed="${kit === 'battle'}" title="Как в бою: оружие, шлем вместо шапки, доспех, амулет">Боевой</button><button type="button" data-kit="peace" aria-pressed="${kit === 'peace'}" title="Как на привале и в городе: своя шапка и облик">Походный</button></div>`}`}
-        <div class="plate">
-          <h1 class="nm">${esc(h.name)}${awb(h.aw)}</h1>${window.LGAch && h.ac ? window.LGAch.plate(h, SKX) : ''}
-          <div class="role"><span class="rl">${h.ghost ? ico('ghost') + 'Призрак' : esc(roleOf(h.role, h.roleName))}</span><span class="lv">Ур. ${h.level}</span></div>
-        </div>
+        ${view === 'look' ? (lc ? lcHtml(h, plate) : lookHtml(h)) : `${dollHtml(h, { sel: selUid, mood: hpMax && hpNow / hpMax < 0.3 ? 'hurt' : 'stern', kit, off: i2 })}${i2 ? '<div data-inv2-doll></div>' : ''}${h.ghost ? '' : `<div class="kit filters" role="group" aria-label="Вид героя"><button type="button" data-kit="battle" aria-pressed="${kit === 'battle'}" title="Как в бою: оружие, шлем вместо шапки, доспех, амулет">Боевой</button><button type="button" data-kit="peace" aria-pressed="${kit === 'peace'}" title="Как на привале и в городе: своя шапка и облик">Походный</button></div>`}`}
+        ${lc ? '' : `<div class="plate">${plate}</div>`}
         ${h.ghost ? `<div class="ghostnote"><div class="gt">Пал в Походе</div><div class="cd" data-until="${+h.deadUntil || 0}">${left(h.deadUntil)}</div><div class="gs">до воскрешения${h.deadUntil ? ' · ' + new Date(h.deadUntil).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : ''}</div><p class="gh">Раньше — свиток возрождения, молитва жреца или донат от 100 ₽ с текстом <b>воскресить @${esc(h.login)}</b></p></div>` : ''}
         ${h.busy && !h.ghost ? `<div class="busybar" role="status">⚔ ${BUSY_NOTE}</div>` : ''}
       </section>
@@ -996,6 +997,7 @@
     el.querySelectorAll('[data-close]').forEach((b) => b.onclick = closeDetail);
     el.querySelectorAll('[data-view]').forEach((b) => b.onclick = () => goView(b.dataset.view));
     fitName($('.plate .nm', el));
+    if (lc) lcBind(el);
     el.querySelectorAll('[data-gosoc]').forEach((b) => b.onclick = () => { lgv = 'soc'; tab('legion'); window.scrollTo(0, 0); });
     el.querySelectorAll('[data-kit]').forEach((b) => b.onclick = () => { kit = b.dataset.kit === 'peace' ? 'peace' : 'battle'; try { localStorage.setItem('lgKit', kit); } catch {} renderHero(); });
     el.querySelectorAll('[data-wear]').forEach((b) => b.onclick = () => { const v = b.dataset.v; let val = null; try { val = JSON.parse(v); } catch {} act('/api/wear', { field: b.dataset.wear, value: val }, 'Облик изменён', b); });
@@ -1689,6 +1691,178 @@
         <p class="note lk-tip">Новое покупается в Шатре на Ярмарке; надевать можно в любой момент, кроме боя.</p></div>
     </div>`;
   }
+  /* ---------- 01.11 (стример, эскиз): «Облик» конфигуратором - новинка lookConfig (флаг lc у героя, site.lookConfigPublic) ----------
+     Одна карточка: в центре человечек (тот же рисунок, что в прежнем «Облике»), вокруг - строки «‹ Глаза ›» с текущим вариантом под названием.
+     Стрелки листают только то, что у игрока есть: «по нику» (бесплатно, всегда) + купленное (hero.wardrobe.own) - как кнопки прежнего вида.
+     Шапка - над головой, лицо (глаза, рот, румянец) и аура - справа от головы, форма и цвета - под ником; на узкой карточке (телефон) -
+     всё сеткой под человечком (container query, ничего не наезжает на рисунок). Аксессуаров можно несколько - они кнопками.
+     Предпросмотр: стрелка сразу перерисовывает человечка (только он, и только при смене), надевается тем же op 'wear' после паузы
+     LC_WAIT мс без нажатий - частые нажатия склеиваются в один запрос на поле. Ограничения - прежние (бой, только своё - проверяет сервер). */
+  const LC_WAIT = 650;
+  // где строка стоит: top - над головой, side - справа от головы, bot - под ником
+  const LC_AT = { hat: 'top', eyes: 'side', mouth: 'side', blush: 'side', aura: 'side', shape: 'bot', color: 'bot', color2: 'bot', accColor: 'bot', capeColor: 'bot' };
+  // эти части видны всегда (как на эскизе), даже если выбрать пока нечего; остальные - только когда есть из чего выбрать
+  const LC_CORE = new Set(['hat', 'eyes', 'mouth', 'shape', 'color']);
+  // draft - ещё не отправленное: { поле: { send - что уйдёт в wear, look - что надеть на человечка (null - по нику) } }
+  const LC = { draft: {}, t: 0, flying: false, focus: null, focusAt: 0 };
+  const lcOn = (h) => !!(h && h.lc && h.wardrobe);
+  // облик с предпросмотром: надетое (с ещё не применённым на сервере) + выбранное стрелками
+  function lcLook(h) {
+    const lk = { ...(((h && h.wardrobe) || {}).cur || {}) };
+    for (const [f, d] of Object.entries(LC.draft)) { if (d.look == null || (Array.isArray(d.look) && !d.look.length)) delete lk[f]; else lk[f] = d.look; }
+    return Object.keys(lk).length ? lk : null;
+  }
+  // варианты каждой части: [{ v - значение облика (null - по нику), send - что уйдёт в wear, name, sw - образец цвета, nick }]
+  function lcModel(h) {
+    const W0 = h.wardrobe || { cur: {}, own: {} }, cur0 = W0.cur || {}, own = W0.own || {};
+    let DEF = null; try { DEF = D() && D().defaultsFor ? D().defaultsFor(String(h.login || '')) : null; } catch (e) { DEF = null; }
+    const same = (f, a, b) => { try { if (D() && D().sameLook) return D().sameLook(f, a, b); } catch (e) { /* сборки человечков нет - сравниваем сами */ } return a != null && b != null && sameV(a, b); };
+    const PR = lookProbe(h.login || '', cur0);
+    const cur = lcLook(h) || {};
+    const out = [], rest = [];
+    for (const [f, label0, cat] of LOOK_FIELDS) {
+      if (f === 'acc') continue;
+      if (PR && (f === 'color2' || f === 'accColor' || f === 'capeColor') && !PR[f]) continue;
+      const lbl = f !== 'color2' || !PR ? label0 : PR.c2hat ? (PR.c2acc ? 'Цвет шапки и аксессуаров' : 'Цвет шапки') : PR.c2acc ? 'Цвет аксессуаров' : 'Цвет деталей';
+      const def = DEF && DEF[f];
+      const ownF = Array.isArray(own[f]) ? own[f] : [];
+      const list = def ? ownF.filter((v) => !same(f, v, def.v)) : ownF;
+      const isColor = /color/i.test(f);
+      const opts = [{ v: null, send: null, name: def ? def.name : 'Как по нику', sw: isColor && def ? def.v : null, nick: true }]
+        .concat(list.map((v) => ({ v: f === 'blush' ? (v === true || v === 'true') : v, send: f === 'blush' ? String(v) : v, name: cat ? lookName(cat, v) : lookName(null, v), sw: isColor ? v : null })));
+      const cv = cur[f];
+      const byNick = cv == null || (!!def && same(f, cv, def.v));
+      let i = byNick ? 0 : opts.findIndex((o, k) => k > 0 && (f === 'blush' ? String(o.v) === String(cv) : same(f, o.v, cv)));
+      const row = { f, lbl, opts, i, at: LC_AT[f] || 'bot', isColor, curName: i >= 0 ? opts[i].name : cat ? lookName(cat, cv) : lookName(null, cv), curSw: i >= 0 ? opts[i].sw : isColor ? cv : null };
+      if (opts.length > 1 || LC_CORE.has(f)) out.push(row); else rest.push(row);
+    }
+    // аксессуары: можно несколько - кнопками (надет / снят), как в прежнем виде
+    const accOwn = Array.isArray(own.acc) ? own.acc : [], accOn = Array.isArray(cur.acc) ? cur.acc : [];
+    const acc = accOwn.map((v) => ({ v, name: lookName('acc', v), on: accOn.some((x) => sameV(x, v)) }));
+    return { rows: out, rest, acc, accOn };
+  }
+  const lcSw = (sw) => (sw ? `<i class="sw" style="background:${esc(swatch(sw))}"></i>` : '');
+  function lcRowHtml(r, off) {
+    const n = r.opts.length, one = n < 2;
+    const pos = r.i >= 0 ? `${r.i + 1} / ${n}` : `- / ${n}`;
+    const dis = off || one ? ' disabled' : '';
+    return `<div class="lc-row" data-lc="${esc(r.f)}" data-at="${r.at}" role="group" aria-label="${esc(r.lbl)}">
+      <button type="button" class="lc-a" data-lcs="-1" aria-label="${esc(r.lbl)}: предыдущий вариант"${dis}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <div class="lc-m"><span class="lc-n">${esc(r.lbl)}${n > 1 ? ` <small class="lc-k" title="Доступно вариантов">${pos}</small>` : ''}</span><span class="lc-v" aria-live="polite">${r.isColor ? lcSw(r.curSw) : ''}<span>${esc(r.curName)}</span>${r.i === 0 ? '<small>по нику</small>' : ''}</span></div>
+      <button type="button" class="lc-a" data-lcs="1" aria-label="${esc(r.lbl)}: следующий вариант"${dis}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>`;
+  }
+  // plate - ник, титул и класс героя (та же плашка, что под куклой); в конфигураторе - под человечком, как на эскизе
+  function lcHtml(h, plate) {
+    const M = lcModel(h), off = !!h.busy;
+    const at = (k) => M.rows.filter((r) => r.at === k).map((r) => lcRowHtml(r, off)).join('');
+    const accRow = M.acc.length ? `<div class="lc-acc" role="group" aria-label="Аксессуары"><span class="lc-n">Аксессуары <small class="lc-k">надето ${M.accOn.length}</small></span><div class="lc-chips">${M.acc.map((a) => `<button type="button" data-lcacc="${esc(a.v)}" aria-pressed="${a.on}"${off ? ' disabled' : ''}>${esc(a.name)}</button>`).join('')}</div></div>` : '';
+    const rest = M.rest.concat(M.acc.length ? [] : [{ lbl: 'Аксессуары', curName: 'Без аксессуаров' }]);
+    const more = rest.length ? `<details class="lk-more lc-more"><summary>Ещё по нику - выбрать пока нечего (${rest.length})</summary><p class="lk-fxs">${rest.map((r) => `<span class="lk-fx">${r.isColor ? lcSw(r.curSw) : ''}<b>${esc(r.lbl)}</b> ${esc(r.curName)}</span>`).join('')}</p></details>` : '';
+    return `<div class="lc" data-lcard>
+      <div class="lc-in">
+        ${off && !h.ghost ? `<p class="note busyn lc-busy">⚔ Идёт бой на стриме - облик менять нельзя. Сменить можно после боя.</p>` : ''}
+        <div class="lc-top">${at('top')}</div>
+        <div class="fig lc-fig">${doodle(h.login, { ...h, look: lcLook(h) }, 'happy')}</div>
+        <div class="lc-side">${at('side')}</div>
+        <div class="plate lc-plate">${plate}</div>
+        <div class="lc-bot">${at('bot')}${accRow}</div>
+      </div>
+      ${more}
+      <p class="note lk-tip">Стрелки листают только то, что у тебя есть, - надевается само. Новое покупается в Шатре на Ярмарке; менять можно в любой момент, кроме боя.</p>
+    </div>`;
+  }
+  // человечек перерисовывается только при смене облика (новый элемент - аура и «дыхание» заводятся заново, старый уходит из LIVE сам)
+  function lcPaint(card, h) {
+    const old = card.querySelector('.lc-fig'); if (!old) return;
+    const key = JSON.stringify(lcLook(h));
+    if (old.dataset.lk === key) return;
+    const fig = document.createElement('div'); fig.className = 'fig lc-fig'; fig.dataset.lk = key;
+    fig.innerHTML = doodle(h.login, { ...h, look: lcLook(h) }, 'happy');
+    old.replaceWith(fig);
+    calm(card); auraLive(fig, true);
+  }
+  function lcStep(card, f, dir) {
+    const h = ME && ME.hero; if (!h || h.busy) return;
+    const r = lcModel(h).rows.find((x) => x.f === f); if (!r || r.opts.length < 2) return;
+    const n = r.opts.length, i = r.i < 0 ? (dir > 0 ? 0 : n - 1) : (r.i + dir + n) % n, o = r.opts[i];
+    const was = (((h.wardrobe || {}).cur) || {})[f];
+    // вернулись к тому, что уже надето, - отправлять нечего
+    const back = o.nick ? was == null : was != null && (f === 'blush' ? String(was) === String(o.v) : sameV(was, o.v));
+    if (back) delete LC.draft[f]; else LC.draft[f] = { send: o.send, look: o.v };
+    const row = card.querySelector(`.lc-row[data-lc="${CSS.escape(f)}"]`);
+    if (row) {
+      const nr = { ...r, i, curName: o.name, curSw: o.sw };
+      const tmp = document.createElement('div'); tmp.innerHTML = lcRowHtml(nr, false);
+      const nv = tmp.querySelector('.lc-v'), nk = tmp.querySelector('.lc-k');
+      const v = row.querySelector('.lc-v'), k = row.querySelector('.lc-k');
+      if (v && nv) { v.innerHTML = nv.innerHTML; v.classList.remove('lc-in-l', 'lc-in-r'); void v.offsetWidth; v.classList.add(dir > 0 ? 'lc-in-r' : 'lc-in-l'); }
+      if (k && nk) k.textContent = nk.textContent;
+    }
+    lcPaint(card, h);
+    lcSoon();
+  }
+  function lcAcc(card, v) {
+    const h = ME && ME.hero; if (!h || h.busy) return;
+    const lk = lcLook(h) || {}, on = Array.isArray(lk.acc) ? lk.acc : [];
+    const has = on.some((x) => sameV(x, v));
+    // плащ один (как wear() «Костюмерной»): надел обычный - снимается плащ первопроходца, и наоборот
+    const capes = ['cape', 'pioneer'], other = capes.includes(v) ? capes.filter((x) => x !== v) : [];
+    const next = has ? on.filter((x) => !sameV(x, v)) : [...on.filter((x) => !sameV(x, v) && !other.includes(x)), v];
+    // как прежние кнопки: одно нажатие «надеть» - одно значение (сервер добавит к надетым и сам уберёт лишнее сверх предела),
+    // снять или несколько нажатий подряд (склейка) - ровно этот список
+    const single = !has && !LC.draft.acc;
+    LC.draft.acc = { send: single ? v : next, look: next };
+    card.querySelectorAll('[data-lcacc]').forEach((b) => b.setAttribute('aria-pressed', String(next.some((x) => sameV(x, b.dataset.lcacc)))));
+    const k = card.querySelector('.lc-acc .lc-k'); if (k) k.textContent = 'надето ' + next.length;
+    lcPaint(card, h);
+    lcSoon();
+  }
+  const lcSoon = () => { clearTimeout(LC.t); LC.t = setTimeout(lcFlush, LC_WAIT); };
+  // отправка: по одному запросу на изменённое поле; пока летит - новые нажатия ждут следующего захода
+  async function lcFlush() {
+    if (LC.flying) { lcSoon(); return; }
+    const todo = Object.entries(LC.draft).filter(([, d]) => !d.sent);
+    if (!todo.length) return;
+    LC.flying = true;
+    let okN = 0;
+    for (const [f, d] of todo) {
+      d.sent = true;
+      const r = await api('/api/wear', { field: f, value: d.send });
+      // за время запроса поле снова листали - его отправит следующий заход
+      if (LC.draft[f] === d) delete LC.draft[f];
+      if (!r || !r.ok) { toast((r && r.error) || 'Не получилось', true); continue; }
+      okN++;
+      if (r.hero) ME.hero = r.hero;
+    }
+    LC.flying = false;
+    if (okN) toast('Облик изменён');
+    if (Object.keys(LC.draft).length) { lcSoon(); return; }
+    last = ''; renderHero();
+    clearTimeout(act.pt); if (ME && ME.hero && ME.hero.pending) act.pt = setTimeout(() => { if (ME && ME.hero && ME.hero.pending) toast('Сохранено - применится, когда игра стримера будет в сети'); }, 6000);
+  }
+  function lcBind(el) {
+    const card = el.querySelector('[data-lcard]'); if (!card) return;
+    const fig = card.querySelector('.lc-fig'); if (fig) fig.dataset.lk = JSON.stringify(lcLook(ME.hero));
+    card.addEventListener('click', (e) => {
+      const s = e.target.closest('[data-lcs]'); if (s && !s.disabled) { const row = s.closest('[data-lc]'); if (row) lcStep(card, row.dataset.lc, +s.dataset.lcs); return; }
+      const a = e.target.closest('[data-lcacc]'); if (a && !a.disabled) lcAcc(card, a.dataset.lcacc);
+    });
+    // стрелки ← → по строке, на которой фокус
+    card.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      const row = e.target.closest && e.target.closest('[data-lc]'); if (!row) return;
+      e.preventDefault(); lcStep(card, row.dataset.lc, e.key === 'ArrowRight' ? 1 : -1);
+    });
+    card.addEventListener('focusin', (e) => {
+      const b = e.target.closest && e.target.closest('[data-lcs], [data-lcacc]'); if (!b) return;
+      const row = b.closest('[data-lc]');
+      LC.focus = row ? `.lc-row[data-lc="${CSS.escape(row.dataset.lc)}"] [data-lcs="${CSS.escape(b.dataset.lcs)}"]` : `[data-lcacc="${CSS.escape(b.dataset.lcacc)}"]`; LC.focusAt = Date.now();
+    });
+    // вкладку перерисовали (ответ сервера, обновление героя), а фокус был в карточке - возвращаем на ту же стрелку
+    const ae = document.activeElement;
+    if (LC.focus && Date.now() - LC.focusAt < 15000 && (!ae || ae === document.body)) { const b = card.querySelector(LC.focus); if (b && !b.disabled) b.focus({ preventScroll: true }); }
+  }
   // 18.10: SVG-анимации человечка (искры ауры, хвосты) вместе со свечением оружия (размытие) заставляли браузер
   // перерисовывать рисунок каждый кадр — вкладка «Персонаж» грузила процессор (замер: ~120% ядра в Chromium без видеокарты,
   // на паузе — 0,6%). Человечек стоит неподвижно (кадр, где искры видны) и оживает, пока на него наведена мышь
@@ -2065,6 +2239,36 @@
     return diff === 0 ? 'Сегодня' : diff === 1 ? 'Вчера' : d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }); };
   const hm = (t) => new Date(t).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
   const coinsTxt = (c) => (c ? `<span class="jr-c ${c > 0 ? 'up' : 'dn'}">${c > 0 ? '+' : '−'}${money(Math.abs(c))}</span>` : '');
+  /* 31.10 (feat/hw-pass-claim, решение стримера 00:20): запись журнала с наградой, ждущей кнопки (e.cl - общий механизм: ивенты досылают
+     незабранное). Кнопка «Забрать» → /api/jClaim → ответ комнаты (results, op jClaim): запись обновляется (текст, cl). cl.pick - сначала выбор
+     оружия (окно выбора из hwnpc.js, тот же pickBox) */
+  const JCL_PEND = new Set();
+  const jClaimBtn = (e) => (e.cl && !e.cl.done ? `<button type="button" class="btn jr-cl" data-jclaim="${esc(e.id)}"${JCL_PEND.has(e.id) ? ' disabled' : ''}>${esc(e.cl.go || 'Забрать')}</button>` : '');
+  const jEntry = (id) => (JL || []).find((x) => x.id === id) || (JA || []).find((x) => x.id === id) || null;
+  async function jClaimSend(id, o, pick) {
+    JCL_PEND.add(id); if (logOn()) renderLog();
+    const r = await api('/api/jClaim', { id, ...(o ? { o } : {}), ...(pick ? { pick } : {}) }).catch(() => null);
+    if (!r || !r.ok) { JCL_PEND.delete(id); if (logOn()) renderLog(); toast((r && r.error) || 'Забрать не вышло - попробуй ещё раз', true); throw new Error('jClaim'); }
+    toast('Награда в пути - через пару секунд будет у тебя');
+  }
+  async function jClaim(b) {
+    const e = jEntry(b.dataset.jclaim); if (!e || !e.cl) return;
+    if (e.cl.pick) {
+      try {
+        if (!window.LGHwNpc || !window.LGHwNpc.pickOpen) await loadJs(`/site/hwnpc.js?v=${(window.LG_CITYV || {}).hn || ''}`);
+        window.LGHwNpc.pickOpen({ rows: e.cl.rows || [], hero: () => ME && ME.hero, title: 'Эпическое оружие на выбор', go: 'Забрать', hint: 'Награда 20-го огня пасса. Можно взять оружие любого класса - один раз.', pick: (id) => jClaimSend(e.id, e.cl.o, id) });
+      } catch (x) { toast('Окно выбора не загрузилось - обнови страницу', true); }
+      return;
+    }
+    jClaimSend(e.id, e.cl.o).catch(() => null);
+  }
+  // ответ комнаты: обновить запись (текст, что ещё ждёт) и сказать, что вышло
+  function jClaimDone(x) {
+    const r = x.x || {}, id = r.jid; JCL_PEND.delete(id);
+    for (const L of [JL, JA]) { const e = L && L.find((y) => y.id === id); if (!e) continue; if (r.t) e.t = r.t; if (r.cl) e.cl = r.cl; else if (r.closed) e.cl = { ...(e.cl || {}), done: 1 }; }
+    if (logOn()) renderLog(); miniPatch();
+    toast(x.ok ? `Получено: ${r.got || 'награда'}${r.full ? ' (остальное не влезло в сумку - освободи место и нажми ещё раз)' : ''}` : (x.error || 'Забрать не вышло'), !x.ok);
+  }
   function renderLog() {
     const el = $('#jrFull'), all = JL || []; if (!el) return;
     const list = all;
@@ -2079,7 +2283,7 @@
       const d = dayName(e.at); if (d !== day) { day = d; rows += `<li class="jr-day">${esc(d)}</li>`; }
       const lbl = e.r ? ((JRK[e.k] || JR)[e.r] ?? JR[e.r]) : '';
       rows += `<li class="jr-e" data-k="${esc(e.k)}"><time datetime="${new Date(e.at).toISOString()}">${hm(e.at)}</time><span class="jr-k">${esc(JKN[e.k] || 'Прочее')}</span><p class="jr-t">${esc(itemText(e.t))}</p>`
-        + `<span class="jr-m">${lbl ? `<span class="jr-r ${e.r}">${esc(lbl)}</span>` : ''}${coinsTxt(+e.c || 0)}${+e.x ? `<span class="jr-x">+${+e.x} опыта</span>` : ''}</span></li>`;
+        + `<span class="jr-m">${lbl ? `<span class="jr-r ${e.r}">${esc(lbl)}</span>` : ''}${coinsTxt(+e.c || 0)}${+e.x ? `<span class="jr-x">+${+e.x} опыта</span>` : ''}${jClaimBtn(e)}</span></li>`;
     }
     const EMPTY = { all: 'Журнал пуст. Сюда попадут бои, находки, новые вещи, покупки, выигрыши и проигрыши, награды монетами, новые уровни, смерть и воскрешение героя.', fight: 'Боёв пока не было.', shop: 'Покупок пока не было.', find: 'Находок пока не было.', coins: 'Монет пока не было.' };
     el.innerHTML = `<div class="jr panel">
@@ -2091,6 +2295,7 @@
       <p class="foot">Журнал обновляется сам, через несколько секунд после события.</p>
     </div>`;
     const mb = el.querySelector('[data-jmore]'); if (mb) mb.onclick = () => { mb.disabled = true; mb.textContent = 'Загружаю…'; moreLog(); };
+    el.querySelectorAll('[data-jclaim]').forEach((b) => b.onclick = () => jClaim(b));
     el.querySelectorAll('[data-jf]').forEach((b) => b.onclick = () => { if (jf === b.dataset.jf) return; jf = b.dataset.jf; try { localStorage.setItem('lgJf', jf); } catch {} JL = null; jAt = ''; jNext = null; jCap = 300; loadLog(); });
   }
 
@@ -2499,9 +2704,13 @@
       if (shownRes.has(x.id)) continue;
       if (x.x && x.x.op === 'qact') { shownRes.add(x.id); if (window.LGQuest && window.LGQuest.result) window.LGQuest.result(x); else if (!x.ok) toast(x.error || 'Не вышло', true); continue; }   // 25.10: ответ игры на кнопку похода
       if (x.x && x.x.op === 'hwSwap') { shownRes.add(x.id); try { window.LGHwNpc && window.LGHwNpc.result && window.LGHwNpc.result(x); } catch (e) { /* окно уже закрыто */ } toast(x.ok ? (x.x.coins != null ? `Обменяно ${x.x.n} конфет на монеты: +${x.x.coins}` : 'Конфеты обменяны на монеты') : 'Обмен не вышел: ' + (x.error || 'попробуй ещё раз'), !x.ok); continue; }   // 29.10: «Ступа сладостей» - обмен конфет на монеты
+      // 31.10 (feat/hw-coin-npc): «Ступа сладостей» - обмен монет на конфеты
+      if (x.x && x.x.op === 'hwBack') { shownRes.add(x.id); try { window.LGHwNpc && window.LGHwNpc.result && window.LGHwNpc.result(x); } catch (e) { /* окно уже закрыто */ } toast(x.ok ? (x.x.test ? 'Тест: ничего не списано' : `Обменяно ${x.x.coins} монет на конфеты: +${x.x.n}`) : 'Обмен не вышел: ' + (x.error || 'попробуй ещё раз'), !x.ok); continue; }
       if (x.x && x.x.op === 'hwBuy') { shownRes.add(x.id); try { window.LGHwNpc && window.LGHwNpc.result && window.LGHwNpc.result(x); } catch (e) { /* окно уже закрыто */ } toast(x.ok ? (x.x.test ? `Тест: «${x.x.got || 'вещь'}» - ничего не списано` : `Обмен готов: «${x.x.got || 'вещь'}» - за ${x.x.price} конфет`) : 'Обмен не вышел: ' + (x.error || 'попробуй ещё раз'), !x.ok); continue; }   // 29.10: покупка в «Ступе сладостей» кнопкой
-      // 31.10 (feat/hw-pass20): «Забрать» в окне Призрачного Фонарщика
-      if (x.x && x.x.op === 'hwPick') { shownRes.add(x.id); try { window.LGHwNpc && window.LGHwNpc.result && window.LGHwNpc.result(x); } catch (e) { /* окно уже закрыто */ } toast(x.ok ? (x.x.test ? `Тест: «${x.x.got || 'награда'}» - ничего не выдано` : `Награда пасса: «${x.x.got || 'награда'}» - в сумке`) : 'Забрать не вышло: ' + (x.error || 'попробуй ещё раз'), !x.ok); continue; }
+      // 31.10 (feat/hw-pass20): «Получить» в окне Призрачного Фонарщика; feat/hw-pass-claim: all - «Получить всё»
+      if (x.x && x.x.op === 'hwPick') { shownRes.add(x.id); try { window.LGHwNpc && window.LGHwNpc.result && window.LGHwNpc.result(x); } catch (e) { /* окно уже закрыто */ } toast(x.ok ? (x.x.test ? `Тест: «${x.x.got || 'награда'}» - ничего не выдано` : x.x.all ? `Награды пасса получены: ${x.x.got || (x.x.lvs || []).length}` : `Награда пасса получена: «${x.x.got || 'награда'}»`) : 'Получить не вышло: ' + (x.error || 'попробуй ещё раз'), !x.ok); continue; }
+      // 31.10 (feat/hw-pass-claim): «Забрать» у записи журнала
+      if (x.x && x.x.op === 'jClaim') { shownRes.add(x.id); jClaimDone(x); continue; }
       if (x.x && x.x.op === 'fcoin') { shownRes.add(x.id); if (window.LGFriends && window.LGFriends.coinDone) window.LGFriends.coinDone(x); else toast(x.ok ? 'Монета дня подарена' : 'Монета дня: ' + (x.error || 'не вышло'), !x.ok); continue; }   // 29.10: монета дня друзьям
       if (x.x && x.x.op === 'seal') { shownRes.add(x.id); toast('Печать применена: у героя теперь свой стиль'); continue; }   // 26.10: Печать Метаморфозы
       if (x.x && /^(st|auc|note)/.test(x.x.op || '')) { shownRes.add(x.id); storeNote(x); continue; }

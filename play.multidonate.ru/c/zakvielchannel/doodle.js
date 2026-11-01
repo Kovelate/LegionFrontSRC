@@ -32,7 +32,7 @@
     // снаряжение (id из modules/legionary/items.json → look)
     weapons: ['sword', 'gladius', 'dagger', 'axe', 'club', 'mace', 'hammer', 'spear', 'pitchfork', 'bow', 'staff', 'crook', 'censer', 'kris', 'skullstaff', 'grimoire', 'holymace'],   // 20.10: + оружие новых классов
     shields: ['scutum', 'round', 'buckler', 'barrel'],
-    armors: ['lorica', 'robe', 'leather', 'shroud', 'plate'],   // доспехи: лорика (физ. броня), мантия (маги и жрецы); 23.10: вещи классов — кожа разбойника, саван некроманта, латы паладина
+    armors: ['lorica', 'robe', 'leather', 'shroud', 'plate', 'hwbarrow', 'hwthicket', 'hwchapel', 'hwshadow', 'hwgrave', 'hwmidnight'],   // доспехи: лорика (физ. броня), мантия (маги и жрецы); 23.10: вещи классов — кожа разбойника, саван некроманта, латы паладина
     rarities: ['common', 'uncommon', 'rare', 'epic', 'legendary'],
   };
 
@@ -204,6 +204,8 @@
   function armorArt(kind, rar) {
     // 23.10: доспехи классов — рисунок ядра по токенам стиля, если стиль не рисует их сам (st.classArmor)
     if (CLASS_ARMOR.has(kind) && !(S && S.classArmor === true)) { try { return classArmorIcon(kind, rar, wearTok(S)); } catch (e) { return ''; } }
+    // 31.10 (feat/hw-armor-pick): броня Хэллоуина - свой рисунок ядра для всех стилей (стиль со своим - st.hwArmor = true)
+    if (HW_ARMOR.has(kind) && !(S && S.hwArmor === true)) { try { return hwArmorIcon(kind, rar, wearTok(S)); } catch (e) { return ''; } }
     const own = S && typeof S.armor === 'function' ? S : null, base = STYLES.legion;
     try { if (own) return own.armor(kind, rar); } catch (e) { if (!broken.has(S.id + ':armor')) { broken.add(S.id + ':armor'); console.error(`[человечки] доспехи стиля «${S.id}» с ошибкой, рисую доспехи «Легиона»:`, e); } }
     return base && typeof base.armor === 'function' ? base.armor(kind, rar) : '';
@@ -357,14 +359,17 @@
   // доспех поверх тела: обрезан по контуру тела (clipPath), сверху — снова контур тела. Стиль может нарисовать свой: st.wornArmor(k, gear)
   function wornArmor(st, k, g) {
     const b = k.b; if (!b || !b.d) return '';
-    if (typeof st.wornArmor === 'function') { try { const own = st.wornArmor(k, g); if (typeof own === 'string') return own; } catch (e) {} }
+    // 31.10 (feat/hw-armor-pick): броню Хэллоуина рисует ядро во всех стилях, если стиль не заявил свою (st.hwArmor)
+    const hwA = HW_ARMOR.has(g.a) && st.hwArmor !== true;
+    if (!hwA && typeof st.wornArmor === 'function') { try { const own = st.wornArmor(k, g); if (typeof own === 'string') return own; } catch (e) {} }
     const W = st.wear || {}, line = W.line || '#f5f2ff', ink = W.ink || '#15122e';
     const y0 = Math.round(k.my + 12), key = wornKey(st.id, g.a, g.ar, g.am, b.d, y0, k.sx.l, k.sx.r, b.armY);
     let out = wornCache.get(key);
     if (out === undefined) {
       const id = 'jdW' + jhash(key).toString(36), rc = W_RAR[g.ar] || null, L = k.L, R = k.R;
       let inner = '', top = '';
-      if (CLASS_ARMOR.has(g.a)) { const c = classWorn(g, k, y0, { line, ink }); inner = c.inner; top = c.top; }   // 23.10: доспехи классов
+      if (hwA) { const c = hwWorn(g, k, y0, { line, ink }); inner = c.inner; top = c.top; }
+      else if (CLASS_ARMOR.has(g.a)) { const c = classWorn(g, k, y0, { line, ink }); inner = c.inner; top = c.top; }   // 23.10: доспехи классов
       else if (g.a === 'robe') {
         const cl = W_CLOTH[g.ar] || W_CLOTH.common, tr = rc || '#c9b28a';
         inner = `<rect x="0" y="${y0}" width="120" height="${170 - y0}" fill="${cl}"/>`
@@ -504,6 +509,143 @@
       + `<path d="M-30 -94 Q0 -84 30 -94" fill="none" stroke="${gd}" stroke-width="4"/><path d="M-27 -26 H27" stroke="${gd}" stroke-width="5"/>`
       + (n >= 1 ? sunMark(0, -66, 7, gd, ink) : `<path d="M0 -78 V-54 M-9 -68 H9" stroke="${gd}" stroke-width="4"/>`)
       + `<path d="M-46 -96 Q-34 -114 -12 -102 L-15 -82 Q-34 -86 -46 -76 Z M46 -96 Q34 -114 12 -102 L15 -82 Q34 -86 46 -76 Z" fill="${m}" stroke="${gd}" stroke-width="3" stroke-linejoin="round"/>`;
+  }
+  /* ---------- 31.10 (решение стримера 00:20, feat/hw-armor-pick): броня «Ночи Тыквенной Луны» - свой рисунок у каждой вещи ----------
+     Рисует ЯДРО для всех стилей (как детали Хэллоуина и доспехи классов), по токенам стиля (st.wear: line/ink); стиль может нарисовать своё:
+     st.wornArmor и st.armor с флагом st.hwArmor = true. Палитра ночная и тыквенная, без filter и анимаций.
+     hwbarrow - Лорика Курганного стража (латы, кости, руна), hwthicket - Куртка Тыквенной чащи (кожа, лоза, листья, тыква-пряжка),
+     hwchapel - Ряса Часовни без колокола (ткань, колокол, свечи, воск), hwshadow - Куртка Деревни без теней (тёмная кожа, капюшон),
+     hwgrave - Саван Шепчущего погоста (саван, призрачный узор), hwmidnight - Латы Врат Полуночи (латы, луна, циферблат полуночи). */
+  const HW_ARMOR = new Set(['hwbarrow', 'hwthicket', 'hwchapel', 'hwshadow', 'hwgrave', 'hwmidnight']);
+  const HWA = { pump: '#ff7a1a', pumpD: '#c4520e', night: '#1c1424', moon: '#ffe9a8', ghost: '#9fffd0', gold: '#e8b923', wax: '#efe6d2', leaf: '#4f9a38', vine: '#2f6a24' };
+  // циферблат полуночи: обе стрелки на двенадцати (x, y - центр)
+  const midClock = (x, y, r, ink) => { let t = ''; for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6, c = Math.sin(a), s = -Math.cos(a), l = i % 3 ? 0.78 : 0.62; t += `M${f1h(x + c * r * l)} ${f1h(y + s * r * l)}L${f1h(x + c * r * 0.92)} ${f1h(y + s * r * 0.92)}`; }
+    return `<circle cx="${x}" cy="${y}" r="${r}" fill="#141a30" stroke="${HWA.gold}" stroke-width="2.2"/><path d="${t}" stroke="${HWA.moon}" stroke-width="1.3"/>`
+      + `<path d="M${x} ${y}V${f1h(y - r * 0.72)}M${x} ${y}L${f1h(x + r * 0.14)} ${f1h(y - r * 0.5)}" stroke="${HWA.pump}" stroke-width="1.8" stroke-linecap="round"/><circle cx="${x}" cy="${y}" r="1.4" fill="${ink}"/>`; };
+  const crescent = (x, y, r, col, ink) => `<path d="M${f1h(x + r * 0.2)} ${f1h(y - r)} A${r} ${r} 0 1 0 ${f1h(x + r * 0.2)} ${f1h(y + r)} A${f1h(r * 0.78)} ${f1h(r * 0.78)} 0 1 1 ${f1h(x + r * 0.2)} ${f1h(y - r)} Z" fill="${col}" stroke="${ink}" stroke-width="1.2"/>`;
+  const pumpkinMark = (x, y, r, ink) => `<ellipse cx="${x}" cy="${y}" rx="${f1h(r * 1.15)}" ry="${r}" fill="${HWA.pump}" stroke="${ink}" stroke-width="1.4"/><path d="M${x} ${f1h(y - r)}V${f1h(y + r)}M${f1h(x - r * 0.5)} ${f1h(y - r * 0.85)}Q${f1h(x - r * 0.75)} ${y} ${f1h(x - r * 0.5)} ${f1h(y + r * 0.85)}M${f1h(x + r * 0.5)} ${f1h(y - r * 0.85)}Q${f1h(x + r * 0.75)} ${y} ${f1h(x + r * 0.5)} ${f1h(y + r * 0.85)}" fill="none" stroke="${HWA.pumpD}" stroke-width="1"/><path d="M${x} ${f1h(y - r)}l1.5 -3" stroke="${HWA.vine}" stroke-width="2" stroke-linecap="round"/>`;
+  // лист тыквы (три доли): x, y - черенок, a - поворот, s - размер
+  const pumpLeaf = (x, y, a, s, ink) => `<path transform="translate(${f1h(x)} ${f1h(y)}) rotate(${a}) scale(${s})" d="M0 0 C-3 -4 -9 -4 -9 -9 C-12 -12 -8 -17 -4 -15 C-3 -20 3 -20 4 -15 C8 -17 12 -12 9 -9 C9 -4 3 -4 0 0 Z" fill="${HWA.leaf}" stroke="${ink}" stroke-width="1.3" stroke-linejoin="round"/>`;
+  const ghostMark = (x, y, r, ink) => `<path d="M${f1h(x - r)} ${f1h(y + r)}V${y}A${r} ${r} 0 0 1 ${f1h(x + r)} ${y}V${f1h(y + r)}L${f1h(x + r * 0.5)} ${f1h(y + r * 0.6)}L${x} ${f1h(y + r)}L${f1h(x - r * 0.5)} ${f1h(y + r * 0.6)}Z" fill="#e8fff6" fill-opacity=".9" stroke="${ink}" stroke-width="1.2"/>`
+    + `<circle cx="${f1h(x - r * 0.35)}" cy="${f1h(y - r * 0.1)}" r="${f1h(r * 0.18)}" fill="${ink}"/><circle cx="${f1h(x + r * 0.35)}" cy="${f1h(y - r * 0.1)}" r="${f1h(r * 0.18)}" fill="${ink}"/>`;
+  const bellMark = (x, y, s, ink) => `<g transform="translate(${x} ${y}) scale(${s})"><path d="M-7 8 Q-7 -6 0 -7 Q7 -6 7 8 L9 11 H-9 Z" fill="${HWA.gold}" stroke="${ink}" stroke-width="1.4" stroke-linejoin="round"/><path d="M-3 -1 Q0 -4 3 -1" fill="none" stroke="#fff3c2" stroke-width="1.2"/><circle cy="12.5" r="2.2" fill="${HWA.pump}" stroke="${ink}" stroke-width="1"/><path d="M0 -7 V-10" stroke="${ink}" stroke-width="2"/></g>`;
+  // на теле: { inner - обрезается по телу, top - поверх плеч }
+  function hwWorn(g, k, y0, W) {
+    const b = k.b, L = k.L, R = k.R, ink = W.ink, line = W.line, sx = k.sx || { l: L + 6, r: R - 6 };
+    let inner = '', top = '';
+    if (g.a === 'hwbarrow') {
+      const m = '#5d6352', md = '#3a3e33', y1 = Math.min(158, y0 + 48);
+      let bands = ''; for (let y = y0 + 9; y < y1 - 4; y += 9) bands += `M0 ${y}H120`;
+      let strips = ''; for (let x = L + 8; x < R - 4; x += 9) strips += `M${x} ${y1 + 5}v8`;
+      inner = `<rect x="0" y="${y0}" width="120" height="${y1 - y0}" fill="${m}"/><path d="${bands}" stroke="${md}" stroke-width="2" opacity=".7"/>`
+        + `<path d="M0 ${y0}H120" stroke="${BONE}" stroke-width="5"/>`
+        + `<path d="M${L + 4} ${y0 + 14}Q${L + 16} ${y0 + 10} ${L + 22} ${y0 + 18}M${R - 4} ${y0 + 14}Q${R - 16} ${y0 + 10} ${R - 22} ${y0 + 18}M${L + 4} ${y0 + 26}Q${L + 15} ${y0 + 22} ${L + 21} ${y0 + 30}M${R - 4} ${y0 + 26}Q${R - 15} ${y0 + 22} ${R - 21} ${y0 + 30}" fill="none" stroke="${BONE}" stroke-width="2.6" stroke-linecap="round"/>`
+        + `<path d="M60 ${y0 + 8}V${y0 + 32}M60 ${y0 + 16}L53 ${y0 + 9}M60 ${y0 + 16}L67 ${y0 + 9}M60 ${y0 + 26}L54 ${y0 + 32}M60 ${y0 + 26}L66 ${y0 + 32}" stroke="${HWA.pump}" stroke-width="3" stroke-linecap="round"/>`
+        + `<path d="M0 ${y1 + 0.5}H120" stroke="#2a2018" stroke-width="7"/>${strips ? `<path d="${strips}" stroke="#4a3a28" stroke-width="6" stroke-linecap="round"/>` : ''}` + skullMark(60, y1, 4.6, ink, HWA.pump);
+      const pad = (x, s) => `<path d="M${x - 11 * s} ${b.armY - 3} Q${x} ${b.armY - 13} ${x + 11 * s} ${b.armY - 3} L${x + 9 * s} ${b.armY + 7} Q${x} ${b.armY + 1} ${x - 9 * s} ${b.armY + 7} Z" fill="${m}" stroke="${line}" stroke-width="2.5" stroke-linejoin="round"/>`
+        + `<path d="M${x - 2 * s} ${b.armY - 8}L${x + 1 * s} ${b.armY - 18}L${x + 4 * s} ${b.armY - 8}Z" fill="${BONE}" stroke="${ink}" stroke-width="1.3" stroke-linejoin="round"/>`;
+      top = pad(sx.l + 3, 1) + pad(sx.r - 3, 1);
+    } else if (g.a === 'hwthicket') {
+      const lt = '#6e4a2c', dk = '#2e1f14', y1 = Math.min(160, y0 + 52), yb = Math.min(y1 - 6, y0 + 34);
+      inner = `<rect x="0" y="${y0}" width="120" height="${y1 - y0}" fill="${lt}"/><path d="M0 ${y0}H120" stroke="${dk}" stroke-width="5"/>`
+        + `<path d="M0 ${y0 + 14}H120" stroke="#b08a5e" stroke-width="1.4" stroke-dasharray="3 3" opacity=".75"/>`
+        + `<path d="M${L + 2} ${y1 - 3}C${L + 14} ${y0 + 30} ${R - 22} ${y0 + 34} ${R - 6} ${y0 + 4}" fill="none" stroke="${HWA.vine}" stroke-width="3.2" stroke-linecap="round"/>`
+        + `<path d="M${L + 18} ${y0 + 26}q-5 -3 -4 -8M${R - 22} ${y0 + 22}q5 -2 5 -7" fill="none" stroke="${HWA.vine}" stroke-width="1.8" stroke-linecap="round"/>`
+        + pumpLeaf(L + 12, y0 + 32, -30, 0.8, ink) + pumpLeaf(R - 16, y0 + 18, 35, 0.75, ink)
+        + `<path d="M0 ${yb}H120" stroke="${dk}" stroke-width="6"/>` + pumpkinMark(60, yb, 5, ink)
+        + `<path d="M0 ${y1}H120" stroke="${ink}" stroke-width="3" opacity=".5"/>`;
+      top = pumpLeaf(sx.l + 4, b.armY + 4, -20, 0.95, ink) + pumpLeaf(sx.r - 4, b.armY + 4, 20, 0.95, ink);
+    } else if (g.a === 'hwchapel') {
+      const cl = '#2f2545', tr = '#8a7344';
+      let drips = ''; for (const [x, h] of [[L + 8, 7], [L + 18, 4], [R - 18, 6], [R - 8, 4], [44, 3], [76, 5]]) drips += `M${x} ${y0 + 3}v${h}`;
+      inner = `<rect x="0" y="${y0}" width="120" height="${170 - y0}" fill="${cl}"/>`
+        + `<path d="M60 ${y0 + 34}V170" stroke="${tr}" stroke-width="3"/><path d="M0 162H120" stroke="${tr}" stroke-width="4"/>`
+        + `<path d="M${L} ${y0}Q60 ${y0 + 12} ${R} ${y0}" fill="none" stroke="${HWA.wax}" stroke-width="5"/><path d="${drips}" stroke="${HWA.wax}" stroke-width="3" stroke-linecap="round"/>`
+        + bellMark(60, y0 + 20, 1, ink)
+        + `<path d="M${L} ${y0 + 42}Q60 ${y0 + 48} ${R} ${y0 + 42}" fill="none" stroke="#b08a5e" stroke-width="3" stroke-dasharray="4 2"/>`
+        + [L + 10, R - 13].map((x) => `<rect x="${x}" y="${y0 + 50}" width="4" height="9" rx="1" fill="${HWA.wax}" stroke="${ink}" stroke-width="1"/><ellipse cx="${x + 2}" cy="${y0 + 47.5}" rx="1.6" ry="2.6" fill="${HWA.pump}"/>`).join('');
+    } else if (g.a === 'hwshadow') {
+      const lt = '#1f1a29', dk = '#0e0b14', y1 = Math.min(160, y0 + 52), yb = Math.min(y1 - 6, y0 + 34);
+      inner = `<rect x="0" y="${y0}" width="120" height="${y1 - y0}" fill="${lt}"/>`
+        + `<path d="M0 ${y0 + 14}H120M0 ${yb + 9}H120" stroke="#4a3f5e" stroke-width="1.4" stroke-dasharray="3 3" opacity=".8"/>`
+        + `<path d="M${L + 4} ${y0 + 2}L${R - 6} ${y1 - 4}" stroke="${dk}" stroke-width="7"/>`
+        + `<path d="M0 ${yb}H120" stroke="${dk}" stroke-width="6"/><rect x="55" y="${yb - 4}" width="10" height="8" rx="1.5" fill="none" stroke="${HWA.pump}" stroke-width="2.4"/>`
+        + `<path d="M${L} ${y0 + 4}L${L + 12} ${y1}M${R} ${y0 + 4}L${R - 12} ${y1}" stroke="#08060c" stroke-width="10" opacity=".55"/>`
+        + `<path d="M0 ${y1}H120" stroke="${ink}" stroke-width="3" opacity=".5"/>`;
+      // капюшон, сброшенный на плечи: складки вокруг шеи
+      top = `<path d="M${sx.l - 6} ${b.armY + 6}Q${sx.l - 2} ${y0 - 10} 60 ${y0 + 2}Q${sx.r + 2} ${y0 - 10} ${sx.r + 6} ${b.armY + 6}L${sx.r} ${b.armY + 12}Q60 ${y0 + 16} ${sx.l} ${b.armY + 12}Z" fill="#2a2338" stroke="${line}" stroke-width="2.4" stroke-linejoin="round"/>`
+        + `<path d="M${sx.l + 4} ${b.armY + 7}Q60 ${y0 + 9} ${sx.r - 4} ${b.armY + 7}" fill="none" stroke="#6a4ad8" stroke-width="1.6"/>`;
+    } else if (g.a === 'hwgrave') {
+      const cl = '#34433f';
+      let hem = 'M0 170V160'; for (let x = 0; x < 120; x += 8) hem += `L${x + 4} ${x % 16 ? 167 : 156}L${x + 8} 160`; hem += 'V170Z';
+      inner = `<rect x="0" y="${y0}" width="120" height="${170 - y0}" fill="${cl}"/>`
+        + `<path d="M${L + 6} ${y0 + 46}c-6 -8 4 -14 8 -8c3 5 -5 8 -6 3M${R - 8} ${y0 + 54}c6 -8 -4 -14 -8 -8c-3 5 5 8 6 3M${L + 14} 150c-6 -8 4 -14 8 -8c3 5 -5 8 -6 3M${R - 16} 146c6 -8 -4 -14 -8 -8c-3 5 5 8 6 3" fill="none" stroke="${HWA.ghost}" stroke-width="2" stroke-linecap="round" opacity=".55"/>`
+        + `<path d="M${L} ${y0}Q60 ${y0 + 12} ${R} ${y0}" fill="none" stroke="${BONE}" stroke-width="5"/>`
+        + ghostMark(60, y0 + 22, 8, ink)
+        + `<path d="${hem}" fill="#e8efe9" opacity=".7"/>`;
+      top = [[sx.l + 2, b.armY], [sx.r - 2, b.armY - 2]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3.2" fill="${HWA.ghost}" opacity=".75"/><circle cx="${x}" cy="${y}" r="1.4" fill="#ffffff"/>`).join('');
+    } else {   // hwmidnight
+      const m = '#2c3654', gd = HWA.gold, y1 = Math.min(156, y0 + 46);
+      inner = `<rect x="0" y="${y0}" width="120" height="${y1 - y0}" fill="${m}"/>`
+        + `<path d="M${L + 6} ${y0 + 6}Q60 ${y0 + 18} ${R - 6} ${y0 + 6}" fill="none" stroke="#5a6a94" stroke-width="3" opacity=".8"/>`
+        + `<path d="M0 ${y0 + 34}H120" stroke="#1a2038" stroke-width="1.6" opacity=".7"/><path d="M0 ${y0}H120" stroke="${gd}" stroke-width="5"/>`
+        + midClock(60, y0 + 20, 9, ink) + crescent(L + 12, y0 + 22, 5, HWA.moon, ink)
+        + `<rect x="51" y="${y1}" width="18" height="${170 - y1}" fill="#1a2038"/><path d="M51 ${y1}V170M69 ${y1}V170" stroke="${HWA.pump}" stroke-width="2.4"/>`
+        + `<path d="M0 ${y1}H120" stroke="${gd}" stroke-width="6"/>`;
+      const pad = (x, s) => `<path d="M${x - 13 * s} ${b.armY - 2} Q${x} ${b.armY - 16} ${x + 13 * s} ${b.armY - 2} L${x + 11 * s} ${b.armY + 9} Q${x} ${b.armY + 2} ${x - 11 * s} ${b.armY + 9} Z" fill="${m}" stroke="${gd}" stroke-width="2.6" stroke-linejoin="round"/>`
+        + crescent(x, b.armY - 3, 3, HWA.moon, ink);
+      top = pad(sx.l + 3, 1) + pad(sx.r - 3, 1);
+    }
+    return { inner, top };
+  }
+  // значок (Кузня, сумка, окно выбора): низ на y = 0, центр x = 0, высота ~100 - как st.armor и значки доспехов классов
+  function hwArmorIcon(kind, rar, W) {
+    const ink = W.ink === W.line ? '#2a2236' : W.ink, O = (w) => `stroke="${W.line}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"`;
+    const heavy = (m) => `<path d="M-32 -96 C-36 -70 -32 -44 -26 -24 H26 C32 -44 36 -70 32 -96 Q0 -86 -32 -96 Z" fill="${m}" ${O(4)}/>`;
+    const light = (m) => `<path d="M-30 -96 C-34 -70 -31 -44 -27 -20 H27 C31 -44 34 -70 30 -96 Q0 -86 -30 -96 Z" fill="${m}" ${O(4)}/>`;
+    if (kind === 'hwbarrow') {
+      const m = '#5d6352';
+      let bands = ''; for (let i = 0; i < 5; i++) bands += `M${-30 + i} ${-80 + i * 12}Q0 ${-73 + i * 12} ${30 - i} ${-80 + i * 12}`;
+      return `<path d="M-22 -24 V-6 M-11 -24 V-4 M0 -24 V-4 M11 -24 V-4 M22 -24 V-6" stroke="#4a3a28" stroke-width="7" stroke-linecap="round"/>` + heavy(m)
+        + `<path d="${bands}" fill="none" stroke="#3a3e33" stroke-width="2" opacity=".8"/><path d="M-30 -94 Q0 -84 30 -94" fill="none" stroke="${BONE}" stroke-width="4"/>`
+        + `<path d="M0 -84 V-50 M0 -72 L-9 -82 M0 -72 L9 -82 M0 -58 L-8 -50 M0 -58 L8 -50" stroke="${HWA.pump}" stroke-width="3.6" stroke-linecap="round"/>`
+        + `<path d="M-27 -26 H27" stroke="#2a2018" stroke-width="6"/>` + skullMark(0, -26, 5.5, ink, HWA.pump)
+        + `<path d="M-46 -96 Q-34 -114 -12 -102 L-15 -82 Q-34 -86 -46 -76 Z M46 -96 Q34 -114 12 -102 L15 -82 Q34 -86 46 -76 Z" fill="${m}" ${O(3)}/>`
+        + `<path d="M-32 -106 L-28 -122 L-24 -106 Z M32 -106 L28 -122 L24 -106 Z" fill="${BONE}" stroke="${ink}" stroke-width="1.5" stroke-linejoin="round"/>`;
+    }
+    if (kind === 'hwthicket') {
+      return light('#6e4a2c') + `<path d="M-30 -96 Q0 -86 30 -96" fill="none" stroke="#2e1f14" stroke-width="5"/>`
+        + `<path d="M-24 -24 C-18 -50 16 -50 22 -92" fill="none" stroke="${HWA.vine}" stroke-width="4" stroke-linecap="round"/><path d="M-6 -50 q-6 -4 -5 -10 M12 -70 q6 -2 6 -8" fill="none" stroke="${HWA.vine}" stroke-width="2.2" stroke-linecap="round"/>`
+        + pumpLeaf(-14, -40, -30, 1.1, ink) + pumpLeaf(14, -74, 30, 1, ink)
+        + `<path d="M-28 -46 H28" stroke="#2e1f14" stroke-width="7"/>` + pumpkinMark(0, -46, 7, ink)
+        + pumpLeaf(-32, -88, -40, 1.25, ink) + pumpLeaf(32, -88, 40, 1.25, ink);
+    }
+    if (kind === 'hwchapel') {
+      return `<path d="M-22 -102 C-30 -70 -38 -30 -42 0 H42 C38 -30 30 -70 22 -102 Q0 -92 -22 -102 Z" fill="#2f2545" ${O(4)}/>`
+        + `<path d="M0 -62 V0" stroke="#8a7344" stroke-width="3"/><path d="M-41 -6 H41" stroke="#8a7344" stroke-width="4"/>`
+        + `<path d="M-20 -100 Q0 -88 20 -100" fill="none" stroke="${HWA.wax}" stroke-width="5"/><path d="M-14 -96 v8 M-6 -92 v5 M8 -92 v7 M15 -96 v5" stroke="${HWA.wax}" stroke-width="3" stroke-linecap="round"/>`
+        + bellMark(0, -72, 1.35, ink) + `<path d="M-30 -46 Q0 -38 30 -46" fill="none" stroke="#b08a5e" stroke-width="3" stroke-dasharray="5 3"/>`
+        + [-26, 22].map((x) => `<rect x="${x}" y="-26" width="5" height="12" rx="1" fill="${HWA.wax}" stroke="${ink}" stroke-width="1.2"/><ellipse cx="${x + 2.5}" cy="-30" rx="2" ry="3.4" fill="${HWA.pump}"/>`).join('');
+    }
+    if (kind === 'hwshadow') {
+      return light('#1f1a29') + `<path d="M-26 -92 L22 -24" stroke="#0e0b14" stroke-width="8"/><path d="M-28 -46 H28" stroke="#0e0b14" stroke-width="7"/>`
+        + `<rect x="-6" y="-51" width="12" height="10" rx="2" fill="none" stroke="${HWA.pump}" stroke-width="3"/><path d="M-24 -76 H24 M-24 -32 H24" stroke="#4a3f5e" stroke-width="1.6" stroke-dasharray="3 3" opacity=".9"/>`
+        + `<path d="M-38 -90 Q-34 -128 0 -128 Q34 -128 38 -90 Q20 -98 0 -96 Q-20 -98 -38 -90 Z" fill="#2a2338" ${O(3)}/><path d="M-26 -94 Q0 -116 26 -94" fill="none" stroke="#0e0b14" stroke-width="3"/>`
+        + `<path d="M-34 -92 Q0 -84 34 -92" fill="none" stroke="#6a4ad8" stroke-width="2"/>`;
+    }
+    if (kind === 'hwgrave') {
+      let hem = 'M-42 0'; for (let x = -42; x < 42; x += 7) hem += `L${x + 3.5} ${x % 14 ? -8 : 2}L${x + 7} -2`;
+      return `<path d="M-22 -102 C-30 -70 -38 -30 -42 0 ${hem.slice(6)} L42 -2 C38 -30 30 -70 22 -102 Q0 -92 -22 -102 Z" fill="#34433f" ${O(4)}/>`
+        + `<path d="M-20 -100 Q0 -88 20 -100" fill="none" stroke="${BONE}" stroke-width="4"/>`
+        + `<path d="M-28 -40 c-7 -9 5 -16 9 -9 c3 6 -6 9 -7 3 M20 -26 c7 -9 -5 -16 -9 -9 c-3 6 6 9 7 3 M14 -54 c6 -8 -4 -14 -8 -8 c-3 5 5 8 6 3" fill="none" stroke="${HWA.ghost}" stroke-width="2.4" stroke-linecap="round" opacity=".6"/>`
+        + ghostMark(0, -76, 11, ink) + `<circle cx="-24" cy="-62" r="3" fill="${HWA.ghost}" opacity=".7"/><circle cx="26" cy="-80" r="2.6" fill="${HWA.ghost}" opacity=".7"/>`;
+    }
+    const m = '#2c3654', gd = HWA.gold;   // hwmidnight
+    return `<rect x="-9" y="-24" width="18" height="24" fill="#1a2038" ${O(3)}/><path d="M-9 -24 V0 M9 -24 V0" stroke="${HWA.pump}" stroke-width="2.6"/>`
+      + heavy(m) + `<path d="M-30 -94 Q0 -84 30 -94" fill="none" stroke="${gd}" stroke-width="4"/><path d="M-27 -26 H27" stroke="${gd}" stroke-width="5"/>`
+      + midClock(0, -64, 13, ink) + crescent(-20, -44, 6, HWA.moon, ink)
+      + `<path d="M-46 -96 Q-34 -114 -12 -102 L-15 -82 Q-34 -86 -46 -76 Z M46 -96 Q34 -114 12 -102 L15 -82 Q34 -86 46 -76 Z" fill="${m}" stroke="${gd}" stroke-width="3" stroke-linejoin="round"/>`
+      + crescent(-30, -96, 4, HWA.moon, ink) + crescent(30, -96, 4, HWA.moon, ink);
   }
   // шлем класса на голове: k.b (top, hw, square, eyeY) — того же вида, что у шапок стиля; T — токены (line, ink)
   function classHat(id, k, T, rar) {
@@ -830,6 +972,7 @@
     armorArt,
     charmArt,   // 23.10: значок амулета класса (look.charm)
     CLASS_LOOKS: { armors: [...CLASS_ARMOR], hats: [...CLASS_HAT], charms: [...CLASS_CHARM] },
+    HW_ARMORS: [...HW_ARMOR],   // 31.10 (feat/hw-armor-pick): виды брони Хэллоуина (рисунок ядра)
     shieldArt: (kind, rar) => gearArt(S, 'shield', kind, rar),
     auraArt: (kind, b, seed) => S.aura(kind, { b, seed, uid }),
     // стили

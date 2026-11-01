@@ -728,3 +728,139 @@ html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); 
   .mn[style*="--mn-chb"] .mn-tip { bottom: var(--mn-chb); }
   .mn[style*="--mn-chb"] .mn-hat { bottom: calc(var(--mn-chb) + 34px); }
 }
+
+/* 31.10 (баг стримера: после выбора этажа мигал экран и на миг показывался прежний этаж): экран поездки лифта (mine.js rideGo) -
+   поверх сцены и шапки (подсказки - выше), пока не придёт вид выбранного этажа; появление и уход - только opacity, клеть ездит transform (без filter) */
+.mn-ride { position: absolute; inset: 0; z-index: 6; display: grid; place-items: center; background: #120d18; opacity: 0; transition: opacity .25s ease; pointer-events: auto; }
+.mn-ride.on { opacity: 1; }
+.mn-riding .mn-mm { opacity: 0; }
+.mn-ride.off { opacity: 0; pointer-events: none; }
+.mn-ride-b { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 0 16px; text-align: center; }
+.mn-ride-b b { font: 800 18px Golos Text, Arial, sans-serif; color: #ffe27a; }
+.mn-ride-c { position: relative; display: block; width: 44px; height: 120px; border-left: 3px solid rgba(255, 226, 122, .35); border-right: 3px solid rgba(255, 226, 122, .35); overflow: hidden; }
+.mn-ride-c::after { content: ''; position: absolute; left: 6px; right: 6px; top: 0; height: 30px; border-radius: 4px; background: #c9924a; box-shadow: inset 0 0 0 3px #7a5530; will-change: transform; animation: mn-ride-dn .9s linear infinite; }
+.mn[data-ride="up"] .mn-ride-c::after { animation-name: mn-ride-up; }
+@keyframes mn-ride-dn { from { transform: translateY(-34px); } to { transform: translateY(124px); } }
+@keyframes mn-ride-up { from { transform: translateY(124px); } to { transform: translateY(-34px); } }
+@media (prefers-reduced-motion: reduce) { .mn-ride-c::after { animation: none; transform: translateY(45px); } .mn-ride { transition: none; } }
+
+/* ===== 01.11 (стример: окно поручений «всё перемешано и некомпактно»): строки поручений - mine.js questsHtml. Строка: название
+   (одной строкой, многоточие) и награда значками справа; под ними - тонкая полоса прогресса и числа (или состояние). Нажатие - подробности.
+   Готово - тёплая полоса слева; получено - одной приглушённой строкой без полосы, в конце секции. Полоса - transform: scaleX ===== */
+.mn-qs { display: grid; gap: 8px; }
+.mn-npc-p .mn-qs-s h4 { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 2px 0 3px; font: 800 12px var(--tx, Golos Text, sans-serif); letter-spacing: .02em; color: var(--m2-gold, #ffcf6a); text-transform: none; }
+.mn-npc-p .mn-qs-s h4 small { font-weight: 700; font-size: 11px; color: var(--m2-mute, #bfaab7); }
+.mn-qs-s ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.mn-qs-s li.mn-qs-r { padding: 0; border: 0; font-size: inherit; }
+.mn-qs-h { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 3px 10px; width: 100%; min-height: 34px; padding: 5px 8px 5px; border: 0; border-radius: 9px; background: rgba(255,255,255,.04); color: #f3efe6; font: 600 13px/1.25 var(--tx, Golos Text, sans-serif); text-align: left; cursor: pointer; }
+.mn-qs-h:hover { background: rgba(255,255,255,.08); }
+.mn-qs-h:focus-visible { outline: 2px solid var(--m2-gold, #ffcf6a); outline-offset: 1px; }
+.mn-qs-t { min-width: 0; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow-wrap: normal; word-break: normal; }
+.mn-qs-r.open .mn-qs-t { display: block; }
+.mn-qs-h > .mn-qc2 { align-self: start; padding-top: 1px; }
+.mn-qs-h .mn-qc2 { justify-self: end; }
+.mn-qs-n, .mn-qs-st { justify-self: end; font: 800 11px/1 var(--tx, Golos Text, sans-serif); white-space: nowrap; }
+.mn-qs-n { color: #cfc4b0; font-variant-numeric: tabular-nums; }
+.mn-qs-bar { height: 3px; border-radius: 2px; background: rgba(255,255,255,.1); overflow: hidden; }
+.mn-qs-bar i { display: block; height: 100%; background: #8fe3b0; transform-origin: 0 50%; transition: transform .4s ease-out; }
+@media (prefers-reduced-motion: reduce) { .mn-qs-bar i { transition: none; } }
+/* награда: значок монеты + число, один стиль везде; без зелёной подсветки чисел (старое .mn-qr.done b красило и числа внутри суммы) */
+.mn-qc2 { display: inline-flex; align-items: center; gap: 3px; font: 800 12px var(--tx, Golos Text, sans-serif); color: #ffe27a; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.mn-qc2.mute { color: var(--m2-mute, #bfaab7); }
+.mn-cn { display: inline-block; width: 9px; height: 9px; margin-left: 2px; border-radius: 50%; background: #d08a4a; box-shadow: inset 0 -1.5px 0 rgba(0,0,0,.3); }
+.mn-cn:first-child { margin-left: 0; }
+.mn-cn.s { background: #cfd6e0; }
+.mn-cn.g { background: #ffcf6a; }
+/* состояния */
+.mn-qs-r.ok .mn-qs-h { background: rgba(255,207,106,.12); box-shadow: inset 3px 0 0 #ffcf6a; }
+.mn-qs-r.ok .mn-qs-st { color: #ffcf6a; }
+.mn-qs-r.ok .mn-qs-bar i, .mn-qs-r.no .mn-qs-bar i { background: #ffcf6a; }
+.mn-qs-r.no .mn-qs-st { color: #ff9a8a; }
+.mn-qs-r.cl .mn-qs-h { grid-template-columns: minmax(0, 1fr) auto auto; min-height: 26px; padding: 3px 8px; background: none; color: var(--m2-mute, #bfaab7); font-weight: 500; font-size: 12px; opacity: .75; }
+.mn-qs-r.cl .mn-qs-st { grid-row: 1; grid-column: 2; color: #8fe39a; font-weight: 700; }
+.mn-qs-r.cl .mn-qs-h .mn-qc2 { grid-column: 3; }
+.mn-npc-p .mn-qs-d { margin: 2px 8px 4px; font-size: 11.5px; line-height: 1.35; color: var(--m2-mute, #bfaab7); }
+/* общее поручение: подробности - одной мелкой строкой под строкой */
+.mn-npc-p .mn-qs-i { margin: 3px 8px 0; font-size: 11px; line-height: 1.3; color: var(--m2-mute, #bfaab7); }
+.mn-npc-p .mn-qs-i.ok { color: #c9f5c0; }
+/* «Забрать»: одна на окно (сервер выдаёт за все готовые разом) - сверху, со счётом готовых и суммой; нечего забирать - мелкая строка */
+.mn-qs-cl { display: flex; align-items: center; gap: 6px; padding: 6px 6px 6px 10px; border-radius: 11px; background: rgba(255,207,106,.12); border: 1px solid rgba(255,207,106,.4); font-weight: 700; font-size: 12.5px; }
+.mn-qs-cn { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mn-qs-cl > .mn-qc2 { margin-right: auto; font-size: 13px; }
+.mn-win .mn-qs-cl .btn { flex: none; min-height: 32px; padding: 0 14px; }
+/* на широком экране окно поручений чуть шире - названия влезают целиком (телефон - по ширине экрана, как было) */
+@media (min-width: 721px) { .mn-win[data-k="quests"] { width: min(400px, calc(100% - 16px)); } }
+.mn-npc-p .mn-qs-cl0 { margin: 0; font-size: 11.5px; color: var(--m2-mute, #bfaab7); }
+
+/* ===== 01.11 (стример: окна Снабженца и Скупщика некомпактны; mine.js supHtml / buyerHtml). Только в облачке .mn-win ===== */
+/* Снабженец: «сейчас → следующая» одной строкой, требования - сеткой 2 колонки, кнопка сразу под ними, пояснение мелко */
+.mn[data-m2="1"] .mn-win .sp-head h3 small.sp-sub { font: 600 11px var(--tx, Golos Text, sans-serif); color: var(--m2-mute, #bfaab7); }
+.mn[data-m2="1"] .mn-win .sp-head .mb-say { font-size: 12px; }
+.mn[data-m2="1"] .mn-win .sp-body { gap: 8px; }
+.mn[data-m2="1"] .mn-win .sp-step { display: flex; align-items: center; gap: 4px; }
+.mn[data-m2="1"] .mn-win .sp-step .sp-now, .mn[data-m2="1"] .mn-win .sp-step .sp-up { flex: 1 1 0; min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 5px; align-items: center; }
+.mn[data-m2="1"] .mn-win .sp-step .sp-pic, .mn[data-m2="1"] .mn-win .sp-now .sp-pic, .mn[data-m2="1"] .mn-win .sp-up .sp-pic { width: 30px; height: 30px; border-radius: 8px; }
+.mn[data-m2="1"] .mn-win .sp-step .sp-pic svg { width: 27px; height: 27px; }
+.mn[data-m2="1"] .mn-win .sp-step .sp-bagi { font-size: 24px; }
+/* название кирки - целиком одной строкой («Деревянная», «Адамантитовая»): мельче, без обрезки; иконки - уже (стрелка - тоже) */
+.mn[data-m2="1"] .mn-win .sp-step .sp-nm { font-size: 12.5px; line-height: 1.15; white-space: nowrap; overflow-wrap: normal; }
+.mn[data-m2="1"] .mn-win .sp-step .sp-now, .mn[data-m2="1"] .mn-win .sp-step .sp-up { flex: 1 1 auto; }
+.mn[data-m2="1"] .mn-win .sp-step .sp-up .sp-nm { color: var(--m2-gold, #ffcf6a); }
+.mn[data-m2="1"] .mn-win .sp-mul { margin: 0; font-size: 12px; font-weight: 700; color: var(--m2-mute, #bfaab7); }
+.mn[data-m2="1"] .mn-win .sp-step .sp-gain { font-size: 13px; }
+.mn[data-m2="1"] .mn-win .sp-step .sp-gain { white-space: nowrap; }
+.mn[data-m2="1"] .mn-win .sp-step .sp-gain small { display: inline; font-size: 10.5px; }
+.mn[data-m2="1"] .mn-win .sp-arr { flex: none; color: var(--m2-gold, #ffcf6a); font: 800 18px/1 var(--tx, Golos Text, sans-serif); }
+.mn[data-m2="1"] .mn-win .sp-reqs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+.mn[data-m2="1"] .mn-win .sp-req { grid-template-columns: 26px minmax(0, 1fr); gap: 0 6px; padding: 4px 6px; border-radius: 9px; box-shadow: none; }
+.mn[data-m2="1"] .mn-win .sp-req .sp-ri { grid-row: span 2; align-self: center; width: 26px; height: 26px; border-radius: 7px; }
+.mn[data-m2="1"] .mn-win .sp-req .sp-ri svg { width: 22px; height: 22px; }
+.mn[data-m2="1"] .mn-win .sp-req .sp-ix { font-size: 14px; }
+.mn[data-m2="1"] .mn-win .sp-rn { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 0 4px; min-width: 0; font-size: 11.5px; line-height: 1.2; overflow-wrap: normal; word-break: normal; }
+.mn[data-m2="1"] .mn-win .sp-rt { flex: 1 1 0; min-width: 0; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.mn[data-m2="1"] .mn-win .sp-rk { flex: none; font-size: 10px; }
+.mn[data-m2="1"] .mn-win .sp-rn small { order: 3; flex-basis: 100%; }
+.mn[data-m2="1"] .mn-win .sp-rn small { font-size: 10px; }
+.mn[data-m2="1"] .mn-win .sp-rv { display: grid; justify-items: start; gap: 0; min-width: 0; font-size: 11px; line-height: 1.25; color: #f3efe6; white-space: nowrap; overflow-wrap: normal; }
+.mn[data-m2="1"] .mn-win .sp-rv > em { display: inline-flex; align-items: center; gap: 0 3px; font-style: normal; white-space: nowrap; }
+.mn[data-m2="1"] .mn-win .sp-rv > span { max-width: 100%; white-space: normal; color: var(--m2-mute, #bfaab7); font-weight: 600; }
+.mn[data-m2="1"] .mn-win .sp-req.ok .sp-rv span, .mn[data-m2="1"] .mn-win .sp-req.no .sp-rv span { color: var(--m2-mute, #bfaab7); }
+.mn[data-m2="1"] .mn-win .sp-rk { font-style: normal; font-weight: 900; }
+.mn[data-m2="1"] .mn-win .sp-req.ok .sp-rk { color: #8fe39a; }
+.mn[data-m2="1"] .mn-win .sp-req.no { background: rgba(255,122,106,.12); }
+.mn[data-m2="1"] .mn-win .sp-req.no .sp-rk { color: #ff8a7a; }
+.mn[data-m2="1"] .mn-win .sp-rv .mn-qc2 { color: inherit; font-size: inherit; }
+.mn[data-m2="1"] .mn-win .sp-go .btn { width: 100%; min-height: 38px; }
+.mn[data-m2="1"] .mn-win .sp-note { margin: 0; font-size: 11px; line-height: 1.3; color: var(--m2-mute, #bfaab7); }
+.mn[data-m2="1"] .mn-win .sp-cheap { gap: 4px; padding: 6px; }
+.mn[data-m2="1"] .mn-win .sp-opt { grid-template-columns: auto 26px minmax(0, 1fr); gap: 6px; font-size: 12px; }
+.mn[data-m2="1"] .mn-win .sp-opt .sp-ri { width: 26px; height: 26px; }
+.mn[data-m2="1"] .mn-win .sp-opt .sp-ri svg { width: 22px; height: 22px; }
+.mn[data-m2="1"] .mn-win .sp-max { padding: 6px 8px; font-size: 12.5px; }
+/* Скупщик: пустой прилавок - низкий, «Даст N» и кнопки одной строкой, плитки руды мельче */
+.mn[data-m2="1"] .mn-win .mb-counter { gap: 4px; padding: 6px 8px; }
+.mn[data-m2="1"] .mn-win .mb-counter.empty .m2-k { display: none; }
+.mn[data-m2="1"] .mn-win .mb-empty { padding: 2px 0; font-size: 12px; text-align: left; }
+.mn[data-m2="1"] .mn-win .mb-deal { display: flex; align-items: center; gap: 6px; }
+.mn[data-m2="1"] .mn-win .mb-offer { flex: 1 1 auto; min-width: 0; align-items: center; justify-content: flex-start; gap: 6px; padding: 4px 8px; border-radius: 9px; font-size: 12px; }
+.mn[data-m2="1"] .mn-win .mb-offer b { font: 700 15px/1.1 var(--hd, sans-serif); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mn[data-m2="1"] .mn-win .mb-deal .btn { flex: none; min-height: 34px; padding: 0 12px; }
+.mn[data-m2="1"] .mn-win .mb-deal .mb-back { min-height: 30px; padding: 0 8px; font-size: 12px; }
+.mn[data-m2="1"] .mn-win .mb-ln { grid-template-columns: 30px minmax(0, 1fr) auto; gap: 2px 6px; padding: 4px 6px; border-radius: 9px; }
+.mn[data-m2="1"] .mn-win .mb-ic { width: 30px; height: 30px; border-radius: 8px; }
+.mn[data-m2="1"] .mn-win .mb-ic svg { width: 26px; height: 26px; }
+.mn[data-m2="1"] .mn-win .mb-nm b { font-size: 12.5px; }
+.mn[data-m2="1"] .mn-win .mb-nm small { font-size: 11px; }
+.mn[data-m2="1"] .mn-win .mb-lb .btn { min-width: 30px; min-height: 28px; }
+.mn[data-m2="1"] .mn-win .mb-inv { gap: 4px; }
+/* сумка окна: плитки мельче, без пустого места снизу (сетка библиотеки - не ниже 100 px, пустой подвал - 40 px) */
+.mn[data-m2="1"] .mn-win .mb-inv .lgi--full .lgi-g { min-height: 0; padding: 0; }
+.mn[data-m2="1"] .mn-win .mb-inv .lgi--full .lgi-a:empty { display: none; }
+.mn[data-m2="1"] .mn-win .mb-inv .lgi--full .lgi-in { gap: 0; }
+.mn[data-m2="1"] .mn-win .mb-inv .lgi--full .lgi-g .cy-grid { grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)); gap: 4px; }
+.mn[data-m2="1"] .mn-win .mb-inv .lgi--full .lgi-g .cy-sc .cy-gi, .mn[data-m2="1"] .mn-win .mb-inv .lgi--full .lgi-g .cy-sc .cy-gi svg { width: 32px; height: 32px; }
+.mn[data-m2="1"] .mn-win .sp-tab { flex: 1 1 auto; padding: 0 6px; white-space: nowrap; }
+/* шапка Снабженца - ниже: «Улучшить» видна без прокрутки и на 390×844 с рамкой «Можно дешевле» */
+.mn[data-m2="1"] .mn-win .sp-head .sp-tabs { margin-top: 4px; }
+.mn[data-m2="1"] .mn-win .sp-head .mb-say { margin-top: 0; }
+.mn[data-m2="1"] .mn-win .sp-body { padding-top: 6px; padding-bottom: 6px; }

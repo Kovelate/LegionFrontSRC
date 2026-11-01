@@ -194,6 +194,7 @@
     liftMenu(false);
     try { X.api('/api/mine/leave' + q(), {}); } catch (e) {}
     cancelAnimationFrame(S.raf); clearInterval(S.pollT); clearInterval(S.pingT); if (S.chatMo) S.chatMo.disconnect(); clearTimeout(S.chatFitT); clearTimeout(S.chatT); clearTimeout(S.failT); clearTimeout(S.entT);
+    clearInterval(S.rideT); clearTimeout(S.rideTO); clearTimeout(S.rideOffT);
     if (S.chatRo) S.chatRo.disconnect(); clearTimeout(S.chatHT); if (S.viewRo) S.viewRo.disconnect();
     window.removeEventListener('resize', fit); document.removeEventListener('visibilitychange', vis); document.removeEventListener('keydown', key); document.removeEventListener('pointerdown', outDown, true); tlOff();
     try { if (CHM) CHM.menuClose(); } catch (e) {}
@@ -250,7 +251,8 @@
     tip(S.myI >= 0 ? 'Пока вкладка была в фоне, герой копал - работа идёт' : 'Пока вкладка была в фоне, герой докопал камень - выбери следующий');
   }
 
-  async function enter(again) {
+  // 31.10: ride - вход на этаж лифта в той же шахте (rideGo): чат шахты общий для этажей - его не входим заново
+  async function enter(again, ride) {
     const start = again && S.pos ? { x: S.pos.x, y: S.pos.y } : spawnPt();   // 25.10 (mine/walk): было W/2, H-150 - внутри доски «Поручения»
     const me0 = S;
     const r = await X.api('/api/mine/enter' + q(), { ...start, tab: TAB });
@@ -274,7 +276,7 @@
     presence(r, true);   // 25.10: вход — сервер прислал всех заново (свой список «кого видит» он очистил): старых не держим
     take(r.st, r.me, r.lk);
     if (!S || S !== me0) return;
-    try { mchatIn(r); } catch (e) { console.error('[шахта] чат', e); }   // после take: флаг обновления (mine2) — в «моём в шахте»; чат упал - шахта работает
+    if (!ride) { try { mchatIn(r); } catch (e) { console.error('[шахта] чат', e); } }   // после take: флаг обновления (mine2) — в «моём в шахте»; чат упал - шахта работает
     pos3();
     if (!again) fit(true);
     clearInterval(S.pollT); clearInterval(S.pingT);
@@ -290,8 +292,9 @@
     if (!S || (document.hidden && !full)) return;
     pollN++; if (!full && !force && X.live && X.live() && pollN % 10 && !S.lkWant.size) return;   // 25.10: облики копающих - не ждать 10-го опроса (минуты рисовались «чужие» коты)
     // 29.10: ключ вкладки, с которым ушёл опрос
-    const sid0 = S.sid;
-    const st0 = S.st, have = !full && st0 ? `&v=${encodeURIComponent(st0.v)}&f=${encodeURIComponent(floorKey(st0))}` : '';
+    const sid0 = S.sid, c0 = C;
+    // 31.10: едем на лифте - вид выбранного этажа целиком: номер вида (v) у всех этажей шахты общий, «тот же вид» прежнего этажа не про новый
+    const st0 = S.ride ? null : S.st, have = !full && st0 ? `&v=${encodeURIComponent(st0.v)}&f=${encodeURIComponent(floorKey(st0))}` : '';
     // 25.10: облик тех, кто копает, но не гуляет здесь (сайт у них закрыт) — спрашиваем только незнакомых
     const lk = [...S.lkWant].slice(0, 60); S.lkWant.clear(); if (lk.length) S.lkAt = Date.now();
     const mc = S.chat && S.chat.on && !(X.live && X.live()) ? `&mc=${S.chat.c || 0}` : '';   // 25.10: чат шахты без живого канала
@@ -299,6 +302,8 @@
     // 29.10: шахту закрыли (округ потерян / доступ кончился) - не висеть в мёртвом окне: сказать и вернуть в город
     if (S && r && !r.ok && r.error === 'mine_closed') { try { if (X.toast) X.toast(C.split('.')[0] === 't-v3' ? 'Новая шахта (тест) закрыта - добытое уже у героя, ничего не пропало. Возвращаю в город' : 'Шахта закрыта: доступа сюда больше нет - возвращаю в город', true); } catch (e) { /* без тоста */ } exit(); return; }
     if (!S || !r || !r.ok) return;
+    // 31.10: опрос ушёл с прежнего этажа, а шахта уже уехала на лифте - его вид не про этот этаж
+    if (C !== c0) return;
     if (r.mchat && S.chat && S.chat.on) mchat().apply(r.mchat);
     // 29.10: ответ на опрос со старым ключом вкладки (пока шёл, страница вошла заново) про «другую вкладку» не говорит
     if (S.sid === sid0) otherTab(!!r.other);
@@ -333,8 +338,10 @@
     else { try { const h = X.hero(); if (h && h.mn && h.mn[C]) S.me = h.mn[C]; } catch (e) {} }
     if (lk) for (const [l, v] of Object.entries(lk)) S.looks.set(l, v);
     const m2 = mine2On() ? '1' : '0'; if (S.el.dataset.m2 !== m2) { S.el.dataset.m2 = m2; if (S.mchatOn && CHM) CHM.init(); }   // 25.10: CSS обновления шахты — .mn[data-m2="1"]
+    // 31.10: едем на лифте - экран поездки держится, пока не придёт вид выбранного этажа; вид другого этажа (прежнего, запоздавшего) не рисуем
+    if (S.ride) { if (!st || st.n !== S.ride.f) return; }
     // 25.10: запоздавший вид (опрос и живой канал приходят вперемешку) — не откатываем шахту назад: «бью → не бью → бью»
-    if (st && S.st && st.v < S.st.v && st.v > S.st.v - 500 && st.week === S.st.week) st = null;
+    else if (st && S.st && st.v < S.st.v && st.v > S.st.v - 500 && st.week === S.st.week) st = null;
     if (!st) { panel(); return; }
     // 24.10: вид без раскладки этажа (fl) — этаж тот же, раскладка у нас; этаж новый, а раскладки нет — спросить вид целиком
     if (!st.fl) { if (S.st && S.st.fl && S.st.seed === st.seed && S.st.n === st.n) st = { ...st, fl: S.st.fl }; else { if (!S.full) { S.full = true; poll(true).finally(() => { if (S) S.full = false; }); } return; } }
@@ -388,6 +395,8 @@
     // 30.10: журнал шахты в чате - перерисовать вкладку, только если журнал поменялся и она открыта
     { const lk = (st.log || []).length + ':' + ((st.log || [])[0] || {}).at; if (lk !== S.logK) { S.logK = lk; if (S.chat && S.chat.on && S.chat.open && S.chat.tab === 'lg' && CHM) CHM.render(); } }
     if (newFloor) fit(true);
+    // 31.10: вид выбранного этажа нарисован - экран поездки уходит
+    if (S.ride && st.n === S.ride.f) rideEnd();
     // 25.10: герой копает (так говорит игра), а стоит не у камня - зашёл в шахту, пока он копал без сайта, или очередь дала следующий
     // камень: идёт к нему сам (раньше махал киркой у входа). Отошёл сам (want.i = -1) - не тянем назад
     if (S.myI >= 0 && S.pos && !S.path && !atRock(S.myI) && !(S.want && S.want.i < 0)) { const sp = digSpot(S.myI); if (sp != null && pathTo(cellOfPt(S.pos.x, S.pos.y), sp)) walkTo(sp); }
@@ -990,13 +999,56 @@
     const k = keyOf(S.me.at, st.deep || st.n); if (k === C) return false;
     S.rideAt = Date.now(); const x = X; setTimeout(() => { if (S && x === X) open(x, k); }, 0); return true;
   }
+  /* 31.10 (баг стримера: «выбрал этаж - мигает экран, на секунду снова мой этаж, потом нужный»): раньше после «поехать» шахта
+     открывалась заново (close + open через 0,3 / 2,5 с): сцена удалялась целиком (мигание), у новой шахты не было отметки поездки
+     (S.rideAt), а снимок героя ещё говорил «на прежнем этаже» (комната берёт поездку из очереди сайта и шлёт нового героя
+     со следующей выгрузкой) - follow3 увозил обратно на прежний этаж, и только следующий снимок - на выбранный.
+     Теперь поездка - в той же шахте: с нажатия экран поездки (затемнение, только opacity) поверх сцены, шахта спрашивает вид выбранного
+     этажа (раз в 1,5 с, целиком) и рисует только его - вид другого этажа (запоздавший) не берёт; этаж пришёл - экран поездки уходит.
+     Не дождались (RIDE_MS) - обратно на прежний этаж. Правила (кто где) - у игры, как раньше. */
+  const RIDE_MS = 15000, RIDE_MIN = 450;
   async function ride(f) {
     const st = S.st, deep = (st && (st.deep || st.n)) || 1; f = Math.max(1, Math.min(deep, Math.floor(+f) || 1));
-    if (S.busyOp) return; S.busyOp = 1;
-    const r = await X.api('/api/mineRide', { c: CB(), n: f }); if (!S) return; S.busyOp = 0;
-    if (!r || !r.ok) { tip((r && r.error) || 'Лифт не поехал'); return; }
-    S.rideAt = Date.now(); tip(`Лифт едет на этаж ${f}…`);
-    const x = X, k = keyOf(f, deep); setTimeout(() => { if (S && x === X) open(x, k); }, f >= deep ? 300 : 2500);   // этажу выше вид приходит со следующей выгрузкой
+    if (S.busyOp || S.ride) return; S.busyOp = 1;
+    // экран поездки - сразу с нажатия (ответ игры идёт полсекунды-секунду: прежний этаж под окном не стоит)
+    const me0 = S; winClose(); liftMenu(false); S.el.dataset.ride = f < ((st && st.n) || f) ? 'up' : 'dn'; rideCover(true, `Лифт едет на этаж ${f}…`);
+    const r = await X.api('/api/mineRide', { c: CB(), n: f }); if (!S || S !== me0) return; S.busyOp = 0;
+    if (!r || !r.ok) { rideCover(false); tip((r && r.error) || 'Лифт не поехал'); return; }
+    S.rideAt = Date.now();
+    rideGo(f, keyOf(f, deep));
+  }
+  function rideCover(on, t) {
+    let el = S.el.querySelector('.mn-ride');
+    if (on) {
+      if (!el) { el = document.createElement('div'); el.className = 'mn-ride'; el.setAttribute('role', 'status'); el.innerHTML = '<div class="mn-ride-b"><i class="mn-ride-c" aria-hidden="true"></i><b></b></div>'; S.el.appendChild(el); void el.offsetWidth; }
+      el.querySelector('b').textContent = t; el.classList.remove('off'); el.classList.add('on'); S.el.classList.add('mn-riding'); clearTimeout(S.rideOffT); return;
+    }
+    if (!el) return;
+    S.el.classList.remove('mn-riding'); el.classList.remove('on'); el.classList.add('off'); clearTimeout(S.rideOffT);
+    const me0 = S; S.rideOffT = setTimeout(() => { if (S === me0 && el.classList.contains('off')) el.remove(); }, 400);
+  }
+  function rideGo(f, k) {
+    const from = C, me0 = S;
+    S.ride = { f, k, from, at: Date.now() };
+    // своего героя - не дальше по прежнему этажу (на новом встанет в зал лифта)
+    S.path = null; S.then = null; S.want = null; S.qq = [];
+    C = k;
+    clearInterval(S.rideT); S.rideT = setInterval(() => { if (S === me0 && S.ride) poll(false, true); }, 1500);
+    clearTimeout(S.rideTO); S.rideTO = setTimeout(() => { if (S === me0 && S.ride) rideFail(); }, RIDE_MS);
+    enter(false, true).catch(fail);
+  }
+  function rideEnd() {
+    if (!S || !S.ride) return;
+    const wait = Math.max(0, RIDE_MIN - (Date.now() - S.ride.at)), me0 = S;
+    S.ride = null; clearInterval(S.rideT); clearTimeout(S.rideTO);
+    // этаж уже нарисован под экраном поездки; экран - не короче RIDE_MIN (поездка, а не мелькание)
+    setTimeout(() => { if (S === me0 && !S.ride) rideCover(false); }, wait);
+  }
+  function rideFail() {
+    const R = S.ride; if (!R) return;
+    S.ride = null; clearInterval(S.rideT); clearTimeout(S.rideTO);
+    C = R.from; tip('Лифт не доехал - попробуй ещё раз');
+    enter(false, true).then(() => { if (S) rideCover(false); }).catch(fail);
   }
   async function liftFund(coins, lines) {
     if (S.busyOp) return; S.busyOp = 1;
@@ -1283,17 +1335,14 @@
     // 26.10 (окно скупщика): добытое — в сумке героя, оплата — сразу в кошелёк; в рудной сумке шахты — только не влезшее (сумка и склад полны)
     const bagHtml = buyerOn() ? `<div class="mn-bag mb-earn"><div class="mn-bag-c"><span>Оплата за работу — сразу в кошелёк, после каждого камня</span><b>${coins(bag.cx != null ? bag.cx : bag.c)}</b></div>${res.length ? `<p class="mb-wait">Сумка и склад полны — ждёт в шахте: ${res.map(([k, n, p]) => `${esc(resName(k))} ${esc(qty(n, p))}`).join(', ')}. Освободи место — перенесём сами.</p>` : ''}</div>` : `<div class="mn-bag"><div class="mn-bag-c"><span>Заработок — выдаст ${esc(tx().seller.split(' ')[0].toLowerCase())}</span><b>${coins(bag.cx != null ? bag.cx : bag.c)}</b></div>${res.length ? `<ul class="mn-res">${res.map(([k, n, p]) => `<li><i style="background:${(CW().RES || {})[k] || '#999'}"></i><span>${esc(resName(k))}</span><b>${esc(qty(n, p))}</b></li>`).join('')}</ul>${res.some(([, , p]) => p) ? '<p class="muted mn-osk">100 осколков - 1 шт.; скупщик сложит сам и примет остаток</p>' : ''}` : `<p class="muted">${esc(tx().bagEmpty)}</p>`}</div>`;
     const mx = me.mx || { lv: 1, xp: 0, need: 60 };
-    const q = me.q || { d: [], w: [] }, qli = mine2On()
-      // 25.10 (mine2): строка поручения - название целиком слева, прогресс и награда - фишками справа (в узком окне - строкой ниже)
-      ? (x) => `<li class="mn-qr${x.done ? ' done' : ''}${x.cl ? ' cl' : ''}"><span class="mn-qt">${esc(x.t)}${x.h ? `<small>Где: ${esc(x.h)}</small>` : ''}</span><span class="mn-qx"><b class="mn-qp">${x.cl ? 'получено' : x.done ? 'готово' : `${x.p} / ${x.g}`}</b><em class="mn-qrw">+${X.money ? X.money(x.c) : x.c}</em></span></li>`
-      : (x) => `<li class="${x.done ? 'done' : ''}${x.cl ? ' cl' : ''}"><span>${esc(x.t)}${x.h ? `<small style="display:block;font-size:11px;opacity:.7">Где: ${esc(x.h)}</small>` : ''}</span><b>${x.cl ? 'получено' : x.done ? 'готово' : `${x.p} / ${x.g}`}</b><em>+${X.money ? X.money(x.c) : x.c}</em></li>`;
+    const q = me.q || { d: [], w: [] };
     // 25.10: забрал — кнопки нет, пока снимок героя не догонит (раньше через 2 с она возвращалась из запоздавшего снимка)
     if (S.claimed && Date.now() - S.claimed > 60000) S.claimed = 0;
     // 28.10 (новые поручения, тестерам - mineQuests2Public): общее поручение шахты на неделю - q.c: общий прогресс, свой вклад, порог
     const qc = q.c || null, qcReady = !!(qc && qc.done && qc.ok && !qc.cl);
     const canClaim = !S.claimed && ([...q.d, ...q.w].some((x) => x.done && !x.cl) || qcReady);
-    const qcHtml = qc ? `<h4>Общее поручение шахты</h4><div class="mn-qc${qc.done ? ' done' : ''}"><span class="mn-qt">${esc(qc.t)}<small>Награда +${X.money ? X.money(qc.c) : qc.c} каждому, кто вложил от ${qc.min}. Твой вклад: ${qc.me}${qc.ok ? ' - хватает' : ` - ещё ${Math.max(0, qc.min - qc.me)}`}. Участников: ${qc.n || 0}</small></span><span class="mn-qx"><b class="mn-qp">${qc.cl ? 'получено' : qc.done ? (qc.ok ? 'готово' : 'выполнено') : `${qc.p} / ${qc.g}`}</b></span><span class="m2-mini"><i style="width:${Math.min(100, qc.p / Math.max(1, qc.g) * 100).toFixed(1)}%"></i></span></div>` : '';
-    const quests = `<div class="mn-q"><h4>Поручения на сегодня</h4><ul>${q.d.map(qli).join('')}</ul><h4>Поручения недели</h4><ul>${q.w.map(qli).join('')}</ul>${qcHtml}${canClaim ? '<button type="button" class="btn primary" data-mn-claim>Забрать награду</button>' : mine2On() ? '<button type="button" class="btn primary" data-mn-claim disabled title="Пока нечего забирать - выполни поручение">Забрать награду</button>' : ''}</div>`;
+    // 01.11 (стример: «всё перемешано и некомпактно»): в mine2 - компактные строки (questsHtml ниже); старый вид - как был
+    const quests = mine2On() ? questsHtml(q, qc) : questsOld(q, qc, canClaim);
     const have = lampHave();
     wgDraw(me, mx, bag, res, canClaim);
     hatLine(have);
@@ -1324,6 +1373,8 @@
     const b1 = el.querySelector('[data-mn-sell]'); if (b1) b1.onclick = sell;   // 24.10: всегда активна — сумка на сайте запаздывает (снимок героя раз в 10-20 с): «пуста» сразу после камня, а у комнаты уже есть что сдать
     el.querySelectorAll('[data-mn-back]').forEach((b) => { b.onclick = () => winClose(); });
     el.querySelectorAll('[data-mn-bt]').forEach((b) => { b.onclick = () => { S.qTab = b.dataset.mnBt; S.bodyHtml = ''; panel(); }; });
+    // 01.11: строка поручения - раскрыть / свернуть подробности (помнится, пока шахта открыта: окно перерисовывается опросом)
+    el.querySelectorAll('[data-mn-qx]').forEach((b) => { b.onclick = () => { const id = b.dataset.mnQx; if (!S.qOpen) S.qOpen = new Set(); if (S.qOpen.has(id)) S.qOpen.delete(id); else S.qOpen.add(id); S.bodyHtml = ''; panel(); }; });
     const b5 = el.querySelector('[data-mn-claim]'); if (b5) b5.onclick = async () => { if (S.busyOp) return; S.busyOp = 1; b5.disabled = true; const r = await X.api('/api/mineClaim', { c: C }); if (!S) return; S.busyOp = 0; if (r && r.ok) { S.claimed = Date.now(); tip('Награда за поручения — монеты придут через пару секунд'); if (S.me && S.me.q) { for (const x of [...S.me.q.d, ...S.me.q.w]) if (x.done) x.cl = 1; if (S.me.q.c && S.me.q.c.done && S.me.q.c.ok) S.me.q.c.cl = 1; } panel(); } else { b5.disabled = false; tip((r && r.error) || 'Не получилось'); } };
     el.querySelectorAll('[data-mn-wear]').forEach((b) => b.onclick = () => wear(b, b.dataset.mnWear));
     el.querySelectorAll('[data-mn-off]').forEach((b) => b.onclick = () => takeOff(b, b.dataset.mnOff));
@@ -1373,7 +1424,8 @@
   function boardHtml(st, me, quests) {
     const tab = S.qTab === 'hon' ? 'hon' : 'q';
     const tabs = `<div class="sp-tabs mn-bt" role="tablist" aria-label="Доска">${[['q', 'Поручения'], ['hon', 'Доска почёта']].map(([k, t]) => `<button type="button" role="tab" class="sp-tab" data-mn-bt="${k}" aria-selected="${tab === k}">${t}</button>`).join('')}</div>`;
-    if (tab === 'q') return `<div class="mn-npc-p"><h3 class="h3">Поручения скупщика</h3>${tabs}<p class="muted">Награду выдаёт ${esc(tx().seller)} - «Забрать награду», когда поручение готово.</p>${quests}</div>`;
+    // 01.11: в mine2 подсказка «кто выдаёт награду» - в строке «Забрать награду» (questsHtml), отдельного абзаца нет
+    if (tab === 'q') return `<div class="mn-npc-p"><h3 class="h3">Поручения скупщика</h3>${tabs}${mine2On() ? '' : `<p class="muted">Награду выдаёт ${esc(tx().seller)} - «Забрать награду», когда поручение готово.</p>`}${quests}</div>`;
     const ml = X.login(), top = st.top || [], k = top.findIndex(([l]) => l === ml), h0 = st.hist && st.hist[0];
     const row = (l, u, i) => `<li class="${l === ml ? 'me' : ''}"><span>${i + 1}</span><b>${esc(l === ml ? l + ' (ты)' : l)}</b><em>${u}</em></li>`;
     return `<div class="mn-npc-p mn-hon"><h3 class="h3">Доска почёта</h3>${tabs}
@@ -1381,6 +1433,68 @@
       <h4>Лучшие копатели недели</h4><ol class="mn-bd-top">${top.map(([l, u], i) => row(l, u, i)).join('') || '<li class="muted">Пока никто не копал</li>'}</ol>
       ${h0 ? `<h4>Прошлая неделя - до этажа ${h0.floor}</h4><ol class="mn-bd-top">${(h0.top || []).slice(0, 3).map((x, i) => row(x.l, x.u, i)).join('')}</ol>` : ''}
       <p class="muted">Вклад - сколько работы вложил герой. Каждую субботу в 18:00 - новая шахта.</p></div>`;
+  }
+  /* ---------- 01.11 (стример: окно поручений «всё перемешано и некомпактно»): одна строка на поручение - короткое название (детали -
+     по нажатию на строку), тонкая полоса прогресса с числами, награда справа значками монет. Состояния: в работе / готово / получено
+     (полученные - одной приглушённой строкой в конце секции). Награду сервер выдаёт сразу за все готовые (mineClaim, minequest.claim) -
+     поэтому одна кнопка сверху, с числом готовых и суммой. Старый вид (без mine2) - questsOld, как был. ---------- */
+  function questsOld(q, qc, canClaim) {
+    const qli = (x) => `<li class="${x.done ? 'done' : ''}${x.cl ? ' cl' : ''}"><span>${esc(x.t)}${x.h ? `<small style="display:block;font-size:11px;opacity:.7">Где: ${esc(x.h)}</small>` : ''}</span><b>${x.cl ? 'получено' : x.done ? 'готово' : `${x.p} / ${x.g}`}</b><em>+${X.money ? X.money(x.c) : x.c}</em></li>`;
+    const qcHtml = qc ? `<h4>Общее поручение шахты</h4><div class="mn-qc${qc.done ? ' done' : ''}"><span class="mn-qt">${esc(qc.t)}<small>Награда +${X.money ? X.money(qc.c) : qc.c} каждому, кто вложил от ${qc.min}. Твой вклад: ${qc.me}${qc.ok ? ' - хватает' : ` - ещё ${Math.max(0, qc.min - qc.me)}`}. Участников: ${qc.n || 0}</small></span><span class="mn-qx"><b class="mn-qp">${qc.cl ? 'получено' : qc.done ? (qc.ok ? 'готово' : 'выполнено') : `${qc.p} / ${qc.g}`}</b></span><span class="m2-mini"><i style="width:${Math.min(100, qc.p / Math.max(1, qc.g) * 100).toFixed(1)}%"></i></span></div>` : '';
+    return `<div class="mn-q"><h4>Поручения на сегодня</h4><ul>${q.d.map(qli).join('')}</ul><h4>Поручения недели</h4><ul>${q.w.map(qli).join('')}</ul>${qcHtml}${canClaim ? '<button type="button" class="btn primary" data-mn-claim>Забрать награду</button>' : ''}</div>`;
+  }
+  // награда значками: «●2 ●50» (серебро, медь - цвета монет), полная сумма словами - в подписи для чтения с экрана
+  const qPlain = (n) => String(X.money ? X.money(n) : n).replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+  // (то же - монеты в требованиях Снабженца: lbl - «монеты»)
+  function qCoins(n, cls, lbl = 'награда') {
+    const P = window.LGSiteUi.moneyParts ? window.LGSiteUi.moneyParts(n) : [['b', Math.max(0, Math.floor(+n || 0))]];
+    return `<span class="mn-qc2${cls ? ' ' + cls : ''}" role="img" aria-label="${esc(lbl + ' ' + qPlain(n))}" title="${esc(qPlain(n))}">${P.map(([k, v]) => `<i class="mn-cn ${k}"></i>${v}`).join(' ')}</span>`;
+  }
+  // текст поручения - короткое название и подробность: «Наработай 70 - вклад в любые камни…» - до « - », если после нет чисел
+  // (числа - часть условия: «Добудь: Уголь - 400 осколков», «… - от 20 в каждый» - тогда целиком); «Поработай вместе: покопай камень…» -
+  // до двоеточия, если после него длинно; общее - без «Общее поручение шахты:» (заголовок секции и так это говорит)
+  const qUp = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  function qSplit(t) {
+    // общее: «Общее поручение шахты: всей шахтой наработайте 300000 за неделю» -> «Всей шахтой: наработать 300 000» (неделя - в заголовке секции)
+    const cm = /^Общее поручение шахты: всей шахтой наработайте (\d+) за неделю$/.exec(String(t || ''));
+    if (cm) return [`Всей шахтой: наработать ${(+cm[1]).toLocaleString('ru-RU').replace(/\s/g, ' ')}`, 'За неделю'];
+    t = qUp(String(t || '').replace(/^Общее поручение шахты:\s*/, ''));
+    const k = t.indexOf(' - '), tail = k > 0 ? t.slice(k + 3) : '';
+    if (tail && !/\d/.test(tail)) return [t.slice(0, k), qUp(tail)];
+    const c = t.indexOf(': '), head = c > 0 ? t.slice(0, c) : '', rest = c > 0 ? t.slice(c + 2) : '';
+    if (head && !/\d/.test(head) && rest.length > 28) return [head, qUp(rest)];
+    return [t, ''];
+  }
+  const qPct = (p, g) => Math.max(0, Math.min(100, (+p || 0) / Math.max(1, +g || 0) * 100)).toFixed(1);
+  // st: 'go' - в работе, 'ok' - готово (ждёт «Забрать»), 'cl' - получено, 'no' - шахта выполнила, а вклада героя мало
+  function qRow(id, t, more, p, g, c, st) {
+    const [nm, tail] = qSplit(t), open = !!(S.qOpen && S.qOpen.has(id)), det = [tail, ...more].filter(Boolean);
+    const tag = st === 'ok' ? '<b class="mn-qs-st">готово</b>' : st === 'cl' ? '<b class="mn-qs-st">получено</b>' : st === 'no' ? '<b class="mn-qs-st">выполнено</b>' : `<b class="mn-qs-n">${p} / ${g}</b>`;
+    const bar = st === 'cl' ? '' : `<span class="mn-qs-bar" aria-hidden="true"><i style="transform:scaleX(${(qPct(st === 'go' ? p : g, g) / 100).toFixed(3)})"></i></span>`;
+    // нажатие на строку - подробности (и название целиком, если не влезло в строку)
+    return `<li class="mn-qs-r ${st}${open ? ' open' : ''}"><button type="button" class="mn-qs-h" data-mn-qx="${esc(id)}" aria-expanded="${open}" title="${esc(nm)}"><span class="mn-qs-t">${esc(nm)}</span>${qCoins(c, st === 'cl' ? 'mute' : '')}${bar}${tag}</button>${open && det.length ? `<p class="mn-qs-d">${det.map(esc).join('<br>')}</p>` : ''}</li>`;
+  }
+  function questsHtml(q, qc) {
+    const ord = { ok: 0, go: 1, no: 2, cl: 3 }, stOf = (x) => (x.cl ? 'cl' : x.done ? 'ok' : 'go');
+    // id у ежедневных и недельных повторяются (work0) - ключ раскрытой строки с секцией
+    const sec = (title, list, pre) => {
+      const rows = list.map((x, k) => ({ x, k, s: stOf(x) })).sort((a, b) => ord[a.s] - ord[b.s] || a.k - b.k);
+      const n = list.filter((x) => x.done).length;
+      return `<section class="mn-qs-s"><h4>${title}<small>${n} из ${list.length}</small></h4><ul>${rows.map(({ x, s }) => qRow(pre + (x.id || x.t), x.t, x.h ? [`Где: ${x.h}`] : [], x.p, x.g, x.c, s)).join('')}</ul></section>`;
+    };
+    let cHtml = '';
+    if (qc) {
+      const s = qc.cl ? 'cl' : qc.done ? (qc.ok ? 'ok' : 'no') : 'go';
+      // подробности общего - одной строкой: порог, свой вклад, участники (смысл - как в прежнем абзаце)
+      const info = `Награда - каждому с вкладом от ${qc.min}; твой вклад ${qc.me}${qc.ok ? ' - хватает' : ` - ещё ${Math.max(0, qc.min - qc.me)}`}; участников ${qc.n || 0}`;
+      cHtml = `<section class="mn-qs-s mn-qs-c"><h4>Общее поручение шахты</h4><ul>${qRow('#c', qc.t, [], qc.p, qc.g, qc.c, s)}</ul><p class="mn-qs-i${qc.ok ? ' ok' : ''}">${esc(info)}</p></section>`;
+    }
+    const ready = [...q.d, ...q.w].filter((x) => x.done && !x.cl), cOk = !!(qc && qc.done && qc.ok && !qc.cl);
+    const nR = ready.length + (cOk ? 1 : 0), sum = ready.reduce((a, x) => a + (+x.c || 0), 0) + (cOk ? +qc.c || 0 : 0);
+    const claim = !S.claimed && nR
+      ? `<div class="mn-qs-cl"><span class="mn-qs-cn" title="Готово ${nR} ${nR === 1 ? 'поручение' : nR < 5 ? 'поручения' : 'поручений'}">Готово: ${nR}</span>${qCoins(sum)}<button type="button" class="btn primary" data-mn-claim>Забрать${nR > 1 ? ' всё' : ''}</button></div>`
+      : `<p class="mn-qs-cl0">Награду выдаёт ${esc(tx().seller)}, когда поручение готово - кнопка «Забрать» появится здесь.</p>`;
+    return `<div class="mn-qs">${claim}${sec('На сегодня', q.d, 'd:')}${sec('На неделю', q.w, 'w:')}${cHtml}</div>`;
   }
   /* ---------- 30.10: окно-облачко (mn-win) у предмета, к которому относится: Скупщик, Снабженец, доска, лифт, буровая; место - из
      камеры (S.tx, S.ty, S.z) по событиям (apply, перерисовка окна), без кадров; не влезает - прокрутка внутри; на телефоне - по ширине экрана ---------- */
@@ -1464,16 +1578,18 @@
     const row = ([it, q]) => `<li class="mb-ln" data-mb-uid="${esc(it.uid)}"><span class="mb-ic">${X.art ? X.art(it) : ''}</span><span class="mb-nm"><b>${esc(it.name)}</b><small>${esc(oskQ(q))}${q < it.q ? ` из ${esc(oskQ(it.q))}` : ''}</small></span><em class="mb-v" title="Столько это стоит у скупщика">≈ ${val(q * (+P[it.res] || 0) / 100)}</em>`
       + `<span class="mb-lb"><button type="button" class="btn ghost sm" data-mb-half${q < 2 || wait ? ' disabled' : ''} title="Оставить на прилавке половину">½</button><button type="button" class="btn ghost sm" data-mb-all${q >= it.q || wait ? ' disabled' : ''} title="Всю кучку">Всё</button><button type="button" class="btn ghost sm mb-x" data-mb-x${wait ? ' disabled' : ''} aria-label="Убрать с прилавка">×</button></span></li>`;
     const thx = B.said && !lines.length && Date.now() - B.said.at < 120000 ? B.said : null;
-    const say = thx ? esc(thx.t).replace(/\{coins\}/g, X.money ? X.money(thx.c) : String(thx.c)) : !lines.length ? 'Клади руду на прилавок — скажу, сколько дам.' : price > 0 ? `Дам за это ${X.money ? X.money(price) : price}.` : 'За это и медяка не дам — добавь ещё.';
+    const say = thx ? esc(thx.t).replace(/\{coins\}/g, X.money ? X.money(thx.c) : String(thx.c)) : !lines.length ? 'Клади руду на прилавок - скажу, сколько дам.' : price > 0 ? `Дам за это ${X.money ? X.money(price) : price}.` : 'За это и медяка не дам - добавь ещё.';
     const pl = Object.entries(P).filter(([k]) => its.some((it) => it.res === k)).sort((a, b) => b[1] - a[1]);
+    // 01.11 (стример: окно некомпактно): пустой прилавок - низкий, подсказка одной строкой; «Скупщик даст N» и кнопки - одной строкой
+    // («Забрать» - маленькая и только когда на прилавке что-то есть); сумка с рудой - сразу под прилавком
+    const fine = window.matchMedia && window.matchMedia('(pointer: fine)').matches;
     return `<section class="m2-card mb-head"><div class="mb-who"><h3 class="h3">${esc(tx().seller)}</h3><p class="mb-say${thx ? ' thx' : ''}" aria-live="polite">«${say}»</p></div></section>
-      <section class="m2-card mb-counter" data-igdrop="buy" aria-label="Прилавок скупщика"><div class="m2-k">Прилавок <small>${lines.length ? `${lines.length} ${lines.length === 1 ? 'вид' : lines.length < 5 ? 'вида' : 'видов'}` : 'пусто'}</small></div>
-        ${lines.length ? `<ul class="mb-lines">${lines.map(row).join('')}</ul>` : `<p class="mb-empty">Перетащи сюда руду или осколки из сумки ниже — или просто нажми на кучку${window.matchMedia && window.matchMedia('(pointer: fine)').matches ? ' (Shift+клик — тоже)' : ''}.</p>`}
-        <div class="mb-offer${price > 0 ? ' on' : ''}"><span>Скупщик даст</span><b>${X.money ? X.money(price) : price}</b></div>
-        <div class="mn-btns"><button type="button" class="btn primary" data-mb-go${!(price > 0) || wait ? ' disabled' : ''}>${wait ? 'Скупщик считает…' : 'Обменять'}</button><button type="button" class="btn ghost" data-mb-back${!lines.length || wait ? ' disabled' : ''}>Забрать обратно</button></div></section>
-      <section class="m2-card mb-inv"><div class="m2-k">Руда в сумке <small>100 осколков — 1 шт.</small></div><div class="mb-grid" data-mn-buyinv></div></section>
-      <section class="mb-foot">${pl.length ? `<details class="mb-prices"><summary>Цены скупщика</summary><ul>${pl.map(([k, v]) => `<li><span>${esc(resName(k))}</span><b>${val(v)}</b></li>`).join('')}</ul><p class="muted">монет за 1 шт.; осколки — долей</p></details>` : ''}
-        <p class="muted">Купленное скупщик отправит в казну Ратуши — на развитие города.</p><div class="mn-btns"><button type="button" class="btn ghost" data-mn-back>Назад</button></div></section>`;
+      <section class="m2-card mb-counter${lines.length ? '' : ' empty'}" data-igdrop="buy" aria-label="Прилавок скупщика"><div class="m2-k">Прилавок <small>${lines.length ? `${lines.length} ${lines.length === 1 ? 'вид' : lines.length < 5 ? 'вида' : 'видов'}` : 'пусто'}</small></div>
+        ${lines.length ? `<ul class="mb-lines">${lines.map(row).join('')}</ul>` : `<p class="mb-empty">Нажми на руду ниже${fine ? ' или перетащи сюда' : ''}</p>`}
+        <div class="mb-deal"><div class="mb-offer${price > 0 ? ' on' : ''}"><span>Даст</span><b>${X.money ? X.money(price) : price}</b></div>${lines.length ? `<button type="button" class="btn ghost sm mb-back" data-mb-back${wait ? ' disabled' : ''} title="Убрать всё с прилавка обратно в сумку">Забрать</button>` : ''}<button type="button" class="btn primary" data-mb-go${!(price > 0) || wait ? ' disabled' : ''}>${wait ? 'Считает…' : 'Обменять'}</button></div></section>
+      <section class="m2-card mb-inv"><div class="m2-k">Руда в сумке <small>100 осколков = 1 шт.</small></div><div class="mb-grid" data-mn-buyinv></div></section>
+      <section class="mb-foot">${pl.length ? `<details class="mb-prices"><summary>Цены скупщика</summary><ul>${pl.map(([k, v]) => `<li><span>${esc(resName(k))}</span><b>${val(v)}</b></li>`).join('')}</ul><p class="muted">монет за 1 шт.; осколки - долей</p></details>` : ''}
+        <p class="muted">Купленное скупщик отправит в казну Ратуши - на развитие города.</p><div class="mn-btns"><button type="button" class="btn ghost" data-mn-back>Назад</button></div></section>`;
   }
   // сумка (только руда) — библиотека инвентаря в окне; на прилавке лежащее — меньше в ячейках
   const buyData = () => { const h = (X.hero && X.hero()) || {}; const items = oreItems().map((it) => { const on = B.lines.get(it.uid) || 0; return on ? { ...it, q: it.q - on } : it; }).filter((it) => it.q > 0); return { hero: h, items }; };
@@ -1483,12 +1599,12 @@
     if (!host) { if (S.buyInv) { try { S.buyInv.destroy(); } catch (e) {} S.buyInv = null; } return; }
     if (S.buyInv && S.buyInv.el === host && host.__lgi) { S.buyInv.update(buyData()); return; }
     if (S.buyInv) { try { S.buyInv.destroy(); } catch (e) {} S.buyInv = null; }
-    if (!window.LGInventory) { host.innerHTML = '<p class="muted">Сумка не загрузилась — обнови страницу.</p>'; return; }
+    if (!window.LGInventory) { host.innerHTML = '<p class="muted">Сумка не загрузилась - обнови страницу.</p>'; return; }
     S.buyInv = window.LGInventory.mount(host, { variant: 'full', mode: 'pick', data: buyData(),
       actions: { pick: (it) => buyPut(it), drop: (it) => buyPut(it) },
       options: { header: false, vitals: false, detail: false, doll: false, filters: false, sort: false, hint: false, art: X.art ? (it) => X.art(it) : null, storeKey: 'lgMineBuy',
         dragRoot: S.el.querySelector('.mn-win'), dropSel: '[data-igdrop="buy"]', can: () => (B.wait ? 'Скупщик считает прошлое' : true),
-        labels: { empty: 'Руды в сумке нет — накопай в шахте или забери со склада.' },
+        labels: { empty: 'Руды в сумке нет - накопай в шахте или забери со склада.' },
         cardTip: X.cardTip ? (c, it) => X.cardTip(c, it, X.hero()) : null, tipHide: tipOff, say: (t) => tip(t) } });
   }
   function buyPut(it) {
@@ -1561,51 +1677,62 @@
     const x = (S.me && S.me.pkx) || null, mx = (S.me && S.me.mx) || { lv: 1 }, h = (X.hero && X.hero()) || {}, money = Math.max(0, Math.floor(+h.money || 0));
     const tab = ['pick', 'bag', 'lamp'].includes(PK.tab) ? PK.tab : 'pick', T = pkT(x), lv = x ? x.lv : 0, nx = lv + 1 < T.length ? lv + 1 : -1;
     const tabs = `<div class="sp-tabs" role="tablist" aria-label="Товары Снабженца">${[['pick', 'Кирка'], ['bag', 'Рудная сумка'], ['lamp', 'Каска']].map(([k, t]) => `<button type="button" role="tab" class="sp-tab" data-sp-tab="${k}" aria-selected="${tab === k}">${t}</button>`).join('')}</div>`;
-    const row = (ic, name, hv, need, ok, hint) => `<li class="sp-req${ok ? ' ok' : ' no'}"><span class="sp-ri">${ic}</span><span class="sp-rn">${name}${hint ? `<small>${hint}</small>` : ''}</span><b class="sp-rv"><span>есть ${hv}</span> / нужно ${need}</b></li>`;
+    // 01.11 (стример: окно некомпактно): требование - клетка сетки 2 × N: значок, название (и пометка скидки), «нужно N · есть M»;
+    // выполнено - зелёная отметка, не хватает - красная (цвет + знак ✓ / ✗, не только цвет)
+    const row = (ic, name, hv, need, ok, hint) => `<li class="sp-req${ok ? ' ok' : ' no'}"><span class="sp-ri">${ic}</span><span class="sp-rn"><span class="sp-rt" title="${name}">${name}</span>${hint ? `<small>${hint}</small>` : ''}</span><b class="sp-rv"><em><i class="sp-rk" role="img" aria-label="${ok ? 'хватает' : 'не хватает'}">${ok ? '✓' : '✗'}</i>нужно ${need}</em><span>${hv}</span></b></li>`;
+    const cIc = (n) => qCoins(n, 'sp-mc', 'монеты');
+    const coinRow = (need) => row('<span class="sp-ix">●</span>', 'Монеты', money >= need ? 'хватает' : `есть ${cIc(money)}`, cIc(need), money >= need, '');
+    const mRow = (need) => row('<span class="sp-ix">⛏</span>', 'Горное дело', `есть ур. ${mx.lv || 1}`, `ур. ${need}`, (mx.lv || 1) >= need, '');
     let body = '';
     if (tab === 'pick') {
       if (!x) body = '<p class="muted">Снабженец раскладывает товар - загляни через пару секунд.</p>';
       else {
         const cur = T[lv] || ['Кирка', 1];
-        body = `<div class="sp-now"><span class="sp-pic">${pkIcon(lv, 64)}</span><div><div class="m2-k">Твоя кирка</div><p class="sp-nm">${esc(cur[0])}</p><p class="muted">Сила удара ×${val(+cur[1])}${lv ? ` (${pct(+cur[1])})` : ''} · навсегда, только твоя</p></div></div>`;
-        if (nx < 0) body += '<p class="sp-max">Лучше кирки не бывает - у тебя адамантитовая.</p>';
+        // «сейчас → следующая» - одной строкой: Деревянная ×1 → Медная +10%
+        const now = `<div class="sp-now"><span class="sp-pic">${pkIcon(lv, 40)}</span><div><p class="sp-nm" title="${esc(cur[0])}">${esc(cur[0])}</p><p class="sp-mul">×${val(+cur[1])}${lv ? ` (${pct(+cur[1])})` : ''}</p></div></div>`;
+        if (nx < 0) body = `<div class="sp-step">${now}</div><p class="sp-max">Лучше кирки не бывает - у тебя адамантитовая.</p>`;
         else {
           const N = T[nx], hv = oreHave(), wait = !!PK.wait, reqs = [];
-          let ok = true;
-          const mOk = (mx.lv || 1) >= N[2]; ok = ok && mOk;
-          reqs.push(row('<span class="sp-ix">⛏</span>', 'Горное дело', `ур. ${mx.lv || 1}`, `ур. ${N[2]}`, mOk, ''));
-          const cOk = money >= N[3]; ok = ok && cOk;
-          if (N[3] > 0) reqs.push(row('<span class="sp-ix">●</span>', 'Монеты', X.money ? X.money(money) : money, X.money ? X.money(N[3]) : N[3], cOk, ''));
+          let ok = (mx.lv || 1) >= N[2];
+          reqs.push(mRow(N[2]));
+          if (N[3] > 0) { ok = ok && money >= N[3]; reqs.push(coinRow(N[3])); }
           // 26.10 (решение стримера): скидки - медь вместо части железа, кристаллы вместо части золота; есть в сумке - отдаём, если игрок не снял галочку
           const opt = N[5] || {}, can = Object.keys(opt).filter((r) => (hv[r] || 0) > 0), use = can.filter((r) => !PK.no.has(r)), pay = pickPay(N[4] || {}, opt, hv, use);
-          const oreIc = (r) => (X.art ? X.art({ id: 'ore_' + r, res: r, qty: 100, q: 100, name: resName(r), slot: 'material', mat: 'ore' }) : '');
+          // 01.11: значок руды - как в сумке руды: та же кучка из сумки (рисунок страницы, нет - библиотеки инвентаря)
+          const oreIc = (r) => { const it = oreItems().find((x) => x.res === r) || { id: 'ore_' + r, res: r, qty: 100, q: 100, name: resName(r), slot: 'material', mat: 'ore' }; let a = ''; try { a = X.art ? X.art(it) : ''; } catch (e) { console.warn('[шахта] значок руды', e); } if (!a && window.LGInventory && window.LGInventory.art) a = window.LGInventory.art(it); return a || ''; };
           const Up = (r) => esc(resName(r)[0].toUpperCase() + resName(r).slice(1));
           for (const [r, need] of Object.entries(pay.s)) {
             const got = hv[r] || 0, o2 = got >= need, base = (N[4] || {})[r] || 0; ok = ok && o2;
-            reqs.push(row(oreIc(r), Up(r), pcs(Math.min(got, 1e9)), pcs(need), o2, pay.used[r] ? 'скидка' : base > need ? `дешевле: без скидки ${pcs(base)}` : ''));
+            reqs.push(row(oreIc(r), Up(r), `есть ${pcs(Math.min(got, 1e9))}`, pcs(need), o2, pay.used[r] ? 'скидка' : base > need ? `без скидки ${pcs(base)}` : ''));
           }
-          var cheap = can.length ? `<div class="sp-cheap"><div class="m2-k">Можно дешевле</div>${can.map((r) => `<label class="sp-opt"><input type="checkbox" data-sp-use="${esc(r)}"${use.includes(r) ? ' checked' : ''}${wait ? ' disabled' : ''}><span class="sp-ri">${oreIc(r)}</span><span>${Up(r)}: 1 шт. вместо ${val(+opt[r][1])} шт. - ${esc(RESG[opt[r][0]] || resName(opt[r][0]))} <small>есть ${pcs(hv[r])}</small></span></label>`).join('')}</div>` : '';
-          body += `<section class="m2-card sp-next"><div class="m2-k">Следующая</div><div class="sp-up"><span class="sp-pic">${pkIcon(nx, 52)}</span><div><p class="sp-nm">${esc(N[0])}</p><p class="sp-gain">${pct(+N[1])} к силе удара <small>сейчас ${lv ? pct(+cur[1]) : '+0%'}</small></p></div></div>
-            <ul class="sp-reqs">${reqs.join('')}</ul>${cheap}
-            <p class="muted sp-note">Руда - из сумки героя (и рудной сумки), 100 осколков = 1 шт. Камни копаются быстрее, оплата за время работы не меняется.</p>
-            <div class="mn-btns"><button type="button" class="btn primary" data-sp-pick="${nx}"${!ok || wait ? ' disabled' : ''}>${wait ? 'Снабженец работает…' : 'Улучшить'}</button></div></section>`;
+          // «Можно дешевле» - под кнопкой (кнопка видна без прокрутки на телефоне); галочка сразу меняет строки «нужно» над кнопкой
+          const cheap = can.length ? `<div class="sp-cheap"><div class="m2-k">Можно дешевле</div>${can.map((r) => `<label class="sp-opt"><input type="checkbox" data-sp-use="${esc(r)}"${use.includes(r) ? ' checked' : ''}${wait ? ' disabled' : ''}><span class="sp-ri">${oreIc(r)}</span><span>${Up(r)}: 1 шт. вместо ${val(+opt[r][1])} шт. ${esc(RESG[opt[r][0]] || resName(opt[r][0]))} <small>есть ${pcs(hv[r])}</small></span></label>`).join('')}</div>` : '';
+          body = `<div class="sp-step">${now}<span class="sp-arr" aria-label="улучшить до">→</span><div class="sp-up"><span class="sp-pic">${pkIcon(nx, 40)}</span><div><p class="sp-nm">${esc(N[0])}</p><p class="sp-gain">${pct(+N[1])}<small> к удару</small></p></div></div></div>
+            <ul class="sp-reqs">${reqs.join('')}</ul>
+            <div class="sp-go"><button type="button" class="btn primary" data-sp-pick="${nx}"${!ok || wait ? ' disabled' : ''}>${wait ? 'Снабженец работает…' : 'Улучшить'}</button></div>${cheap}
+            <p class="sp-note">Навсегда и только твоя. Руда - из сумки и рудной сумки, 100 осколков = 1 шт. Камни копаются быстрее, оплата за время работы та же.</p>`;
         }
         body += `<details class="sp-ladder"${PK.ladder ? ' open' : ''}><summary>Все кирки</summary><ol>${T.map((t, k) => `<li class="${k <= lv ? 'got' : ''}${k === nx ? ' nx' : ''}"><span class="sp-pic">${pkIcon(k, 28)}</span><span>${esc(t[0])}</span><b>×${val(+t[1])}</b><small>${k ? `мастерство ${t[2]}` : 'у всех'}</small></li>`).join('')}</ol></details>`;
       }
     } else if (tab === 'bag') {
       const ob = x && x.ob;
-      if (ob) body = `<div class="sp-now"><span class="sp-pic sp-bagi">${bagIcon(56)}</span><div><div class="m2-k">Рудная сумка у тебя</div><p class="sp-nm">${ob.used} / ${ob.cap} ячеек</p><p class="muted">Новая руда кладётся в неё и не занимает места в сумке героя. Полна - руда идёт в обычную сумку, потом на склад. Перекладывать - на «Складе» в «Городе».</p></div></div>`;
+      if (ob) body = `<div class="sp-step"><div class="sp-now"><span class="sp-pic sp-bagi">${bagIcon(36)}</span><div><p class="sp-nm">Рудная сумка у тебя</p><p class="sp-mul">${ob.used} / ${ob.cap} ячеек</p></div></div></div><p class="sp-note">Новая руда ложится в неё, а не в сумку героя; полна - в сумку, потом на склад. Перекладывать - на «Складе» в «Городе».</p>`;
       else if (x) {
         const wait = !!PK.wait, mOk = (mx.lv || 1) >= x.obL, cOk = money >= x.obP;
-        body = `<section class="m2-card sp-next"><div class="sp-up"><span class="sp-pic sp-bagi">${bagIcon(56)}</span><div><p class="sp-nm">Рудная сумка</p><p class="sp-gain">${x.obC} ячеек для руды <small>одна кучка на вид = одна ячейка</small></p></div></div>
-          <p class="muted">Навсегда и только твоя: руда из шахты кладётся в неё и не занимает места в сумке героя. Скупщик и кирка берут руду и отсюда.</p>
-          <ul class="sp-reqs">${row('<span class="sp-ix">⛏</span>', 'Горное дело', `ур. ${mx.lv || 1}`, `ур. ${x.obL}`, mOk, '')}${x.obP > 0 ? row('<span class="sp-ix">●</span>', 'Монеты', X.money ? X.money(money) : money, X.money ? X.money(x.obP) : x.obP, cOk, '') : ''}</ul>
-          <div class="mn-btns"><button type="button" class="btn primary" data-sp-bag${!mOk || !cOk || wait ? ' disabled' : ''}>${wait ? 'Снабженец работает…' : 'Купить'}</button></div></section>`;
+        body = `<div class="sp-step"><div class="sp-up"><span class="sp-pic sp-bagi">${bagIcon(36)}</span><div><p class="sp-nm">Рудная сумка</p><p class="sp-gain">${x.obC} ячеек для руды <small>одна кучка на вид = одна ячейка</small></p></div></div></div>
+          <ul class="sp-reqs">${mRow(x.obL)}${x.obP > 0 ? coinRow(x.obP) : ''}</ul>
+          <div class="sp-go"><button type="button" class="btn primary" data-sp-bag${!mOk || !cOk || wait ? ' disabled' : ''}>${wait ? 'Снабженец работает…' : 'Купить'}</button></div>
+          <p class="sp-note">Навсегда и только твоя: руда из шахты ложится в неё, не в сумку героя. Скупщик и кирка берут руду и отсюда.</p>`;
       }
     } else {
-      body = lampOn() ? '<p>«Каска шахтёра» на тебе — фонарь светит на любом этаже.</p>' : !have && S.lampBought && Date.now() - S.lampBought < 60000 ? '<p>Каска куплена — несу в сумку, через пару секунд появится.</p>' : have ? `<p>«Каска шахтёра» у тебя в сумке — надень её, и фонарь загорится.</p><div class="mn-btns"><button type="button" class="btn primary" data-mn-wear="${esc(have.uid)}">Надеть каску</button></div>` : `<p>С ${st.darkFrom || 5}-го этажа без света ничего не видно и копать нельзя. «Каска шахтёра» — обычная вещь в сумку: надел — светит; можно снять и убрать на склад.</p><div class="mn-btns"><button type="button" class="btn primary" data-mn-lamp>Купить каску — ${X.money ? X.money(st.lampPrice || 150) : st.lampPrice}</button></div>`;
+      // каска - та же раскладка: значок и строка, кнопка, мелкое пояснение
+      const hat = (t, sub) => `<div class="sp-step"><div class="sp-now"><span class="sp-pic sp-bagi">⛑</span><div><p class="sp-nm">${t}</p>${sub ? `<p class="sp-mul">${sub}</p>` : ''}</div></div></div>`;
+      body = lampOn() ? `${hat('Каска шахтёра на тебе', 'фонарь светит на любом этаже')}`
+        : !have && S.lampBought && Date.now() - S.lampBought < 60000 ? `${hat('Каска куплена', 'несу в сумку - через пару секунд появится')}`
+        : have ? `${hat('Каска шахтёра в сумке', 'надень её - и фонарь загорится')}<div class="sp-go"><button type="button" class="btn primary" data-mn-wear="${esc(have.uid)}">Надеть каску</button></div>`
+        : `${hat('Каска шахтёра', `с ${st.darkFrom || 5}-го этажа без света не видно и копать нельзя`)}<div class="sp-go"><button type="button" class="btn primary" data-mn-lamp>Купить каску - ${X.money ? X.money(st.lampPrice || 150) : st.lampPrice}</button></div><p class="sp-note">Обычная вещь в сумку: надел - светит; можно снять и убрать на склад.</p>`;
     }
-    return `<section class="m2-card mb-head sp-head"><div class="mb-who"><h3 class="h3">${esc(SUP)}</h3><p class="muted sp-sub">${esc(SUP_SUB)}</p><p class="mb-say">«${esc(PK.say && Date.now() - PK.say.at < 60000 ? PK.say.t : 'Снаряжение для шахты: кирки, рудные сумки, каски. Хорошая кирка - полдела.')}»</p></div>${tabs}</section>
+    return `<section class="m2-card mb-head sp-head"><div class="mb-who"><h3 class="h3">${esc(SUP)} <small class="sp-sub">${esc(SUP_SUB)}</small></h3><p class="mb-say">«${esc(PK.say && Date.now() - PK.say.at < 60000 ? PK.say.t : 'Хорошая кирка - полдела.')}»</p></div>${tabs}</section>
       <section class="m2-card sp-body" role="tabpanel">${body}</section>
       <section class="mb-foot"><div class="mn-btns"><button type="button" class="btn ghost" data-mn-back>Назад</button></div></section>`;
   }

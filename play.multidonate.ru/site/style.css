@@ -1207,6 +1207,8 @@ html.is-dragging .style-switch { display: none; }
 .jr-c { font-weight: 700; } .jr-c .m, .jr-c .m b { color: inherit; }
 .jr-x { color: var(--mute); font-weight: 700; }
 .jr .foot { margin: 0; }
+/* 31.10 (feat/hw-pass-claim): кнопка «Забрать» у записи журнала с наградой */
+.jr-cl { min-height: 36px; padding: var(--s1) var(--s4); white-space: nowrap; }
 /* 23.10: журнал — внутри «Персонажа»: вид на всю ширину и короткий список последних записей под характеристиками */
 .jr-wrap > .views { justify-content: center; margin: 0 0 var(--s4); }
 .jr-mini { display: grid; gap: var(--s2); padding-top: var(--s3); border-top: 1px solid color-mix(in srgb, var(--ink) 14%, transparent); min-width: 0; }
@@ -2030,3 +2032,54 @@ html.jailed .cy-bar, html.jailed .cy-tipb, html.jailed .cy-town { display: none 
 .lg-maint-t{margin:0;font-size:24px;line-height:1.35;font-weight:600}
 html.lg-maint-on,html.lg-maint-on body{overflow:hidden}
 @media (max-width:600px){.lg-maint-t{font-size:20px}.lg-maint-ico{font-size:44px}}
+
+/* ================= 01.11: «Облик» конфигуратором (новинка lookConfig, app.js lcHtml) =================
+   Одна карточка: шапка над головой, лицо и аура справа от головы, ник и класс под человечком, форма и цвета ниже (эскиз стримера).
+   Узкая карточка (телефон) - всё столбиком под человечком: ничего не наезжает на рисунок. Движение - только transform/opacity. */
+.lc { container-type: inline-size; display: grid; gap: var(--s3); }
+.lc-in { display: grid; gap: var(--s2) var(--s3); grid-template-columns: minmax(0, 1fr); grid-template-areas: "busy" "fig" "plate" "top" "side" "bot"; }
+.lc-busy { grid-area: busy; margin: 0; }
+.lc-top { grid-area: top; } .lc-side { grid-area: side; } .lc-bot { grid-area: bot; }
+.lc-top, .lc-side, .lc-bot { display: grid; gap: var(--s2); align-content: start; min-width: 0; }
+.lc-fig { grid-area: fig; position: relative; width: min(100%, 190px); margin: 0 auto; }
+.lc-fig svg { display: block; width: 100%; height: auto; }
+.hero-grid .stage .lc .lc-plate { grid-area: plate; margin: 0; text-align: center; }
+.hero-grid .stage .lc .lc-plate .role { justify-content: center; }
+.hero-grid.lc-on .stage { display: block; }
+/* строка «‹ Глаза ›»: стрелки под палец (40 px), название крупно, текущий вариант мелко под ним */
+.lc-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) 40px; align-items: center; gap: var(--s1); min-height: 48px; }
+.lc-a { width: 40px; height: 40px; display: grid; place-items: center; padding: 0; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--ink) 22%, transparent); background: var(--surface2, transparent); color: var(--ink); transition: transform .15s var(--ease), border-color .15s var(--ease); }
+.lc-a svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.lc-a:hover:not(:disabled) { border-color: var(--accent); }
+.lc-a:active:not(:disabled) { transform: scale(.92); }
+.lc-a:disabled { opacity: .3; }
+.lc-m { display: grid; justify-items: center; text-align: center; min-width: 0; line-height: 1.15; }
+.lc-n { font-family: var(--hd); font-weight: 700; font-size: var(--t-lg); color: var(--ink); overflow-wrap: anywhere; }
+.lc-k { font-family: var(--tx); font-size: var(--t-xs); font-weight: 600; color: var(--mute); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.lc-v { display: inline-flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 2px 5px; max-width: 100%; font-size: var(--t-xs); color: var(--mute); }
+.lc-v > span { overflow-wrap: anywhere; }
+.lc-v small { font-size: 11px; opacity: .8; }
+.lc-v .sw, .lc-more .sw { width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 0 1px rgba(0,0,0,.4), inset 0 0 0 1px rgba(255,255,255,.25); flex: none; }
+.lc-in-r { animation: lc-in-r .18s var(--ease); } .lc-in-l { animation: lc-in-l .18s var(--ease); }
+@keyframes lc-in-r { from { transform: translateX(8px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes lc-in-l { from { transform: translateX(-8px); opacity: 0; } to { transform: none; opacity: 1; } }
+/* аксессуары - можно несколько: кнопками */
+.lc-acc { display: grid; gap: var(--s1); justify-items: center; text-align: center; padding-top: var(--s1); }
+.lc-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.lc-chips button { min-height: 36px; padding: 4px 12px; border-radius: 999px; border: 2px solid color-mix(in srgb, var(--ink) 22%, transparent); background: transparent; color: var(--ink); font-size: var(--t-sm); font-weight: 700; }
+.lc-chips button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink, #1a140b); }
+.lc-chips button:disabled { opacity: .5; }
+.lc .lk-tip { font-size: var(--t-xs); color: var(--mute); margin: 0; text-align: center; }
+/* средняя карточка: строки парами под человечком */
+@container (min-width: 400px) {
+  .lc-side, .lc-bot { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lc-bot .lc-acc { grid-column: 1 / -1; }
+}
+/* широкая карточка (ПК): как на эскизе - шапка над головой, лицо справа от головы, ник под человечком, форма и цвета внизу */
+@container (min-width: 540px) {
+  .lc-in { grid-template-columns: minmax(0, 1fr) minmax(170px, 210px) minmax(0, 1fr); grid-template-areas: "busy busy busy" ". top ." ". fig side" "plate plate plate" "bot bot bot"; align-items: start; }
+  .lc-top { align-self: end; }
+  .lc-side { grid-template-columns: minmax(0, 1fr); align-self: start; padding-top: var(--s2); max-width: 230px; }
+  .lc-fig { width: 100%; }
+  .lc-bot { grid-template-columns: repeat(2, minmax(0, 220px)); justify-content: center; }
+}
