@@ -1,31 +1,31 @@
 
-/* ───── стиль «cats»: styles/cats/dungeon-themes.js ───── */
+ 
 try {
-/* Стиль «Котики» (рисовка) — ТЕМЫ РЕГИОНОВ для генератора данжей (styles/cats/dungeon.js).
-   Порядок загрузки файлов не важен: темы складываются в MDDoodle.dungeonThemes, генератор берёт их при сборке комнаты.
-   Тема = данные (палитра, материалы, рамки проходов, свет, декор, таблички) + необязательный extra(P, ctx) —
-   «фирменные» эффекты региона (струи песка, водопады, лавопады…), рисуются кистями P из генератора.
 
-   Каждый регион — в двух вариациях: T.<регион> (вариация 1) и T.<регион>_b (вариация 2, room.variant === 2).
 
-   Поля темы:
-     region — название региона на карте; names — запасные названия данжей;
-     pal — цвета на малой глубине; deep — к каким цветам смещаться на дне (depth → 1);
-     sky — CSS-подложка [верх, низ]; motes — цвета пылинок/светлячков в темноте свода;
-     wall: strata|blocks|brick|marble|ice|basalt|roots|mossy|coral|void|planks|hull|plates|shelves|frost|fort; frieze — цветной пояс по стене;
-     floor: pebbles|ripples|planks|tiles|cracks|snow|moss|wetsand; ceil: rock|ice|roots|vines|blocks|crystal;
-     frame: { tunnel, back, down: timber|block|arch|door|cave|roots|ice|basalt|rune|gate, hole: crack|mouse,
-              shaft: lift|chute|vine|portal, pit: hole|sand|water|lava|ice, out: ladder|slope|portal };
-     sign: wood|stone|ice|metal; light: вид или список (jar|lantern|torch|brazier|crystal|mushroom|wisp|lava);
-     decor: [[имя, ширина, минГлубина?, максГлубина?]…]; wallDecor: […]; props: […];
-     signs: короткие надписи на табличках по видам проходов; jokes: [[строка, строка-шутка]…]; npc: внешность проводника;
-     fxOver: true — extra рисуется поверх настенного декора (колокол, груз на цепи), иначе под ним. */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 (function () {
   'use strict';
   if (!window.MDDoodle) return;
   const T = (window.MDDoodle.dungeonThemes = window.MDDoodle.dungeonThemes || {});
 
-  // общий эффект: «струя» из трещины свода до пола (песок, вода, снег, лава). 1 SMIL.
+
   function stream(P, x, col, w = 16, base = 786, pool) {
     const { O, f1 } = P, on = P.anim();
     let s = `<path d="M${x + 16} 250 L${x - 4} 300 L${x + 18} 360" fill="none" stroke="${P.pal.hole}" stroke-width="8" stroke-linejoin="round"/>`;
@@ -34,14 +34,14 @@ try {
       + `<path d="M${x} 256 V${base - 6}" stroke="${col}" stroke-width="${w}" stroke-dasharray="${f1(w * 1.2)} ${f1(w * 0.7)}" stroke-linecap="round">${on ? `<animate attributeName="stroke-dashoffset" from="0" to="${f1(-w * 3.8)}" dur="0.8s" repeatCount="indefinite"/>` : ''}</path>`;
     return s;
   }
-  // выбрать 1–2 места в промежутках стены для эффекта
+
   function spotsIn(ctx, P, n, minW = 220) {
     const out = [];
     ctx.gaps.filter((g) => g[1] - g[0] >= minW).forEach((g) => { if (out.length < n && P.rnd() < 0.8) out.push(g[0] + (g[1] - g[0]) * (0.3 + P.rnd() * 0.4)); });
     return out;
   }
 
-  /* ===================== ПЕСКИ ЗАБВЕНИЯ — гробницы ===================== */
+   
   T.sands = {
     pillar: 'column',
     region: 'Пески Забвения', names: ['Гробница Забвения', 'Усыпальница Зноебора'],
@@ -60,7 +60,7 @@ try {
     extra(P, ctx) { return spotsIn(ctx, P, ctx.S).map((x) => stream(P, x, '#e8c088', 15, 790, P.pal.sand)).join(''); },
   };
 
-  /* ===================== ГНИЛЫЕ ТОПИ — затопленные руины ===================== */
+   
   T.rot = {
     pillar: 'root',
     region: 'Гнилые Топи', names: ['Затопленный храм', 'Логово Болотной Ведьмы'],
@@ -78,7 +78,7 @@ try {
     jokes: [['НЕ КОРМИТЬ', 'ТРЯСИНУ'], ['КВА', 'ЭТО ПРИВЕТСТВИЕ'], ['ВЕДЬМА ДОМА', 'СТУЧАТЬ ТРИЖДЫ'], ['БОЛОТО ЧИСТОЕ', 'ПО-СВОЕМУ']],
     npc: { hat: 'wizard', shape: 'cone', color: '#9aa3ad' },
     extra(P, ctx) {
-      // пузыри в болотных лужах у стены
+
       return spotsIn(ctx, P, ctx.S, 200).map((x) => {
         const on = P.anim();
         return `<path d="M${x - 80} 798 Q${x} 770 ${x + 80} 798 Z" fill="${P.pal.water}" ${P.O(3.5)}/><circle cx="${x - 10}" cy="786" r="7" fill="${P.pal.waterL}" ${P.O(2.4)}>${on ? '<animate attributeName="r" values="0;8;0" dur="2.6s" repeatCount="indefinite"/>' : ''}</circle><circle cx="${x + 24}" cy="790" r="4" fill="${P.pal.waterL}" ${P.O(2)}/>`;
@@ -86,7 +86,7 @@ try {
     },
   };
 
-  /* ===================== ДИКАЯ ПУЩА — корни древнего леса ===================== */
+   
   T.wildwood = {
     pillar: 'root',
     region: 'Дикая Пуща', names: ['Корни Древа-Отца', 'Чертоги Грибного Короля'],
@@ -105,7 +105,7 @@ try {
     npc: { hat: 'beret', shape: 'egg', color: '#a8754f' },
   };
 
-  /* ===================== КАМЕННЫЙ ХРЕБЕТ — гномья шахта ===================== */
+   
   T.ridge = {
     pillar: 'crib',
     region: 'Каменный Хребет', names: ['Старая гномья шахта', 'Копи Каменного Хребта'],
@@ -123,7 +123,7 @@ try {
     npc: { hat: 'bandana', acc: ['mustache'], shape: 'box', color: '#f2a65a' },
   };
 
-  /* ===================== ЛЕДЯНОЙ ПРЕДЕЛ — ледяные пещеры ===================== */
+   
   T.ice = {
     pillar: 'icepillar',
     region: 'Ледяной Предел', names: ['Ледяные пещеры Инейграда', 'Хрустальный грот'],
@@ -142,7 +142,7 @@ try {
     npc: { hat: 'beret', shape: 'ball', color: '#f4f1ec' },
   };
 
-  /* ===================== БЕЛЫЙ ВЕНЕЦ — заснеженная горная обитель ===================== */
+   
   T.crown = {
     pillar: 'column',
     region: 'Белый Венец', names: ['Обитель на вершине', 'Крепость Снежных Орлов'],
@@ -160,7 +160,7 @@ try {
     npc: { hat: 'legion', shape: 'box', color: '#c9ccd3' },
   };
 
-  /* ===================== ВЫЖЖЕННЫЙ КРАЙ — лавовые пещеры ===================== */
+   
   T.scorch = {
     pillar: 'basalt',
     region: 'Выжженный Край', names: ['Горнило Пеплогорска', 'Обсидиановый храм'],
@@ -179,7 +179,7 @@ try {
     extra(P, ctx) { return spotsIn(ctx, P, Math.max(1, ctx.S - 1), 240).map((x) => `<circle cx="${x}" cy="760" r="110" fill="url(#dgLava)" opacity=".6"/>` + stream(P, x, '#ff8a2a', 18, 792, P.pal.lava)).join(''); },
   };
 
-  /* ===================== ЗЕМЛИ ЗА КРАЕМ — руины у края мира ===================== */
+   
   T.beyond = {
     pillar: 'obelisk',
     region: 'Земли за Краем', names: ['Руины на краю мира', 'Звёздный разлом'],
@@ -198,7 +198,7 @@ try {
     npc: { hat: 'wizard', shape: 'tall', color: '#b6a6c9' },
   };
 
-  /* ===================== ДОЛИНЫ РУЧЬЁВ — гроты с водопадами ===================== */
+   
   T.brooks = {
     pillar: 'rock',
     region: 'Долины Ручьёв', names: ['Грот Поющих Ручьёв', 'Пещера Водопадов'],
@@ -217,7 +217,7 @@ try {
     extra(P, ctx) { return spotsIn(ctx, P, ctx.S, 220).map((x) => stream(P, x, P.pal.waterL, 44, 794, 'url(#dgWater)')).join(''); },
   };
 
-  /* ===================== СРЕДИННЫЕ ЗЕМЛИ — погреба и схроны ===================== */
+   
   T.midlands = {
     pillar: 'buttress',
     region: 'Срединные Земли', names: ['Подвалы Перекрёстка', 'Разбойничий схрон'],
@@ -235,7 +235,7 @@ try {
     npc: { hat: 'legion', shape: 'box', color: '#c9c4dc' },
   };
 
-  /* ===================== СЕРДЦЕ МИРА — катакомбы древнего города ===================== */
+   
   T.heart = {
     pillar: 'column',
     region: 'Сердце Мира', names: ['Катакомбы Сердца Мира', 'Зал Первых Королей'],
@@ -253,7 +253,7 @@ try {
     npc: { hat: 'tophat', shape: 'tall', color: '#e6e6ee' },
   };
 
-  /* ===================== БЕРЕГА ВНУТРЕННЕГО МОРЯ — морские пещеры ===================== */
+   
   T.shores = {
     pillar: 'rock',
     region: 'Берега Внутреннего моря', names: ['Пещера Контрабандистов', 'Грот Утопленников'],
@@ -270,7 +270,7 @@ try {
     jokes: [['ПРИЛИВ В ПОЛНОЧЬ', 'ДЕРЖИТЕ ХВОСТЫ'], ['КЛАДА НЕТ', 'КОНТРАБАНДИСТЫ'], ['КРАБАМ', 'ВХОД СВОБОДНЫЙ']],
     npc: { hat: 'tophat', shape: 'ball', color: '#9aa3ad' },
     extra(P, ctx) {
-      // приливная вода у основания стены: лёгкая волна (1 SMIL на экран, не больше 2)
+
       let s = '';
       for (let i = 0; i < Math.min(2, ctx.S); i++) {
         const x0 = i * 1920 + 60 + P.rnd() * 300, w = 360, on = P.anim();
@@ -279,14 +279,14 @@ try {
       return s;
     },
   };
-  /* ===================== ВОСТОЧНАЯ МАРКА — казематы пограничной крепости ===================== */
-  // фирменное: дозорный колокол под сводом качается; в решётке свода проходит отблеск фонаря часового (по 1 SMIL)
+   
+
   function markaWatch(P, ctx) {
     const { O, INK, pal } = P;
     return ctx.gaps.filter((g) => g[1] - g[0] >= 300).slice(0, Math.min(2, ctx.S)).map((g, i) => {
       const on = P.anim();
       if (i % 2 === 0) {
-        // колокол — у левого края промежутка: факелы висят ниже (y ~520), настенный декор — ближе к середине
+
         const x = Math.round(g[0] + 70);
         return `<path d="M${x - 44} 262 H${x + 30}" stroke="${INK}" stroke-width="16" stroke-linecap="round"/><path d="M${x - 44} 262 H${x + 30}" stroke="${pal.woodD}" stroke-width="9" stroke-linecap="round"/>`
           + `<g transform="translate(${x} 266)"><g>${on ? '<animateTransform attributeName="transform" type="rotate" values="-9;9;-9" dur="2.8s" repeatCount="indefinite"/>' : ''}`
@@ -294,7 +294,7 @@ try {
           + `<circle cy="108" r="8" fill="${pal.iron}" ${O(2.6)}/></g></g>`
           + `<path d="M${x + 30} 262 q30 60 4 130" fill="none" stroke="${pal.sand}" stroke-width="3" opacity=".8"/>`;
       }
-      // решётка в своде: наверху ходит часовой с фонарём — сквозь прутья то и дело падает тёплый свет
+
       const x = Math.round((g[0] + g[1]) / 2);
       let bars = ''; for (let dx = -66; dx <= 66; dx += 22) bars += `M${x + dx} 252V274`;
       return `<path d="M${x - 70} 274 L${x + 70} 274 L${x + 150} 640 L${x - 150} 640 Z" fill="${pal.glow}" opacity="${on ? 0 : 0.12}">${on ? '<animate attributeName="opacity" values="0;0;.2;.28;.2;0;0" dur="9s" repeatCount="indefinite"/>' : ''}</path>`
@@ -321,11 +321,11 @@ try {
     extra: markaWatch,
   };
 
-  /* =====================================================================================
-     ВАРИАЦИЯ 2 каждого региона (room.variant === 2 → тема «<регион>_b»)
-     ===================================================================================== */
+  
 
-  // Пески Забвения · 2 — логово песчаного червя: рыжие пещеры, рёбра великанов, янтарь
+
+
+
   T.sands_b = {
     region: 'Пески Забвения', pillar: 'ribs', names: ['Логово Песчаного Червя', 'Кости Великанов'],
     pal: { wall: '#a8603e', wallL: '#bc744e', wallD: '#7e4428', floor: '#6e4430', floorL: '#80543c', ceil: '#1c0e0c', stone: '#b8845a', stoneL: '#cc9a6a', stoneD: '#7e5434',
@@ -343,7 +343,7 @@ try {
     extra(P, ctx) { const g = ctx.gaps.filter((q) => q[1] - q[0] > 220); return g.slice(0, ctx.S).map((q) => { const x = q[0] + (q[1] - q[0]) * 0.5; return `<path d="M${x - 90} 794 Q${x - 40} 742 ${x + 10} 752 Q${x + 60} 736 ${x + 90} 794 Z" fill="${P.pal.sand}" ${P.O(3.5)}/>`; }).join(''); },
   };
 
-  // Гнилые Топи · 2 — погреб болотной ведьмы: дощатые стены, зелья, травы, котлы
+
   T.rot_b = {
     region: 'Гнилые Топи', pillar: 'beam', names: ['Погреб Болотной Ведьмы', 'Кладовая Тётушки Тины'],
     pal: { wall: '#5a4a3a', wallL: '#6a5846', wallD: '#3e3226', floor: '#3e3a2e', floorL: '#4c473a', ceil: '#100c08', wood: '#7a5a3e', woodD: '#4e3a26', woodL: '#94704c', stone: '#6e6a58', stoneL: '#807a66', stoneD: '#4a4638',
@@ -360,7 +360,7 @@ try {
     npc: { hat: 'wizard', shape: 'cone', color: '#9aa3ad' },
   };
 
-  // Дикая Пуща · 2 — чертоги Грибного Короля: гигантские грибы-колонны, споры, розово-бирюзовый свет
+
   T.wildwood_b = {
     region: 'Дикая Пуща', pillar: 'stalk', names: ['Чертоги Грибного Короля', 'Споровые залы'],
     pal: { wall: '#4e3e5e', wallL: '#5e4c70', wallD: '#382c46', floor: '#3a3048', floorL: '#463c56', ceil: '#0c0a14', stone: '#7a6a8a', stoneL: '#8c7c9c', stoneD: '#56486a',
@@ -377,7 +377,7 @@ try {
     npc: { hat: 'beret', shape: 'egg', color: '#a8754f' },
   };
 
-  // Каменный Хребет · 2 — гномья кузня-крепость: резной камень, наковальни, шестерни, щиты
+
   T.ridge_b = {
     region: 'Каменный Хребет', pillar: 'column', names: ['Кузня-крепость гномов', 'Чертог Наковален'],
     pal: { wall: '#6a6478', wallL: '#7c7690', wallD: '#4e4a5c', floor: '#454052', floorL: '#524c60', ceil: '#100e18', stone: '#8a8498', stoneL: '#9e98ac', stoneD: '#5e586e',
@@ -394,7 +394,7 @@ try {
     npc: { hat: 'bandana', acc: ['mustache'], shape: 'box', color: '#f2a65a' },
   };
 
-  // Ледяной Предел · 2 — замёрзшая крипта: кладка в инее, саркофаги, синие огни
+
   T.ice_b = {
     region: 'Ледяной Предел', pillar: 'column', names: ['Замёрзшая крипта', 'Гробница Ледяного Ярла'],
     pal: { wall: '#5a6888', wallL: '#6c7a9a', wallD: '#44506c', floor: '#465270', floorL: '#56628a', ceil: '#0a0e1a', stone: '#8a9ab4', stoneL: '#a0b0c8', stoneD: '#5a6a88',
@@ -411,7 +411,7 @@ try {
     npc: { hat: 'beret', shape: 'ball', color: '#f4f1ec' },
   };
 
-  // Белый Венец · 2 — обсерватория на вершине: тёмно-синий камень, телескопы, глобусы, звёздные карты
+
   T.crown_b = {
     region: 'Белый Венец', pillar: 'column', names: ['Обсерватория Белого Венца', 'Башня Звездочётов'],
     pal: { wall: '#3e4a78', wallL: '#4c5a8c', wallD: '#2e385e', floor: '#3a3e5a', floorL: '#474c6c', ceil: '#080a18', stone: '#8a96c0', stoneL: '#a6b0d4', stoneD: '#5a6490',
@@ -428,7 +428,7 @@ try {
     npc: { hat: 'wizard', shape: 'tall', color: '#c9ccd3' },
   };
 
-  // Выжженный Край · 2 — кузня Огненного Великана: клёпаный металл, фермы, цепи, наковальни
+
   T.scorch_b = {
     region: 'Выжженный Край', pillar: 'girder', names: ['Кузня Огненного Великана', 'Плавильни Пеплогорска'],
     pal: { wall: '#5a4448', wallL: '#6c5458', wallD: '#3e2e32', floor: '#3a2c2e', floorL: '#4a383a', ceil: '#120808', stone: '#6a5a5e', stoneL: '#7e6e72', stoneD: '#46383c',
@@ -446,7 +446,7 @@ try {
     extra(P, ctx) { return T.scorch.extra(P, ctx); },
   };
 
-  // Земли за Краем · 2 — часовая башня Безвременья: шестерни, циферблаты, латунь на фиолетовом
+
   T.beyond_b = {
     region: 'Земли за Краем', pillar: 'gears', names: ['Часовая башня Безвременья', 'Механизм Края'],
     pal: { wall: '#4a3a5e', wallL: '#5a4870', wallD: '#342844', floor: '#30283e', floorL: '#3c344c', ceil: '#08061a', stone: '#6a5a80', stoneL: '#7e6e94', stoneD: '#4a3e5e',
@@ -463,7 +463,7 @@ try {
     npc: { hat: 'tophat', shape: 'tall', color: '#b6a6c9' },
   };
 
-  // Долины Ручьёв · 2 — мельничьи подвалы: доски, водяное колесо, жернова, мешки муки
+
   T.brooks_b = {
     region: 'Долины Ручьёв', pillar: 'beam', names: ['Мельничьи подвалы', 'Подвал Старого Мельника'],
     pal: { wall: '#6a5a48', wallL: '#7c6a56', wallD: '#4e4234', floor: '#4a443c', floorL: '#58524a', ceil: '#0e0c0a', wood: '#8a6a48', woodD: '#5a4630', woodL: '#a8845a', stone: '#8a8478', stoneL: '#a09a8c', stoneD: '#605a50',
@@ -480,7 +480,7 @@ try {
     npc: { hat: 'chef', shape: 'ball', color: '#f4f1ec' },
   };
 
-  // Срединные Земли · 2 — склеп старого рыцаря: серый камень, саркофаги, свечи, паутина
+
   T.midlands_b = {
     region: 'Срединные Земли', pillar: 'column', names: ['Склеп старого рыцаря', 'Усыпальница Перекрёстка'],
     pal: { wall: '#6a6070', wallL: '#7c7284', wallD: '#4e4656', floor: '#45404a', floorL: '#534e5a', ceil: '#0c0a10', stone: '#8a8290', stoneL: '#a098a6', stoneD: '#5e5866',
@@ -497,7 +497,7 @@ try {
     npc: { hat: 'legion', shape: 'box', color: '#c9c4dc' },
   };
 
-  // Сердце Мира · 2 — архив древних: книжные стены, глобусы, свитки, тёплые лампы
+
   T.heart_b = {
     region: 'Сердце Мира', pillar: 'column', names: ['Архив Древних', 'Библиотека Первых Королей'],
     pal: { wall: '#6e4a36', wallL: '#805a42', wallD: '#523626', floor: '#4a3a34', floorL: '#5a4840', ceil: '#100a08', wood: '#8a5a3a', woodD: '#5a3a24', woodL: '#a8744c', stone: '#c8b8a0', stoneL: '#dccdb6', stoneD: '#9a8a74',
@@ -514,7 +514,7 @@ try {
     npc: { hat: 'tophat', shape: 'tall', color: '#e6e6ee' },
   };
 
-  // Берега Внутреннего моря · 2 — затонувший корабль: обшивка, шпангоуты, иллюминаторы, пушки, сундуки
+
   T.shores_b = {
     region: 'Берега Внутреннего моря', pillar: 'hullRib', names: ['Затонувший корабль «Чайка»', 'Трюм Морского Змея'],
     pal: { wall: '#5a4a3e', wallL: '#6c5a4c', wallD: '#3e3228', floor: '#4a3e34', floorL: '#5a4c40', ceil: '#060a10', wood: '#8a6a4a', woodD: '#5a4430', woodL: '#a8845a', stone: '#7a8a98', stoneL: '#8e9eac', stoneD: '#56667a',
@@ -531,8 +531,8 @@ try {
     npc: { hat: 'tophat', shape: 'ball', color: '#9aa3ad' },
   };
 
-  // Восточная Марка · 2 — подземный арсенал / осадная мастерская: разобранные баллисты и катапульты, ящики стрел,
-  // точильный камень, карты укреплений, цепи и лебёдки. Фирменное: под сводом по рельсу ездит тележка с вязанкой болтов (1 SMIL)
+
+
   T.marka_b = {
     region: 'Восточная Марка', pillar: 'hoist', names: ['Арсенал Восточной Марки', 'Осадная мастерская'],
     pal: { wall: '#4c5560', wallL: '#5a6470', wallD: '#3a424c', floor: '#45403a', floorL: '#544e46', ceil: '#0c0e12', stone: '#7e8690', stoneL: '#949ca6', stoneD: '#565e68',
@@ -563,8 +563,8 @@ try {
     },
   };
 
-  /* ===================== HW: ИЗНАНКА — «Ночь Тыквенной Луны» (склеп Джека; только в стиле Котиков) ===================== */
-  // тыквы-фонари у стены и паутина под сводом — общий эффект двух вариаций Изнанки (1 SMIL на фонарь)
+   
+
   function hwPumpkins(P, ctx) {
     const { O, INK } = P;
     return spotsIn(ctx, P, Math.max(1, ctx.S), 160).map((x, i) => {
@@ -575,7 +575,7 @@ try {
         + `<path d="M${x - 90} 250 L${x - 30} 250 M${x - 90} 250 L${x - 90} 310 M${x - 90} 250 L${x - 48} 292 M${x - 74} 250 q-2 14 -16 16 M${x - 56} 250 q-2 30 -34 34 M${x - 40} 250 q0 44 -50 50" stroke="#e8e0f4" stroke-width="1.8" fill="none" opacity=".7"/>`;
     }).join('');
   }
-  // вариация 1 — Тыквенный склеп: тёмный камень, фиолетовые ниши, зелёные огоньки, кости и сундуки
+
   T.hollow = {
     pillar: 'column',
     region: 'Изнанка', names: ['Тыквенный склеп', 'Склеп Скупого Джека', 'Усыпальница Тыквенной Луны'],
@@ -594,7 +594,7 @@ try {
     npc: { hat: 'witch', shape: 'cone', color: '#7b3fe4' },
     extra(P, ctx) { return hwPumpkins(P, ctx); },
   };
-  // вариация 2 — Подвал Тыквенной Ведьмы: доски, полки банок, котлы, сушёные мухоморы
+
   T.hollow_b = {
     region: 'Изнанка', pillar: 'beam', names: ['Подвал Ведьмы', 'Кладовая Тыквенной Ведьмы'],
     pal: { wall: '#4a3a3a', wallL: '#5a4846', wallD: '#2e2222', floor: '#3a2e2e', floorL: '#46383a', ceil: '#0c0808', wood: '#6a4a32', woodD: '#4a3220', woodL: '#8a6442', stone: '#5a5060', stoneL: '#6a6070', stoneD: '#3a3440',
@@ -615,32 +615,32 @@ try {
 
 } catch (e) { console.error('[стили] styles/cats/dungeon-themes.js не загрузился:', e); }
 
-/* ───── стиль «cats»: styles/cats/dungeon.js ───── */
+ 
 try {
-/* Стиль «Котики» (рисовка) — ГЕНЕРАТОР КОМНАТ ДАНЖА (id локации: dungeon).
-   Рисовка как у Мурлыкиной ярмарки: тёмная тёплая обводка #2b1d18, плоские заливки, Russo One, книжный юмор.
-   Содержание — от РЕГИОНА карты мира: темы лежат в styles/cats/dungeon-themes.js (порядок загрузки файлов не важен).
 
-   Вход: env.room — описание комнаты (его выдаёт modules/dungeon/map.js):
-     { region, type: 'start'|'fork'|'deadend'|'descent'|'final', seed, floor, floors, depth: 0..1, name,
-       screens?: 1..3, exits: [{ key, kind, label, to }] }        // до 5 проходов, первый — назад/наружу
-   Выход: обычный объект локации по договору addLocation (как у Ярмарки) + поля:
-     walkPoly — неровный пол (пандусы); boss — точка босса в финальной комнате; meta — служебное.
-   Генерация детерминирована: одна и та же room → одна и та же картинка. Никаких Math.random, таймеров, фильтров. */
+
+
+
+
+
+
+
+
+
 (function () {
   'use strict';
   if (!window.MDDoodle || !window.MDDoodle.addLocation) return;
   const D = window.MDDoodle;
   D.dungeonThemes = D.dungeonThemes || {};
 
-  /* ===================== константы кадра ===================== */
-  const SW = 1920, B = 792;                       // ширина экрана; низ стены (основания проходов)
+   
+  const SW = 1920, B = 792;
   const VIEW_NAMES = ['square', 'rows', 'far'];
   const KEY_COLORS = { back: '#9aa0b4', e1: '#ff8a3d', e2: '#e07ac0', e3: '#3fc4a8', e4: '#6ec6ff', leave: '#9aa0b4', forge: '#ff8a3d', tent: '#e07ac0', rows: '#3fc4a8', secret: '#ffcf4a' };
   const TYPE_NAMES = { start: 'ВХОД', fork: 'РАЗВИЛКА', deadend: 'ТУПИК', descent: 'СПУСК', final: 'ЛОГОВО', treasury: 'СОКРОВИЩНИЦА' };
   const INK = '#2b1d18', CREAM = '#fff4e0', PINK = '#ff8fa3', GOLD = '#ffcf4a';
 
-  // палитра по умолчанию (тема переопределяет)
+
   const BASE_PAL = {
     wall: '#8a5a48', wallL: '#9c6a55', wallD: '#6e4436', floor: '#6a4a40', floorL: '#76554a', ceil: '#1d141c',
     stone: '#9a8a8a', stoneL: '#b8a8a4', stoneD: '#6e6068', wood: '#a8754f', woodD: '#6e4a2f', woodL: '#c08a5c',
@@ -650,7 +650,7 @@ try {
     hole: '#14112a', deep0: '#3a2636', deep1: '#0c0914', glow: '#ffe59a', glow2: '#ffbe5a', cold: '#9fd8ff',
   };
 
-  /* ===================== утилиты ===================== */
+   
   const f1 = (v) => +(+v).toFixed(1);
   function hash(str) { let h = 2166136261; str = String(str); for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) || 1; }
   function mix(a, b, t) {
@@ -659,9 +659,9 @@ try {
     return '#' + [1, 3, 5].map((i) => Math.round(p(a, i) * (1 - t) + p(b, i) * t).toString(16).padStart(2, '0')).join('');
   }
   const pathOf = (pts) => 'M' + pts.map((p) => f1(p[0]) + ' ' + f1(p[1])).join(' L') + ' Z';
-  // 23.10: проход — своя группа с ключом (data-k): сайт по ней подсвечивает проход при наведении и голосует кликом; оверлею не мешает
+
   const exitG = (key, svg) => `<g class="dg-ex" data-k="${String(key).replace(/[^\w-]/g, '')}">${svg}</g>`;
-  // 23.10: что говорит проводник у входа, когда зритель нажимает на него на сайте (только у этого зрителя, не на стриме и не в чат)
+
   const NPC_SAY = {
     sands: ['Песок помнит каждого, кто сюда спускался. Почти никого — живым.', 'Здесь спят. Не будите, если сможете.', 'Ветер наверху стих. Внизу он не дул никогда.', 'Факелы гаснут раньше, чем кажется. Считайте шаги.', 'Я вожу сюда уже много лет. Обратно — реже.'],
     rot: ['Вода тут стоячая, а всё равно куда-то течёт.', 'Не трогайте огоньки над трясиной. Они не для вас.', 'Храм утонул не сразу. Сначала замолчал колокол.', 'Пахнет тиной и чем-то старше тины.', 'Если позовут по имени — не оборачивайтесь.'],
@@ -679,13 +679,13 @@ try {
     hollow: ['Тыквы светятся изнутри. Не спрашивайте, чем.', 'Хозяин склепа не делится. Даже темнотой.', 'В склепе пахнет корицей и сырой землёй.', 'Здесь луна всегда полная. И всегда смотрит.', 'Конфеты тут сладкие. Не берите последнюю.'],
   };
 
-  /* =====================================================================================
-     КИСТИ: всё рисование. P создаётся на каждую комнату (палитра уже смешана по глубине).
-     ===================================================================================== */
+  
+
+
   function makeKit(pal, rnd, esc) {
     let SMIL = 0;
     const P = { pal, rnd, esc, INK, CREAM, PINK, GOLD, f1, pathOf, mix };
-    P.anim = (n = 1) => { if (SMIL + n > 38) return false; SMIL += n; return true; };   // бюджет SMIL на сцену ≤ ~40
+    P.anim = (n = 1) => { if (SMIL + n > 38) return false; SMIL += n; return true; };
     P.smil = () => SMIL;
     P.pick = (arr) => arr[Math.floor(rnd() * arr.length)];
     P.O = (w = 5) => `stroke="${INK}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"`;
@@ -712,8 +712,8 @@ try {
       + '<linearGradient id="ctFloorShade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#14112a" stop-opacity=".45"/><stop offset="1" stop-color="#14112a" stop-opacity="0"/></linearGradient>'
       + '</defs>';
 
-    /* ---------- таблички, баннер, стрелки ---------- */
-    // тема задаёт материал таблички: wood (доска), stone (плита с каймой), ice (льдинка), metal (жесть)
+     
+
     P.signStyle = 'wood';
     P.sign = (cx, cy, w, h, lines, rot = 0) => {
       const st = P.signStyle;
@@ -725,7 +725,7 @@ try {
       return s + '</g>';
     };
     P.signW = (t, size) => Math.max(120, Math.round(String(t).length * size * 0.72 + 46));
-    P.banner = (cx, text, sub) => {   // 23.10: вывеска выше — подпись (регион · этаж · комната) целиком внутри золотой рамки
+    P.banner = (cx, text, sub) => {
       const w = Math.max(460, text.length * 29 + 100, sub.length * 10.5 + 140);
       return `<path d="M${cx - w / 2 + 40} 0 V40 M${cx + w / 2 - 40} 0 V40" stroke="${pal.metalD}" stroke-width="4"/>`
         + `<path d="M${cx - w / 2 - 34} 56 L${cx - w / 2} 42 V114 L${cx - w / 2 - 34} 100 L${cx - w / 2 - 18} 78 Z M${cx + w / 2 + 34} 56 L${cx + w / 2} 42 V114 L${cx + w / 2 + 34} 100 L${cx + w / 2 + 18} 78 Z" fill="${pal.bannerD}" ${O(5)}/>`
@@ -738,7 +738,7 @@ try {
     P.arrowBack = (x, y) => `<path d="M${x} ${y} h-26 v-17 l-36 29 l36 29 v-17 h26 Z" fill="${CREAM}" ${O(3.5)}/>`;
     P.arrowUp = (x, y) => `<path d="M${x - 14} ${y} h28 v-40 h17 l-31 -34 l-31 34 h17 Z" fill="${CREAM}" ${O(3.5)}/>`;
 
-    /* ---------- свет ---------- */
+     
     P.light = (kind, x, y, s = 1) => {
       const k = (hash(kind + x + ':' + y) % 100) / 100, on = P.anim();
       const flick = (dur) => (on ? `<animate attributeName="opacity" values=".6;.88;.66;.82;.6" dur="${(dur + k).toFixed(2)}s" repeatCount="indefinite"/>` : '');
@@ -774,7 +774,7 @@ try {
       }
     };
 
-    /* ---------- декор у основания стены (x — центр, b — линия пола у стены) ---------- */
+     
     const DEC = {};
     P.DEC = DEC;
     DEC.crates = (x, b) => {
@@ -861,9 +861,9 @@ try {
       + `<path d="M${x + 34} ${b - 146} Q${x + 70} ${b - 120} ${x + 60} ${b - 80} L${x + 34} ${b - 86} Z" fill="${CREAM}" ${O(3)}/>`;
     DEC.iceBlock = (x, b) => {
       const inside = P.pick([
-        `<path d="M${x - 18} ${b - 60} q18 -26 36 0 v14 h-36 Z" fill="${pal.cloth}" opacity=".7"/><path d="M${x} ${b - 86} v-14" stroke="${GOLD}" stroke-width="5" opacity=".7"/>`,   // шлем легионера
-        `<path d="M${x - 26} ${b - 60} q20 -20 40 0 l12 -10 v20 l-12 -10 q-20 20 -40 0 Z" fill="#8fb6c8" opacity=".8"/>`,                                                  // рыба
-        `<path d="M${x - 8} ${b - 90} v50 M${x - 20} ${b - 76} h24" stroke="${pal.metalD}" stroke-width="6" opacity=".7"/>`]);                                               // меч
+        `<path d="M${x - 18} ${b - 60} q18 -26 36 0 v14 h-36 Z" fill="${pal.cloth}" opacity=".7"/><path d="M${x} ${b - 86} v-14" stroke="${GOLD}" stroke-width="5" opacity=".7"/>`,
+        `<path d="M${x - 26} ${b - 60} q20 -20 40 0 l12 -10 v20 l-12 -10 q-20 20 -40 0 Z" fill="#8fb6c8" opacity=".8"/>`,
+        `<path d="M${x - 8} ${b - 90} v50 M${x - 20} ${b - 76} h24" stroke="${pal.metalD}" stroke-width="6" opacity=".7"/>`]);
       return P.shadow(x, b + 2, 60) + `<path d="M${x - 56} ${b} L${x - 50} ${b - 110} L${x - 10} ${b - 124} L${x + 46} ${b - 106} L${x + 56} ${b} Z" fill="${pal.gem}" opacity=".55" ${O(4)}/>`
         + inside + `<path d="M${x - 40} ${b - 98} l20 -6 M${x + 30} ${b - 90} l-10 40" stroke="#fff" stroke-width="3.5" opacity=".75" stroke-linecap="round"/>`;
     };
@@ -900,7 +900,7 @@ try {
         + `<path d="M-44 0 Q-40 -20 -10 -24 Q30 -28 44 -6 L20 30 L0 46 L-20 28 Z" fill="${pal.wallL}" ${O(4)}/><path d="M-40 -2 Q0 -10 42 -6" fill="none" stroke="${pal.plantL}" stroke-width="6" stroke-linecap="round"/>`
         + `<circle cx="0" cy="12" r="5" fill="${pal.gem2}" ${O(2)}/></g></g><ellipse cx="${x}" cy="${b}" rx="40" ry="7" fill="${INK}" opacity=".25"/>`;
     };
-    /* --- декор для вторых вариаций регионов --- */
+     
     DEC.anvil = (x, b) => P.shadow(x, b + 2, 60) + `<rect x="${x - 26}" y="${b - 46}" width="52" height="46" fill="${pal.stoneD}" ${O(4)}/>`
       + `<path d="M${x - 56} ${b - 46} H${x + 40} Q${x + 70} ${b - 50} ${x + 82} ${b - 70} H${x - 50} Q${x - 62} ${b - 60} ${x - 56} ${b - 46} Z" fill="${pal.metalD}" ${O(4)}/><path d="M${x - 46} ${b - 64} H${x + 60}" stroke="#fff" stroke-width="3" opacity=".5"/>`;
     DEC.gear = (x, b, r = 54) => {
@@ -952,8 +952,8 @@ try {
       return s + `<path d="${d}" fill="${pal.cloth}" ${O(3)}/><path d="M${x - 70} ${b - 86}h140M${x - 70} ${b - 46}h140" stroke="${INK}" stroke-width="2.4" opacity=".5"/>`;
     };
 
-    /* --- декор Восточной Марки: крепость, гарнизон, осадные машины --- */
-    // щит-скутум Легиона (cx, cy — центр, s — масштаб)
+     
+
     const scutum = (cx, cy, s = 1) => { const w = f1(22 * s), h = f1(34 * s); cx = f1(cx); cy = f1(cy);
       return `<rect x="${f1(cx - w)}" y="${f1(cy - h)}" width="${f1(2 * w)}" height="${f1(2 * h)}" rx="${f1(8 * s)}" fill="${pal.cloth}" ${O(4)}/>`
         + `<path d="M${f1(cx - w)} ${cy}H${f1(cx + w)}M${cx} ${f1(cy - h)}V${f1(cy + h)}${P.blob(cx, cy, 9 * s, 9 * s)}" fill="${GOLD}" stroke="${GOLD}" stroke-width="3"/>`; };
@@ -964,28 +964,28 @@ try {
         + `<path d="M${x - 42} ${b - 196}l-7 -22l14 0Z M${x - 14} ${b - 206}l-7 -22l14 0Z M${x + 16} ${b - 200}l-7 -22l14 0Z M${x + 42} ${b - 190}l-7 -22l14 0Z" fill="${pal.metal}" ${O(2.6)}/>`
         + `<rect x="${x - 64}" y="${b - 18}" width="128" height="18" fill="${pal.woodD}" ${O(4)}/>` + scutum(x + 60, b - 38, 0.85);
     };
-    // баллиста у бойницы: станина, дуги, тетива, заряженный болт
+
     DEC.ballista = (x, b) => P.shadow(x, b + 2, 90)
       + `<path d="M${x - 50} ${b} L${x - 30} ${b - 70} M${x + 50} ${b} L${x + 30} ${b - 70} M${x - 40} ${b - 34} H${x + 40}" stroke="${INK}" stroke-width="16" stroke-linecap="round"/><path d="M${x - 50} ${b} L${x - 30} ${b - 70} M${x + 50} ${b} L${x + 30} ${b - 70} M${x - 40} ${b - 34} H${x + 40}" stroke="${pal.woodD}" stroke-width="9" stroke-linecap="round"/>`
       + `<g transform="rotate(-8 ${x} ${b - 80})"><rect x="${x - 70}" y="${b - 92}" width="150" height="22" rx="4" fill="${pal.wood}" ${O(4)}/>`
       + `<path d="M${x + 40} ${b - 81} Q${x + 30} ${b - 150} ${x - 6} ${b - 168} M${x + 40} ${b - 81} Q${x + 30} ${b - 12} ${x - 6} ${b + 6}" fill="none" stroke="${INK}" stroke-width="14" stroke-linecap="round"/><path d="M${x + 40} ${b - 81} Q${x + 30} ${b - 150} ${x - 6} ${b - 168} M${x + 40} ${b - 81} Q${x + 30} ${b - 12} ${x - 6} ${b + 6}" fill="none" stroke="${pal.woodL}" stroke-width="7" stroke-linecap="round"/>`
       + `<path d="M${x - 6} ${b - 168} L${x - 50} ${b - 81} L${x - 6} ${b + 6}" fill="none" stroke="${CREAM}" stroke-width="2.6"/><path d="M${x - 60} ${b - 81} H${x + 104}" stroke="${INK}" stroke-width="9" stroke-linecap="round"/><path d="M${x - 60} ${b - 81} H${x + 104}" stroke="${pal.woodL}" stroke-width="4" stroke-linecap="round"/>`
       + `<path d="M${x + 104} ${b - 90} l22 9 l-22 9 Z M${x - 60} ${b - 81} l-12 -10 h10 l8 10 l-8 10 h-10 Z" fill="${pal.metal}" ${O(2.4)}/></g>`;
-    // разобранная баллиста: дуги и станина лежат на козлах, болты россыпью
+
     DEC.ballistaParts = (x, b) => P.shadow(x, b + 2, 92)
       + `<path d="M${x - 70} ${b} l12 -46 l12 46 M${x + 46} ${b} l12 -46 l12 46" fill="none" stroke="${INK}" stroke-width="12" stroke-linejoin="round"/><path d="M${x - 70} ${b} l12 -46 l12 46 M${x + 46} ${b} l12 -46 l12 46" fill="none" stroke="${pal.woodD}" stroke-width="6" stroke-linejoin="round"/>`
       + `<rect x="${x - 86}" y="${b - 60}" width="172" height="18" rx="4" fill="${pal.wood}" ${O(4)}/>`
       + `<path d="M${x - 80} ${b - 70} Q${x} ${b - 120} ${x + 80} ${b - 70}" fill="none" stroke="${INK}" stroke-width="15" stroke-linecap="round"/><path d="M${x - 80} ${b - 70} Q${x} ${b - 120} ${x + 80} ${b - 70}" fill="none" stroke="${pal.woodL}" stroke-width="8" stroke-linecap="round"/>`
       + `<path d="M${x - 60} ${b - 8} L${x + 50} ${b - 20} M${x - 40} ${b - 2} L${x + 70} ${b - 6}" stroke="${INK}" stroke-width="8" stroke-linecap="round"/><path d="M${x - 60} ${b - 8} L${x + 50} ${b - 20} M${x - 40} ${b - 2} L${x + 70} ${b - 6}" stroke="${pal.woodL}" stroke-width="3.5" stroke-linecap="round"/>`
       + `<path d="M${x + 50} ${b - 26} l14 4 l-12 8 Z M${x + 70} ${b - 12} l14 6 l-14 6 Z" fill="${pal.metal}" ${O(2)}/><circle cx="${x}" cy="${b - 51}" r="7" fill="${pal.metalD}" ${O(2.4)}/>`;
-    // недостроенная катапульта: рама, рычаг с ложкой, камни-снаряды рядом
+
     DEC.catapult = (x, b) => P.shadow(x, b + 2, 96)
       + `<path d="M${x - 80} ${b - 16} H${x + 60} M${x - 60} ${b - 16} L${x - 20} ${b - 120} L${x + 20} ${b - 16}" fill="none" stroke="${INK}" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/><path d="M${x - 80} ${b - 16} H${x + 60} M${x - 60} ${b - 16} L${x - 20} ${b - 120} L${x + 20} ${b - 16}" fill="none" stroke="${pal.woodD}" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>`
       + `<path d="M${x - 70} ${b - 40} L${x + 40} ${b - 150}" stroke="${INK}" stroke-width="14" stroke-linecap="round"/><path d="M${x - 70} ${b - 40} L${x + 40} ${b - 150}" stroke="${pal.wood}" stroke-width="8" stroke-linecap="round"/>`
       + `<path d="M${x + 26} ${b - 156} q24 -16 40 8 q-16 18 -40 -8 Z" fill="${pal.woodL}" ${O(3.5)}/><circle cx="${x - 20}" cy="${b - 92}" r="10" fill="${pal.metalD}" ${O(3)}/>`
       + `<circle cx="${x - 60}" cy="${b - 12}" r="15" fill="${pal.woodD}" ${O(3.5)}/><circle cx="${x + 40}" cy="${b - 12}" r="15" fill="${pal.woodD}" ${O(3.5)}/>`
       + `<path d="${P.blob(x + 92, b - 12, 15, 12)} ${P.blob(x + 116, b - 10, 13, 10)} ${P.blob(x + 104, b - 32, 13, 11)}" fill="${pal.stoneL}" ${O(3)}/>`;
-    // ящики со стрелами: из ящиков торчат пучки стрел с оперением
+
     DEC.arrowCrates = (x, b) => {
       let sh = '', fl = '';
       [[-36, 56, 7], [34, 46, 6]].forEach(([dx, h, n]) => { for (let i = 0; i < n; i++) { const ax = x + dx - 22 + i * 7, top = b - h - 30 - ((i * 13) % 18); sh += `M${ax} ${b - h + 4}L${ax + (i - n / 2) * 1.6} ${top}`; fl += `M${f1(ax + (i - n / 2) * 1.6 - 4)} ${top}l4 -14l4 14l-4 -4Z`; } });
@@ -993,7 +993,7 @@ try {
         + `<rect x="${x - 70}" y="${b - 56}" width="68" height="56" fill="${pal.woodL}" ${O(4)}/><rect x="${x + 4}" y="${b - 46}" width="60" height="46" fill="${pal.woodL}" ${O(4)}/>`
         + `<path d="M${x - 70} ${b - 28}H${x - 2}M${x + 4} ${b - 23}H${x + 64}" stroke="${pal.woodD}" stroke-width="4" opacity=".7"/><path d="M${x - 50} ${b - 20}h28M${x + 20} ${b - 14}h28" stroke="${INK}" stroke-width="3" opacity=".5"/>`;
     };
-    // точильный камень на козлах с рукоятью; искры (1 SMIL)
+
     DEC.grindstone = (x, b) => {
       const on = P.anim();
       return P.shadow(x, b + 2, 60) + `<path d="M${x - 44} ${b} L${x - 26} ${b - 66} M${x + 44} ${b} L${x + 26} ${b - 66} M${x - 36} ${b - 30} H${x + 36}" stroke="${INK}" stroke-width="13" stroke-linecap="round"/><path d="M${x - 44} ${b} L${x - 26} ${b - 66} M${x + 44} ${b} L${x + 26} ${b - 66} M${x - 36} ${b - 30} H${x + 36}" stroke="${pal.woodD}" stroke-width="7" stroke-linecap="round"/>`
@@ -1001,7 +1001,7 @@ try {
         + `<path d="M${x} ${b - 92} L${x - 34} ${b - 70} v-16" fill="none" stroke="${INK}" stroke-width="9" stroke-linecap="round"/><path d="M${x} ${b - 92} L${x - 34} ${b - 70} v-16" fill="none" stroke="${pal.metal}" stroke-width="4" stroke-linecap="round"/>`
         + `<path d="M${x + 30} ${b - 128} l26 -10 M${x + 36} ${b - 118} l30 0 M${x + 32} ${b - 136} l16 -20" stroke="${GOLD}" stroke-width="4" stroke-linecap="round">${on ? '<animate attributeName="opacity" values="1;0;0;1;0;1" dur="1.6s" repeatCount="indefinite"/>' : ''}</path>`;
     };
-    // лебёдка: барабан с цепью, уходящей вверх, и рукоять
+
     DEC.winch = (x, b) => {
       let ch = ''; for (let y = b - 96; y > b - 260; y -= 18) ch += P.blob(x + 30, y, 5, 8);
       return P.shadow(x, b + 2, 64) + `<path d="${ch}" fill="none" stroke="${INK}" stroke-width="6"/><path d="${ch}" fill="none" stroke="${pal.metalD}" stroke-width="2.6"/>`
@@ -1009,7 +1009,7 @@ try {
         + `<rect x="${x - 50}" y="${b - 92}" width="100" height="40" rx="18" fill="${pal.wood}" ${O(4)}/><path d="M${x - 30} ${b - 92}v40M${x - 10} ${b - 92}v40M${x + 10} ${b - 92}v40" stroke="${pal.metalD}" stroke-width="4"/>`
         + `<path d="M${x + 56} ${b - 72} h22 v34 h14" fill="none" stroke="${INK}" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/><path d="M${x + 56} ${b - 72} h22 v34 h14" fill="none" stroke="${pal.metal}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>`;
     };
-    // клетка для пленных — пустая, внутри клубок (кто-то уже сбежал)
+
     DEC.cage = (x, b) => {
       let bars = ''; for (let dx = -40; dx <= 40; dx += 16) bars += `M${x + dx} ${b - 6}V${b - 132}`;
       return P.shadow(x, b + 2, 56) + `<circle cx="${x - 10}" cy="${b - 22}" r="15" fill="${PINK}" ${O(3)}/><path d="M${x - 22} ${b - 26} q12 -8 24 4 M${x - 18} ${b - 14} q10 -12 20 -4" fill="none" stroke="${INK}" stroke-width="2" opacity=".5"/><path d="M${x + 5} ${b - 18} q30 12 52 4" fill="none" stroke="${PINK}" stroke-width="3"/>`
@@ -1017,7 +1017,7 @@ try {
         + `<rect x="${x - 50}" y="${b - 140}" width="100" height="14" rx="4" fill="${pal.iron}" ${O(3.5)}/><rect x="${x - 50}" y="${b - 12}" width="100" height="12" rx="3" fill="${pal.iron}" ${O(3.5)}/><path d="M${x} ${b - 140} V${b - 176}" stroke="${pal.metalD}" stroke-width="5"/>`;
     };
 
-    /* ---------- декор на стене (x, y — центр) ---------- */
+     
     const WDEC = {};
     P.WDEC = WDEC;
     WDEC.mural = (x, y) => {
@@ -1082,7 +1082,7 @@ try {
       let l = ''; for (let i = 0; i < 7; i++) l += P.blob(x - 40, y - 80 + i * 20, 7, 10) + P.blob(x + 40, y - 70 + i * 20, 7, 10);
       return `<path d="${l}" fill="none" stroke="${INK}" stroke-width="7"/><path d="${l}" fill="none" stroke="${pal.metalD}" stroke-width="3.5"/><path d="M${x - 50} ${y + 66} h20 l-4 16 h-12 Z M${x + 30} ${y + 76} h20 l-4 16 h-12 Z" fill="${pal.iron}" ${O(2.6)}/>`;
     };
-    // Восточная Марка: бойница-крестовина (в ней ночь и луна), карта укреплений, знамя Марки, щиты на стене
+
     WDEC.arrowSlit = (x, y) => `<circle cx="${x}" cy="${y}" r="80" fill="url(#ctMoon)" opacity=".55"/><path d="M${x - 34} ${y - 72} H${x + 34} V${y + 72} H${x - 34} Z" fill="${pal.stoneL}" ${O(4)}/>`
       + `<path d="M${x - 7} ${y - 58} H${x + 7} V${y - 10} H${x + 22} V${y + 4} H${x + 7} V${y + 58} H${x - 7} V${y + 4} H${x - 22} V${y - 10} H${x - 7} Z" fill="url(#dgNight)" ${O(3.5)}/><circle cx="${x + 2}" cy="${y - 36}" r="2.4" fill="#fff"/>`;
     WDEC.fortMap = (x, y) => {
@@ -1102,7 +1102,7 @@ try {
       return `<path d="M${x - 76} ${y - 46} H${x + 76}" stroke="${INK}" stroke-width="12" stroke-linecap="round"/><path d="M${x - 76} ${y - 46} H${x + 76}" stroke="${pal.snow}" stroke-width="7" stroke-linecap="round"/><path d="${d}" fill="${pal.gem}" ${O(2.6)}/>`;
     };
 
-    /* ---------- опоры (ритм стены между проходами): тема задаёт вид ---------- */
+     
     P.pillar = (kind, x) => {
       const b = B + 2;
       switch (kind) {
@@ -1127,13 +1127,13 @@ try {
         case 'gears': return `<rect x="${x - 14}" y="252" width="28" height="${b - 252}" fill="${pal.accent2}" ${O(4)}/>` + DEC.gear(x, 520, 46) + DEC.gear(x + 40, 400, 28);
         case 'hullRib': return `<path d="M${x - 40} ${b} Q${x - 60} 520 ${x - 10} 250" fill="none" stroke="${INK}" stroke-width="34" stroke-linecap="round"/><path d="M${x - 40} ${b} Q${x - 60} 520 ${x - 10} 250" fill="none" stroke="${pal.wood}" stroke-width="24" stroke-linecap="round"/><path d="M${x - 46} 700 l-4 -40 M${x - 52} 560 l-2 -40" stroke="${INK}" stroke-width="2.4" opacity=".4"/>`;
         case 'palisade': {
-          // частокол: три заострённых бревна, стянутых верёвкой
+
           const log = (dx, t) => `M${x + dx - 13} ${b}V${t + 22}L${x + dx} ${t}L${x + dx + 13} ${t + 22}V${b}Z`;
           return `<path d="${log(-24, 284)}${log(24, 296)}${log(0, 258)}" fill="${pal.wood}" ${O(4)}/>`
             + `<path d="M${x - 40} 430H${x + 40}M${x - 40} 650H${x + 40}" stroke="${INK}" stroke-width="13" stroke-linecap="round"/><path d="M${x - 40} 430H${x + 40}M${x - 40} 650H${x + 40}" stroke="${pal.sand}" stroke-width="6" stroke-linecap="round"/>`;
         }
         case 'hoist': {
-          // опора-подъёмник: столб с перекладиной, блок и цепь с крюком (сторона — по x, чтобы ряд не был одинаковым)
+
           const d = Math.floor(x / 13) % 2 ? 1 : -1, px = x + d * 58;
           let ch = ''; for (let y = 326; y < 452; y += 18) ch += P.blob(px, y, 5, 8);
           return `<rect x="${x - 16}" y="252" width="32" height="${b - 252}" fill="${pal.woodD}" ${O(4)}/>`
@@ -1146,7 +1146,7 @@ try {
       }
     };
 
-    /* ---------- предметы с глубиной (props): без <defs>, свечение — кругами ---------- */
+     
     const PROP = {};
     P.PROP = PROP;
     PROP.stalagmite = (x, z) => P.shadow(x, z, 40) + `<path d="M${x - 38} ${z} Q${x - 26} ${z - 60} ${x - 6} ${z - 132} Q${x + 2} ${z - 142} ${x + 8} ${z - 126} Q${x + 24} ${z - 60} ${x + 36} ${z} Z" fill="${pal.wallL}" ${O(4)}/>`
@@ -1173,7 +1173,7 @@ try {
     PROP.barrels = (x, z) => DEC.barrels(x, z);
     PROP.rock = (x, z) => P.shadow(x, z, 56) + `<path d="M${x - 56} ${z} Q${x - 60} ${z - 50} ${x - 20} ${z - 70} Q${x + 30} ${z - 84} ${x + 54} ${z - 40} Q${x + 62} ${z - 10} ${x + 52} ${z} Z" fill="${pal.wallL}" ${O(4)}/><path d="M${x - 30} ${z - 40} q20 -12 40 -4" fill="none" stroke="${INK}" stroke-width="2.4" opacity=".35"/>`;
     PROP.coralRock = (x, z) => PROP.rock(x, z) + DEC.coral(x + 6, z - 50).replace(/stroke-width="16"/g, 'stroke-width="12"').replace(/stroke-width="9"/g, 'stroke-width="6"');
-    // Восточная Марка: знамя на древке, учебное чучело с ведром вместо шлема, болт баллисты, застрявший в полу
+
     PROP.standard = (x, z) => P.shadow(x, z, 40) + `<path d="${P.blob(x, z - 6, 34, 10)}" fill="${pal.stoneD}" ${O(3)}/><rect x="${x - 6}" y="${z - 300}" width="12" height="294" fill="${pal.woodD}" ${O(3.5)}/>`
       + `<path d="M${x - 34} ${z - 276} H${x + 34} V${z - 170} L${x} ${z - 188} L${x - 34} ${z - 170} Z" fill="${pal.banner}" ${O(4)}/>`
       + `<path d="M${x - 40} ${z - 284} h80 v8 h-80 Z M${x} ${z - 300} l-8 -14 l8 -16 l8 16 Z M${x - 12} ${z - 206} V${z - 236} h-5 v-12 h8 v6 h5 v-6 h8 v6 h5 v-6 h8 v12 h-5 V${z - 206} Z" fill="${GOLD}" ${O(2.6)}/>`;
@@ -1192,9 +1192,9 @@ try {
     return P;
   }
 
-  /* =====================================================================================
-     ЗАДНИК: стена, свод, пол — по «текстурам» темы
-     ===================================================================================== */
+  
+
+
   function backdrop(P, th, W) {
     const { pal, rnd, O } = P;
     let s = P.defs();
@@ -1237,7 +1237,7 @@ try {
       s += `<path d="${rt}" fill="none" stroke="${INK}" stroke-width="15" stroke-linecap="round"/><path d="${rt}" fill="none" stroke="${pal.wood}" stroke-width="9" stroke-linecap="round"/>`;
     }
     if (tex === 'planks' || tex === 'hull') {
-      // дощатая стена: вертикальные доски (planks) или горизонтальная обшивка (hull)
+
       let d = '';
       if (tex === 'planks') for (let x = 0; x < W; x += 46 + Math.round(rnd() * 10)) d += `M${x} 252V712`;
       else for (let y = 300; y < 712; y += 38) { d += `M0 ${y}H${W}`; for (let x = (y % 76 ? 60 : 0) + rnd() * 80; x < W; x += 240 + rnd() * 120) d += `M${f1(x)} ${y - 38}V${y}`; }
@@ -1251,7 +1251,7 @@ try {
       s += `<path d="${d}" fill="none" stroke="${INK}" stroke-width="2.4" opacity=".4"/><path d="${rv}" fill="${pal.wallL}" stroke="${INK}" stroke-width="1.6"/>`;
     }
     if (tex === 'shelves') {
-      // книжные стены: полки и корешки (по одному path на цвет)
+
       const cols = [pal.cloth, pal.accent, pal.accent2, '#7a4a8a', pal.plant], by = cols.map(() => '');
       let sh = '';
       for (let y = 380; y < 700; y += 84) {
@@ -1261,12 +1261,12 @@ try {
       s += cols.map((c, i) => `<path d="${by[i]}" fill="${c}" opacity=".85"/>`).join('') + `<path d="${sh}" stroke="${pal.woodD}" stroke-width="10"/><path d="${sh}" stroke="${INK}" stroke-width="2" opacity=".5"/>`;
     }
     if (tex === 'frost') {
-      // каменная кладка, присыпанная инеем
+
       let fr = ''; for (let r = 0; r * 46 < 380; r++) { const y = 334 + r * 46; for (let x = rnd() * 60; x < W; x += 80 + rnd() * 120) fr += `M${f1(x)} ${y} q16 -8 30 0 q14 -6 26 0 Z`; }
       s += `<path d="${fr}" fill="${pal.snow}" opacity=".85"/>`;
     }
     if (tex === 'fort') {
-      // кладка крепости, перехваченная деревянными балками (пояс под сводом и пояс на уровне плеч); проходы рисуются поверх
+
       const bm = [[300, 26], [566, 20]];
       s += `<path d="${bm.map(([y, h]) => `M0 ${y}H${W}v${h}H0Z`).join('')}" fill="${pal.wood}" ${O(3.5)}/>`;
       let pg = ''; bm.forEach(([y, h]) => { for (let x = 30 + rnd() * 40; x < W; x += 150 + rnd() * 60) pg += P.blob(x, y + h / 2, 4, 4); });
@@ -1281,14 +1281,14 @@ try {
       let zig = 'M0 324'; for (let x = 0; x < W; x += 36) zig += ` L${x + 18} 300 L${x + 36} 324`;
       s += `<path d="${zig}" fill="none" stroke="${mix(pal.accent, '#ffffff', 0.45)}" stroke-width="4"/><path d="M0 294H${W}M0 330H${W}" ${O(4)}/>`;
     }
-    // свод: тьма сверху (зоны алертов и созвездия), неровный край ниже y 210
+
     const CE = [[0, -10], [W, -10], [W, 238]];
     for (let x = W; x > 0; x -= 70) CE.push([x - 35, 226 + Math.round(rnd() * 36)], [x - 70, 240 + Math.round(rnd() * 22)]);
     s += `<path d="${pathOf(CE)}" fill="url(#dgCeil)"/>`;
     let edge = 'M0 ' + CE[3][1]; for (let i = 3; i < CE.length; i++) edge += ` L${CE[i][0]} ${CE[i][1]}`;
     s += `<path d="${edge}" fill="none" ${O(5)}/>`;
     s += ceilingTips(P, th, W);
-    // пол
+
     s += `<rect x="0" y="700" width="${W}" height="380" fill="${pal.floor}"/>`;
     const ft = th.floor || 'pebbles';
     if (ft === 'pebbles' || ft === 'snow' || ft === 'moss' || ft === 'wetsand') {
@@ -1339,10 +1339,10 @@ try {
     return s;
   }
 
-  /* =====================================================================================
-     ПРОХОДЫ. Каждый: { svg, door:{x,y}, spot:{x,y}, hw } — hw — полуширина, занятая на стене.
-     Стиль рамки задаёт тема: timber | block | arch | cave | roots | ice | basalt | rune | door
-     ===================================================================================== */
+  
+
+
+
   function opening(P, style, cx, hw, top, interior) {
     const { pal, O } = P;
     let back = '', inner = '', front = '';
@@ -1373,7 +1373,7 @@ try {
         break;
       }
       case 'gate': {
-        // крепостные ворота: каменный портал, деревянная перемычка и поднятая решётка (зубья торчат сверху)
+
         back = `<path d="M${cx - hw - 44} ${B} L${cx - hw - 30} ${top - 20} H${cx + hw + 30} L${cx + hw + 44} ${B} Z" fill="${pal.stoneL}" ${O(5)}/>`
 ;
         inner = trap;
@@ -1422,7 +1422,7 @@ try {
     }
     return back + `<path d="${inner}" fill="${fill}" ${O(5)}/>` + (interior || '') + front;
   }
-  // рисует проход нужного вида
+
   function drawExit(P, th, ex, cx, opt) {
     const { pal, O, rnd } = P;
     const frames = Object.assign({ tunnel: 'timber', back: 'timber', down: 'arch', hole: 'cave', shaft: 'lift', pit: 'hole', out: 'ladder' }, th.frame || {});
@@ -1465,7 +1465,7 @@ try {
       s += P.shadow(cx, B + 4, 170) + `<path d="M${cx - 120} ${B} L${cx - 96} ${B - 40} H${cx + 96} L${cx + 120} ${B} Z" fill="${pal.hole}" ${O(4)}/>`;
       s += `<rect x="${cx - 132}" y="${B - 30}" width="264" height="30" rx="6" fill="${pal.stoneL}" ${O(5)}/><path d="M${cx - 80} ${B - 30}v30M${cx - 20} ${B - 30}v30M${cx + 40} ${B - 30}v30M${cx + 100} ${B - 30}v30" stroke="${INK}" stroke-width="1.8" opacity=".35"/>`;
       if (st === 'chute') {
-        // струя (песок/вода/снег/лава) из свода в колодец
+
         const col = th.chuteColor || pal.sand, on = P.anim();
         s += `<path d="M${cx + 20} 250 L${cx - 4} 330 L${cx + 26} 420" fill="none" stroke="${pal.hole}" stroke-width="9" stroke-linejoin="round"/>`
           + `<path d="M${cx} 262 V${B - 26}" stroke="${col}" stroke-width="22" stroke-dasharray="18 10" stroke-linecap="round" opacity=".9">${on ? '<animate attributeName="stroke-dashoffset" from="0" to="-56" dur="0.9s" repeatCount="indefinite"/>' : ''}</path>`;
@@ -1479,7 +1479,7 @@ try {
         s += opening(P, 'rune', cx, 80, B - 250, '');
         spot = { x: cx, y: B - 130 };
       } else {
-        // lift: копёр с воротом и ведром (ведро качается)
+
         s += `<path d="M${cx - 110} ${B - 26} L${cx - 20} 420 M${cx + 110} ${B - 26} L${cx + 20} 420" stroke="${INK}" stroke-width="24" stroke-linecap="round"/><path d="M${cx - 110} ${B - 26} L${cx - 20} 420 M${cx + 110} ${B - 26} L${cx + 20} 420" stroke="${pal.wood}" stroke-width="16" stroke-linecap="round"/>`;
         s += `<rect x="${cx - 54}" y="400" width="108" height="26" rx="12" fill="${pal.woodD}" ${O(4)}/><path d="M${cx + 54} 412 h22 v26" fill="none" stroke="${pal.iron}" stroke-width="6" stroke-linecap="round"/>`;
         const on = P.anim();
@@ -1503,7 +1503,7 @@ try {
           s += `<path d="M${cx - 180} ${B + 4} Q${cx - 150} 600 ${cx - 110} 452 Q${cx} 470 ${cx + 96} 452 Q${cx + 150} 600 ${cx + 240} ${B + 4} Z" fill="${col}" ${O(4)}/>`
             + `<path d="M${cx - 120} 560 q40 -10 80 0 q40 10 80 0 M${cx - 150} 650 q50 -12 100 0 q50 12 100 0 M${cx - 160} 730 q60 -12 120 0 q60 12 120 0" fill="none" stroke="${INK}" stroke-width="2.4" opacity=".3"/>`;
         }
-        // лестница к пролому
+
         s += `<path d="M${cx - 44} 452 L${cx - 52} ${B} M${cx + 44} 452 L${cx + 52} ${B}" stroke="${INK}" stroke-width="20" stroke-linecap="round"/><path d="M${cx - 44} 452 L${cx - 52} ${B} M${cx + 44} 452 L${cx + 52} ${B}" stroke="${pal.wood}" stroke-width="12" stroke-linecap="round"/>`;
         let rungs = ''; for (let y = 490; y < B - 10; y += 46) rungs += `M${cx - 46} ${y}H${cx + 46}`;
         s += `<path d="${rungs}" stroke="${INK}" stroke-width="13" stroke-linecap="round"/><path d="${rungs}" stroke="${pal.woodL}" stroke-width="6" stroke-linecap="round"/>`;
@@ -1514,7 +1514,7 @@ try {
     }
     return { svg: s, door, spot, hw };
   }
-  // провал В ПОЛУ (kind pit): в зоне ходьбы; закрыт препятствием-эллипсом, дверь — на кромке
+
   function drawPit(P, th, ex, cx, cy) {
     const { pal, O, rnd } = P;
     const st = (th.frame && th.frame.pit) || 'hole';
@@ -1537,17 +1537,17 @@ try {
         const on = P.anim();
         s += `<path d="M${cx + 16} 262 V${cy + 6}" stroke="${pal.sand}" stroke-width="14" stroke-dasharray="14 10" stroke-linecap="round" opacity=".85">${on ? '<animate attributeName="stroke-dashoffset" from="0" to="-48" dur="0.9s" repeatCount="indefinite"/>' : ''}</path>`;
       } else {
-        // верхушка лестницы, торчащая из провала
+
         s += `<path d="M${cx - 30} ${cy + 10} L${cx - 26} ${cy - 70} M${cx + 30} ${cy + 10} L${cx + 26} ${cy - 70}" stroke="${INK}" stroke-width="14" stroke-linecap="round"/><path d="M${cx - 30} ${cy + 10} L${cx - 26} ${cy - 70} M${cx + 30} ${cy + 10} L${cx + 26} ${cy - 70}" stroke="${pal.wood}" stroke-width="8" stroke-linecap="round"/>`
           + `<path d="M${cx - 28} ${cy - 50} H${cx + 28} M${cx - 28} ${cy - 22} H${cx + 28}" stroke="${INK}" stroke-width="10" stroke-linecap="round"/><path d="M${cx - 28} ${cy - 50} H${cx + 28} M${cx - 28} ${cy - 22} H${cx + 28}" stroke="${pal.woodL}" stroke-width="5" stroke-linecap="round"/>`;
       }
     }
     const signTxt = ex.label && ex.label.length <= 15 ? ex.label.toUpperCase() : (th.signs && th.signs.pit) || 'ВНИЗ';
-    // табличка-указатель на стене над провалом
+
     s += P.sign(cx, 520, P.signW(signTxt, 22), 46, [[signTxt, 22, GOLD]], (rnd() - 0.5) * 8) + P.arrowDown(cx, 556);
     return { svg: s, door: { x: cx + 150, y: cy - 66 }, spot: { x: cx, y: 660 }, obst: { e: [cx, cy + 4, 206, 64] }, hw: 0 };
   }
-  // пандус перед проходом (неровный пол): рисунок + точки для walkPoly
+
   function drawRamp(P, cx, hw) {
     const { pal, O } = P;
     const x0 = cx - hw - 60, x1 = cx + hw + 60;
@@ -1556,14 +1556,14 @@ try {
       poly: [[x0, 800], [x0 + 50, 764], [x1 - 50, 764], [x1, 800]],
     };
   }
-  // заглушка логова босса: помост, свечение, пустое место под босса (особые инструкции — позже)
+
   function drawBossStub(P, th, cx) {
     const { pal, O } = P;
     const on = P.anim();
     let s = `<circle cx="${cx}" cy="560" r="260" fill="url(#dgRed)" opacity=".35">${on ? '<animate attributeName="opacity" values=".25;.45;.25" dur="4s" repeatCount="indefinite"/>' : ''}</circle>`;
     s += `<path d="M${cx - 230} ${B} V420 Q${cx - 230} 300 ${cx} 290 Q${cx + 230} 300 ${cx + 230} 420 V${B} Z" fill="${pal.stoneL}" ${O(5)}/>`;
     s += `<path d="M${cx - 180} ${B} V440 Q${cx - 180} 346 ${cx} 338 Q${cx + 180} 346 ${cx + 180} 440 V${B} Z" fill="url(#dgDeep)" ${O(4)}/>`;
-    // закрытая решётка логова
+
     let bars = ''; for (let x = cx - 150; x <= cx + 150; x += 50) bars += `M${x} ${B} V${f1(440 - Math.cos((x - cx) / 180 * 1.2) * 70)}`;
     s += `<path d="${bars} M${cx - 176} 600 H${cx + 176}" stroke="${INK}" stroke-width="14" stroke-linecap="round"/><path d="${bars} M${cx - 176} 600 H${cx + 176}" stroke="${pal.metalD}" stroke-width="7" stroke-linecap="round"/>`;
     s += `<g fill="#ff5a4a"><path d="M${cx - 34} 480 q10 -8 20 0 q-10 8 -20 0 Z M${cx + 14} 480 q10 -8 20 0 q-10 8 -20 0 Z"/>${P.anim() ? '<animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;.5;.6;.9;1" dur="6s" repeatCount="indefinite"/>' : ''}</g>`;
@@ -1572,10 +1572,10 @@ try {
     return s;
   }
 
-  /* =====================================================================================
-     ТАЙНАЯ ДВЕРЬ, ЗНАКИ-АКТИВАТОРЫ, СОКРОВИЩНИЦА
-     ===================================================================================== */
-  // знак: sun | moon | star | eye | wave | key
+  
+
+
+
   function symbolSvg(P, name, x, y, r, col, w = 4) {
     const { f1 } = P, st = `fill="none" stroke="${col}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"`;
     switch (name) {
@@ -1588,14 +1588,14 @@ try {
       default: return `<circle cx="${x}" cy="${y}" r="${f1(r * 0.5)}" ${st}/>`;
     }
   }
-  // закрытая тайная дверь: участок кладки с едва заметной щелью и гнёздами знаков над ним
+
   function drawSecret(P, th, ex, cx, symbols) {
     const { pal, O } = P, top = 520, hw = 104;
     let s = `<path d="M${cx - hw} ${B} V${top + 40} Q${cx - hw} ${top} ${cx - hw + 40} ${top} H${cx + hw - 40} Q${cx + hw} ${top} ${cx + hw} ${top + 40} V${B} Z" fill="${pal.wallL}" opacity=".55"/>`;
     let seams = ''; for (let y = top + 46; y < B; y += 46) seams += `M${cx - hw} ${y}H${cx + hw}`; for (let y = top; y < B; y += 92) seams += `M${cx} ${y}v46M${cx - hw / 2} ${y + 46}v46M${cx + hw / 2} ${y + 46}v46`;
     s += `<path d="${seams}" stroke="${INK}" stroke-width="2" opacity=".3"/>`;
     s += `<path d="M${cx - hw} ${B} V${top + 40} Q${cx - hw} ${top} ${cx - hw + 40} ${top} H${cx + hw - 40} Q${cx + hw} ${top} ${cx + hw} ${top + 40} V${B}" fill="none" stroke="${INK}" stroke-width="3" stroke-dasharray="10 7" opacity=".55"/>`;
-    // гнёзда знаков: полукругом над дверью
+
     const n = symbols.length, sockets = [];
     symbols.forEach((sym, i) => {
       const a = Math.PI * (0.15 + 0.7 * (n === 1 ? 0.5 : i / (n - 1))), x = cx - Math.cos(a) * 150, y = top - 40 - Math.sin(a) * 70;
@@ -1603,13 +1603,13 @@ try {
       sockets.push({ symbol: sym, x: Math.round(x), y: Math.round(y),
         litSvg: `<circle cx="${f1(x)}" cy="${f1(y)}" r="46" fill="${pal.glow}" opacity=".35"/><circle cx="${f1(x)}" cy="${f1(y)}" r="26" fill="${pal.accent2}" ${O(3.5)}/>` + symbolSvg(P, sym, f1(x), f1(y), 18, INK, 3.5) });
     });
-    // открытая дверь (слой, который виджет кладёт поверх, когда загадка решена)
+
     const openSvg = `<circle cx="${cx}" cy="${top + 120}" r="190" fill="${pal.glow}" opacity=".35"/><path d="M${cx - hw} ${B} V${top + 40} Q${cx - hw} ${top} ${cx - hw + 40} ${top} H${cx + hw - 40} Q${cx + hw} ${top} ${cx + hw} ${top + 40} V${B} Z" fill="url(#dgDeep)" ${O(5)}/>`
       + `<path d="M${cx - 70} ${B} Q${cx} ${B - 40} ${cx + 70} ${B} Z" fill="${GOLD}" ${O(3)}/><path d="M${cx - 30} ${B - 30} l6 -10 l6 10 Z M${cx + 14} ${B - 26} l6 -10 l6 10 Z" fill="#fff" opacity=".8"/>`
       + `<path d="M${cx + hw} ${B} L${cx + hw + 40} ${B - 12} V${top + 50} L${cx + hw} ${top + 40} Z" fill="${pal.wallL}" ${O(4)}/>`;
     return { svg: s, door: { x: cx, y: 812 }, spot: { x: cx, y: 660 }, hw: hw + 50, sockets, openSvg };
   }
-  // знак-активатор на стене: камень с выбитым знаком (едва заметный) + слой «найден»
+
   function drawActivator(P, a, x, y) {
     const { pal, O } = P;
     const stone = `<path d="M${x - 34} ${y + 26} L${x - 38} ${y - 20} L${x - 10} ${y - 34} L${x + 30} ${y - 28} L${x + 38} ${y + 18} L${x + 8} ${y + 32} Z" fill="${pal.wallL}" ${O(3.5)}/>`;
@@ -1618,9 +1618,9 @@ try {
       foundSvg: `<circle cx="${x}" cy="${y}" r="64" fill="${pal.glow}" opacity=".45"/>` + stone.replace(pal.wallL, pal.accent2) + symbolSvg(P, a.symbol, x, y, 20, INK, 3.5),
     };
   }
-  // цвета колокольчиков и камней
+
   const GEMC = { red: '#e8455c', blue: '#4ab0ff', green: '#6fdc6f', gold: '#ffcf4a', violet: '#b06bff' };
-  // общий вид двери в стене (для видов с активаторами): кладка с едва заметной щелью + слой «открыто»
+
   function doorBody(P, cx, top, hw) {
     const { pal, O } = P;
     let s = `<path d="M${cx - hw} ${B} V${top + 40} Q${cx - hw} ${top} ${cx - hw + 40} ${top} H${cx + hw - 40} Q${cx + hw} ${top} ${cx + hw} ${top + 40} V${B} Z" fill="${pal.wallL}" opacity=".55"/>`;
@@ -1635,12 +1635,12 @@ try {
       + `<path d="M${cx - 70} ${B} Q${cx} ${B - 40} ${cx + 70} ${B} Z" fill="${GOLD}" ${O(3)}/><path d="M${cx - 30} ${B - 30} l6 -10 l6 10 Z M${cx + 14} ${B - 26} l6 -10 l6 10 Z" fill="#fff" opacity=".8"/>`
       + `<path d="M${cx + hw} ${B} L${cx + hw + 40} ${B - 12} V${top + 50} L${cx + hw} ${top + 40} Z" fill="${pal.wallL}" ${O(4)}/>`;
   }
-  // гнёзда над дверью — по дуге
+
   const arcPos = (cx, top, n, i) => { const a = Math.PI * (0.15 + 0.7 * (n === 1 ? 0.5 : i / (n - 1))); return [cx - Math.cos(a) * 150, top - 40 - Math.sin(a) * 70]; };
   const bellPath = (x, y, s) => `M${f1(x - 16 * s)} ${f1(y + 14 * s)} Q${f1(x - 14 * s)} ${f1(y - 16 * s)} ${x} ${f1(y - 18 * s)} Q${f1(x + 14 * s)} ${f1(y - 16 * s)} ${f1(x + 16 * s)} ${f1(y + 14 * s)} Z`;
   const gemPath = (x, y, r) => `M${f1(x)} ${f1(y - r)} L${f1(x + r * 0.9)} ${f1(y - r * 0.2)} L${f1(x + r * 0.5)} ${f1(y + r)} L${f1(x - r * 0.5)} ${f1(y + r)} L${f1(x - r * 0.9)} ${f1(y - r * 0.2)} Z`;
 
-  // ТАЙНАЯ ДВЕРЬ по виду. Возвращает { svg, door, spot, hw, sockets, openSvg, mode, hint? }
+
   function drawSecretByType(P, th, sec, cx) {
     const { pal, O } = P, top = 520, hw = 104, type = sec.type || 'glyphs';
     const res = { door: { x: cx, y: 812 }, spot: { x: cx, y: 660 }, hw: hw + 50, sockets: [], mode: 'wall' };
@@ -1649,7 +1649,7 @@ try {
       return Object.assign(res, { svg: r.svg, sockets: r.sockets, openSvg: r.openSvg });
     }
     if (type === 'torches') {
-      // над дверью — ряд потухших чаш; найденный рычаг зажигает одну
+
       let s = doorBody(P, cx, top, hw); const n = sec.count || 3;
       for (let i = 0; i < n; i++) {
         const [x, y] = arcPos(cx, top, n, i);
@@ -1660,7 +1660,7 @@ try {
       return Object.assign(res, { svg: s, openSvg: doorOpen(P, cx, top, hw) });
     }
     if (type === 'bells') {
-      // каменная плита над дверью: колокольчики-рельефы в нужном порядке (цвет — тусклой краской), под каждым — номер
+
       let s = doorBody(P, cx, top, hw); const order = sec.order || ['red', 'blue', 'gold'], n = order.length;
       const w = n * 64 + 24, y0 = top - 120;
       s += `<rect x="${cx - w / 2}" y="${y0 - 40}" width="${w}" height="92" rx="8" fill="${pal.stoneD}" ${O(3.5)}/>`;
@@ -1674,7 +1674,7 @@ try {
       return Object.assign(res, { svg: s, openSvg: doorOpen(P, cx, top, hw) });
     }
     if (type === 'gems') {
-      // «слепой глаз» над дверью: каменный рельеф с пустыми гнёздами по кругу
+
       let s = doorBody(P, cx, top, hw); const cols = sec.colors || ['red', 'blue', 'green'], n = cols.length, ey = top - 100;
       s += `<path d="M${cx - 130} ${ey} Q${cx} ${ey - 92} ${cx + 130} ${ey} Q${cx} ${ey + 92} ${cx - 130} ${ey} Z" fill="${pal.stoneL}" ${O(4)}/><circle cx="${cx}" cy="${ey}" r="30" fill="${pal.stoneD}" ${O(3.5)}/>`;
       cols.forEach((c, i) => {
@@ -1686,7 +1686,7 @@ try {
       return Object.assign(res, { svg: s, openSvg: open });
     }
     if (type === 'illusion') {
-      // ИЛЛЮЗОРНАЯ СТЕНА: кладка ничем не отличается. Подсказка — паутинка у пола колышется от сквозняка (1 SMIL)
+
       const on = P.anim(), wx = cx + hw - 6, wy = B - 34;
       const svg = `<g transform="translate(${wx} ${wy})"><g>${on ? '<animateTransform attributeName="transform" type="skewX" values="0;9;0;-5;0" dur="2.6s" repeatCount="indefinite"/>' : ''}`
         + `<path d="M0 0 L-34 -30 M0 0 L-40 -6 M0 0 L-16 -38 M-10 -9 Q-16 -4 -22 -2 M-18 -16 Q-26 -10 -32 -6 M-8 -22 Q-16 -22 -26 -18" fill="none" stroke="${CREAM}" stroke-width="1.8" opacity=".55"/></g></g>`;
@@ -1695,7 +1695,7 @@ try {
       return Object.assign(res, { svg, openSvg: open, hint: { x: wx - 20, y: wy - 18 } });
     }
     if (type === 'hatch') {
-      // ЛЮК В ПОЛУ: те же цвета, что пол; выдаёт только едва заметное кольцо (рисуется в полу, в зоне ходьбы)
+
       const y = 975, w = 150, h = 46;
       const svg = `<path d="M${cx - w / 2} ${y - h / 2} H${cx + w / 2} L${cx + w / 2 + 10} ${y + h / 2} H${cx - w / 2 - 10} Z" fill="${pal.floor}" stroke="${INK}" stroke-width="1.6" opacity=".55"/>`
         + `<path d="M${cx - w / 4} ${y - h / 2} v${h} M${cx + w / 4} ${y - h / 2} v${h}" stroke="${INK}" stroke-width="1.4" opacity=".22"/>`
@@ -1707,12 +1707,12 @@ try {
     }
     return Object.assign(res, { svg: '', openSvg: '' });
   }
-  // АКТИВАТОР по виду: { svg, foundSvg, y (нужная высота) }
+
   function drawActivatorByType(P, th, a, x, y) {
     const { pal, O } = P, type = a.type || 'glyphs';
     if (type === 'glyphs') return drawActivator(P, a, x, y);
     if (type === 'torches') {
-      // факел-рычаг: как обычный факел; выдаёт только маленькая рукоять у кронштейна
+
       const t = P.light('torch', x, y) + `<path d="M${x + 10} ${y - 20} l14 -6" stroke="${pal.iron}" stroke-width="3.5" stroke-linecap="round"/><circle cx="${x + 25}" cy="${y - 27}" r="3.4" fill="${pal.metalD}" ${O(1.6)}/>`;
       const found = `<rect x="${x - 34}" y="${y - 84}" width="68" height="96" fill="${pal.wall}"/>` + `<circle cx="${x}" cy="${y - 40}" r="70" fill="url(#ctFire)" opacity=".9"/>`
         + `<g transform="rotate(38 ${x} ${y})"><path d="M${x - 6} ${y} l4 -26 h4 l4 26 z" fill="${pal.woodD}" ${O(3)}/><path d="M${x} ${y - 22} C${x - 13} ${y - 26} ${x - 15} ${y - 46} ${x} ${y - 68} C${x + 15} ${y - 46} ${x + 13} ${y - 26} ${x} ${y - 22} Z" fill="#ff8a2a" stroke="#ffd76a" stroke-width="3"/></g>`
@@ -1720,7 +1720,7 @@ try {
       return { svg: t, foundSvg: found };
     }
     if (type === 'bells') {
-      // колокольчик под сводом (цвет приглушён — среди корней и сосулек его легко не заметить)
+
       const c = GEMC[a.color] || GOLD, by = y;
       const b = `<path d="M${x} 250 V${by - 18}" stroke="${pal.iron}" stroke-width="2.4"/><path d="${bellPath(x, by, 0.8)}" fill="${mix(c, pal.wallD, 0.45)}" ${O(2.4)}/><circle cx="${x}" cy="${by + 13}" r="3" fill="${INK}"/>`;
       const found = `<circle cx="${x}" cy="${by}" r="44" fill="${c}" opacity=".35"/><g transform="rotate(-18 ${x} 250)"><path d="${bellPath(x, by, 0.8)}" fill="${c}" ${O(2.6)}/></g>`
@@ -1728,7 +1728,7 @@ try {
       return { svg: b, foundSvg: found };
     }
     if (type === 'gems') {
-      // цветной камешек у основания стены, наполовину прикрыт булыжником
+
       const c = GEMC[a.color] || GOLD;
       const g = `<path d="${gemPath(x, y, 9)}" fill="${mix(c, pal.wallD, 0.35)}" ${O(2.2)}/><path d="${P.blob(x + 12, y + 6, 18, 10)}" fill="${pal.wallL}" ${O(3)}/>`;
       const found = `<circle cx="${x}" cy="${y}" r="36" fill="${c}" opacity=".45"/><path d="${gemPath(x, y - 8, 14)}" fill="${c}" ${O(2.6)}/><path d="M${x - 4} ${y - 18} l-2 8" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/>`;
@@ -1736,9 +1736,9 @@ try {
     }
     return { svg: '', foundSvg: '' };
   }
-  // зоны «простукивания» (illusion — участки стены, hatch — участки пола): верная получает номер answer.
-  // Число зон всегда равно search.count (его знает сервер), поэтому при нехватке места расстояние между зонами уменьшается.
-  function searchZones(P, sec, doorX, W, mode, avoid, block = []) {   // 23.10: block — [x0, x1] предметов и опор у стены: пятно поиска на них не кладём
+
+
+  function searchZones(P, sec, doorX, W, mode, avoid, block = []) {
     const { rnd } = P, cnt = (sec.search && sec.search.count) || 5, ans = Math.min(cnt, (sec.search && sec.search.answer) || 1);
     const cand = [];
     if (mode === 'wall') { for (let x = 130; x < W - 100; x += 70) cand.push([x, 640]); }
@@ -1752,7 +1752,7 @@ try {
       pool.forEach((p) => { if (others.length < cnt - 1 && others.every((o) => Math.hypot(o[0] - p[0], (o[1] - p[1]) * 2) >= gap)) others.push(p); });
       if (others.length >= cnt - 1) break;
     }
-    while (others.length < cnt - 1) others.push([Math.round(200 + rnd() * (W - 400)), mode === 'wall' ? 640 : 1005]);   // крайний случай
+    while (others.length < cnt - 1) others.push([Math.round(200 + rnd() * (W - 400)), mode === 'wall' ? 640 : 1005]);
     const doorPt = [doorX, mode === 'wall' ? 640 : 975];
     others.splice(ans - 1, 0, doorPt);
     return others.map(([x, y], i) => (mode === 'wall'
@@ -1760,7 +1760,7 @@ try {
       : { n: i + 1, x: Math.round(x), y, w: 190, h: 70, correct: i === ans - 1 }));
   }
 
-  // сокровищница: груды золота, сундуки, реликвия на постаменте
+
   function drawTreasury(P, th, cx) {
     const { pal, O } = P, on = P.anim();
     let s = `<circle cx="${cx}" cy="560" r="300" fill="url(#ctGlow)" opacity=".55">${on ? '<animate attributeName="opacity" values=".4;.65;.4" dur="4s" repeatCount="indefinite"/>' : ''}</circle>`;
@@ -1774,23 +1774,23 @@ try {
     return s;
   }
 
-  /* =====================================================================================
-     СБОРКА КОМНАТЫ
-     ===================================================================================== */
+  
+
+
   function build(room, env) {
     env = env || {};
     const esc = env.esc || ((t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])));
     room = Object.assign({ region: 'ridge', type: 'start', seed: 1, floor: 1, floors: 3, depth: 0 }, room || {});
     const th = (room.variant === 2 && D.dungeonThemes[room.region + '_b']) || D.dungeonThemes[room.region] || D.dungeonThemes.ridge || Object.values(D.dungeonThemes)[0] || {};
     const depth = Math.max(0, Math.min(1, room.depth || 0));
-    // палитра: тема + смешивание к «глубинной» по глубине
+
     const pal = Object.assign({}, BASE_PAL, th.pal || {});
     Object.keys(th.deep || {}).forEach((k) => { pal[k] = mix(pal[k], th.deep[k], depth * 0.85); });
     let seedState = (room.seed % 2147483646) + 1;
     const rnd = () => (seedState = (seedState * 16807) % 2147483647) / 2147483647;
     let exits = (room.exits && room.exits.length ? room.exits : [{ key: 'back', kind: room.type === 'start' ? 'out' : 'back' }]).slice(0, 5);
     const legacy = exits.some((e) => e.key === 'leave' || e.key === 'forge');
-    // ширина: 1–3 экрана (4+ прохода — минимум 2 экрана; финал — 2–3; тупик — 1)
+
     let S = room.screens;
     if (!S) {
       const n = exits.length;
@@ -1801,43 +1801,43 @@ try {
       else S = 1 + (rnd() < 0.3 ? 1 : 0);
     }
     S = Math.max(1, Math.min(3, S));
-    if (exits.some((e) => e.kind === 'pit') && S === 1) exits = exits.map((e) => (e.kind === 'pit' ? Object.assign({}, e, { kind: 'shaft' }) : e));   // провал в полу — только на широких сценах
+    if (exits.some((e) => e.kind === 'pit') && S === 1) exits = exits.map((e) => (e.kind === 'pit' ? Object.assign({}, e, { kind: 'shaft' }) : e));
     const W = SW * S;
     const P = makeKit(pal, rnd, esc);
     P.signStyle = th.sign || 'wood';
     const views = {}; for (let i = 0; i < S; i++) views[VIEW_NAMES[i]] = i * SW;
 
-    /* --- раскладка: слоты на стене (центры) по экранам --- */
+     
     const SLOT = [250, 640, 1020, 1350];
     const slots = []; for (let i = 0; i < S; i++) SLOT.forEach((x, j) => slots.push({ x: i * SW + x, screen: i, j }));
     const used = new Set();
     const placed = [];
     const take = (pred) => { const c = slots.filter((sl) => !used.has(sl) && pred(sl)); if (!c.length) return null; const sl = c[0]; used.add(sl); return sl; };
-    // 1) назад/наружу — всегда слева на первом экране
+
     const backEx = exits[0];
     placed.push({ ex: backEx, x: take((sl) => sl.screen === 0 && sl.j === 0).x, mode: 'wall' });
-    // центральная часть особых комнат
+
     const special = [];
     if (room.type === 'final') { const sc = S - 1; special.push({ kind: 'boss', x: sc * SW + 900 }); slots.forEach((sl) => { if (sl.screen === sc && sl.j > 0) used.add(sl); }); }
     if (room.type === 'deadend') { const sl = take((sl) => sl.screen === S - 1 && sl.j === 2); if (sl) special.push({ kind: 'collapse', x: sl.x }); }
     if (room.type === 'treasury') { [1, 2, 3].forEach((j) => { const sl = slots.find((q) => q.screen === S - 1 && q.j === j); if (sl) used.add(sl); }); special.push({ kind: 'treasury', x: (S - 1) * SW + 1000 }); }
-    // МЕСТА ПОД СОБЫТИЯ (монстры, торговец, загадка…) — резервируем слоты стены заранее, проходы раскладываем вокруг
+
     const rest = exits.slice(1);
     const EVW = 340, events = [];
     {
       const want = /deadend|final|treasury/.test(room.type) ? 1 : Math.min(3, S);
       const nWall = rest.filter((e) => e.kind !== 'pit' && !(e.kind === 'secret' && room.secret && room.secret.type === 'hatch')).length;
-      const pitSc = rest.filter((e) => e.kind === 'pit').map((e, i) => Math.min(S - 1, 1 + i));   // экраны с провалом в полу — там стена над провалом занята табличкой
+      const pitSc = rest.filter((e) => e.kind === 'pit').map((e, i) => Math.min(S - 1, 1 + i));
       for (let sc = S - 1; sc >= 0 && events.length < want; sc--) {
         if (pitSc.includes(sc)) continue;
         const freeNow = slots.filter((sl) => !used.has(sl)).length;
         if (freeNow - 1 < nWall) break;
-        const pref = [2, 1].filter((j) => !(room.type === 'start' && S > 1 && sc === 0 && (j === 1 || j === 2)));   // центр первого экрана стартовой — место построения отряда
+        const pref = [2, 1].filter((j) => !(room.type === 'start' && S > 1 && sc === 0 && (j === 1 || j === 2)));
         const sl = pref.map((j) => slots.find((q) => q.screen === sc && q.j === j && !used.has(q))).find(Boolean);
         if (sl) { used.add(sl); events.push({ id: 'ev' + (events.length + 1), mode: 'wall', x: sl.x, y: 830, w: EVW, h: 330, view: VIEW_NAMES[sc] }); }
       }
     }
-    // 2) остальные проходы: равномерно по свободным слотам (провалы — в пол, не на первом экране)
+
     const isHatch = (e) => e.kind === 'secret' && room.secret && room.secret.type === 'hatch';
     const pits = rest.filter((e) => e.kind === 'pit'), wallEx = rest.filter((e) => e.kind !== 'pit' && !isHatch(e));
     rest.filter(isHatch).forEach((e) => { const sc = S - 1; placed.push({ ex: e, x: sc * SW + (S > 1 ? 1180 : 1150), mode: 'hatch' }); });
@@ -1846,14 +1846,14 @@ try {
     pits.forEach((e, i) => { const sc = Math.min(S - 1, 1 + i); pitScreens.push(sc); placed.push({ ex: e, x: sc * SW + 760, mode: 'pit' }); });
     const freeW = free.filter((sl) => !(pitScreens.includes(sl.screen) && (sl.j === 1 || sl.j === 2)));
     if (wallEx.length) {
-      // крупный проход «вниз» в комнате спуска
+
       const step = freeW.length / wallEx.length;
       wallEx.forEach((e, i) => { const sl = freeW[Math.min(freeW.length - 1, Math.floor(i * step + step / 2))]; if (sl) { used.add(sl); placed.push({ ex: e, x: sl.x, mode: 'wall' }); } });
     }
-    /* --- рисование --- */
+     
     let s = backdrop(P, th, W);
     if (th.rails) s += railsSvg(P, 0, W, 750);
-    const occ = [];   // занятые полосы стены [x0, x1]
+    const occ = [];
     let doors = {}, spots = [], obst = [], poly = null, ramps = [], secretOut = null, activators = [], floorSecretSvg = '';
     let exitSvg = '';
     placed.forEach((p) => {
@@ -1880,10 +1880,10 @@ try {
       occ.push([p.x - r.hw, p.x + r.hw]);
     });
     special.forEach((sp) => occ.push([sp.x - (sp.kind === 'boss' ? 380 : sp.kind === 'treasury' ? 330 : 170), sp.x + (sp.kind === 'boss' ? 380 : sp.kind === 'treasury' ? 330 : 170)]));
-    // житель-проводник у входа (только стартовая)
+
     let npc = null;
     if (room.type === 'start' && th.npc) { npc = { x: placed[0].x + 200, base: 804 }; occ.push([npc.x - 60, npc.x + 60]); obst.push({ r: [npc.x - 50, npc.x + 50, 826] }); }
-    // запасное место под событие — на полу посреди зоны ходьбы (если вся стена занята проходами)
+
     if (!events.length) {
       for (let sc = S - 1; sc >= 0 && !events.length; sc--) {
         const off = sc * SW;
@@ -1892,19 +1892,19 @@ try {
       }
     }
     events.forEach((e) => { if (e.mode === 'wall') occ.push([e.x - EVW / 2, e.x + EVW / 2]); });
-    // знаки-активаторы тайной двери: камень со знаком на стене, в свободном промежутке
+
     let actSvg = '';
     (room.activators || []).forEach((a) => {
       const g = gapsOf(occ, W).filter((q) => q[1] - q[0] >= 130).sort((q1, q2) => (q2[1] - q2[0]) - (q1[1] - q1[0]));
       const t = a.type || 'glyphs';
       let x, y = t === 'torches' ? 520 : t === 'bells' ? 300 + Math.round(rnd() * 40) : t === 'gems' ? 782 : 560 + Math.round(rnd() * 60);
       if (g.length) { const q = g[Math.floor(rnd() * Math.min(3, g.length))]; x = Math.round(q[0] + 60 + rnd() * (q[1] - q[0] - 120)); occ.push([x - 55, x + 55]); }
-      else { x = Math.round(200 + rnd() * (W - 400)); if (t === 'glyphs') y = 330; }   // запасное место — высоко на стене
-      if (t === 'glyphs' && x % SW > 1440 && y > 500) y = 470;                          // над углом вебки — повыше
+      else { x = Math.round(200 + rnd() * (W - 400)); if (t === 'glyphs') y = 330; }
+      if (t === 'glyphs' && x % SW > 1440 && y > 500) y = 470;
       const d = drawActivatorByType(P, th, a, x, y);
       actSvg += d.svg; activators.push({ id: a.id, type: t, symbol: a.symbol, color: a.color, x, y, r: 44, foundSvg: d.foundSvg });
     });
-    // декор: свет и предметы в промежутках стены
+
     let gaps = gapsOf(occ, W);
     let decSvg = '', lightPts = []; const decBlock = [];
     if (th.pillar) {
@@ -1915,7 +1915,7 @@ try {
         if (a != null) decSvg += P.pillar(th.pillar, a);
         if (b != null && (a == null || b - a > 200)) decSvg += P.pillar(th.pillar, b);
         [a, b].forEach((q) => { if (q != null) decBlock.push([q - 40, q + 40]); });
-        // широкий промежуток — ещё опора посередине
+
         if (g1 - g0 > 900) { decSvg += P.pillar(th.pillar, (g0 + g1) / 2); decBlock.push([(g0 + g1) / 2 - 40, (g0 + g1) / 2 + 40]); }
         pg.push([a != null ? a + 50 : g0, b != null ? b - 50 : g1]);
       });
@@ -1924,16 +1924,16 @@ try {
     const decor = (th.decor || ['rocks', 'crates']).filter((d) => !Array.isArray(d) || depth >= (d[2] || 0) - 0.001 && depth <= (d[3] == null ? 1 : d[3]) + 0.001);
     gaps.forEach(([g0, g1]) => {
       const w = g1 - g0;
-      // свет на стене — примерно каждые 420 px
+
       for (let x = g0 + 70; x < g1 - 50; x += 360 + rnd() * 140) {
         const lk = Array.isArray(th.light) ? th.light[Math.floor(rnd() * th.light.length)] : th.light || 'torch';
         const dim = depth > 0.6 && rnd() < (th.dimDeep || 0) ? 'crystal' : lk;
         decSvg += P.light(dim, x, dim === 'jar' || dim === 'lantern' ? 330 : 520);
         lightPts.push({ x, y: dim === 'jar' || dim === 'lantern' ? 380 : 500 });
       }
-      // настенный декор в широких промежутках
+
       if (w > 240 && th.wallDecor && rnd() < 0.75) decSvg += P.WDEC[P.pick(th.wallDecor)](g0 + w / 2 + (rnd() - 0.5) * (w - 220) * 0.6, 410 + rnd() * 70);
-      // предметы у основания стены
+
       let x = g0 + 30;
       while (x < g1 - 80) {
         const it = decor[Math.floor(rnd() * decor.length)];
@@ -1944,7 +1944,7 @@ try {
         x += iw + 30 + rnd() * 90;
       }
     });
-    // особые центральные части
+
     let specialSvg = '', bossPt = null, loot = null;
     special.forEach((sp) => {
       if (sp.kind === 'treasury') { specialSvg += drawTreasury(P, th, sp.x); loot = { x: sp.x, y: 700 }; }
@@ -1958,28 +1958,28 @@ try {
         loot = { x: sp.x + 200, y: 760 };
       }
     });
-    // пандусы → неровный пол (walkPoly)
+
     const rampSvg = ramps.map((r) => r.svg).join('');
     if (ramps.length) {
       poly = [[40, 800]];
       ramps.sort((a, b) => a.poly[0][0] - b.poly[0][0]).forEach((r) => r.poly.forEach((pt) => poly.push(pt)));
       poly.push([W - 40, 800], [W - 40, 1060], [40, 1060]);
     }
-    // особые эффекты темы (струи песка, водопады, лава…) — тема рисует в промежутках
+
     const fx = th.extra ? th.extra(P, { W, S, gaps, depth, room }) : '';
-    // житель
+
     let npcSvg = '';
-    if (npc) npcSvg = `<g class="dg-npc" data-npc="guide">${guy(P, 'проводник-' + room.region, npc.base, npc.x, 1.0, th.npc)}</g>`;   // 23.10: группа — сайт подсвечивает и даёт реплику
-    // баннер на каждом экране — только на первом (название), на остальных — табличка этажа
+    if (npc) npcSvg = `<g class="dg-npc" data-npc="guide">${guy(P, 'проводник-' + room.region, npc.base, npc.x, 1.0, th.npc)}</g>`;
+
     const title = room.name || (th.names && th.names[room.seed % th.names.length]) || 'ДАНЖ';
     const sub = `${(th.region || '').toUpperCase()} · ЭТАЖ ${room.floor} · ${TYPE_NAMES[room.type] || ''}`;
     if (secretOut && (secretOut.type === 'illusion' || secretOut.type === 'hatch')) {
       const avoid = Object.keys(doors).filter((k) => k !== secretOut.key).map((k) => doors[k].x).concat(events.map((e) => e.x));
       secretOut.search = searchZones(P, room.secret || {}, secretOut.mode === 'floor' ? secretOut.x : secretOut.x, W, secretOut.mode === 'floor' ? 'floor' : 'wall', secretOut.mode === 'floor' ? obst.filter((o) => o.e).map((o) => o.e[0]) : avoid, decBlock);
     }
-    // fxOver: эффект темы висит на стене (колокол, груз на цепи) — рисуем поверх декора, а не под ним
+
     const scene = s + floorSecretSvg + (th.fxOver ? '' : fx) + decSvg + (th.fxOver ? fx : '') + specialSvg + exitSvg + actSvg + rampSvg + npcSvg + P.banner(960, title.toUpperCase(), sub);
-    /* --- предметы с глубиной: не в центре первого экрана (там строится отряд), не у дверей, не под вебкой --- */
+     
     const props = [];
     const propKinds = th.props || ['stalagmite'];
     for (let i = 0; i < S; i++) {
@@ -1996,7 +1996,7 @@ try {
         obst.push({ e: [x, z - 3, 40, 11] });
       });
     }
-    // развилка: указатель на полу (если есть место слева на втором экране или справа у края первого)
+
     if (room.type === 'fork' && S >= 2 && exits.length >= 3) {
       const x = SW + 520, z = 1010;
       if (!obst.some((o) => o.e && Math.abs(o.e[0] - x) < o.e[2] + 120) && !events.some((e) => Math.abs(e.x - x) < e.w / 2 + 200)) {
@@ -2007,7 +2007,7 @@ try {
         obst.push({ e: [x, z - 3, 30, 10] });
       }
     }
-    /* --- номера, подписи, цвета, «помещения» --- */
+     
     const keys = exits.map((e) => e.key);
     const labels = {}, colors = {}, rooms = {};
     const genLabel = { out: 'Наружу', back: 'Назад', tunnel: 'Проход', hole: 'Лаз', down: 'Вниз', shaft: 'Вниз', pit: 'Провал' };
@@ -2017,11 +2017,11 @@ try {
       if (e.kind === 'secret') { labels[e.key] = e.label || 'Тайная дверь'; rooms[e.key] = { title: 'Сокровищница', icon: '💎', bg: `radial-gradient(ellipse at 50% 70%, ${GOLD} 0%, ${pal.wall} 40%, ${pal.ceil} 80%)`, note: 'Тайник открыт!' }; return; }
       if (e.kind !== 'back' && e.kind !== 'out') rooms[e.key] = { title: labels[e.key], icon: /down|shaft|pit/.test(e.kind) ? '⬇️' : '➡️', bg: `radial-gradient(ellipse at 50% 70%, ${pal.glow} 0%, ${pal.wall} 40%, ${pal.ceil} 80%)`, note: /down|shaft|pit/.test(e.kind) ? `Спуск на этаж ${room.floor + 1}` : 'Дальше по этажу' };
     });
-    // номера: порядок как в опросе (1..N), «назад» — последний
+
     const order = keys.slice(1).filter((k) => k !== 'secret').concat(keys.includes('secret') ? ['secret'] : [], [keys[0]]);
     spots.forEach((sp) => { sp.n = order.indexOf(sp.key) + 1; });
     if (secretOut) secretOut.spot = Object.assign({ key: secretOut.key, n: order.indexOf(secretOut.key) + 1 }, secretOut.spot);
-    // старые ключи: заполнить отсутствующие (виджет ждёт все 4)
+
     if (legacy) ['forge', 'tent', 'rows', 'leave'].forEach((k) => {
       if (!doors[k]) doors[k] = Object.assign({}, doors.leave);
       if (!labels[k]) labels[k] = '';
@@ -2037,7 +2037,7 @@ try {
     const sky = th.sky || ['#0c0914', '#1d1424'];
     return {
       width: W, height: 1080, views,
-      scene: () => scene,                 // строка уже собрана; scene() вызывается виджетом один раз
+      scene: () => scene,
       skyStars,
       props, obstacles: obst,
       area: { x0: 40, x1: W - 40, y0: 800, y1: 1060 }, scale: { min: 0.46, range: 0.3 },
@@ -2055,10 +2055,10 @@ try {
       guard: { look: { hat: 'legion', shape: 'box', color: '#5a5470' }, extra: { armed: true, gear: { w: 'spear', wr: 'common', s: 'scutum', sr: 'common' } } },
       rooms,
       boss: bossPt || undefined,
-      npcs: npc ? [{ id: 'guide', x: npc.x, y: npc.base - 175, lines: NPC_SAY[room.region] || NPC_SAY.beyond }] : [],   // 23.10: жители (сайт: подсветка и реплика по клику)
-      secret: secretOut || undefined,     // тайная дверь: { key, type, mode, x, door, spot, riddle, sockets:[…litSvg], openSvg, search?, hint?, openObstacle? } — в опросе скрыта до решения
-      activators: activators.length ? activators : undefined,   // знаки в этой комнате: [{ id, symbol, x, y, r, foundSvg }]
-      events,                             // места под события: [{ id, mode: 'wall'|'floor', x, y (где ноги), w, h, view }]
+      npcs: npc ? [{ id: 'guide', x: npc.x, y: npc.base - 175, lines: NPC_SAY[room.region] || NPC_SAY.beyond }] : [],
+      secret: secretOut || undefined,
+      activators: activators.length ? activators : undefined,
+      events,
       css: `.fr-skybg{background:linear-gradient(${sky[0]} 0%,${sky[1]} 100%)}`
         + '.fr-pc{background:rgba(42,32,48,.95);border-color:#ffcf4a;box-shadow:0 0 0 3px #2b1d18,0 14px 40px rgba(0,0,0,.5)}.fr-pc-t{color:#ffcf4a;text-shadow:0 3px 0 #2b1d18}',
       meta: { hiddenKeys: secretOut ? [secretOut.key] : [], region: room.region, variant: room.variant === 2 ? 2 : 1, type: room.type, floor: room.floor, depth, screens: S, keys, order, viewOf, smil: P.smil(), legacyKeys: legacy },
@@ -2075,7 +2075,7 @@ try {
     if (W - x > 90) g.push([x, W]);
     return g;
   }
-  // житель (рисуется выбранным стилем человечков; версия guy() из styles/cats/fair.js)
+
   function guy(P, seed, base, cx, s, look) {
     const svg = D.jDoodle(D.jhash(seed), 'happy', false, {}, look);
     const w = 120 * s, h = 170 * s, k = D.jhash(seed + '#anim') % 1000 / 1000;

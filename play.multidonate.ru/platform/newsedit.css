@@ -1,6 +1,6 @@
-/* 18.10: редактор новостей (newsedit.js) — общий для пульта и сайта. Цвета — переменные пульта (--card, --line, --text, --muted,
-   --accent, --ok, --warn, --err); на сайте их задаёт newssite.css из переменных оформления. Цвета текста (.nc-*) — в /site/news.css.
-   Без :has и сложного color-mix в раскладке — старый Chromium в OBS. */
+
+
+
 .nwa-btns button[data-armed], .nwa-acts button[data-armed] { border-color: var(--err); color: var(--err); background: transparent; }
 .nwa-st, .nwa-st-ed { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--muted); }
 .nwa-st::before { content: ''; width: 8px; height: 8px; border-radius: 50%; border: 2px solid currentColor; box-sizing: border-box; }
@@ -12,7 +12,7 @@
 .nwa-tag[data-tag="event"], .nwa-tags span[data-tag="event"] { color: var(--ok); }
 .nwa-tag[data-tag="fix"], .nwa-tags span[data-tag="fix"] { color: var(--nc-blue); }
 
-/* форма и предпросмотр рядом (узко — друг под другом) */
+ 
 .nwa-ed { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); align-items: start; }
 @media (min-width: 1100px) { .nwa-ed { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .nwa-prev { position: sticky; top: 12px; } }
 .nwa-ed .card { margin-bottom: 0; }
@@ -35,7 +35,7 @@
 .nwa-tags input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
 .nwa-tools { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
 .nwa-tools button { min-height: 32px; }
-/* цвет выделенного: кнопка и палитра */
+ 
 .nwe-cwrap { position: relative; display: inline-flex; }
 .nwe-cdot { display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 50%; vertical-align: -1px;
   background: conic-gradient(var(--nc-gold) 0 25%, var(--nc-red) 0 50%, var(--nc-blue) 0 75%, var(--nc-green) 0); }
@@ -57,10 +57,10 @@ html .nwe-pal .nwe-none { width: auto; padding: 0 12px; border-radius: 999px; co
 .nwa-btns button { min-height: 40px; }
 .nwa-warn { flex-basis: 100%; margin: 4px 0 0; }
 
-/* предпросмотр — как пост на сайте */
+ 
 .nwa-post { padding: 4px 2px; }
 .nwa-pmeta { display: flex; gap: 10px; align-items: center; font-size: 13px; color: var(--muted); }
-/* 01.11: несколько тегов - в ряд; ни одного - без пустого места */
+ 
 .nwa-pmeta [data-ptag] { display: inline-flex; flex-wrap: wrap; gap: 6px; }
 .nwa-pmeta [data-ptag]:empty { display: none; }
 .nwa-pt { margin: 8px 0 0; font-size: 22px; font-weight: 800; line-height: 1.2; color: var(--text); overflow-wrap: anywhere; }
@@ -73,7 +73,7 @@ html .nwe-pal .nwe-none { width: auto; padding: 0 12px; border-radius: 999px; co
 .nwa-pbody li::marker { color: var(--accent); }
 .nwa-pbody a { color: var(--accent); text-underline-offset: 3px; }
 
-/* 20.10: кнопка «Картинка», перетаскивание файла в текст, картинка в предпросмотре — как у зрителей (по ширине колонки) */
+ 
 .nwe-imgb { display: inline-flex; align-items: center; gap: 6px; }
 .nwe-ic { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; flex: none; }
 .nwa-f textarea.is-drop { border-color: var(--accent); border-style: dashed; box-shadow: 0 0 0 2px var(--accent); }

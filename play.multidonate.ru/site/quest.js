@@ -1,33 +1,33 @@
-// 22.10: вкладка «Поход» и плашка похода над вкладками (docs/QUEST-TAB.md). Пока — только тестерам (флаг qt у героя).
-// Команды — в чате; 23.10: голос «Куда идём?» и за проход данжа — ещё и кликом (X.vote, правила те же). Данные — вид похода для этого зрителя (src/site/questlive.ts), событие «q» живого канала.
-// Задержка: стрим у зрителя отстаёт, поэтому события (удары, итоги, таймеры) показываем с задержкой стрима (dl с сервера + своя
-// подстройка зрителя, хранится в браузере). Своё — «принято», свой голос, «опоздал» — сразу: это уже видно в чате.
-// Схема отряда в бою — те же места, что у оверлея (battlecrowd.js: строй по классам, окружение), все полупрозрачно, свой герой — ярко.
+
+
+
+
+
 (function () {
-  let X = null;   // что нужно от сайта (app.js → QX)
-  const RAW = [];   // полученные виды по порядку (для задержки)
+  let X = null;
+  const RAW = [];
   let NEW = null, CUR = null, shown = false, timer = 0, keyBar = '', keyTab = '', lateSeen = new Set(), myImg = null, myImgKey = '';
   const memoD = new Map(); let memoH = null;
-  let PV = null;   // 23.10: голос, отправленный кликом: { vid, n, t }   // рисунок своего героя по настроению — один раз на облик
+  let PV = null;
   const ADJ = 'lgQDelay';
   let adj = 0; try { adj = Math.max(-10, Math.min(30, +localStorage.getItem(ADJ) || 0)); } catch (e) { adj = 0; }
   const esc = (s) => (X ? X.esc(s) : String(s ?? ''));
   const now = () => (X ? X.now() : Date.now());
-  // 28.10 (prologue-boss-name): имя босса Пролога канала в падежах (questlive: bn; нет - «Закхуэль», канал zakvielchannel)
+
   const BNZ = { n: 'Закхуэль', g: 'Закхуэля', d: 'Закхуэлю', a: 'Закхуэля', i: 'Закхуэлем', p: 'Закхуэле' };
   const bn = () => (NEW && NEW.bn) || (CUR && CUR.bn) || BNZ;
-  // 28.10 (стример: «слово ПРИГНИСЬ на вкладке появляется, когда на оверлее время уже вышло»): задержка стрима нужна зрителю - он видит
-  // эфир с опозданием. Сам стример видит оверлей вживую: на его канале задержки нет (только своя подстройка)
+
+
   const isOwner = () => { try { const me = X && X.login ? X.login() : '', ch = String((window.LG_CH && window.LG_CH.login) || '').toLowerCase(); return !!me && me === ch; } catch (e) { return false; } };
   const delayS = (q) => Math.max(0, (isOwner() ? 0 : ((q && q.dl) || 0)) + adj);
   const sec = (until, q) => Math.max(0, Math.ceil(((+until || 0) + delayS(q) * 1000 - now()) / 1000));
-  const plural = window.LGSiteUi.plural;   // 25.10: packages/site-ui (ui-kit), была своя копия
+  const plural = window.LGSiteUi.plural;
   const SKN = () => (window.QBattleCrowd && window.QBattleCrowd.SK) || {};
-  const ZONE_COL = ['#c9a36a', '#d07a5a', '#6f9fd8', '#79c98f'];   // щиты, ближний бой, стрелки и маги, жрецы
+  const ZONE_COL = ['#c9a36a', '#d07a5a', '#6f9fd8', '#79c98f'];
   const SIDE_RU = { L: 'левое крыло', R: 'правое крыло', F: 'дальнее крыло' }, SIDE_CMD = { L: 'лево', R: 'право', F: 'вдали' };
-  // 25.10: обычная команда класса (удар / выстрел / магия / лечить) - из данных игры (packages/game-data), как в комнате (quest/siteact.js)
+
   const GD = window.LGGameData, BASE_CMD = Object.fromEntries([...GD.classIds(), 'recruit'].map((r) => [r, GD.baseCmd(r)]));
-  const KIND_RU = { battle: 'Бой', trap: 'Ловушка', treasure: 'Сокровищница', lair: 'Логово', rest: 'Привал', shop: 'Лавка', event: 'Событие', map: 'Карта', travel: 'В пути', town: 'Город', gather: 'Сбор отряда', boss: 'Босс', dungeon: 'Данж', bossgen: 'Главный враг', puzzle: 'Головоломка' };   // 22.10: генерированный босс округа
+  const KIND_RU = { battle: 'Бой', trap: 'Ловушка', treasure: 'Сокровищница', lair: 'Логово', rest: 'Привал', shop: 'Лавка', event: 'Событие', map: 'Карта', travel: 'В пути', town: 'Город', gather: 'Сбор отряда', boss: 'Босс', dungeon: 'Данж', bossgen: 'Главный враг', puzzle: 'Головоломка' };
   const ico = (k) => ({
     sword: '<path d="M14.5 17.5 3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M16 16l4 4"/><path d="M19 21l2-2"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', check: '<path d="M20 6L9 17l-5-5"/>', warn: '<path d="M12 3l9 16H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/>',
@@ -36,7 +36,7 @@
   }[k] || '');
   const svgI = (k, cls) => `<svg class="qi ${cls || ''}" viewBox="0 0 24 24" aria-hidden="true">${ico(k)}</svg>`;
 
-  /* ---------- данные и задержка ---------- */
+   
   function data(q) {
     if (!q) return;
     if (!q.on) { RAW.length = 0; NEW = q; CUR = q; lates(q); paint(); return; }
@@ -45,7 +45,7 @@
     tick();
     if (!timer) timer = setInterval(tick, 250);
   }
-  // показываем вид, «дошедший» до стрима зрителя: время снимка + задержка ≤ сейчас; открыли страницу посреди похода — сразу первый
+
   function tick() {
     if (!NEW) return;
     const t = now(); let pick = null;
@@ -55,25 +55,25 @@
     paint();
     clocks();
   }
-  // своё — сразу (из самого нового вида): «принято», свой голос, остров, куда прыгнул
+
   function view() {
     const c = CUR, n = NEW; if (!c || !c.on || !n || !n.on) return c;
     const v = { ...c };
     if (c.b && n.b && c.b.id === n.b.id) {
       v.b = { ...c.b };
-      if (n.b.round === c.b.round) { v.b.turn = n.b.turn; v.b.tg = n.b.tg; }   // 25.10: и цель хода (кнопки)
+      if (n.b.round === c.b.round) { v.b.turn = n.b.turn; v.b.tg = n.b.tg; }
       if (c.b.tele && n.b.tele && c.b.tele.word === n.b.tele.word) v.b.tele = { ...c.b.tele, ok: n.b.tele.ok };
     }
-    if (c.tr && n.tr && c.tr.name === n.tr.name && !c.tr.res) v.tr = { ...c.tr, acted: n.tr.acted, ...(c.tr.rd2 && n.tr.rd2 ? { rd2: { ...c.tr.rd2, left: n.tr.rd2.left, my: n.tr.rd2.my } } : {}) };   // 27.10: свои попытки и голос - сразу
-    if (c.bg && n.bg && c.bg.round === n.bg.round) v.bg = { ...c.bg, acted: n.bg.acted };   // 25.10: свой ход в бою с боссом - сразу
+    if (c.tr && n.tr && c.tr.name === n.tr.name && !c.tr.res) v.tr = { ...c.tr, acted: n.tr.acted, ...(c.tr.rd2 && n.tr.rd2 ? { rd2: { ...c.tr.rd2, left: n.tr.rd2.left, my: n.tr.rd2.my } } : {}) };
+    if (c.bg && n.bg && c.bg.round === n.bg.round) v.bg = { ...c.bg, acted: n.bg.acted };
     if (c.lair && c.lair.is && n.lair && n.lair.is) {
       const is = { ...c.lair.is };
       if (c.lair.is.pick && n.lair.is.pick) is.pick = { ...c.lair.is.pick, my: n.lair.is.pick.my };
       if (c.lair.is.at && n.lair.is.at) is.at = { ...c.lair.is.at, my: n.lair.is.at.my };
       v.lair = { ...c.lair, is };
     }
-    // 30.10 (антибот): слова логова (телеграф, заклинания) комната отдаёт, только когда они дошли до стрима (hid) - берём их из свежего вида
-    // того же события: карточка - со стримом, слово - как только пришло
+
+
     if (c.lair && n.lair) {
       const lw = {};
       for (const k of ['tele', 'spell', 'mass']) { const a = c.lair[k], b = n.lair[k]; if (a && a.hid && b && !b.hid && b.id && a.id === b.id) lw[k] = { ...a, ...(k === 'tele' ? { word: b.word } : { words: b.words }), hid: 0 }; }
@@ -82,16 +82,16 @@
     if (c.vote && n.vote && c.vote.id === n.vote.id) v.vote = { ...c.vote, my: n.vote.my };
     if (c.dgn && n.dgn && c.dgn.vote && n.dgn.vote && c.dgn.vote.id === n.dgn.vote.id) v.dgn = { ...c.dgn, vote: { ...c.dgn.vote, my: n.dgn.vote.my } };
     if (c.loot && n.loot && c.loot.name === n.loot.name) v.loot = { ...c.loot, my: n.loot.my };
-    if (c.pz && n && n.pz && n.pz.id === c.pz.id && n.pz.st === c.pz.st) v.pz = { ...c.pz, my: n.pz.my };   // 28.10 (map-puzzles): свой ответ - сразу (итог - со стримом)
-    if (c.ev && c.ev.gob) v.ev = gobView(c.ev, n);   // 28.10: ярмарка гоблинов - своя ставка, ответ и голос сразу, итог - с задержкой стрима
-    else if (c.ev && c.ev.hw) v.ev = hwView(c.ev, n);   // 28.10: событие Изнанки - свой ответ сразу, па пляски - по мере показа (с задержкой стрима)
-    else if (c.ev && n.ev && c.ev.look === n.ev.look) v.ev = { ...c.ev, my: n.ev.my, used: n.ev.used, said: n.ev.said };   // 25.10: свой выбор в событии — сразу
-    // 23.10: свой голос кликом — сразу (пока игра не подтвердила)
+    if (c.pz && n && n.pz && n.pz.id === c.pz.id && n.pz.st === c.pz.st) v.pz = { ...c.pz, my: n.pz.my };
+    if (c.ev && c.ev.gob) v.ev = gobView(c.ev, n);
+    else if (c.ev && c.ev.hw) v.ev = hwView(c.ev, n);
+    else if (c.ev && n.ev && c.ev.look === n.ev.look) v.ev = { ...c.ev, my: n.ev.my, used: n.ev.used, said: n.ev.said };
+
     if (PV && Date.now() - PV.t < 15000) for (const k of ['vote', 'dgn']) { const V = k === 'dgn' ? v.dgn && v.dgn.vote : v.vote; if (V && V.id === PV.vid && !V.done && V.my !== PV.n) { if (k === 'dgn') v.dgn = { ...v.dgn, vote: { ...V, my: PV.n } }; else v.vote = { ...V, my: PV.n }; } }
     return v;
   }
-  // 28.10 (hw-site-events): свой ответ - из самого нового вида (его уже видно в чате); па пляски - из снимков, что уже пришли: каждое па -
-  // когда его показал оверлей + задержка стрима (снимки идут раз в несколько секунд, па - чаще: иначе па выскакивали бы пачкой)
+
+
   function hwView(e, n) {
     const o = { ...e }, ne = n && n.ev && n.ev.hw && n.ev.id === e.id ? n.ev : null;
     if (ne) o.my = ne.my;
@@ -103,14 +103,14 @@
     }
     return o;
   }
-  // 28.10: ярмарка гоблинов - голос, ставка и ответ (это уже видно в чате) - из самого нового вида той же игры; итог розыгрыша - из показанного
+
   function gobView(e, n) {
     const ne = n && n.ev && n.ev.gob && n.ev.id === e.id ? n.ev : null; if (!ne || !ne.me) return e;
     const me = (e.me || ['', 0, '', '', 0, 0, 0]).slice(); me[0] = ne.me[0];
     if (ne.g === e.g) { me[1] = ne.me[1]; me[2] = ne.me[2]; }
     return { ...e, me };
   }
-  // «опоздал»: команда пришла, когда окно уже закрылось — сразу сообщение
+
   function lates(q) {
     for (const x of (q && q.late) || []) {
       const k = x[0] + ':' + x[1]; if (lateSeen.has(k)) continue; lateSeen.add(k);
@@ -123,24 +123,24 @@
     el.innerHTML = `${svgI('warn')}<div><b>Опоздал на ${s} с</b> — ${esc(what)} пришло, когда окно уже закрылось. Похоже, стрим у тебя идёт с большой задержкой: включи в плеере Twitch «Низкую задержку» или обнови страницу стрима.</div><button type="button" aria-label="Закрыть">×</button>`;
     el.querySelector('button').onclick = () => el.remove();
     document.body.appendChild(el); setTimeout(() => el.remove(), 12000);
-    // строка «Команда в поход» (sticky, на телефоне до 190 px) - плашку ставим над ней, а не поверх поля ввода
+
     const sy = document.querySelector('#tab-quest .q-say:not([hidden])'), sr = sy && sy.getBoundingClientRect();
     if (sr && sr.height && sr.top < window.innerHeight) el.style.bottom = Math.max(80, Math.ceil(window.innerHeight - sr.top + 10)) + 'px';
   }
 
-  /* ---------- 26.10: слово-подсказка без копирования (решение стримера: слова реакций - печатать самому) ----------
-     Слово рисуется на <canvas> (в DOM текста нет: ни title, ни alt, ни aria с самим словом), выделить, скопировать, перетащить, «сохранить
-     картинку» нельзя (user-select, contextmenu, copy, dragstart). Экранному диктору - общая фраза. В DOM - только номер слова (data-nc).
-     Не 100%: распознавание картинки (OCR) и данные вида похода в инструментах разработчика - см. docs/reports/quest-act.md, «Сомнения». */
+  
+
+
+
   const NC = { id: new Map(), w: new Map(), n: 0 };
   function ncWord(word, cls) {
     const w = String(word || '').trim(); if (!w) return '';
     let id = NC.id.get(w); if (!id) { id = 'w' + (++NC.n); NC.id.set(w, id); NC.w.set(id, w); if (NC.id.size > 200) { const k = NC.id.keys().next().value; NC.w.delete(NC.id.get(k)); NC.id.delete(k); } }
     return `<canvas class="q-nc ${cls || ''}" data-nc="${id}" role="img" aria-label="слово с экрана стрима - напечатай его в строке команд" draggable="false" width="10" height="10"></canvas>`;
   }
-  // текст с «словами в кавычках» (что писать): кавычки - без копирования, остальное - текстом
+
   const ncText = (t) => (qaOn() ? String(t || '').split(/«([^»]{1,40})»/).map((x, i) => (i % 2 ? wd(x, 'sm') : esc(x))).join('') : esc(t));
-  // тестерам кнопок (строка команд есть) - без копирования; остальным - как было (текстом)
+
   const wd = (word, cls) => (qaOn() ? ncWord(word, cls) : `<b class="w">${esc(word)}</b>`);
   function ncPaint(root) {
     if (!root) return;
@@ -155,17 +155,17 @@
       c.dataset.ncp = c.dataset.nc;
     });
   }
-  // нельзя: контекстное меню («сохранить картинку»), копирование, перетаскивание
+
   for (const ev of ['contextmenu', 'copy', 'cut', 'dragstart', 'selectstart']) document.addEventListener(ev, (e) => { if (e.target && e.target.closest && e.target.closest('.q-nc, .q-ncw')) e.preventDefault(); }, { capture: true });
 
-  /* ---------- общее: кто я в бою ---------- */
+   
   function meIn(b) {
-    const l = X.login(), i = b.me, p = i >= 0 ? b.form[i] : null, f = !p && Array.isArray(b.mf) ? b.mf : null;   // 25.10: mf - в строю, но дальше схемы (420)
+    const l = X.login(), i = b.me, p = i >= 0 ? b.form[i] : null, f = !p && Array.isArray(b.mf) ? b.mf : null;
     const st = b.hp == null ? 'out' : b.hp === 0 ? 'dead' : b.hp < 0 ? 'fled' : i >= 0 || f ? 'on' : 'reserve';
     return { l, p, st, side: p ? p[2] || 'R' : f ? f[1] || 'R' : '', role: p ? p[1] : f ? f[0] : (X.hero() && X.hero().role) || 'recruit' };
   }
-  // 31.10 (стример): мой герой пал в этом бою (бой похода или с боссом) - вместо подсказок и кнопок значок смерти.
-  // rev - в этом бою могут воскресить (обычный бой: донат, свиток, жрец); бой с боссом - только конец боя
+
+
   function deadIn(v) {
     if (!v) return null;
     if (v.bg && v.bg.st !== 'end' && v.bg.in && !(v.bg.my > 0)) return { rev: false };
@@ -181,7 +181,7 @@
   const skName = (w) => { const S = SKN(); for (const k of Object.keys(S)) if (S[k].name.toLowerCase() === String(w).toLowerCase()) return S[k]; return null; };
   function lastLine(b) {
     const M = b.mine, r = M && M.me; if (!M || !r) return '';
-    // 22.10: «Отбили», но к тебе прорвались (★2–★5, ты не написал слово) — как «Отбили… но N прорвались!» на оверлее
+
     if (M.k === 'tele') return r.dead ? (M.ok ? 'Отбили… но враг прорвался и сразил тебя' : 'Враг сразил тебя') : r.hurt ? (M.ok ? `Отбили… но ${esc(r.by || 'враг')} прорвался к тебе <b class="dn">−${r.hurt}</b>` : `${esc(r.by || 'Враг')} ударил тебя <b class="dn">−${r.hurt}</b>`) : '';
     const sk = r.sk && SKN()[r.sk] ? SKN()[r.sk] : null, parts = [];
     if (r.n) parts.push(`${sk ? `${sk.icon} ${esc(sk.name)}` : r.k === 'ranged' ? 'Выстрел' : r.k === 'magic' ? 'Магия' : 'Удар'}${r.e ? ` → ${esc(r.e)}` : ''} <b class="hit">−${r.d || 0}</b>${r.c ? ' · крит' : ''}${r.m && r.m === r.n ? ' · мимо' : ''}`);
@@ -192,17 +192,17 @@
     return parts.join(' · ');
   }
 
-  // 23.10: лично — надетое с прочностью ≤30%: дойдёт до 0 при гибели — исчезнет навсегда
+
   const lwHtml = (v, cls) => (v && v.lw && v.lw.length ? `<p class="${cls}">⚠ ${v.lw.map((x) => `${esc(x[0])} — прочность ${+x[1]}%`).join(', ')}: если дойдёт до 0, вещь исчезнет навсегда. Почини у кузнеца</p>` : '');
-  /* ---------- плашка поверх вкладок ---------- */
+   
   function bannerHtml(v) {
     if (!v || !v.on) return '';
     const head = (icon, t, right) => `<div class="qb-h">${svgI(icon)}<b>${t}</b>${right ? `<span class="qb-r">${right}</span>` : ''}</div>`;
-    if (v.nb) return head('clock', 'В отряд никто не присоединился :(');   // 28.10 (empty-party)
-    if (v.b && !(v.b.gb && v.bg)) {   // 25.10: генерированный босс с видом механики (bg) - плашка босса ниже
+    if (v.nb) return head('clock', 'В отряд никто не присоединился :(');
+    if (v.b && !(v.b.gb && v.bg)) {
       const b = v.b, m = meIn(b), stage = b.st === 'party' ? `ход отряда · <span data-until="${b.until}"></span> с` : b.st === 'tele' ? `ход врага · <span data-until="${b.until}"></span> с` : b.st === 'end' ? 'бой окончен' : 'удары';
       let line = '';
-      if (b.tele && m.st === 'on' || b.tele && m.st === 'reserve') line = b.tele.ok ? `${svgI('check', 'ok')} слово принято` : `<b class="urge">Пиши:</b> ${wd(b.tele.word, 'sm')}`;   // 26.10: слово врага - без копирования (тестерам)
+      if (b.tele && m.st === 'on' || b.tele && m.st === 'reserve') line = b.tele.ok ? `${svgI('check', 'ok')} слово принято` : `<b class="urge">Пиши:</b> ${wd(b.tele.word, 'sm')}`;
       else if (b.st === 'party' && (m.st === 'on' || m.st === 'reserve')) {
         const ready = (b.sk || []).find((x) => !x[1]);
         line = b.turn ? `${svgI('check', 'ok')} ход сделан: ${esc(turnRu(b.turn))}` : ready ? `пиши «${esc(ready[0])}» — готово` : `пиши «${esc(cmdFor(b, m))}»`;
@@ -215,7 +215,7 @@
       const t = I.pick ? `выбор острова · <span data-until="${I.pick.until}"></span> с` : I.doom ? `какой остров уничтожить · <span data-until="${I.doom.until}"></span> с` : 'острова';
       return head('isle', `${bn().n} · острова`, t) + `<div class="qb-b">${heroThumb()}<div class="qb-m"><div>${my ? `ты на острове ${my}` : I.pick ? '<b class="urge">Пиши номер острова: 1–4</b>' : 'ты не на острове'}</div>${hpBar(v.lair.hp)}</div>${svgI('right', 'go')}</div>`;
     }
-    if (v.bg) {   // 25.10: бой с генерированным боссом - механика и что писать
+    if (v.bg) {
       const g = v.bg, M = g.mech;
       const line = M ? (M.fake ? '<b class="urge">ФИНТ - не пиши!</b>' : M.me ? `<b class="urge">Цель - ты! ${ncText(M.how ? '«' + M.how + '»' : M.tip || '')}</b>` : `<b class="urge">${esc(M.name)}</b>: ${M.how ? `пиши ${qaOn() ? wd(M.how, 'sm') : '«' + esc(M.how) + '»'}` : M.word ? `пиши ${qaOn() ? wd(M.word.toLowerCase(), 'sm') : '«' + esc(M.word.toLowerCase()) + '»'}` : ncText(M.tip)}`)
         : g.st === 'party' ? (g.acted ? `${svgI('check', 'ok')} ход сделан` : 'пиши «удар» / «выстрел» / «магия» / «лечить»') : g.st === 'boss' ? 'босс бьёт' : '';
@@ -226,15 +226,15 @@
       const line = T.res ? trapMine(T) : act && T.gas ? (T.acted ? '<b class="dn">ты написал — вдохнул газ</b>' : '<b class="urge">Не пиши в чат!</b>') : act && T.word ? (T.acted ? `${svgI('check', 'ok')} слово принято` : `<b class="urge">Пиши:</b> ${wd(T.word, 'sm')}`) : act ? (T.acted ? `${svgI('check', 'ok')} принято` : esc(T.how)) : esc(T.intro);
       return head('trap', `${esc(T.icon || '')} ${esc(T.name)}`, act && T.until ? `<span data-until="${T.until}"></span> с` : '') + `<div class="qb-b">${heroThumb()}<div class="qb-m"><div class="qb-l">${line}</div></div>${svgI('right', 'go')}</div>`;
     }
-    if (v.pz) { const P = v.pz, done = P.st === 'done', M = pzMy(P);   // 28.10 (map-puzzles): головоломка - что писать сейчас
+    if (v.pz) { const P = v.pz, done = P.st === 'done', M = pzMy(P);
       const line = done ? esc(P.res ? P.res.text : 'итог') : P.st === 'show' ? '<b class="urge">Смотри на стрим!</b>' : M.ans ? `${svgI('check', 'ok')} твой ответ: ${esc(pzAnsText(P, M.ans))}` : `<b class="urge">${esc(P.how || '')}</b>`;
       const u = P.st === 'show' ? P.showUntil : P.until;
       return head('map', `${esc(P.icon || '')} ${esc(P.name)}`, !done && u ? `<span data-until="${u}"></span> с` : '') + `<div class="qb-b"><div class="qb-m"><div class="qb-l">${line}</div></div>${svgI('right', 'go')}</div>`; }
-    if (v.ev && v.ev.gob) { const E = v.ev, me = E.me || [], done = E.st === 'done';   // 28.10: ярмарка гоблинов - что писать сейчас
+    if (v.ev && v.ev.gob) { const E = v.ev, me = E.me || [], done = E.st === 'done';
       const line = done ? esc(E.res ? E.res.text : 'итог') : E.st === 'ask' ? (me[0] ? `${svgI('check', 'ok')} твой голос: ${me[0] === 'yes' ? 'да' : 'нет'}` : '<b class="urge">Пиши «да» или «нет»</b>')
         : E.st === 'bet' ? (me[1] ? `${svgI('check', 'ok')} твоя ставка ${X.money(me[1])}` : `<b class="urge">${esc(E.how || '')}</b>`) : E.st === 'guess' && me[1] ? (me[2] ? `${svgI('check', 'ok')} твой ответ: ${esc(gobAns(E.gk, me[2]))}` : `<b class="urge">${esc(E.how || '')}</b>`) : esc(E.how || (E.rv ? E.rv.text : ''));
       return head('map', `${esc(E.icon || '')} ${esc(E.name)}`, !done && E.until ? `<span data-until="${E.until}"></span> с` : '') + `<div class="qb-b"><div class="qb-m"><div class="qb-l">${line}</div></div>${svgI('right', 'go')}</div>`; }
-    if (v.ev && v.ev.hw) { const E = v.ev, done = E.st === 'done' || !!E.res;   // 28.10: событие Изнанки - что писать сейчас
+    if (v.ev && v.ev.hw) { const E = v.ev, done = E.st === 'done' || !!E.res;
       const line = done ? esc(E.res ? E.res.text : 'итог') : E.my ? `${svgI('check', 'ok')} ${E.look === 'trick' ? `твой голос: ${E.my === 'trick' ? 'гадость' : 'сладость'}` : E.my === 'bad' ? 'твоя цепочка - мимо' : 'принято'}` : `<b class="urge">${esc(E.how || '')}</b>`;
       return head('map', `${esc(E.icon || '')} ${esc(E.name)}`, !done && E.until ? `<span data-until="${E.until}"></span> с` : '') + `<div class="qb-b"><div class="qb-m"><div class="qb-l">${line}</div></div>${svgI('right', 'go')}</div>`; }
     if (v.ev) { const E = v.ev, vote = E.look === 'traveler' && E.st === 'vote';
@@ -243,14 +243,14 @@
     if (v.dgn && v.dgn.vote && !v.dgn.vote.done && v.dgn.vote.mode !== 'ring') { const V = v.dgn.vote, o = V.my && V.opts.find((x) => x[0] === V.my); return head('map', `Данж · ${esc(V.title)}`, `<span data-until="${V.end}"></span> с`) + `<div class="qb-b"><div class="qb-m"><div>${o ? `${svgI('check', 'ok')} твой голос: ${o[0]} · ${esc(o[2])}` : v.party === 'in' ? 'Нажми на проход или пиши номер в чат' : 'Отряд выбирает проход'}</div></div>${svgI('right', 'go')}</div>`; }
     if (v.vote && !v.vote.done) return head('map', esc(v.vote.title), `<span data-until="${v.vote.end}"></span> с`) + `<div class="qb-b"><div class="qb-m"><div>${v.vote.my ? `${svgI('check', 'ok')} твой голос: ${v.vote.my}` : 'Пиши номер в чат'}</div></div>${svgI('right', 'go')}</div>`;
     if (v.loot) return head('gift', `Делёж: ${esc(v.loot.name)}`, `<span data-until="${v.loot.until}"></span> с`) + `<div class="qb-b"><div class="qb-m"><div>${v.loot.my ? `${svgI('check', 'ok')} твой голос учтён` : 'Голосуй в чате, кому отдать вещь'}</div></div>${svgI('right', 'go')}</div>`;
-    return head('map', `${esc(KIND_RU[v.k] || 'Поход')}${v.t ? ' · ' + esc(v.t) : ''}`, v.n ? `отряд ${v.n}` : '') + `<div class="qb-b"><div class="qb-m"><div>${v.party === 'in' ? 'ты в отряде' : v.party === 'ghost' ? 'ты призрак в этом походе' : v.party === 'q' ? 'ты в очереди в отряд' : 'ты не в отряде'}</div>${v.dg ? `<div class="qb-l q-dg">⚠ ${esc(v.dg)}</div>` : ''}${lwHtml(v, 'qb-l q-dg')}</div>${svgI('right', 'go')}</div>`;   // 22.10: ★3+ — потери при гибели
+    return head('map', `${esc(KIND_RU[v.k] || 'Поход')}${v.t ? ' · ' + esc(v.t) : ''}`, v.n ? `отряд ${v.n}` : '') + `<div class="qb-b"><div class="qb-m"><div>${v.party === 'in' ? 'ты в отряде' : v.party === 'ghost' ? 'ты призрак в этом походе' : v.party === 'q' ? 'ты в очереди в отряд' : 'ты не в отряде'}</div>${v.dg ? `<div class="qb-l q-dg">⚠ ${esc(v.dg)}</div>` : ''}${lwHtml(v, 'qb-l q-dg')}</div>${svgI('right', 'go')}</div>`;
   }
   const turnRu = (t) => { const s = SKN()[t]; return s ? s.name.toLowerCase() : ({ melee: 'удар', ranged: 'выстрел', magic: 'магия', heal: 'лечение', guard: 'стойка', pull: 'вытащить', auto: 'атака' }[t] || t); };
   const hpBar = (hp) => (hp == null || hp < 0 ? '' : `<div class="q-hp" role="img" aria-label="Здоровье ${Math.round(hp * 100)}%"><i style="width:${Math.max(2, Math.round(hp * 100))}%" class="${hp <= 0.25 ? 'low' : hp <= 0.5 ? 'mid' : ''}"></i></div>`);
   function dd(mood) { const h = X.hero(); if (!h) return ''; if (h !== memoH) { memoH = h; memoD.clear(); } let s = memoD.get(mood); if (s == null) { s = X.doodle(X.login(), h, mood, 'battle') || ''; memoD.set(mood, s); } return s; }
   function heroThumb() { const s = dd('stern'); return s ? `<div class="q-thumb">${s}</div>` : ''; }
-  // 25.10: итог для себя - тот же, что в журнале (me.st из комнаты: dead | hurt | ok | pass | by, «~» - засчитан неактивным).
-  // Старая комната без st - как раньше (по урону); новая, а тебя в итоге нет - тебя не было у ловушки (не «тебя не задело»)
+
+
   function trapMine(T) {
     const r = T.res, me = r.me || {}, st = String(me.st || ''), code = st.replace('~', ''), what = T.tre ? 'сокровищнице' : 'ловушке';
     if (me.dmg === 'dead' || code === 'dead') return `<b class="dn">Твой герой погиб в ${what}</b>`;
@@ -266,39 +266,39 @@
     return (code === 'ok' ? 'Справился' : code === 'pass' ? 'Пронесло - не задело' : code === 'by' ? 'Прошёл мимо' : r.win ? 'Прошёл без потерь' : 'Тебя не задело') + afk;
   }
 
-  /* ---------- вкладка ---------- */
+   
   function tabHtml(v) {
     if (!v || !v.on) return '<p class="empty">Похода сейчас нет. Как только стример поведёт отряд — здесь будет видно, где твой герой и что писать в чат.</p>';
-    if (v.nb) return '<section class="q-card"><p class="q-big">В отряд никто не присоединился :(</p><p class="muted">Отряд возвращается в город. Стример объявит новый сбор - пиши «поход» в чат.</p></section>';   // 28.10 (empty-party): сбор кончился, в отряде никого
-    if (qaOn()) return '';   // 26.10 (стример): тестерам кнопок - раскладка по схеме (layPaint); остальным - как было
-    // 26.10 (стример): своё участие - значком у заголовка (зелёный «в отряде», красный «не в отряде», жёлтый «вступишь на остановке» - написал «поход», пока отряд в пути: вступит на ближайшей остановке, серый «призрак»)
+    if (v.nb) return '<section class="q-card"><p class="q-big">В отряд никто не присоединился :(</p><p class="muted">Отряд возвращается в город. Стример объявит новый сбор - пиши «поход» в чат.</p></section>';
+    if (qaOn()) return '';
+
     const pp = partyOf(v), pb = pp === 'in' ? ['in', 'в отряде'] : pp === 'q' ? ['q', 'вступишь на остановке'] : pp === 'ghost' ? ['gh', 'призрак'] : ['out', 'не в отряде'];
     const top = `<div class="q-top"><div><h2>${esc(v.b ? `Бой · ${v.b.title || v.t}` : v.lair ? `Логово ${bn().g}` : v.tr ? `${v.tr.icon || ''} ${v.tr.name}` : `${KIND_RU[v.k] || 'Поход'}${v.t ? ' · ' + v.t : ''}`)} <span class="q-pt ${pb[0]}" role="status">${pb[1]}</span></h2><p class="muted">${esc([v.ter, v.roll && v.roll.n ? `бросок ${v.roll.by}: ${v.roll.n}` : '', v.n ? `отряд ${v.n}` : ''].filter(Boolean).join(' · '))}</p>${v.dg ? `<p class="q-dg">⚠ ${esc(v.dg)}</p>` : ''}${lwHtml(v, 'q-dg')}</div>`
       + `<div class="q-sync"><button type="button" class="q-dl" aria-expanded="false">${svgI('clock')}как на стриме · ${delayS(v)} с</button><div class="q-dlp" hidden><p>Сайт показывает бой с задержкой твоего стрима. Обгоняет стрим — прибавь, отстаёт — убавь.</p><div class="q-dlb"><button type="button" data-adj="-1" aria-label="Меньше на секунду">−</button><b>${delayS(v)} с</b><button type="button" data-adj="1" aria-label="Больше на секунду">+</button><button type="button" data-adj="0">как у стримера</button></div></div></div></div>`;
-    // 23.10: отряд в округе ★1–2 — первая остановка — город округа: участнику отряда (кому открыты города) — кнопка входа
+
     const h0 = X.hero(), tw = v.town && h0 && h0.cy && h0.tw && X.openTown ? `<p class="q-town"><button type="button" class="btn primary" data-qtown="${esc(v.town.id)}">🏘 Войти в город «${esc(v.town.name)}»</button></p>` : '';
     if (tw) return top + tw + (v.b ? battleHtml(v) : v.lair && v.lair.is ? islesHtml(v) : v.tr ? trapHtml(v) : v.vote && !v.vote.done ? voteHtml(v) : v.loot ? lootHtml(v) : '');
-    // 25.10: генерированный босс: вид механики (bg, bossSitePublic) - и тестерам кнопок (qa) панель хода отряда сразу под стадией
+
     if (v.b && v.b.gb && v.bg) return top + bgHtml(v, qaOn() ? qaBattle(v, v.b, meIn(v.b)) : '') + (qaOn() ? qaHero(v) : '');
     if (v.b) return top + battleHtml(v);
-    if (v.bg) return top + bgHtml(v);   // 25.10: бой с генерированным боссом
-    if (v.dgn) return top + dgHtml(v);   // 23.10: данж — комната (та же сцена, что на стриме) и проходы кликом
+    if (v.bg) return top + bgHtml(v);
+    if (v.dgn) return top + dgHtml(v);
     if (v.lair && v.lair.is) return top + islesHtml(v);
-    if (v.lair && qaOn()) return top + lairHtml(v) + qaHero(v);   // 26.10: логово Закхуэля (бой) - ход, слова без копирования; кнопки - кнопки мест
+    if (v.lair && qaOn()) return top + lairHtml(v) + qaHero(v);
     if (v.tr) return top + trapHtml(v);
-    if (v.pz) return top + pzHtml(v) + (qaOn() ? qaHero(v) : '');   // 28.10 (map-puzzles): головоломка
-    if (v.ev && v.ev.gob) return top + gobHtml(v) + (qaOn() ? qaHero(v) : '');   // 28.10: ярмарка гоблинов
-    if (v.ev && v.ev.hw) return top + hwEvHtml(v) + (qaOn() ? qaHero(v) : '');   // 28.10: событие Изнанки
-    if (v.ev && qaOn()) return top + qaEvent(v) + qaHero(v);   // 25.10: событие — выбор кнопками (тестерам)
-    if (v.ev) return top + evHtml(v);   // 25.10: событие - что писать в чат и свой выбор
+    if (v.pz) return top + pzHtml(v) + (qaOn() ? qaHero(v) : '');
+    if (v.ev && v.ev.gob) return top + gobHtml(v) + (qaOn() ? qaHero(v) : '');
+    if (v.ev && v.ev.hw) return top + hwEvHtml(v) + (qaOn() ? qaHero(v) : '');
+    if (v.ev && qaOn()) return top + qaEvent(v) + qaHero(v);
+    if (v.ev) return top + evHtml(v);
     if (v.vote && !v.vote.done) return top + voteHtml(v) + (qaOn() ? qaSquad(v) : '');
     if (v.loot) return top + lootHtml(v);
-    if (v.sh && v.sh.items && v.sh.items.length) return top + shopHtml(v) + (qaOn() ? qaHero(v) : '');   // 23.10: лавка — прилавок
-    if (qaOn()) return top + (v.gather ? `<section class="q-card"><p class="muted">${gwName(v)} · <span data-until="${v.gather.until}"></span> с${partyOf(v) === 'q' ? ' · вступишь, когда отряд остановится' : ''}</p></section>` : '') + qaSquad(v, true) + qaHero(v);   // 26.10: «в отряде / не в отряде» - значок у заголовка   // 25.10: вступить / покинуть, панель героя
+    if (v.sh && v.sh.items && v.sh.items.length) return top + shopHtml(v) + (qaOn() ? qaHero(v) : '');
+    if (qaOn()) return top + (v.gather ? `<section class="q-card"><p class="muted">${gwName(v)} · <span data-until="${v.gather.until}"></span> с${partyOf(v) === 'q' ? ' · вступишь, когда отряд остановится' : ''}</p></section>` : '') + qaSquad(v, true) + qaHero(v);
     return top + `<section class="q-card"><p>${v.party === 'in' ? 'Твой герой в отряде.' : v.party === 'ghost' ? 'Твой герой — призрак в этом походе.' : v.party === 'q' ? 'Ты в очереди: вступишь, когда отряд остановится.' : (v.gather && v.gather.hw ? 'Ты не в отряде — пиши «портал» в чат, чтобы шагнуть в Изнанку с отрядом.' : 'Ты не в отряде — пиши «поход» в чат, когда стример объявит сбор.')}</p>${v.gather ? `<p class="muted">${gwName(v)} · <span data-until="${v.gather.until}"></span> с</p>` : ''}</section>`;
   }
-  // 29.10 (стример, телефон): окно «как на стриме» уезжало за левый край экрана (прижато правым краем к кнопке, а кнопка - слева).
-  // Открыли - сдвигаем по горизонтали, чтобы целиком влезало (отступ 8 px), только transform
+
+
   function fitPop(dp) {
     dp.style.transform = '';
     if (dp.hidden) return;
@@ -306,8 +306,8 @@
     const dx = r.left < 8 ? 8 - r.left : r.right > vw - 8 ? Math.max(8 - r.left, vw - 8 - r.right) : 0;
     if (dx) dp.style.transform = `translateX(${Math.round(dx)}px)`;
   }
-  /* 26.10 (п. 26): арена босса - площадки (контуры как на стриме), опасные - красным, уцелеющие - зелёным, своя - «ты»; кнопки «прыжок N»:
-     на соседнюю (или на любую, если механика разрешает) - уходят строкой */
+  
+
   function zonesHtml(g, M, noBtn) {
     const Z = g.zn, gone = new Set(Z.gone || []), my = g.area || 0, bad = new Set(M.id === 'M32' ? [] : M.zones || []), keep = new Set(M.id === 'M32' ? M.zones || [] : []);
     const pts = Z.a.flatMap((a) => a[2]); if (!pts.length) return '';
@@ -318,21 +318,21 @@
     const nb = (Z.a.find((a) => a[0] === my) || [0, []])[1], cand = Z.a.map((a) => a[0]).filter((n) => !gone.has(n) && n !== my && (M.any || !my || nb.includes(n)));
     const btns = !noBtn && qaOn() && X.say && cand.length ? `<div class="qa-row">${cand.map((n) => `<button type="button" class="qa-b ${bad.has(n) ? 'warn' : keep.has(n) ? 'main' : ''}" data-qpb="${esc('прыжок ' + n)}">⤴ на площадку ${n}</button>`).join('')}</div>` : '';
     const art = `<svg viewBox="${x0} ${y0} ${w} ${hgt}" role="img" aria-label="Арена: площадки ${Z.a.map((a) => a[0]).join(', ')}${my ? `; ты на площадке ${my}` : ''}">${shapes}</svg>${my ? '' : '<p class="muted">Где ты - видно на стриме</p>'}`;
-    if (SCH) { SCH.h += `<div class="q-arena">${art}</div>`; return btns; }   // 26.10: раскладка - схема арены слева, кнопки «прыжок» - в окне действий
+    if (SCH) { SCH.h += `<div class="q-arena">${art}</div>`; return btns; }
     return `<div class="q-arena">${art}${btns}</div>`;
   }
-  // 25.10: бой с генерированным боссом - босс (фаза, здоровье, приспешники), механика сейчас (что писать, слово, варианты, счётчик, таймер), мой герой
+
   function bgHtml(v, mid = '') {
     const g = v.bg, M = g.mech, D = deadIn(v);
-    // 31.10: павшему - без кнопок и подсказок: схема арены и здоровье босса остаются
+
     if (D) mid = '';
     const stage = M ? `${esc(M.name)}${M.until ? ` · <span data-until="${M.until}"></span> с` : ''}` : g.st === 'party' ? 'Ход отряда' : g.st === 'boss' ? 'Ход босса' : g.st === 'trans' ? 'Новая фаза' : g.st === 'end' ? 'Бой окончен' : 'Бой';
     let h = `<div class="q-stage ${M ? 'tele' : g.st === 'party' ? 'party' : ''}"><b>${stage}</b><span>фаза ${g.ph} из ${g.phs}${g.hw && g.hw.phn ? ` «${esc(g.hw.phn)}»` : ''}${g.limit ? ` · ход ${g.round} из ${g.limit}` : ''}${g.form ? ` · «${esc(g.form)}»` : ''}${g.rage ? ' · ярость: удары сильнее' : ''}</span></div>` + mid;
     let bc = `<section class="q-card q-bgc"><p><b>${esc(g.name)}</b>, ${esc(g.title)} · ★${g.danger} · здоровье ${Math.round(g.hp * 100)}%</p>${hpBar(g.hp)}`;
     if (g.adds && g.adds.length) bc += `<p class="muted">Приспешники: ${g.adds.map((a) => `${esc(a[0])} ${a[1]} (${Math.round(a[2] * 100)}%)`).join(', ')} - пиши «удар ${esc(g.adds[0][0])} N»: пока живы, урон по боссу вдвое меньше</p>`;
     bc += '</section>';
-    if (SCH) SCH.h += bc; else h += bc;   // 26.10: раскладка - босс над ареной (схема)
-    if (g.hw && !D) h += jackHtml(g, M);   // HW: Джек-Фонарщик - фонари, горячая тыква, куранты
+    if (SCH) SCH.h += bc; else h += bc;
+    if (g.hw && !D) h += jackHtml(g, M);
     if (D) {
       if (g.zn && M && M.fam === 'position') { const z = zonesHtml(g, M, true); if (!SCH) h += z; }
       h += deadHtml(D);
@@ -340,24 +340,24 @@
       h += `<section class="q-card"><h3>${esc(M.name)}</h3>`;
       if (M.fake) h += '<p><b class="urge">ФИНТ - ничего не пиши!</b></p>';
       if (M.text) h += `<p>${ncText(M.text)}</p>`;
-      // 26.10: механики-слова (телеграф, фраза, руны, «за легион»…) - тестерам слово без копирования: печатать самому в строке команд
+
       if (M.word) h += `<p class="q-word">${qaOn() ? wd(M.word, 'big') : `<b>${esc(M.word)}</b>`}</p>`;
       if (M.words && M.words.length) h += `<p class="q-word">${qaOn() ? M.words.map((w) => wd(w, 'big')).join(' ') : `<b>${M.words.map(esc).join(' ')}</b>`}</p>`;
       if (M.opts && M.opts.length) h += `<p>${M.opts.map((o, i) => `<b>${i + 1}</b> - ${esc(o)}`).join(' · ')}</p>`;
-      if (g.zn && M.fam === 'position') h += zonesHtml(g, M);   // 26.10: арена - схема и кнопки площадок
+      if (g.zn && M.fam === 'position') h += zonesHtml(g, M);
       else if (M.zones && M.zones.length) h += `<p>Зоны: ${M.zones.join(', ')} - номера площадок видно на стриме</p>`;
       h += `<p><b class="urge">${M.me ? 'Цель - ты! ' : ''}${M.how ? `Пиши: ${qaOn() ? wd(M.how, 'sm') : '«' + esc(M.how) + '»'}` : ncText(M.tip || 'Смотри табличку на стриме')}</b></p>`;
       if (M.need != null) h += `<p class="muted">Набрано ${M.got != null ? M.got : 0} из ${M.need}</p>`;
       h += '</section>';
     } else if (g.st === 'party') h += `<section class="q-card"><p>${g.acted ? `${svgI('check', 'ok')} Твой ход принят` : 'Пиши в чат: <b>удар</b> · <b>выстрел</b> · <b>магия</b> · <b>лечить</b> (или умение класса)'}</p></section>`;
-    if (!SCH && !D) h += `<section class="q-card"><p>${g.in ? (g.my > 0 ? 'Твой герой в бою' : 'Твой герой пал') : 'Ты не в этом бою'}</p>${g.in ? hpBar(g.my) : ''}</section>`;   // раскладка: герой - в карточке героя
+    if (!SCH && !D) h += `<section class="q-card"><p>${g.in ? (g.my > 0 ? 'Твой герой в бою' : 'Твой герой пал') : 'Ты не в этом бою'}</p>${g.in ? hpBar(g.my) : ''}</section>`;
     if (SCH && !(g.zn && M && M.fam === 'position')) SCH.h += bossArt(g);
     return h;
   }
-  // 26.10: журнал боя (тестерам кнопок) - последние строки ленты боя; массовая гибель приходит одной строкой «💀 Пало N игроков»
+
   const fdHtml = (b) => (Array.isArray(b.fd) && b.fd.length ? `<section class="q-card q-fd"><div class="q-ch"><b>Журнал боя</b></div><ul class="q-cmds">${b.fd.map((t) => `<li><span>${esc(t)}</span></li>`).join('')}</ul></section>` : '');
-  // HW (26.10, hw/jack): Джек-Фонарщик - то, что на стриме нарисовано на поле: фонари (H2) с номерами, тыква у меня (H3), удары курантов (H5).
-  // Слова и «передать @ник» - без копирования (печатать самому в строке команд); номера фонарей и тыкв - кнопками мест (siteact.js PB: lan, mvote)
+
+
   function jackHtml(g, M) {
     const J = g.hw || {}; let h = '';
     if (J.lan && Array.isArray(J.lan.lit)) {
@@ -375,25 +375,25 @@
     const b = v.b, m = meIn(b);
     const stage = b.st === 'party' ? `Ход отряда · <span data-until="${b.until}"></span> с` : b.st === 'tele' ? (b.gb ? 'Ход босса' : `Ход врага · <span data-until="${b.until}"></span> с`) : b.st === 'mech' ? 'Механика босса' : b.st === 'trans' ? 'Новая фаза босса' : b.st === 'end' ? 'Бой окончен' : b.st === 'intro' ? 'Бой начинается…' : 'Удары!';
     let h = `<div class="q-stage ${b.st}"><b>${stage}</b><span>раунд ${b.round}${b.gb ? '' : ` из ${b.maxR}`}${b.cr && b.cr.fr.length > 1 ? ` · враги ${b.cr.fr.map((s) => ({ L: 'слева', R: 'справа', F: 'вдали' }[s])).join(', ')}` : ''}</span></div>`;
-    const qa = qaOn(), D = deadIn(v);   // 25.10: тестерам — кнопки сразу под стадией (видно без прокрутки), слово врага — кнопкой «Блок» в той же панели
+    const qa = qaOn(), D = deadIn(v);
     if (qa) h += qaBattle(v, b, m);
     if (D) h += deadHtml(D);
     else if (b.tele && !qa) h += `<section class="q-card q-urge"><p class="q-big">${esc(b.tele.text || 'Враг атакует!')}</p><p>${b.tele.ok ? `${svgI('check', 'ok')} ты написал «${esc(b.tele.word)}» — принято` : `Пиши в чат <b class="w">${esc(b.tele.word)}</b>`}</p><p class="muted">${b.tele.got} из ${b.tele.need} нужных</p></section>`;
-    // схема отряда
+
     const where = m.st === 'on' ? `Где ты в строю${multi(b) && m.side ? ' · ' + SIDE_RU[m.side] : ''}` : m.st === 'reserve' ? 'Ты в бою, но вне кадра стрима' : m.st === 'dead' ? 'Твой герой пал' : m.st === 'fled' ? 'Ты сбежал из боя' : 'Тебя нет в этом бою';
-    const sq = b.gb ? qaBoss(b) + (SCH ? bossArt(b.gb) : '')   // 25.10: генерированный босс — карточка босса (строя нет)
+    const sq = b.gb ? qaBoss(b) + (SCH ? bossArt(b.gb) : '')
       : `<section class="q-card"><div class="q-ch"><b>${where}</b><span class="muted">на экране ${b.form.length}${b.fighters > b.form.length ? ` из ${b.fighters}` : ''}</span></div><canvas class="q-squad" width="720" height="360" role="img" aria-label="Схема боя: отряд и враги, твой герой выделен"></canvas>`
       + `<div class="q-leg"><span><i style="background:${ZONE_COL[0]}"></i>щиты</span><span><i style="background:${ZONE_COL[1]}"></i>ближний бой</span><span><i style="background:${ZONE_COL[2]}"></i>стрелки и маги</span><span><i style="background:${ZONE_COL[3]}"></i>жрецы</span><span><i class="foe"></i>враги</span></div></section>`;
-    if (SCH) SCH.h += sq; else h += sq;   // 26.10: раскладка - схема боя слева от журнала
-    // мой герой и умение
+    if (SCH) SCH.h += sq; else h += sq;
+
     const r = b.mine && b.mine.me, sk = r && r.sk && SKN()[r.sk];
     const cast = b.st === 'hit' && b.mine && b.mine.k === 'party' && r;
     if (!SCH) h += `<section class="q-card q-hero${cast ? ' cast' : ''}">${cast ? castHtml(b, r, sk) : `<div class="q-hi">${heroBig('stern')}</div>`}<div class="q-hm"><div class="q-hn"><b>${esc((X.hero() && X.hero().name) || X.login())}</b><span class="muted">${esc(X.role(m.role))}</span></div>${hpBar(b.hp)}`
       + `${b.turn && b.st === 'party' ? `<p>${svgI('check', 'ok')} ты написал «${esc(turnRu(b.turn))}» — принято, ${esc((X.hero() && X.hero().name) || 'герой')} готовится</p>` : ''}${lastLine(b) ? `<p>${lastLine(b)}</p>` : ''}</div></section>`;
-    // 25.10: тестерам — кнопки вместо «что писать» (та же команда в чат), панель героя
-    if (qa && SCH) return h + (b.res ? resHtml(b) : '');   // 26.10: раскладка - журнал боя в «Журнале», герой и «ход принят» - в карточке героя и истории
-    if (qa) return h + qaHero(v) + (b.st === 'tele' ? '' : fdHtml(b)) + (b.res ? resHtml(b) : '');   // ход врага: лента может назвать слово (её нельзя копировать) - скрыта до конца хода
-    // что писать
+
+    if (qa && SCH) return h + (b.res ? resHtml(b) : '');
+    if (qa) return h + qaHero(v) + (b.st === 'tele' ? '' : fdHtml(b)) + (b.res ? resHtml(b) : '');
+
     if (b.st !== 'end' && (m.st === 'on' || m.st === 'reserve')) {
       const rows = [];
       for (const [w, cd] of b.sk || []) { const s = skName(w); rows.push(`<li class="${cd ? 'cd' : 'rdy'}"><b>${esc(w)}</b><span>${s ? s.icon + ' ' : ''}${cd ? `через ${cd} ${plural(cd, 'ход', 'хода', 'ходов')}` : 'готово'}</span></li>`); }
@@ -405,7 +405,7 @@
   }
   const resHtml = (b) => `<section class="q-card"><p class="q-big">${{ win: 'Победа!', away: b.gb ? 'Босс ушёл' : 'Враги сбежали', lose: 'Отряд разбит', retreat: 'Отступление' }[b.res.how] || 'Бой окончен'}</p>${b.res.xp ? `<p>+${b.res.xp} опыта${b.res.coins ? ` · ~${X.money(b.res.coins)}` : ''}</p>` : ''}</section>`;
   const heroBig = (mood) => dd(mood || 'stern');
-  // умение моего героя — в момент ударов (с задержкой стрима): герой бьёт, эффект умения (тот же рисунок, что в оверлее), урон
+
   function castHtml(b, r, sk) {
     const fx = sk && window.QBattleCrowd && window.QBattleCrowd.fxSvg ? window.QBattleCrowd.fxSvg(r.sk, { x: 92, y: 70 }, { x: 250, y: 92 }, 0.15, { targets: [{ x: 250, y: 92 }], rnd: 0.5, amt: r.heal || 12 }) : '';
     const fo = r.e ? b.foes.find((f) => f[4] === r.e) : null, art = fo ? foeSvg(fo[1], fo[2], false) : '';
@@ -422,13 +422,13 @@
     const isv = `<section class="q-card q-isles"><svg viewBox="0 0 360 250" role="img" aria-label="Острова: ${[1, 2, 3, 4].map((n) => `${n} — ${gone.has(n) ? 'уничтожен' : cnt[n - 1]}`).join(', ')}${my ? `; ты на острове ${my}` : ''}">${isl}</svg>${my && !gone.has(my) ? `<div class="q-ime" style="left:${(P[my][0] / 360 * 100).toFixed(1)}%;top:${((P[my][1] - 40) / 250 * 100).toFixed(1)}%">${heroBig('stern')}</div>` : ''}</section>`;
     if (SCH) SCH.h += isv; else h += isv;
     if (I.pick) h += `<section class="q-card"><p>${my ? `${svgI('check', 'ok')} ты выбрал остров ${my}` : '<b class="urge">Пиши в чат номер острова: 1, 2, 3 или 4</b>'}</p><p class="muted">Кто не выберет — может рухнуть вместе с вершиной</p></section>`;
-    else if (nb.length && !gone.size) h += qaOn() && X.say ? `<section class="q-card"><div class="q-ch"><b>Прыгнуть на соседний остров</b></div><div class="qa-row">${nb.map((n) => `<button type="button" class="qa-b" data-qpb="${esc('прыгнуть ' + n)}">⤴ остров ${n}<small>${cnt[n - 1]} ${plural(cnt[n - 1], 'герой', 'героя', 'героев')}</small></button>`).join('')}</div></section>`   // 26.10: прыжок - кнопками (строкой «прыгнуть N»)
+    else if (nb.length && !gone.size) h += qaOn() && X.say ? `<section class="q-card"><div class="q-ch"><b>Прыгнуть на соседний остров</b></div><div class="qa-row">${nb.map((n) => `<button type="button" class="qa-b" data-qpb="${esc('прыгнуть ' + n)}">⤴ остров ${n}<small>${cnt[n - 1]} ${plural(cnt[n - 1], 'герой', 'героя', 'героев')}</small></button>`).join('')}</div></section>`
       : `<section class="q-card"><div class="q-ch"><b>Прыгнуть можно на соседний остров</b></div><ul class="q-cmds">${nb.map((n) => `<li><b>прыгнуть ${n}</b><span>${cnt[n - 1]} ${plural(cnt[n - 1], 'герой', 'героя', 'героев')}</span></li>`).join('')}</ul></section>`;
     h += lairWords(v);
     if (I.doom) { const c = I.doom.cnt || {}, mine = my && +c[my] > 0; h += `<section class="q-card ${mine ? 'q-urge' : ''}"><p>${mine ? `<b>Твой остров ${my} трещит:</b> ${c[my]} ${plural(+c[my], 'голос', 'голоса', 'голосов')} за то, чтобы его уничтожили` : 'Чат голосует, какой остров уничтожить'}</p><p class="muted">${(I.doom.opts || []).map((n) => `${n}: ${c[n] || 0}`).join(' · ')}${c.none ? ` · никакой: ${c.none}` : ''}</p></section>`; }
     return h;
   }
-  /* 26.10 (п. 31-32): логово Закхуэля - ход отряда (сходил ли), слово врага, фраза заклинания, «сделка» - без копирования (печатать самому) */
+   
   function lairWords(v) {
     const X0 = v.lair; if (!X0 || !qaOn()) return '';
     let h = '';
@@ -444,12 +444,12 @@
     return `<div class="q-stage ${X0.st === 'party' ? 'party' : ''}"><b>${st}</b><span>фаза ${X0.phase || 1}${X0.round ? ` · раунд ${X0.round}` : ''}</span></div>`
       + `<section class="q-card"><p>${X0.hp == null ? 'Ты не в этом бою' : X0.hp > 0 ? (X0.acted ? `${svgI('check', 'ok')} ход принят` : X0.st === 'party' ? 'Твой ход - кнопки выше или строкой' : 'Твой герой в бою') : 'Твой герой пал'}</p>${X0.hp != null ? hpBar(X0.hp) : ''}</section>` + lairWords(v);
   }
-  /* 23.10: лавка — прилавок с теми же номерами, что на стриме («купить 3»). Наведение мышью (ПК) или нажатие (телефон) — общая
-     подсказка-карточка вещи сайта (app.js cardTip, как у товара лавок «Города»); подсветка — обводка по силуэту рисунка (style.css --item-ol) */
+  
+
   let shSel = '';
   function shopHtml(v) {
-    const S = v.sh, art = (it) => { try { return X.art ? X.art(it) : ''; } catch (e) { return ''; } }, plain = (h) => String(h).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();   // X.money — разметка монет стиля
-    // 26.10 (стример): полки - как «Прилавок» на стриме: те же места и номера (раскладка - общая с оверлеем, quest/client/shelf.js)
+    const S = v.sh, art = (it) => { try { return X.art ? X.art(it) : ''; } catch (e) { return ''; } }, plain = (h) => String(h).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+
     const cell = (it, i) => `<li><button type="button" class="q-shi${it.qty <= 0 ? ' out' : ''}${shSel === it.id + ':' + i ? ' on' : ''}" data-qsh="${i}" data-r="${esc(it.rarity)}" aria-label="${i + 1}. ${esc(it.name)} — ${esc(plain(X.money(it.price)))}${it.qty > 0 ? `, осталось ${it.qty}` : ', раскупили'}">`
       + `<span class="n">${i + 1}</span><span class="q">${it.qty > 0 ? '×' + it.qty : 'нет'}</span>${it.curio ? '<span class="cu" aria-hidden="true">★</span>' : ''}<span class="gi">${art(it)}</span>`
       + `<b>${esc(it.name)}</b><i>${X.money(it.price)}</i></button></li>`;
@@ -467,7 +467,7 @@
       b.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse' && !b.classList.contains('on') && X.tipHide) X.tipHide(); });
       b.addEventListener('focus', () => { if (b.matches(':focus-visible')) show(b); });
       b.addEventListener('blur', () => { if (!b.classList.contains('on') && X.tipHide) X.tipHide(); });
-      // нажатие (телефон, клавиатура, мышь): выбрать — карточка остаётся; ещё раз — убрать
+
       b.addEventListener('click', () => {
         const it = itemOf(b); if (!it) return; const k = it.id + ':' + b.dataset.qsh, again = shSel === k;
         box.querySelectorAll('.q-shi.on').forEach((x) => x.classList.remove('on'));
@@ -477,10 +477,10 @@
     });
     if (shMenuOk()) shMenuBind(el, v, box, show);
     const sel = shSel ? +shSel.split(':')[1] : -1; buyBar(el, v, sel >= 0 ? sel : -1);
-    if (shSel) { const b = [...box.querySelectorAll('.q-shi.on')][0]; if (b && X.tipFor && X.tipFor() !== b) show(b); }   // прилавок перерисовался (остаток, выбор) — карточка у новой кнопки
+    if (shSel) { const b = [...box.querySelectorAll('.q-shi.on')][0]; if (b && X.tipFor && X.tipFor() !== b) show(b); }
   }
-  /* 26.10 (п. 4): покупка в лавке похода кликом - товар выбран → «Купить №N · цена» → «Точно? Нажми ещё раз» (4 с) → строка «купить N»
-     (тот же разбор, что чат). Защита от случайного нажатия - второе нажатие */
+  
+
   const BUY = { i: -1, at: 0 };
   function buyBar(el, v, i) {
     const box = el.querySelector('.q-buy'); if (!box) return;
@@ -491,34 +491,34 @@
     const b = box.querySelector('[data-qbuy]');
     if (b) b.onclick = () => { if (BUY.i === i && Date.now() - BUY.at < 4000) { BUY.i = -1; sayLine(`купить ${i + 1}`, { sure: true, btn: 1 }); buyBar(el, v, i); return; } BUY.i = i; BUY.at = Date.now(); buyBar(el, v, i); setTimeout(() => { if (BUY.i === i && Date.now() - BUY.at >= 3900) { BUY.i = -1; buyBar(el, v, i); } }, 4050); };
   }
-  /* 26.10 (стример): правая кнопка мыши по товару (на телефоне - долгое нажатие) - своё маленькое меню вместо меню браузера:
-     «Купить №N · цена» и «Что даёт» (та же карточка вещи, что по наведению). Меню - библиотеки инвентаря (LGInventory.menu, как у
-     сумки): Esc, нажатие мимо, прокрутка - закрыть. «Купить» → «Точно купить?» (4 с; нажатие раньше 0,35 с - не в счёт: двойной клик
-     не покупает) → строка «купить N» (тот же разбор, что чат). Пока - тестерам (те же условия, что у кнопки «Купить» под прилавком) */
+  
+
+
+
   const shMenuOk = () => !!(qaOn() && X.say && window.LGInventory && window.LGInventory.menu);
-  const SHM = { lp: 0, at: 0, p0: null, v: null };   // долгое нажатие: таймер, где палец, последний вид лавки; когда открыли меню пальцем (следующий «клик» - не выбор)
+  const SHM = { lp: 0, at: 0, p0: null, v: null };
   function shMenuBind(el, v, box, show) {
     SHM.v = v;
     const btnOf = (e) => e.target.closest && e.target.closest('[data-qsh]');
     box.addEventListener('contextmenu', (e) => {
       const b = btnOf(e); if (!b) return; e.preventDefault();
-      if (Date.now() - SHM.at < 800) return;   // палец: меню уже открыто по таймеру (Android шлёт и contextmenu)
-      shMenu(el, v, +b.dataset.qsh, e.clientX || e.clientY ? { x: e.clientX, y: e.clientY } : b, show);   // Shift+F10 / клавиша меню - у кнопки
+      if (Date.now() - SHM.at < 800) return;
+      shMenu(el, v, +b.dataset.qsh, e.clientX || e.clientY ? { x: e.clientX, y: e.clientY } : b, show);
     });
-    // вкладка может перерисоваться, пока палец держат (новый вид похода): таймер и место пальца - общие, кнопку ищем заново по номеру
+
     const stop = () => { clearTimeout(SHM.lp); SHM.lp = 0; SHM.p0 = null; };
     box.addEventListener('pointerdown', (e) => {
       if (e.pointerType !== 'touch') return; const b = btnOf(e); if (!b) return;
       stop(); const i = +b.dataset.qsh; SHM.p0 = { x: e.clientX, y: e.clientY, id: e.pointerId };
       SHM.lp = setTimeout(() => {
         SHM.lp = 0; SHM.p0 = null; const nb = el.querySelector(`.q-shl [data-qsh="${i}"]`); if (!nb) return;
-        SHM.at = Date.now(); if (navigator.vibrate) try { navigator.vibrate(12); } catch (x) { /* нет вибро */ }
+        SHM.at = Date.now(); if (navigator.vibrate) try { navigator.vibrate(12); } catch (x) {   }
         shMenu(el, SHM.v || v, i, nb, show);
       }, 500);
     }, { passive: true });
-    box.addEventListener('pointermove', (e) => { const p = SHM.p0; if (p && e.pointerId === p.id && Math.hypot(e.clientX - p.x, e.clientY - p.y) > 10) stop(); }, { passive: true });   // палец поехал - прокрутка
+    box.addEventListener('pointermove', (e) => { const p = SHM.p0; if (p && e.pointerId === p.id && Math.hypot(e.clientX - p.x, e.clientY - p.y) > 10) stop(); }, { passive: true });
     box.addEventListener('pointerup', stop); box.addEventListener('pointercancel', stop);
-    // после долгого нажатия браузер может прислать «клик» - это не выбор товара
+
     box.addEventListener('click', (e) => { if (Date.now() - SHM.at < 800 && btnOf(e)) { e.stopPropagation(); e.preventDefault(); } }, true);
   }
   function shMenu(el, v, i, at, show) {
@@ -537,15 +537,15 @@
     const poor = (+(X.hero() || {}).money || 0) < it.price;
     const m = L.menu(at, [{ t: `Да, купить за ${X.moneyText(it.price)}`, v: 'yes' }, { t: 'Отмена', v: 'no' }], { title: `Точно купить «${it.name}»?${poor ? ' Похоже, монет не хватит' : ''}`, label: 'Подтвердить покупку', pick: (k) => {
       if (k !== 'yes') return;
-      if (Date.now() - t0 < 350) { buyAsk(el, v, i, at, t0); return; }   // второй клик двойного - не подтверждение
+      if (Date.now() - t0 < 350) { buyAsk(el, v, i, at, t0); return; }
       sayLine(`купить ${i + 1}`, { sure: true, btn: 1 });
     } });
     setTimeout(() => { if (m.el.isConnected) m.close(); }, 4000);
   }
-  // карточка закрылась нажатием мимо (app.js) — снять и выбор
+
   document.addEventListener('pointerdown', (e) => { if (shSel && !(e.target.closest && e.target.closest('.q-shi'))) { shSel = ''; document.querySelectorAll('.q-shi.on').forEach((x) => x.classList.remove('on')); } }, { capture: true, passive: true });
-  // 25.10 (баг-репорты «на сайте нет выбора помочь/обобрать»): событие похода. Команды - в чате (как на стриме), здесь - что писать,
-  // таймер голосования путника, свой выбор, итог. Счёт голосов - только после итога
+
+
   function evHtml(v) {
     const E = v.ev, vote = E.look === 'traveler' && E.st === 'vote', done = E.st === 'done' || !!E.res, my = E.my, n = +E.used || 0;
     let h = `<div class="q-stage"><b>${vote && E.until ? `${esc(E.name)} · <span data-until="${E.until}"></span> с` : esc(E.name)}</b><span>${vote ? 'чат решает' : done ? 'итог' : ''}</span></div>`;
@@ -557,16 +557,16 @@
   }
   function trapHtml(v) {
     const T = v.tr, act = T.st === 'act' || T.st === 'wait';
-    const nm = T.tre ? 'Сокровищница' : 'Ловушка';   // 25.10: в сокровищнице таймер был подписан «Ловушка»
+    const nm = T.tre ? 'Сокровищница' : 'Ловушка';
     let h = `<div class="q-stage"><b>${act ? (T.until ? `${nm} · <span data-until="${T.until}"></span> с` : nm) : T.res ? 'Итог' : 'Приготовься'}</b><span>${T.actedN ? `ответили ${T.actedN}${T.total ? ' из ' + T.total : ''}` : ''}</span></div>`;
     if (!T.res) h += `<section class="q-card q-urge"><p class="q-big">${esc(act && !T.word && !T.gas ? T.how || T.name : T.intro || T.name)}</p>${act && T.gas ? `<p>${T.acted ? '<b class="dn">Ты написал — вдохнул газ</b>' : 'Не пиши в чат, пока газ не рассеется'}</p>` : act && T.word ? `<p>${T.acted ? `${svgI('check', 'ok')} ты уже написал — принято` : `${qaOn() ? 'Напечатай в строке внизу' : 'Пиши в чат'} ${wd(T.word)}`}</p>` : act && T.acted ? `<p>${svgI('check', 'ok')} принято</p>` : ''}</section>`;
     else h += `<section class="q-card q-hero"><div class="q-hi">${heroBig(T.res.me && T.res.me.dmg ? 'sad' : 'stern')}</div><div class="q-hm"><p class="muted">Итог для тебя</p><p class="q-big">${trapMine(T)}</p>${T.res.text ? `<p class="muted">${esc(T.res.text)}</p>` : ''}</div></section>`;
-    if (T.cx && !T.res) h += cxHtml(T, v);   // 28.10: переправа - шаги, кто прыгает, своё
-    if (T.bog && !T.res) h += bogHtml(T, v);   // 28.10: трясина - шкалы, тварь, своё «тянем»
-    if (qaOn() && !T.res) h += qaTrap(v);   // 25.10: тестерам — кнопки ответа
+    if (T.cx && !T.res) h += cxHtml(T, v);
+    if (T.bog && !T.res) h += bogHtml(T, v);
+    if (qaOn() && !T.res) h += qaTrap(v);
     return h;
   }
-  // 28.10 «Переправа по кочкам»: дорожка шагов (пройденные - верная кочка, утонувшие), текущий шаг, кто прыгает, своё. Кнопки «1 / 2 / 3», «обойти» - кнопки мест (строкой)
+
   function cxHtml(T, v) {
     const C = T.cx, it = C.it || 'кочка', k = C.rows[Math.min(C.step, C.n - 1)] || 2, me = C.me || {}, J = C.jump;
     const cell = (i) => { const hs = C.hist[i]; if (hs) return `<li class="ok" title="шаг ${i + 1}: верная ${hs[0]}${hs[1].length ? ', утонула ' + hs[1].join(', ') : ''}"><b>${hs[0]}</b>${hs[1].length ? `<s>${hs[1].join(' ')}</s>` : ''}</li>`;
@@ -579,7 +579,7 @@
     return `<section class="q-card q-cx"><ol class="q-steps" aria-label="Шаги переправы">${Array.from({ length: C.n }, (_, i) => cell(i)).join('')}</ol><p class="q-big">${now}</p>${my ? `<p>${my}</p>` : ''}`
       + `<p class="muted">Подсказок нет · упали: ${C.fellN || 0} · «обойти»: ${C.bv || 0} из ${C.need || 1}${me.bv ? ' (и ты)' : ''}</p></section>`;
   }
-  // 28.10 «Трясина»: путь и «увязли» (0–100), тварь, когда снова можно «тянем»
+
   function bogHtml(T, v) {
     const G = T.bog, X = G.beast, cd = G.next ? Math.ceil((G.next - Date.now()) / 1000) : 0;
     const bar = (cls, val, lab) => `<div class="q-gauge ${cls}" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${val}" aria-label="${lab}"><i style="transform:scaleX(${(val / 100).toFixed(2)})"></i><span>${lab}: ${val}%</span></div>`;
@@ -588,14 +588,14 @@
     return `<section class="q-card q-bog">${bar('pos', G.pos, 'Путь')}${bar('sink', G.sink, 'Увязли')}${beast}`
       + `<p>${v.party === 'in' ? (cd > 0 ? `«тянем» засчитано - следующее через ${cd} с` : 'Пиши «тянем» - не чаще раза в 2 секунды') : 'Тянет отряд'}</p><p class="muted">Каждое слово не по делу топит отряд · тянут: ${G.puN} · лишних слов: ${G.noise}</p></section>`;
   }
-  // 23.10: в отряде — вариант можно выбрать кликом (тот же голос, что цифра в чате; сменить — кликнуть другой)
+
   function voteHtml(v) {
     const V = v.vote, tot = V.opts.reduce((a, o) => a + o[3], 0) || 1, can = v.party === 'in';
     return `<div class="q-stage"><b>${esc(V.title)} · <span data-until="${V.end}"></span> с</b><span>${can ? 'нажми на вариант или пиши номер в чат' : 'пиши номер в чат'}</span></div><section class="q-card"><ul class="q-vote">${V.opts.map((o) => `<li class="${V.my === o[0] ? 'me' : ''}${can ? ' can' : ''}">${can ? `<button type="button" class="q-vb" data-qv="${V.id}:${o[0]}" aria-pressed="${V.my === o[0]}">` : ''}<div><b>${o[0]} · ${esc(o[1])}</b>${o[4] ? '<span class="muted"> — назад</span>' : ''}<span class="v">${o[3]}${V.my === o[0] ? ' · твой голос' : ''}</span></div>${can ? '</button>' : ''}<i style="width:${Math.round(o[3] / tot * 100)}%"></i></li>`).join('')}</ul></section>`;
   }
-  /* ---------- 23.10: данж — комната той же сценой, что на стриме (styles/<стиль>/dungeon.js), проходы кликом ----------
-     Рисунок собирается один раз на комнату (DG.el — живой узел: при перерисовке вкладки переносится, не пересобирается);
-     голос — X.vote (как цифра в чате; правила — в игре). Сцена шире экрана — тянуть мышью или пальцем (как «Город»). */
+  
+
+
   const DG = { key: '', el: null, L: null, W: 1920, k: 1, x: 0, drag: null, vx: 0, raf: 0, bubT: 0, said: {}, last: null };
   function dgHtml(v) {
     const g = v.dgn, V = g.vote && g.vote.mode !== 'ring' ? g.vote : null, can = v.party === 'in', live = !!(V && !V.done);
@@ -612,7 +612,7 @@
     return h;
   }
   const dgScope = (svg) => String(svg || '').replace(/id="([^"]+)"/g, 'id="qd-$1"').replace(/url\(#([^)]+)\)/g, 'url(#qd-$1)').replace(/href="#([^"]+)"/g, 'href="#qd-$1"');
-  // сцена комнаты: один раз на комнату. Нет рисунка данжа в стиле канала — табличка
+
   function dgBuild(g) {
     const D = window.MDDoodle; let L = null;
     try { L = D && D.location && g.room ? D.location('dungeon', { esc, room: g.room }) : null; } catch (e) { L = null; }
@@ -620,8 +620,8 @@
     if (!L || typeof L.scene !== 'function') { el.innerHTML = `<div class="q-dgn">🏰 ${esc(g.name || 'Данж')}<br><small>${esc(g.rn || '')}</small></div>`; return { el, L: null, W: 1920 }; }
     const W = L.width || 1920, sky = (/\.fr-skybg\{background:([^}]+)\}/.exec(L.css || '') || [])[1] || '#0c0914';
     let art = ''; try { art = dgScope(L.scene()); } catch (e) { art = ''; }
-    const props = (L.props || []).slice().sort((a, b) => (a.z || 0) - (b.z || 0)).map((p) => { let sv = ''; try { sv = dgScope(p.svg()); } catch (e) { /* предмет без рисунка */ } return `<svg x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" viewBox="${p.x} ${p.y} ${p.w} ${p.h}" overflow="visible">${sv}</svg>`; }).join('');
-    // обводка наведённого (как в «Городе»: светлая золотая линия и мягкое свечение) — фильтр SVG; толщина — под масштаб сцены (dgFit)
+    const props = (L.props || []).slice().sort((a, b) => (a.z || 0) - (b.z || 0)).map((p) => { let sv = ''; try { sv = dgScope(p.svg()); } catch (e) {   } return `<svg x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" viewBox="${p.x} ${p.y} ${p.w} ${p.h}" overflow="visible">${sv}</svg>`; }).join('');
+
     const ol = '<defs><filter id="qd-ol" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB"><feMorphology in="SourceAlpha" operator="dilate" radius="6" result="d"/>'
       + '<feComposite in="d" in2="SourceAlpha" operator="out" result="r"/><feFlood flood-color="#ffd66e"/><feComposite in2="r" operator="in" result="line"/>'
       + '<feGaussianBlur in="line" stdDeviation="9" result="b"/><feFlood flood-color="rgb(255,196,84)" flood-opacity=".95"/><feComposite in2="b" operator="in" result="glow"/>'
@@ -629,11 +629,11 @@
     el.style.background = sky;
     el.innerHTML = `<svg class="q-dga" viewBox="0 0 ${W} 1080" preserveAspectRatio="xMinYMin meet">${ol}${art}${props}</svg><div class="q-dgm"></div><div class="q-dgb" role="status" hidden></div>`;
     el.querySelectorAll('svg svg.jl-doodle').forEach((d) => { const w = d.getAttribute('width'), hh = d.getAttribute('height'); if (w) d.style.width = parseFloat(w) + 'px'; if (hh) d.style.height = parseFloat(hh) + 'px'; d.style.position = 'static'; d.style.filter = 'none'; });
-    el.querySelectorAll('animate, animateTransform, animateMotion').forEach((n) => n.remove());   // сайт — без анимаций сцены (легче; на стриме они есть)
+    el.querySelectorAll('animate, animateTransform, animateMotion').forEach((n) => n.remove());
     el.querySelector('.q-dgm').innerHTML = (L.spots || []).map((p) => `<span class="q-dgk" data-k="${esc(p.key)}" hidden style="left:clamp(46px, ${(p.x / W * 100).toFixed(3)}%, calc(100% - 46px));top:max(32px, ${(p.y / 1080 * 100).toFixed(3)}%);--c:${(L.colors || {})[p.key] || '#ffcf4a'}"><b></b><i></i></span>`).join('');
     return { el, L, W };
   }
-  // масштаб: высота вида — один экран 1920 по ширине вкладки, на телефоне не ниже 240 px (сцена шире — тянуть)
+
   function dgFit(view) {
     if (!DG.L || !view) return;
     const cw = view.clientWidth || 360, hh = Math.round(Math.max(240, Math.min(560, cw * 1080 / 1920))), k = hh / 1080;
@@ -644,7 +644,7 @@
   }
   const dgMax = () => { const view = DG.el && DG.el.parentNode; return view ? Math.max(0, DG.W * DG.k - (view.clientWidth || 0)) : 0; };
   function dgCam(x) { DG.x = Math.max(0, Math.min(dgMax(), x)); if (DG.el) DG.el.style.transform = `translate3d(${-Math.round(DG.x)}px,0,0)`; }
-  // проходы, по которым сейчас голосуют: подсветка при наведении, номер и голоса над дверью; итог — ✓ над выбранным
+
   function dgMarks(v) {
     if (!DG.el || !DG.L) return;
     const g = v.dgn, V = g.vote && g.vote.mode !== 'ring' ? g.vote : null, live = !!(V && !V.done), can = live && v.party === 'in';
@@ -667,8 +667,8 @@
     dgInput(view);
     dgFit(view); dgMarks(v);
   }
-  // ввод: тянуть сцену (мышь, палец) — как в «Городе»: порог 6 px, захват указателя; после отпускания — инерция; короткое нажатие — клик.
-  // Обработчики — на узле сцены (DG.el): он переживает перерисовку вкладки
+
+
   function dgInput(view) {
     const el = DG.el; if (!el || el._in) return; el._in = 1;
     el.addEventListener('pointerdown', (e) => {
@@ -679,8 +679,8 @@
     el.addEventListener('pointermove', (e) => {
       const d = DG.drag; if (!d || d.id !== e.pointerId) return;
       const dx = e.clientX - d.x, dy = e.clientY - d.y;
-      if (!d.moved && Math.abs(dx) > 6 && Math.abs(dx) > Math.abs(dy)) { d.moved = true; try { el.setPointerCapture(e.pointerId); } catch (er) { /* */ } el.classList.add('drag'); }
-      if (!d.moved && Math.abs(dy) > 10) { DG.drag = null; return; }   // палец ведёт вверх-вниз — это прокрутка страницы
+      if (!d.moved && Math.abs(dx) > 6 && Math.abs(dx) > Math.abs(dy)) { d.moved = true; try { el.setPointerCapture(e.pointerId); } catch (er) {   } el.classList.add('drag'); }
+      if (!d.moved && Math.abs(dy) > 10) { DG.drag = null; return; }
       if (d.moved) { const t = performance.now(); DG.vx = 0.7 * DG.vx + 0.3 * ((d.lx - e.clientX) / Math.max(1, t - d.lt)); d.lx = e.clientX; d.lt = t; dgCam(d.cam - dx); }
     });
     const up = (e) => {
@@ -713,7 +713,7 @@
     const v = view(), g = v && v.dgn, V = g && g.vote; if (!V || V.done) return;
     const o = V.opts.find((x) => x[1] === key); if (o) castVote(V.id, o[0]);
   }
-  // голос кликом (проход данжа или вариант «Куда идём?»): сразу «твой голос», ошибка игры — уведомлением
+
   async function castVote(vid, n) {
     if (!X.vote || !vid || !n) return;
     const was = PV; PV = { vid, n, t: Date.now() };
@@ -722,7 +722,7 @@
     if (hi) histSet(hi, r && r.ok !== false ? 'ok' : 'no', r && r.ok !== false ? 'голос принят' : (r && r.error) || 'голос не принят');
     if (!r || r.ok === false) { PV = was && was.vid === vid ? was : null; keyTab = ''; paint(); if (X.toast) X.toast((r && r.error) || 'Голос не принят', true); }
   }
-  // житель (проводник): реплика пузырём над ним — только у этого зрителя, ~4 с; реплики — по кругу, без повтора подряд
+
   function dgSay(n) {
     const L = DG.L, b = DG.el && DG.el.querySelector('.q-dgb'); if (!L || !b) return;
     const id = n.dataset.npc, P = (L.npcs || []).find((x) => x.id === id); if (!P || !P.lines || !P.lines.length) return;
@@ -731,7 +731,7 @@
     const i = q.pop(); DG.last = i;
     b.textContent = P.lines[i]; b.style.left = (P.x / DG.W * 100).toFixed(3) + '%'; b.style.top = (P.y / 1080 * 100).toFixed(3) + '%';
     b.hidden = false; b.classList.remove('on'); void b.offsetWidth; b.classList.add('on');
-    // пузырь не должен вылезать за края сцены: зажимаем центр по ширине и верх по высоте (в пикселях сцены)
+
     const box = DG.el.getBoundingClientRect(), bw = b.offsetWidth, bh = b.offsetHeight;
     if (box.width && bw) {
       const cx = Math.min(Math.max(P.x / DG.W * box.width, bw / 2 + 4), box.width - bw / 2 - 4), cy = Math.max(P.y / 1080 * box.height, bh + 18);
@@ -746,20 +746,20 @@
     return `<div class="q-stage"><b>Делёж вещи · <span data-until="${L.until}"></span> с</b><span>голосов ${L.n}</span></div><section class="q-card"><p class="q-big">${esc(L.name)}</p><p>${L.my ? `${svgI('check', 'ok')} твой голос учтён` : 'Пиши в чат, кому отдать вещь (номер или ник), или «случайно»'}</p></section>`;
   }
 
-  /* ---------- 25.10: КНОПКИ ПОХОДА (тестерам — флаг qa у героя, questActPublic; docs/QUEST-TAB.md, «Кнопки») ----------
-     Кнопка = та же команда чата (комната: quest/siteact.js), чат остаётся запасным. Одно действие в пути: после нажатия кнопки
-     «отправлено…», пока игра не подтвердит (ход в виде боя, ответ комнаты) — повторно не нажать. Обработчик кликов — один на вкладку
-     (делегирование): перерисовка вкладки кнопки не пересобирает обработчики. Выбор цели и стороны — в памяти страницы. */
+  
+
+
+
   const QA = { pend: null, sel: { t: '', lead: false, s: '' }, sum: null, ok: null, n: { bet: 20, don: 50 }, dig: '', bound: false };
   const qaOn = () => !!(X && X.act && X.hero() && X.hero().qa);
   const qaData = (o) => esc(JSON.stringify(o));
   const qaBusy = () => !!(QA.pend && Date.now() - QA.pend.at < 9000);
-  // 26.10 (стример): состояние нажатой кнопки - «отправлено» (контур), «принято» (зелёная), отказ (красная, коротко)
+
   const qaSig = (o) => { const { _l, ...x } = o; return JSON.stringify(x); };
   const qaSt = (o) => { const g = qaSig(o), t = Date.now(); return QA.pend && QA.pend.sig === g && qaBusy() ? ' wait' : QA.bad && QA.bad.sig === g && t - QA.bad.at < 2500 ? ' bad' : QA.okb && QA.okb.sig === g && t - QA.okb.at < 12000 ? ' ok' : ''; };
   const qaBtn = (o, label, cls, dis, aria) => `<button type="button" class="qa-b ${cls || ''}${qaSt(o)}" data-qa="${qaData(o)}"${dis || qaBusy() ? ' disabled' : ''}${aria ? ` aria-label="${esc(aria)}"` : ''}>${label}</button>`;
   const qaPendLine = () => (qaBusy() ? `<p class="qa-st wait" role="status">${svgI('clock')} отправлено: ${esc(QA.pend.label)}…</p>` : '');
-  /** Своё участие: сразу после «принято» (вступил / покинул) - по ответу игры, пока запоздавший вид не догонит. */
+   
   function partyOf(v) {
     const m = QA.me; if (!m) return v.party;
     const vp = v.party === 'in' || v.party === 'q' || v.party === 'ghost' ? v.party : 'out';
@@ -774,7 +774,7 @@
   const nmOf = (b, l) => { if (l === X.login()) return 'себя'; const x = (b.low || []).find((y) => y[0] === l); return x ? x[1] : l; };
   async function qaSend(p, label, k) {
     if (qaBusy()) return;
-    const hi = qaOn() ? histAdd(label, 'wait', { btn: 1 }) : null;   // 26.10 (стример): нажатие - строкой в «предыдущих командах», с ответом игры
+    const hi = qaOn() ? histAdd(label, 'wait', { btn: 1 }) : null;
     QA.pend = { label, at: Date.now(), k: k || p.k, id: '', sig: qaSig(p), hi }; keyTab = ''; paint();
     const r = await X.act(p);
     if (!r || r.ok === false) { QA.pend = null; QA.bad = { sig: qaSig(p), at: Date.now() }; if (hi) histSet(hi, 'no', (r && r.error) || 'не вышло'); keyTab = ''; paint(); if (X.toast) X.toast((r && r.error) || 'Не вышло', true); return; }
@@ -782,10 +782,10 @@
     if (hi) hi.id = r.id || '';
     setTimeout(() => { if (QA.pend && Date.now() - QA.pend.at >= 9000) { QA.pend = null; keyTab = ''; paint(); } }, 9100);
   }
-  // ответ игры (комнаты) на нажатие — из results живого канала (app.js): отказ — уведомлением, принято — строкой под кнопками
+
   function qaResult(r) {
     if (!r) return;
-    if (r.x && r.x.k === 'say') { sayResult(r); return; }   // 26.10: ответ на строку «Команда в поход»
+    if (r.x && r.x.k === 'say') { sayResult(r); return; }
     const mine = QA.pend && (!QA.pend.id || QA.pend.id === r.id), k = (r.x && r.x.k) || (QA.pend && QA.pend.k) || '';
     const P0 = mine ? QA.pend : null;
     if (mine) QA.pend = null;
@@ -794,25 +794,25 @@
     if (P0 && P0.sig) { if (r.ok && k !== 'b') QA.okb = { sig: P0.sig, at: Date.now() }; else if (!r.ok) QA.bad = { sig: P0.sig, at: Date.now() }; }
     if (!r.ok) { if (X.toast) X.toast(r.error || 'Игра не приняла действие', true); }
     else if (k !== 'b') QA.ok = { k, t: (r.x && r.x.t) || 'готово', at: Date.now() };
-    // 26.10 (стример: «нажал покинуть - кнопка ещё несколько секунд прежняя»): вид похода приходит с задержкой стрима -
-    // своё вступление / выход показываем сразу, пока вид не догонит (до 30 с)
+
+
     if (r.ok && (k === 'join' || k === 'leave')) QA.me = { p: k === 'leave' ? 'out' : (r.x && (r.x.queued || r.x.t === 'очередь')) ? 'q' : 'in', at: Date.now() };
     keyTab = ''; paint();
   }
-  // в бою «принято» видно по самому бою (ход, слово) — ждать ответа комнаты не нужно
+
   function qaSeen(v) {
     if (!QA.pend || QA.pend.k !== 'b' || !v || !v.b) return;
     if ((QA.pend.block && v.b.tele && v.b.tele.ok) || (!QA.pend.block && v.b.turn)) { QA.pend = null; keyTab = ''; }
   }
   function qaBind(el) {
     if (QA.bound || !el) return; QA.bound = true;
-    // подсказка кнопки у края окна: привязываем к краю кнопки, а не к центру (quest.css .tip-l / .tip-r)
+
     el.addEventListener('mouseover', (e) => {
       const b = e.target.closest && e.target.closest('.qa-b[data-tip]'); if (!b) return;
       const r = b.getBoundingClientRect(), c = (r.left + r.right) / 2, half = Math.min(260, window.innerWidth - 24) / 2;
       b.classList.toggle('tip-l', c - half < 12); b.classList.toggle('tip-r', c + half > window.innerWidth - 12);
     });
-    el.addEventListener('input', (e) => {   // 26.10: ползунок ставки - только подписи и кнопка, без перерисовки вкладки (палец не срывается)
+    el.addEventListener('input', (e) => {
       const r = e.target.closest && e.target.closest('[data-qbet]'); if (!r) return;
       const n = QA.n.bet = +r.value, box = r.closest('.q-card') || el;
       const v1 = box.querySelector('[data-qbetv]'), v2 = box.querySelector('[data-qbetb]'), b = v2 && v2.closest('[data-qa]');
@@ -821,13 +821,13 @@
       box.querySelectorAll('[data-qsel^="bet|"]').forEach((c) => { const on = +c.dataset.qsel.split('|')[1] === n; c.classList.toggle('on', on); c.setAttribute('aria-pressed', String(on)); });
     });
     el.addEventListener('click', (e) => {
-      const jv = e.target.closest && e.target.closest('.q-jr [data-view]'); if (jv) { if (X.jrAll) X.jrAll(); return; }   // 26.10: «Весь журнал» - вкладка «Персонаж» → журнал
-      const jt = e.target.closest && e.target.closest('[data-qjt]'); if (jt) { QA.jt = jt.dataset.qjt; paint(); return; }   // 26.10: журнал - «Бой» / «Мой»
-      const lv = e.target.closest && e.target.closest('[data-qleave]');   // 26.10 (стример): «покинуть отряд?» - вторым нажатием за 4 с
+      const jv = e.target.closest && e.target.closest('.q-jr [data-view]'); if (jv) { if (X.jrAll) X.jrAll(); return; }
+      const jt = e.target.closest && e.target.closest('[data-qjt]'); if (jt) { QA.jt = jt.dataset.qjt; paint(); return; }
+      const lv = e.target.closest && e.target.closest('[data-qleave]');
       if (lv) { if (lv.disabled) return; if (QA.leave && Date.now() - QA.leave < 4000) { QA.leave = 0; qaSend({ k: 'leave' }, 'покинуть отряд', 'leave'); return; } QA.leave = Date.now(); paint(); setTimeout(() => { if (QA.leave && Date.now() - QA.leave >= 3900) { QA.leave = 0; paint(); } }, 4050); return; }
       const b = e.target.closest && e.target.closest('[data-qa], [data-qsel], [data-qdig], [data-qpb], [data-qhw]'); if (!b || b.disabled || !el.contains(b)) return;
-      if (b.dataset.qhw) { const k = b.dataset.qhw; if (k === '<') HWC.ch.pop(); else if (HW_STEP[k] && HWC.ch.length < 12) HWC.ch.push(k); keyTab = ''; paint(); return; }   // 28.10: пляска Изнанки - цепочка па
-      if (b.dataset.qpb) { pbClick(b); return; }   // 26.10: кнопка места - строкой
+      if (b.dataset.qhw) { const k = b.dataset.qhw; if (k === '<') HWC.ch.pop(); else if (HW_STEP[k] && HWC.ch.length < 12) HWC.ch.push(k); keyTab = ''; paint(); return; }
+      if (b.dataset.qpb) { pbClick(b); return; }
       if (b.dataset.qsel) { const [k, v0] = b.dataset.qsel.split('|'); if (k === 'lead') QA.sel.lead = !QA.sel.lead; else if (k === 't') QA.sel.t = QA.sel.t === v0 ? '' : v0; else if (k === 's') QA.sel.s = QA.sel.s === v0 ? '' : v0; else if (k === 'bet') QA.n.bet = +v0; else if (k === 'don') QA.n.don = +v0; keyTab = ''; paint(); return; }
       if (b.dataset.qdig) { const d = b.dataset.qdig; if (d === 'x') QA.dig = ''; else if (d === '<') QA.dig = QA.dig.slice(0, -1); else if (QA.dig.length < 14) QA.dig += d; keyTab = ''; paint(); return; }
       let o; try { o = JSON.parse(b.dataset.qa); } catch (er) { return; }
@@ -837,7 +837,7 @@
       qaSend(o, label, o.k); if (o.k === 'b' && QA.pend) QA.pend.block = o.a === 'block';
     });
   }
-  // итог раунда: последний свой итог хода (удар, лечение, урон по мне) — держим до следующего, чтобы успеть прочитать
+
   function qaSum(b) {
     const t = lastLine(b); if (t && b.mine) { const key = `${b.id}:${b.mine.r}:${b.mine.k}`; if (!QA.sum || QA.sum.key !== key) QA.sum = { key, id: b.id, r: b.mine.r, parts: QA.sum && QA.sum.id === b.id && QA.sum.r === b.mine.r ? [...QA.sum.parts.filter((p) => p.k !== b.mine.k), { k: b.mine.k, t }] : [{ k: b.mine.k, t }] }; }
     return QA.sum && QA.sum.id === b.id ? QA.sum : null;
@@ -847,7 +847,7 @@
     const tg = b.tg || [], who = tg[0] === 'lead' ? 'вожак' : tg[0] ? nmOf(b, tg[0]) : '', sd = tg[1] ? { L: 'слева', R: 'справа', F: 'вдали' }[tg[1]] : '';
     return `${svgI('check', 'ok')} ход принят: <b>${esc(turnRu(b.turn))}</b>${who ? ` → ${esc(who)}` : ''}${sd ? ` · ${sd}` : ''}`;
   };
-  // панель действий в бою (ход отряда — удар, умения, цель, сторона; ход врага — «Блок»)
+
   function qaBattle(v, b, m) {
     const S = qaSum(b), sum = S ? `<div class="qa-sum"><b>Итог раунда ${S.r}</b>${S.parts.map((p) => `<span>${p.t}</span>`).join('')}</div>` : '';
     if (b.st === 'end') return sum ? `<section class="q-card qa">${sum}</section>` : '';
@@ -856,7 +856,7 @@
     let head = '', body = '';
     if (b.st === 'tele' && b.tele) {
       head = `Ход врага · <span data-until="${b.until}"></span> с`;
-      body = `<p class="q-big">${esc(b.tele.text || 'Враг атакует!')}</p><p class="muted">${b.tele.got} из ${b.tele.need} нужных</p>` + (b.tele.ok ? `<p class="qa-st ok">${svgI('check', 'ok')} слово принято</p>` : `<div class="q-ncw"><span>Напечатай в строке внизу:</span>${wd(b.tele.word, 'big')}</div>`);   // 26.10 (решение стримера): ход врага - только строка; слово - без копирования
+      body = `<p class="q-big">${esc(b.tele.text || 'Враг атакует!')}</p><p class="muted">${b.tele.got} из ${b.tele.need} нужных</p>` + (b.tele.ok ? `<p class="qa-st ok">${svgI('check', 'ok')} слово принято</p>` : `<div class="q-ncw"><span>Напечатай в строке внизу:</span>${wd(b.tele.word, 'big')}</div>`);
     } else if (b.st === 'party') {
       head = `Твой ход · <span data-until="${b.until}"></span> с`;
       if (b.turn && !SCH) body = `<p class="qa-st ok">${turnLine(b)}</p>`;
@@ -864,14 +864,14 @@
       else {
         const base = BASE_CMD[role] || 'удар', heal = !!ROLE_HEAL[role], fronts = b.cr && b.cr.fr && b.cr.fr.length > 1 ? b.cr.fr : b.two ? ['L', 'R'] : [];
         const leadOn = !gb && b.foes.some((f) => f[2] && f[3] > 0) && (base === 'удар' || base === 'выстрел');
-        // 26.10 (стример): «вожак» - сторона только та, где вожаки есть; вожак один (одна сторона) - выбора стороны нет
+
         const lead = QA.sel.lead && leadOn, leadSides = [...new Set(b.foes.filter((f) => f[2] && f[3] > 0).map((f) => f[0]))];
         const fr2 = lead ? fronts.filter((s) => leadSides.includes(s)) : fronts;
         const tgt = QA.sel.t, side = fr2.length > 1 && fr2.includes(QA.sel.s) ? QA.sel.s : '';
         const pick = (o) => ({ ...o, ...(side && o.a !== 'heal' ? { s: side } : {}) });
         const mainP = heal ? { k: 'b', a: 'base', ...(tgt ? { t: tgt } : {}) } : pick({ k: 'b', a: 'base', ...(QA.sel.lead && leadOn ? { t: 'lead' } : {}) });
         const mainL = `${base}${heal && tgt ? ` → ${nmOf(b, tgt)}` : QA.sel.lead && leadOn ? ' → вожак' : ''}${side && !heal ? ` · ${SIDE_BTN[side]}` : ''}`;
-        // 26.10 (стример): ход принят - нажатая кнопка зелёная до нового раунда, остальные - выключены (ход один)
+
         const T = b.turn, tsk = T && SKN()[T], tOk = (w) => !!(T && (w === 'base' ? !tsk && !(role === 'priest' && T === 'melee') : w === 'melee' ? T === 'melee' : tsk && tsk.name.toLowerCase() === String(w).toLowerCase()));
         rows.push(qaBtn({ ...mainP, _l: mainL }, `${heal ? '✚' : base === 'выстрел' ? '🏹' : base === 'магия' ? '✨' : '⚔️'} ${esc(mainL)}`, `main big${tOk('base') ? ' ok' : ''}`, !!T));
         if (role === 'priest') rows.push(qaBtn(pick({ k: 'b', a: 'melee', _l: 'удар' }), '⚔️ удар', tOk('melee') ? 'ok' : '', !!T));
@@ -889,19 +889,19 @@
         if (fr2.length > 1 && !heal) body += `<div class="qa-sel" role="group" aria-label="Сторона"><span>Сторона:</span><button type="button" class="qa-c${!side ? ' on' : ''}" data-qsel="s|" aria-pressed="${!side}">своя${m.side ? ` (${SIDE_BTN[m.side] || ''})` : ''}</button>${fr2.map((s) => `<button type="button" class="qa-c${side === s ? ' on' : ''}" data-qsel="s|${s}" aria-pressed="${side === s}">${SIDE_BTN[s]}</button>`).join('')}</div>`;
       }
     } else head = b.st === 'mech' ? 'Механика босса - отвечай в чат по экрану' : b.st === 'intro' ? 'Бой начинается…' : 'Удары - жди следующего хода';
-    // 26.10 (стример: «строка дважды»): стадия с таймером уже в полосе над карточкой - здесь не повторяем; пустая карточка - не рисуем
+
     const dup = /^(Твой ход|Ход врага|Ход босса|Бой начинается|Удары)/.test(String(head).replace(/<[^>]*>/g, ''));
     if (dup && !body && !sum && !qaBusy()) return '';
     return `<section class="q-card qa"><div class="q-ch">${dup ? '' : `<b>${head}</b>`}<span class="muted">кнопки = команды чата, чат тоже работает</span></div>${qaPendLine()}${body}${sum}</section>`;
   }
-  // карточка генерированного босса вместо схемы отряда (строя у босса нет): имя, фаза, здоровье, идущая механика
+
   function qaBoss(b) {
     const g = b.gb, M = g.mech;
     return `<section class="q-card q-boss"><div class="q-ch"><b>${esc(g.name)}${g.title ? ` · ${esc(g.title)}` : ''}</b><span class="muted">фаза ${g.phase} из ${g.phases}${b.maxR ? ` · ход ${b.round} из ${b.maxR}` : ''}</span></div>`
       + `<div class="q-hp big" role="img" aria-label="Здоровье босса ${pct(g.hp)}%"><i style="width:${Math.max(1, pct(g.hp))}%" class="foe"></i></div><p class="muted">здоровье босса ${pct(g.hp)}%</p>`
       + `${M ? `<div class="qa-mech"><b>${esc(M.icon || '⚠')} ${esc(M.name || 'Механика')}</b>${M.text ? `<span>${ncText(M.text)}</span>` : ''}<small>${qaOn() ? 'пиши в строке команд внизу - как на экране' : 'отвечай в чат - как на экране'}</small></div>` : ''}${g.forbid ? '<p class="q-dg">⚠ Босс запретил прямые слова - пиши в чат синонимом</p>' : ''}</section>`;
   }
-  // панель героя: здоровье (числом, как в «Персонаже» — то же значение), баффы с таймером, еда и зелья в один клик
+
   function qaHero(v) {
     const h = X.hero(); if (!h) return '';
     const hpMax = (h.stats && h.stats.hp) || 0, hp = h.ghost ? 0 : Math.max(0, Math.min(hpMax, h.hpNow ?? hpMax)), k = hpMax ? hp / hpMax : 0;
@@ -912,24 +912,24 @@
     const eff = (e) => [e.heal ? `+${e.heal} ❤` : '', e.buff ? `${stRu(e.buff.stat)} +${e.buff.add}` : ''].filter(Boolean).join(' · ');
     const fl = [...food.values()].slice(0, 6).map(({ it, n }) => `<li><span class="qa-fi">${qaArt(it)}</span><span class="qa-fn"><b>${esc(it.name)}${n > 1 ? ` ×${n}` : ''}</b><small>${esc(eff(it.effect))}</small></span>${h.ghost ? '' : `<button type="button" class="qa-b sm" data-qa="${qaData({ k: 'eat', uid: it.uid })}"${eatCd ? ' disabled' : ''}>${it.slot === 'potion' || it.drink ? 'Выпить' : 'Съесть'}</button>`}</li>`).join('');
     QA.rtEnd = Math.min(...[eatCd || Infinity, ...bf.map((x) => +x[3])]);
-    // 26.10 (п. 35): персонаж всегда на вкладке - рисунок, надетое и сумка компактно (еда и зелья - кликом, как в «Персонаже»)
+
     const items = h.items || [], worn = items.filter((it) => it.on).slice(0, 8), bag = items.filter((it) => !it.on).slice(0, 40);
     const cell = (it, eat) => `<li${it.rarity ? ` data-r="${esc(it.rarity)}"` : ''}>${eat && !h.ghost ? `<button type="button" class="q-bi" data-qa="${qaData({ k: 'eat', uid: it.uid })}"${eatCd ? ' disabled' : ''} aria-label="${esc((it.slot === 'potion' || it.drink ? 'Выпить: ' : 'Съесть: ') + it.name)}">` : `<span class="q-bi" role="img" aria-label="${esc(it.name)}">`}${qaArt(it)}${it.n > 1 ? `<i>×${+it.n}</i>` : ''}${eat && !h.ghost ? '</button>' : '</span>'}</li>`;
     const isFood = (it) => !it.wearable && (it.slot === 'food' || it.slot === 'potion') && it.effect && !it.effect.revive;
-    const inB = !!(v && v.b);   // 26.10 (стример: «дважды персонаж»): в бою герой уже нарисован в карточке боя - здесь без рисунка и полоски
+    const inB = !!(v && v.b);
     const kit = `<div class="q-kit">${inB ? '' : `<div class="q-kd">${dd('stern')}</div>`}<div class="q-km">${worn.length ? `<p class="muted">Надето</p><ul class="q-bag worn">${worn.map((it) => cell(it, false)).join('')}</ul>` : ''}${bag.length ? `<p class="muted">Сумка · ${bag.length}${eatCd ? ` · еда - через <i data-rt="${eatCd}"></i>` : ' · еда и зелья - нажми'}</p><ul class="q-bag">${bag.map((it) => cell(it, isFood(it))).join('')}</ul>` : ''}</div></div>`;
     return `<section class="q-card qa-hero"><div class="q-ch"><b>Мой герой</b><span class="muted">${h.ghost ? 'призрак' : `${hp} / ${hpMax} ❤`}</span></div>${h.ghost || inB ? '' : hpBar(k)}${kit}`
       + (bf.length ? `<ul class="qa-bf" aria-label="Баффы">${bf.map((x) => `<li><b>${esc(x[0] || x[1])}</b><span>${esc(stRu(x[1]))} +${+x[2]}</span><i data-rt="${+x[3]}"></i></li>`).join('')}</ul>` : '')
-      + (X.jrHtml ? `<div class="q-jr">${X.jrHtml()}</div>` : '')   // 26.10 (стример): журнал - награды за места и всё, что пишет «Журнал»
+      + (X.jrHtml ? `<div class="q-jr">${X.jrHtml()}</div>` : '')
       + (fl ? `<div class="q-ch"><b>Еда и зелья</b><span class="muted">${eatCd ? `ещё не готово · <i data-rt="${eatCd}"></i>` : 'в один клик'}</span></div><ul class="qa-food">${fl}</ul>` : '')
       + '</section>';
   }
-  // рисунок вещи — один раз на вещь (вкладка перерисовывается часто — рисунки не пересобираем)
+
   const ART = new Map();
-  // 26.10: пустой рисунок (рисунки стиля ещё не загрузились) не запоминаем - иначе вещь так и остаётся пустой ячейкой до перезагрузки
+
   function qaArt(it) { const k = `${it.id}|${it.rarity || ''}`; let a = ART.get(k); if (a == null) { try { a = X.art ? X.art(it) || '' : ''; } catch (e) { a = ''; } if (a) { ART.set(k, a); if (ART.size > 60) ART.delete(ART.keys().next().value); } } return a; }
-  // вступить / покинуть отряд (вне остановки: «вступить» — в очередь до остановки, «покинуть» — не показываем)
-  // said - строка «ты в отряде / в очереди / призрак» уже есть выше (карточка места): здесь её не повторяем (26.10, стример)
+
+
   function qaSquad(v, said) {
     if (v.b && v.b.st !== 'end') return '';
     const p = partyOf(v);
@@ -942,7 +942,7 @@
     if (!row && !st) return '';
     return `<section class="q-card qa">${st}${row ? `<div class="qa-row">${row}</div>` : ''}</section>`;
   }
-  // событие: путник (помочь / обобрать), кости (ставка), колодец (монета), жрец (дар, обряды, воскресить)
+
   function qaEvent(v) {
     const E = v.ev; if (!E) return '';
     const can = v.party === 'in' || E.look === 'priest', said = E.said && E.said.text ? `<p class="qa-said">«${esc(E.said.text)}»</p>` : '';
@@ -950,8 +950,8 @@
     let rows = '';
     if (!can) rows = '<p class="muted">Участвует только отряд.</p>';
     else if (E.look === 'traveler') rows = E.st === 'vote' ? `<div class="qa-row">${qaBtn({ k: 'ev', a: 'help', _l: 'помочь' }, '🤝 Помочь', E.my === 'help' ? 'main on' : 'main', E.my === 'help')}${qaBtn({ k: 'ev', a: 'rob', _l: 'обобрать' }, '💰 Обобрать', E.my === 'rob' ? 'warn on' : 'warn', E.my === 'rob')}</div>${E.my ? `<p class="qa-st ok">${svgI('check', 'ok')} твой выбор: ${E.my === 'help' ? 'помочь' : 'обобрать'} - можно передумать</p>` : ''}` : '';
-    // 26.10 (п. 20): кости - одна кнопка «Играть» (ставка 30; другая - строкой «ставка N») и свои игры; про шулера - ни слова
-    // 26.10 (стример): ставка - ползунком и быстрыми суммами (5…200, не больше кошелька бродяги и своего; правила - в игре: events.js BET_MIN/BET_MAX)
+
+
     else if (E.look === 'dice') { const h = X.hero() || {}, mx = Math.max(5, Math.min(200, +E.purse || 200, h.money != null ? +h.money || 5 : 200));
       const bet = QA.n.bet = Math.max(5, Math.min(mx, Math.round(+QA.n.bet || 30)));
       const chips = [10, 30, 50, 100].filter((n) => n < mx).concat([mx]);
@@ -971,24 +971,24 @@
     if (E.look === 'dice' && E.last) rows += `<p class="muted">Последний бросок: ${esc(E.last.name)} 🎲${E.last.me} против 🎲${E.last.him}</p>`;
     return h + `<section class="q-card qa">${said}${qaPendLine()}${qaOkLine('ev')}${rows}</section>`;
   }
-  /* ---------- 28.10 (hw-site-events, баг стримера): события Изнанки (сладость или гадость, гадалка, котёл, загадка призрака, пляска
-     скелетов) - вид с комнаты quest/halloween/site.js. Что происходит, что писать сейчас (как табло оверлея), стадия и таймер (с задержкой
-     стрима), счёт, свой ответ, итог и свои конфеты. Кнопки (тестерам кнопок, qa) - готовые строки команд чата: уходят строкой «Команда
-     в поход» (sayLine - тот же разбор, что сообщение чата). Пляска: па - по мере показа на оверлее (sq: когда показано + задержка стрима),
-     ответ - цепочкой из кнопок па и «Отправить». Загадка - ответ печатают сами в строке команд (или в чат). ---------- */
-  // па: название и буква (как STEPS в quest/client/hollow-data.js: words[0] и words[2]); рисунок - свой (не эмодзи: 👏 на части устройств
-  // не рисовался - пустая клетка, стример 00:51), линиями currentColor - одинаково видно в любой теме
+  
+
+
+
+
+
+
   const HW_STEP = { l: ['влево', 'л'], r: ['вправо', 'п'], j: ['прыг', 'в'], c: ['хлоп', 'х'] };
   const HW_SVG = { l: '<path d="M20 12H5M11 5l-7 7 7 7"/>', r: '<path d="M4 12h15M13 5l7 7-7 7"/>', j: '<path d="M12 19V4M5 11l7-7 7 7"/><path d="M7 21h10"/>',
     c: '<rect x="5.5" y="9" width="5" height="12" rx="2.5" transform="rotate(-16 8 15)"/><rect x="13.5" y="9" width="5" height="12" rx="2.5" transform="rotate(16 16 15)"/><path d="M12 2v4M6.5 4l1.8 2.6M17.5 4l-1.8 2.6"/>' };
   const hwIco = (k) => (HW_SVG[k] ? `<svg viewBox="0 0 24 24" aria-hidden="true">${HW_SVG[k]}</svg>` : '?');
-  // как INGR в quest/client/hollow-data.js (28.10, hw-events2: ингредиентов 11)
+
   const HW_ING = { mushroom: ['🍄', 'мухомор'], eye: ['👁', 'глаз'], wing: ['🦇', 'крыло'], pumpkin: ['🎃', 'тыква'], tooth: ['🦷', 'зуб'], web: ['🕸', 'паутина'], bone: ['🦴', 'кость'], frog: ['🐸', 'лягушка'], candle: ['🕯', 'свеча'], herb: ['🌿', 'полынь'], tail: ['🐀', 'хвост'] };
   const HW_ST = { vote: 'чат решает', on: 'шатёр открыт', pay: 'сбор монет', ingr: 'пишите ингредиенты', brew: 'ведьма варит', riddle: 'загадка', pause: 'отгадали!', show: 'смотри па', input: 'повтори цепочку', done: 'итог' };
-  const HWC = { id: '', ch: [] };   // своя цепочка па (пляска), пока не отправлена
-  // кнопка-строка (как кнопки мест: data-qpb → pbClick → sayLine); состояние - по ответу игры на эту строку
+  const HWC = { id: '', ch: [] };
+
   const hwBtn = (label, line, cls, dis) => `<button type="button" class="qa-b ${cls || ''}${lineSt(line)}" data-qpb="${esc(line)}" data-qpbc=""${dis ? ' disabled' : ''}>${label}</button>`;
-  // клетка па и подпись словом под ней
+
   const hwCell = (k, cls) => { const s = k && HW_STEP[k]; return `<span class="q-hwx"><i class="q-hws ${cls || ''}" role="img" aria-label="${esc(s ? s[0] : 'неизвестно')}">${s ? hwIco(k) : '?'}</i><small>${s ? esc(s[0]) : '…'}</small></span>`; };
   const hwWords = (ks) => ks.map((k) => (HW_STEP[k] ? HW_STEP[k][0] : '?')).join(' ');
   function hwEvHtml(v) {
@@ -997,7 +997,7 @@
     const tm = !done && E.until ? ` · <span data-until="${E.until}"></span> с` : '';
     let h = `<div class="q-stage"><b>${esc(E.icon)} ${esc(E.name)}${tm}</b><span>${esc(HW_ST[E.st] || '')}</span></div>`;
     let body = '';
-    // что писать сейчас - главное (сверху, под ним - кнопки; что происходит и реплика - ниже)
+
     const how = E.how ? `<p class="q-big q-hwh">${esc(E.how)}${E.look === 'fortune' && E.price ? ` · ${X.money(E.price)}` : ''}</p>` : '';
     const where = E.look === 'skeldance' && E.st === 'show' ? 'Ответ - когда скелеты закончат: цепочкой из кнопок па или в чат' : E.look === 'lostghost' ? (qa ? 'Напечатай ответ в строке команд внизу - или в чат' : 'Пиши ответ в чат') : qa ? 'Кнопки ниже = команды чата, чат тоже работает' : 'Пиши в чат';
     if (!done && how) body += how + `<p class="muted">${can ? where : 'Участвует только отряд Изнанки'}</p>`;
@@ -1005,14 +1005,14 @@
     if (E.look === 'trick') {
       const V = E.vt || { sweet: 0, trick: 0 }, n = Math.max(1, V.sweet + V.trick);
       rows += `<div class="q-hwv"><div class="s"><i style="width:${Math.round(V.sweet / n * 100)}%"></i><span>🍬 сладость · ${V.sweet}</span></div><div class="t"><i style="width:${Math.round(V.trick / n * 100)}%"></i><span>👻 гадость · ${V.trick}</span></div></div>`;
-      if (!done) rows += `<p class="muted">Сладость - немного, но наверняка. Гадость - ведьма бросит d20: 11+ - голосовавшим за гадость втрое больше конфет, иначе проклятие</p>`;   // 28.10 (hw-events2)
+      if (!done) rows += `<p class="muted">Сладость - немного, но наверняка. Гадость - ведьма бросит d20: 11+ - голосовавшим за гадость втрое больше конфет, иначе проклятие</p>`;
       if (my) rows += `<p class="qa-st ok">${svgI('check', 'ok')} твой голос: ${my === 'trick' ? 'гадость' : 'сладость'}</p>`;
       else if (qa && can && E.st === 'vote') rows += `<div class="qa-row q-hwt">${(E.bt || []).map((b) => hwBtn(esc(b[0]), b[1], b[2] === 'warn' ? 'warn big' : 'main big')).join('')}</div>`;
     } else if (E.look === 'fortune') {
       rows += `<p>Благословлено: <b>${+E.bn || 0}</b>${E.pr ? '' : ' · первому - пророчество о Джеке'}</p>` + (E.pr ? `<p class="q-hwp">🔮 «${esc(E.pr.text)}» <small class="muted">- пророчество для ${esc(E.pr.by)}</small></p>` : '') + (E.hint ? `<p class="muted">Шёпот гадалки: «${esc(E.hint)}»</p>` : '');
       if (my === 'done') rows += `<p class="qa-st ok">${svgI('check', 'ok')} гадалка тебе уже гадала - благословение на час</p>`;
       else if (qa && can) rows += `<div class="qa-row">${(E.bt || []).map((b) => hwBtn(`${esc(b[0])}<small>${X.money(E.price || 0)}</small>`, b[1], 'main big')).join('')}</div>`;
-    } else if (E.look === 'cauldron') {   // 28.10 (hw-events2): сбор 25 серебра → ингредиенты → ведьма варит → зелье в сумку
+    } else if (E.look === 'cauldron') {
       const mine = my ? my.split(',') : [], price = +E.price || 2500, pool = +E.pool || 0;
       if (E.st === 'pay' || (done && E.res && E.res.kind === 'gone')) {
         rows += `<div class="q-hwv"><div class="s"><i style="width:${Math.min(100, Math.round(pool / price * 100))}%"></i><span>🪙 ${X.money(pool)} из ${X.money(price)} · скинулись ${+E.payN || 0}</span></div></div>`;
@@ -1027,9 +1027,9 @@
         if (mine.includes('pot')) rows += `<p class="qa-st ok">${svgI('check', 'ok')} «Загадочное зелье» - в твоей сумке. Выпить: <b>выпить зелье</b> или кнопкой в сумке. Сгорит на выходе из Изнанки</p>`;
         else if (!done && (mine.includes('paid') || mine.length)) rows += `<p class="muted">Ты в деле - зелье будет и у тебя</p>`;
       }
-    } else if (E.look === 'lostghost') {   // 28.10 (hw-events2): цепочка загадок; ответ виден, только когда загадку отгадали
+    } else if (E.look === 'lostghost') {
       const qi = +E.qi || 0, qn = +E.qn || 0, sv = E.solved || [];
-      if (qn && done) rows += `<p class="q-hwn">Загадок в цепочке: <b>${qn}</b></p>`;   // идёт - номер в «что писать»
+      if (qn && done) rows += `<p class="q-hwn">Загадок в цепочке: <b>${qn}</b></p>`;
       if (E.q) rows += `<p class="q-big q-hwq">«${esc(E.q)}»</p>`;
       if (sv.length) rows += `<ol class="q-hwo">${sv.map((r) => `<li>${+r[0]}. <b>${esc(r[1])}</b>: «${esc(r[2])}»</li>`).join('')}</ol>`;
       if (my === 'ok' && E.st === 'riddle') rows += `<p class="qa-st ok">${svgI('check', 'ok')} твой ответ верный - засчитывается первый по времени отправки</p>`;
@@ -1037,8 +1037,8 @@
       const L = +E.len || 0, sq = E.sq || [], seq = E.seq || [];
       if (E.st === 'show') rows += `<div class="q-hwd" aria-live="polite">${Array.from({ length: L }, (_, i) => hwCell(sq[i] && sq[i][0], sq[i] ? (i === sq.length - 1 ? 'on now' : 'on') : '')).join('')}</div>${sq.length ? `<p class="q-big q-hwl">Запомни: <b>${esc(hwWords(sq.map((x) => x[0])))}</b>${sq.length < L ? ' …' : ''}</p>` : ''}`;
       else if (E.st === 'input') {
-        const build = !my && qa && can;   // своя цепочка - вместо пустого табло («?» на оверлее)
-        // стример 00:51: «зрители не знают, что писать» - формат словами и буквами (сама цепочка не подсказывается: на табло тоже «?»)
+        const build = !my && qa && can;
+
         if (!my) rows += `<p class="q-hwl">Все ${L} па по порядку - одним сообщением, через пробел. Буквами можно: <b>л</b> - влево, <b>п</b> - вправо, <b>в</b> - прыг, <b>х</b> - хлоп</p>`;
         rows += `${build ? '' : `<div class="q-hwd">${Array.from({ length: L }, () => hwCell('', '')).join('')}</div>`}<p class="muted">Верно: <b>${+E.okN || 0}</b> · мимо: <b>${+E.badN || 0}</b></p>`;
         if (my) rows += my === 'ok' ? `<p class="qa-st ok">${svgI('check', 'ok')} ты повторил верно!</p>` : '<p class="qa-st q-dg">Твоя цепочка - мимо. Ответ один, ждём итог</p>';
@@ -1057,14 +1057,14 @@
     else if (done && my) rows += '<p class="muted">Ты участвовал - награда по итогу, смотри журнал</p>';
     return h + `<section class="q-card qa q-hw${!done && can && !my ? ' q-urge' : ''}">${body}${rows}</section>`;
   }
-  /* ---------- 28.10 (map-puzzles): головоломка на карте похода (quest/mappuzzles.js siteView). Что происходит, что писать сейчас, стадия
-     и таймер (с задержкой стрима), сама задача (загадка, равенства рун - рисунком, надписи кубков, буква и слова, весы), свой ответ;
-     ответ головоломки - только после итога. Кнопки (тестерам кнопок) - там, где ответ - выбор (кубок, номер предмета, плита весов): строка
-     команды чата, как у событий Изнанки (data-qpb → sayLine). Загадку, число и слова - печатают сами (строка «Команда в поход» или чат). ---------- */
+  
+
+
+
   const PZ_ST = { show: 'смотри на стрим', answer: 'отвечай', done: 'итог' };
   const PZ_RUNE = { R: '<path d="M9 20V4h5a4 4 0 0 1 0 8H9l7 8"/>', T: '<path d="M9 3v18M9 7l6 4-6 4"/>' };
   const pzRune = (c) => `<i class="q-pzr q-pzr-${c}" role="img" aria-label="руна ${c === 'R' ? 'Рад' : 'Турс'}"><svg viewBox="0 0 24 24" aria-hidden="true">${PZ_RUNE[c]}</svg></i>`;
-  // свой ответ и итог: «a:X» (ответ), «w:N» (слов на букву); после итога - «ok:монеты:-урон|a:X» / «bad…|a:X»
+
   function pzMy(P) {
     const parts = String(P.my || '').split('|'), done = P.st === 'done', fin = done && /^(ok|bad)/.test(parts[0]) ? parts[0].split(':') : null, raw = (fin ? parts[1] : parts[0]) || '';
     const c = fin ? +((fin.find((x, i) => i > 0 && /^\d+$/.test(x))) || 0) : 0, hp = fin ? +((fin.find((x) => /^-\d+$/.test(x)) || '0').slice(1)) : 0;
@@ -1099,9 +1099,9 @@
     }
     return h + `<section class="q-card qa q-hw q-pz${!done && can && !M.ans && P.st === 'answer' ? ' q-urge' : ''}">${rows}</section>`;
   }
-  /* ---------- 28.10: «Ярмарка гоблинов» (quest/goblin.js siteView) - три игры на ставки. Что писать сейчас, игра и стадия с таймером (с задержкой
-     стрима), ставка - кнопками сумм, ответ - кнопками (готовые строки команд: уходят строкой «Команда в поход», как hwBtn), свой итог и итоги ярмарки.
-     Перестановки стаканов здесь не рисуем - смотреть на стриме. ---------- */
+  
+
+
   const GOB_GN = { shell: ['🥤', 'Напёрстки'], coin: ['🪙', 'Орёл или решка'], hilo: ['🃏', 'Больше или меньше'] };
   const GOB_ST = { ask: 'сыграем?', bet: 'ставки', shuffle: 'гоблин крутит стаканы', guess: 'ответы', reveal: 'итог игры', next: 'следующая игра', done: 'ярмарка закрыта' };
   const gobAns = (gk, a) => (gk === 'shell' ? `стакан ${a}` : gk === 'coin' ? (a === 't' ? 'решка' : 'орёл') : a === 'hi' ? 'больше' : 'меньше');
@@ -1151,32 +1151,32 @@
     const urge = !done && can && ((E.st === 'ask' && !me[0]) || (E.st === 'bet' && !me[1]) || (E.st === 'guess' && me[1] && !me[2]));
     return h + `<section class="q-card qa q-hw q-gf${urge ? ' q-urge' : ''}">${rows}</section>`;
   }
-  // ловушка и сокровищница: слово, верёвка, «держу», «взять», путь и код (цифры), поровну / себе
+
   function qaTrap(v) {
     const T = v.tr, act = T.st === 'act' || T.st === 'wait'; if (!act || v.party !== 'in') return '';
     let rows = '';
     if (T.gas) return '<section class="q-card q-urge"><p><b>Газ: ничего не пиши и не жми!</b></p></section>';
-    if (T.type === 'crossing' || T.type === 'bog') return '';   // 28.10: кнопки - кнопки мест (строкой «Команда в поход»)
-    if (T.type === 'greed') rows = '<p class="muted">Хватай, пока не рухнуло, и беги с добычей - кнопки выше или строкой команд.</p>';   // 26.10: кнопки - кнопки мест (greed)
-    else if (T.type === 'react' && T.word) rows = T.acted ? '' : `<div class="q-ncw"><span>Напечатай в строке внизу:</span>${wd(T.word, 'big')}</div>`;   // 26.10: слово-реакция - только строка, без копирования
+    if (T.type === 'crossing' || T.type === 'bog') return '';
+    if (T.type === 'greed') rows = '<p class="muted">Хватай, пока не рухнуло, и беги с добычей - кнопки выше или строкой команд.</p>';
+    else if (T.type === 'react' && T.word) rows = T.acted ? '' : `<div class="q-ncw"><span>Напечатай в строке внизу:</span>${wd(T.word, 'big')}</div>`;
     else if (T.type === 'ropes') rows = `<div class="qa-row">${Array.from({ length: T.n || 0 }, (_, i) => qaBtn({ k: 'tr', a: 'rope', n: i + 1, _l: `резать ${i + 1}` }, `✂ ${i + 1}`)).join('')}</div>`;
     else if (T.type === 'ceiling') rows = T.acted ? (SCH ? qaBtn({ k: 'tr', a: 'hold' }, '🙌 Держу!', 'ok big', true) : '') : qaBtn({ k: 'tr', a: 'hold', _l: 'держу' }, '🙌 Держу!', 'urge big');
     else if (T.type === 'bait') rows = T.taker ? '<p class="muted">Сундук уже открывают.</p>' : qaBtn({ k: 'tr', a: 'take', _l: 'взять' }, '🧰 Взять', 'main big');
     else if (T.type === 'share') rows = T.acted ? '' : `<div class="qa-row">${qaBtn({ k: 'tr', a: 'eq', _l: 'поровну' }, '🤝 Поровну', 'main')}${qaBtn({ k: 'tr', a: 'me', _l: 'себе' }, '💰 Себе', 'warn')}</div><p class="muted">Решение одно - передумать нельзя</p>`;
-    else if (T.type === 'code' && T.rd2) rows = qaRune2(T);   // 27.10: «Дверь с рунами 2»
+    else if (T.type === 'code' && T.rd2) rows = qaRune2(T);
     else if ((T.type === 'code' || T.type === 'plates') && !(T.type === 'plates' && T.acted)) {
       const max = T.type === 'code' ? T.max || 9 : 9, need = T.type === 'code' ? T.len : 0, d = QA.dig;
       rows = `<div class="qa-dig" aria-live="polite"><b>${d ? esc(d.split('').join(' ')) : '…'}</b><span class="muted">${need ? `${need} разных цифр 1–${max}` : 'путь - цифры плит по порядку'}</span></div>`
         + `<div class="qa-pad">${Array.from({ length: max }, (_, i) => `<button type="button" class="qa-c" data-qdig="${i + 1}"${need && (d.length >= need || d.includes(String(i + 1))) ? ' disabled' : ''}>${i + 1}</button>`).join('')}<button type="button" class="qa-c" data-qdig="<" aria-label="Стереть">⌫</button></div>`
         + `<div class="qa-row">${qaBtn({ k: 'tr', a: T.type === 'code' ? 'code' : 'path', s: '#dig', _l: `${T.type === 'code' ? 'код' : 'путь'} ${d}` }, T.type === 'code' ? 'Ввести код' : 'Пройти', 'main', need ? d.length !== need : d.length < 2)}</div>`;
-      // 26.10 (п. 16): дверь с рунами - лучшие попытки отряда сбоку (🟢 на месте, 🟡 есть, но не там, 🔴 нет)
+
       if (T.type === 'code' && T.best && T.best.length) rows = `<div class="q-code"><div>${rows}</div><aside class="q-best" aria-label="Лучшие попытки"><b>Лучшие попытки</b><ol>${T.best.map(([g, m, nm]) => `<li><span class="rn">${g.split('').map((c, i) => `<i class="${m[i] || 'r'}">${c}</i>`).join('')}</span><small>${esc(nm)}</small></li>`).join('')}</ol></aside></div>`;
     }
     if (!rows && !T.acted) return '';
     return `<section class="q-card qa">${qaPendLine()}${qaOkLine('tr')}${T.acted && !rows ? `<p class="qa-st ok">${svgI('check', 'ok')} принято</p>` : rows}<p class="muted">Кнопка = команда в чат, чат тоже работает</p></section>`;
   }
 
-  // 27.10 «Дверь с рунами 2»: руны могут повторяться, злая дверь (таймер смены), голосование «забрать / дальше», попытки - общие на обе двери
+
   function qaRune2(T) {
     const R = T.rd2, mx = +T.per || 3;
     if (R.ph === 'vote') {
@@ -1195,7 +1195,7 @@
     return head + rows;
   }
 
-  /* ---------- враги — рисунки оверлея (client/battle.js, враги стиля), грузятся, когда открыли бой ---------- */
+   
   let foesAsked = false;
   const QB = () => (window.QBattle && window.QBattle.foe ? window.QBattle : null);
   function foesWant() { if (foesAsked || QB() || !X.foes) return; foesAsked = true; X.foes().then(() => { keyTab = null; foeImgs.clear(); paint(); }).catch(() => {}); }
@@ -1209,7 +1209,7 @@
     foeImgs.set(k, im); return im;
   }
 
-  /* ---------- схема отряда (canvas): те же места, что у оверлея ---------- */
+   
   const HASH = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967296; };
   function squad(cv, b) {
     const C = window.QBattleCrowd; if (!cv || !C) return;
@@ -1218,7 +1218,7 @@
     const heroes = b.form.map((p) => ({ login: p[0], cls: p[1], side: p[2] || undefined, shield: !!p[4], def: 5 - (+p[5] || 2) }));
     let pl; try { pl = fronts.length > 1 ? C.ringLayout(heroes, cam, ter, fronts, !!(b.cr && b.cr.chaos)) : C.layout(heroes, cam, ter); } catch (e) { pl = []; }
     let foes = []; try { foes = fronts.length > 1 ? C.foeRing(b.foes.length, cam, ter, fronts) : C.foeLayout(b.foes.length, cam, ter); } catch (e) { foes = []; }
-    // рамка: всё, что на поле
+
     let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
     for (const p of pl) { x0 = Math.min(x0, p.x - 60 * p.s); x1 = Math.max(x1, p.x + 60 * p.s); y0 = Math.min(y0, p.y - 170 * p.s); y1 = Math.max(y1, p.y + 10); }
     for (const f of foes) { x0 = Math.min(x0, f.x - 90 * f.s); x1 = Math.max(x1, f.x + 90 * f.s); y0 = Math.min(y0, f.y - 120 * f.s); y1 = Math.max(y1, f.y + 10); }
@@ -1227,15 +1227,15 @@
     const X2 = (x) => ox + x * k, Y2 = (y) => oy + y * k;
     g.clearRect(0, 0, W, H);
     const css = getComputedStyle(cv), ink = css.getPropertyValue('--ink').trim() || '#ece2cc', bad = css.getPropertyValue('--dn').trim() || '#ff7a6e';
-    // земля
+
     g.fillStyle = 'rgba(120,150,90,.10)'; g.beginPath(); g.ellipse(W / 2, H * 0.62, W * 0.48, H * 0.36, 0, 0, Math.PI * 2); g.fill();
-    // враги
+
     b.foes.forEach((f, i) => { const p = foes[i]; if (!p) return; const s = p.s * k, x = X2(p.x), y = Y2(p.y), dead = f[3] <= 0;
       const im = foeImg(f[1], f[2], p.flip);
       if (im && im.complete && im.naturalWidth) { const kb = f[2] ? 1.25 : 1; g.globalAlpha = dead ? 0.15 : 0.85; g.drawImage(im, x - 170 * s * kb, y - 225 * s * kb, 340 * s * kb, 240 * s * kb); }
       else { g.globalAlpha = dead ? 0.15 : 0.75; g.fillStyle = bad; g.beginPath(); g.ellipse(x, y - 40 * s, (f[2] ? 70 : 52) * s, (f[2] ? 40 : 30) * s, 0, 0, Math.PI * 2); g.fill(); }
       if (!dead) { g.globalAlpha = 0.9; g.fillStyle = '#2a2236'; g.fillRect(x - 40 * s, y - 92 * s, 80 * s, 8 * s); g.fillStyle = bad; g.fillRect(x - 40 * s, y - 92 * s, 80 * s * f[3], 8 * s); } });
-    // отряд: полупрозрачно, по классам; свой — ярко (картинка героя)
+
     let mine = null;
     const sorted = pl.slice().sort((a, b2) => a.y - b2.y);
     for (const p of sorted) {
@@ -1246,7 +1246,7 @@
     }
     g.globalAlpha = 1;
     if (mine) {
-      const s = mine.s * k, x = X2(mine.x), y = Y2(mine.y), w = Math.max(44, 120 * s * 2.2), h = w * 170 / 120;   // свой — крупнее, чтобы найти сразу
+      const s = mine.s * k, x = X2(mine.x), y = Y2(mine.y), w = Math.max(44, 120 * s * 2.2), h = w * 170 / 120;
       g.strokeStyle = '#ffd34d'; g.lineWidth = 3; g.beginPath(); g.ellipse(x, y - 2, w * 0.42, w * 0.14, 0, 0, Math.PI * 2); g.stroke();
       const img = heroImg();
       if (img && img.complete && img.naturalWidth) { if (mine.wing === 'L') { g.save(); g.translate(x, 0); g.scale(-1, 1); g.drawImage(img, -w / 2, y - h + 6 * s, w, h); g.restore(); } else g.drawImage(img, x - w / 2, y - h + 6 * s, w, h); }
@@ -1254,7 +1254,7 @@
       g.font = '800 14px system-ui, sans-serif'; g.textAlign = 'center'; g.lineWidth = 4; g.strokeStyle = 'rgba(16,10,24,.9)'; g.strokeText('ты', x, y + 18); g.fillStyle = '#ffd34d'; g.fillText('ты', x, y + 18);
     }
   }
-  // картинка своего героя для схемы (из рисунка сайта), одна на облик
+
   function heroImg() {
     const h = X.hero(); if (!h) return null;
     const svg = dd('stern'), key = svg.length + ':' + HASH(svg);
@@ -1267,11 +1267,11 @@
     myImg = img; return img;
   }
 
-  /* ---------- 25.10: сумка во вкладке «Поход» — проба библиотеки инвентаря (packages/inventory: LGInventory.mount, вид 'inline').
-     Только тестерам (флаг i2 у героя - новинка inv2, inv2Public). Надетое — значками (только смотреть), еда и зелья — ячейками со стопками;
-     наведение / нажатие — карточка вещи сайта, двойной клик, Shift + правая кнопка или кнопка — съесть / выпить (X.eat, как в «Персонаже»).
-     Блок живёт в своём элементе: вкладка перерисовывается целиком, а он только переставляется в новую разметку
-     и обновляет изменившиеся ячейки, когда меняется герой. ---------- */
+  
+
+
+
+
   let QBG = null;
   const qbOn = () => { const h = X && X.hero(); return !!(h && h.i2 && window.LGInventory); };
   const qbData = () => { const h = X.hero() || {}; return { hero: h, items: h.items || [] }; };
@@ -1295,14 +1295,14 @@
     const w = el.querySelector('.q-wrap'); if (w && QBG.host.parentNode !== w) w.appendChild(QBG.host);
   }
 
-  /* ---------- 26.10: строка «Команда в поход» (docs/QUEST-TAB.md, «Строка команд») ----------
-     Личное поле ввода: строка уходит в игру тем же путём, что сообщение чата Twitch от тебя (в чат Twitch не пишется, никому не видна).
-     Не команда текущего места - игра отвечает «не поняла». Одна строка в пути; лимит - как в чате Twitch (20 за 30 с).
-     История последних строк с ответом игры - только в памяти этой страницы. Enter - отправить, ↑ / ↓ - прошлые строки.
-     Узел постоянный (не пересобирается с вкладкой): набор текста и фокус не сбиваются; обновляется только по событиям (без таймеров). */
+  
+
+
+
+
   const SAY = { el: null, hist: [], recall: [], ri: -1, pend: null, warnAt: 0, warnKey: '' };
   const SAY_MAX = 100, SAY_HIST = 8;
-  // экран просит молчать (газ ловушки, финт или тишина у босса) - первое Enter только предупреждает
+
   function sayHush(v) {
     if (!v || !v.on) return '';
     if (v.tr && v.tr.gas && (v.tr.st === 'act' || v.tr.st === 'wait')) return 'Газ: ничего не пиши, пока он не рассеется';
@@ -1314,19 +1314,19 @@
     if (!on) { if (SAY.el) SAY.el.hidden = true; return; }
     if (!SAY.el) {
       const box = document.createElement('section'); box.className = 'q-say'; box.setAttribute('aria-label', 'Команда в поход');
-      // 26.10 (стример): «предыдущие команды» - видно 2-3 последние строки, «все» - раскрыть; ниже - «окно ввода команд»
+
       box.innerHTML = `<div class="q-sayb"><div class="q-sayt"><span>Предыдущие команды</span><button type="button" class="q-sayx" aria-expanded="false" aria-controls="qSayH">все ▾</button></div><ol class="q-sayh" id="qSayH" aria-live="polite" aria-label="Твои последние строки и нажатия"></ol><p class="q-say0 muted">Здесь будут твои команды и нажатия - с ответом игры</p></div><p class="q-sayw" role="alert" hidden></p>`
         + `<form class="q-sayf" autocomplete="off"><label class="q-sayl" for="qSayIn">Команда в поход</label><input id="qSayIn" class="q-sayi" type="text" maxlength="${SAY_MAX}" enterkeyhint="send" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Команда в поход: удар, лечить, 2…">`
         + `<button type="submit" class="qa-b main q-says" aria-label="Отправить">${svgI('right')}</button></form><p class="q-sayn muted">Как сообщение в чат Twitch, только видит его одна игра. Enter - отправить, ↑ - прошлое.</p>`;
       const inp = box.querySelector('input'), form = box.querySelector('form'), tg = box.querySelector('.q-sayx');
       tg.addEventListener('click', () => { const o = !box.classList.contains('open'); box.classList.toggle('open', o); tg.setAttribute('aria-expanded', String(o)); tg.textContent = o ? 'свернуть ▴' : 'все ▾'; sayPaint(); });
       form.addEventListener('submit', (e) => { e.preventDefault(); saySend(inp); });
-      // 26.10 (решение стримера): вставлять в строку нельзя - слово печатают сами (и вставкой, и перетаскиванием, и подсказкой ввода)
+
       const noPaste = (e) => { e.preventDefault(); sayNote('вставлять нельзя - напечатай сам'); };
       inp.addEventListener('paste', noPaste); inp.addEventListener('drop', noPaste);
       inp.addEventListener('beforeinput', (e) => { if (/^insertFrom(Paste|Drop|PasteAsQuotation)$/.test(e.inputType || '')) noPaste(e); });
       inp.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); saySend(inp); return; }   // сам: форма с выключенной кнопкой Enter не отправляет (а ответить «ещё в пути» надо)
+        if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); saySend(inp); return; }
         if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
           if (!SAY.recall.length) return; e.preventDefault();
           SAY.ri = e.key === 'ArrowUp' ? Math.min(SAY.recall.length - 1, SAY.ri + 1) : Math.max(-1, SAY.ri - 1);
@@ -1346,10 +1346,10 @@
     if (!line) return;
     if (await sayLine(line)) { SAY.ri = -1; inp.value = ''; }
   }
-  // строка в игру (поле ввода и кнопки мест - одна дорога): false - не ушла (в пути другая, экран просит молчать)
+
   async function sayLine(line, o = {}) {
     if (SAY.pend && Date.now() - SAY.pend.at < 9000) { sayNote('подожди - прошлая строка ещё в пути'); return false; }
-    // экран просит молчать - отправим, только если Enter нажали ещё раз (строка с сайта считается так же, как сообщение чата)
+
     if (SAY.warnKey && !o.sure && Date.now() - SAY.warnAt > 4000) { SAY.warnAt = Date.now(); sayNote('экран просит молчать - нажми Enter ещё раз, если всё же отправить'); return false; }
     SAY.warnAt = 0;
     const it = { line, st: 'wait', at: Date.now(), id: '', msg: '', ...(o.btn ? { btn: 1, pb: 1 } : {}) };
@@ -1358,20 +1358,20 @@
     SAY.pend = it; sayPaint();
     const r = await X.say(line);
     if (!r || r.ok === false) { it.st = 'no'; it.msg = (r && r.error) || 'не отправлено'; if (SAY.pend === it) SAY.pend = null; sayPaint(); return true; }
-    it.id = r.id || ''; if (r.t && r.t !== line) { it.line = r.t; const i = SAY.recall.indexOf(line); if (i >= 0) SAY.recall[i] = r.t; }   // ↑ вернёт то, что ушло в игру («!щит» → «щит»)
+    it.id = r.id || ''; if (r.t && r.t !== line) { it.line = r.t; const i = SAY.recall.indexOf(line); if (i >= 0) SAY.recall[i] = r.t; }
     setTimeout(() => { if (it.st === 'wait') { it.st = 'no'; it.msg = 'игра не ответила - проверь на стриме'; if (SAY.pend === it) SAY.pend = null; sayPaint(); } }, 15000);
     return true;
   }
-  /* 26.10: кнопки мест (основа; какие включены - настройка похода siteBtns, выбирает стример): готовая строка команды - уходит строкой,
-     как из поля ввода (ответ игры - в истории строк). «warn» (бежать, откуп…) - вторым нажатием за 4 с. Под стадией места */
+  
+
   const PBA = { k: '', at: 0 };
-  // предупреждение перед вторым нажатием (бегство - урон в спину; откуп - сколько монет уйдёт: pct % кошелька, как в бою)
+
   function pbWarn(x) {
     if (x.x && x.x.k === 'flee') return 'Точно бежать? Враг может ударить в спину - получишь урон';
     if (x.x && x.x.k === 'pay') { const h = X.hero() || {}, have = Math.max(0, Math.floor(+h.money || 0)), pct = +x.x.pct || 10; if (have <= 0) return 'Откупиться нечем - кошелёк пуст'; const cost = Math.max(1, Math.round(have * pct / 100)); return `Точно откуп? Уйдёт ${X.moneyText ? X.moneyText(cost) : cost} (${pct}% кошелька), зато без урона`; }
     return `Точно? ${x.l}`;
   }
-  // 28.10 (стример): подсказка при наведении - чем грозит бегство и сколько стоит откуп (до нажатия)
+
   function pbTip(x) {
     if (x.x && x.x.k === 'flee') return 'Сбежать из боя. Враг может ударить в спину - можно получить урон. Нажми дважды';
     if (x.x && x.x.k === 'pay') { const h = X.hero() || {}, have = Math.max(0, Math.floor(+h.money || 0)), pct = +x.x.pct || 10; if (have <= 0) return 'Откупиться и уйти из боя без урона. Сейчас нечем - кошелёк пуст'; const cost = Math.max(1, Math.round(have * pct / 100)); return `Откупиться и уйти из боя: спишется ${X.moneyText ? X.moneyText(cost) : cost} (${pct}% кошелька), урона 0. Нажми дважды`; }
@@ -1380,10 +1380,10 @@
   const GROUPS = [['', ''], ['tg', 'Помочь своим'], ['act', ''], ['esc', 'Уйти из боя']];
   function pbHtml(v) {
     if (!v.pb || !v.pb.b || !v.pb.b.length || !qaOn() || !X.say) return '';
-    // 31.10: пал в этом бою - кнопок нет (вместо них - «Пал в бою» в окне действий)
+
     if (deadIn(v)) return '';
     const arm = (t) => PBA.k === t && Date.now() - PBA.at < 4000, role = (X.hero() && X.hero().role) || '';
-    const inB = !v.b || ['on', 'reserve'].includes(meIn(v.b).st);   // бегство, «вытащить», «освободить» - только тем, кто в этом бою
+    const inB = !v.b || ['on', 'reserve'].includes(meIn(v.b).st);
     const list = v.pb.b.filter((x) => !(x.x && x.x.role && !x.x.role.split(',').includes(role)) && (inB || !['esc', 'tg'].includes(x.g || ''))), warnOn = list.find((x) => x.c === 'warn' && arm(x.t));
     const one = (x) => { const tip = pbTip(x); return `<button type="button" class="qa-b ${x.c === 'main' ? 'main' : x.c === 'warn' ? (arm(x.t) ? 'urge' : 'warn') : ''}${lineSt(x.t)}" data-qpb="${esc(x.t)}" data-qpbc="${x.c || ''}"${tip ? ` data-tip="${esc(tip)}" aria-description="${esc(tip)}"` : ''}>${esc(x.l)}${arm(x.t) ? '<small>ещё раз - точно</small>' : ''}</button>`; };
     const rows = GROUPS.map(([g, title]) => { const xs = list.filter((x) => (x.g || '') === g); return xs.length ? `<div class="q-pbg ${g ? 'g-' + g : ''}">${title ? `<span class="muted">${title}</span>` : ''}<div class="qa-row">${xs.map(one).join('')}</div></div>` : ''; }).join('');
@@ -1400,12 +1400,12 @@
     it.st = r.ok ? 'ok' : 'no'; it.msg = r.ok ? (r.x && r.x.w ? `принято · ${r.x.w}` : 'принято') : (r.error || 'игра не приняла');
     if (r.x && r.x.t) it.line = r.x.t;
     sayPaint();
-    if (it.pb || qaOn()) { keyTab = ''; paint(); }   // 26.10: кнопка места - зелёная / красная по ответу
+    if (it.pb || qaOn()) { keyTab = ''; paint(); }
   }
-  // 26.10 (стример): история «предыдущих команд» - и строки, и нажатия кнопок, с ответом игры
+
   function histAdd(line, st, o = {}) { const it = { line, st, at: Date.now(), id: '', msg: '', ...o }; SAY.hist.push(it); if (SAY.hist.length > SAY_HIST) SAY.hist.shift(); sayPaint(); return it; }
   function histSet(it, st, msg) { it.st = st; it.msg = msg; it.at2 = Date.now(); sayPaint(); }
-  // кнопка места по строке: в пути - контур, принято - зелёная (12 с), отказ - красная (2,5 с)
+
   function lineSt(t) { for (let i = SAY.hist.length - 1; i >= 0; i--) { const x = SAY.hist[i]; if (x.line !== t) continue; const age = Date.now() - (x.at2 || x.at); return x.st === 'wait' ? ' wait' : x.st === 'ok' && age < 12000 ? ' ok' : x.st === 'no' && age < 2500 ? ' bad' : ''; } return ''; }
   function sayNote(t) { const it = { line: '', st: 'note', at: Date.now(), msg: t }; SAY.hist.push(it); if (SAY.hist.length > SAY_HIST) SAY.hist.shift(); sayPaint(); setTimeout(() => { const i = SAY.hist.indexOf(it); if (i >= 0) { SAY.hist.splice(i, 1); sayPaint(); } }, 5000); }
   function sayPaint() {
@@ -1415,16 +1415,16 @@
     if (ol.innerHTML !== h) ol.innerHTML = h;
     ol.hidden = !SAY.hist.length;
     const z = SAY.el.querySelector('.q-say0'); if (z) z.hidden = !!SAY.hist.length;
-    if (!SAY.el.classList.contains('open')) ol.scrollTop = ol.scrollHeight;   // свёрнуто - видны последние
+    if (!SAY.el.classList.contains('open')) ol.scrollTop = ol.scrollHeight;
     btn.disabled = !!SAY.pend;
   }
 
-  /* ---------- 26.10 (стример): РАСКЛАДКА ВКЛАДКИ по схеме (тестерам кнопок - qaOn; остальным вкладка как была) ----------
-     Сверху вниз: шапка (место, значок участия, «всего в отряде», покинуть / вступить, «как на стриме») → окно действий во всю ширину
-     (стадия с таймером, все кнопки и подсказки места) → схема места (≈60%) и журнал (≈40%) → карточка героя (кукла, слоты вокруг,
-     здоровье под персонажем) и сумка (библиотека инвентаря) → внизу, прилеплено: «предыдущие команды» и строка ввода.
-     Узлы постоянные: каркас собирается один раз, дальше меняется только та часть, чья разметка поменялась (кукла и сумка -
-     библиотека инвентаря, её узлы не пересоздаются; строка ввода - своя). Функции мест кладут схему в SCH, а не в поток. */
+  
+
+
+
+
+
   let SCH = null;
   const QL = { k: {}, wrap: null, doll: null, bag: null, inv: null, invTry: 0, lv: { at: 0, hp: 0 }, tk: '' };
   const QL_SKEL = '<div class="ql">'
@@ -1436,12 +1436,12 @@
     + '</div>';
   const libOn = () => !!(window.LGInventory && X.invMount && X.invData);
   function layTitle(v) { return v.b ? `Бой · ${v.b.title || v.t}` : v.lair ? `Логово ${bn().g}` : v.tr ? `${v.tr.icon || ''} ${v.tr.name}` : `${KIND_RU[v.k] || 'Поход'}${v.t ? ' · ' + v.t : ''}`; }
-  // шапка: место и значок участия; мелко - «Всего в отряде: N», местность, бросок; справа - покинуть / вступить и «как на стриме»
+
   function layTop(v) {
     const pp = partyOf(v), pb = pp === 'in' ? ['in', 'в отряде'] : pp === 'q' ? ['q', 'вступишь на остановке'] : pp === 'ghost' ? ['gh', 'призрак'] : ['out', 'не в отряде'];
     const sub = [v.n ? `Всего в отряде: ${v.n}` : '', v.ter, v.roll && v.roll.n ? `бросок ${v.roll.by}: ${v.roll.n}` : ''].filter(Boolean).join(' · ');
     let pbtn = '';
-    // там же, где было «Вступить / Покинуть отряд» (qaSquad): карта и голосование за путь; в бою, ловушке, событии, лавке, данже - нет
+
     const sq = !v.b && !v.bg && !v.dgn && !v.lair && !v.tr && !v.ev && !v.pz && !v.loot && !(v.sh && v.sh.items && v.sh.items.length) && !(v.town && X.hero() && X.hero().cy && X.hero().tw);
     if (sq) {
       if (pp === 'in' && v.cm !== false) { const arm = QA.leave && Date.now() - QA.leave < 4000; pbtn = `<button type="button" class="qa-b ${arm ? 'urge' : 'warn'} ql-pb${qaSt({ k: 'leave' })}" data-qleave${qaBusy() ? ' disabled' : ''}>${arm ? 'точно покинуть?' : 'покинуть отряд?'}</button>`; }
@@ -1450,7 +1450,7 @@
     return `<div class="ql-tt"><h2>${esc(layTitle(v))} <span class="q-pt ${pb[0]}" role="status">${pb[1]}</span></h2>${sub ? `<p class="ql-sub muted">${esc(sub)}</p>` : ''}${v.dg ? `<p class="q-dg">⚠ ${esc(v.dg)}</p>` : ''}${lwHtml(v, 'q-dg')}</div>`
       + `<div class="ql-tr">${pbtn}<div class="q-sync"><button type="button" class="q-dl" aria-expanded="false">${svgI('clock')}как на стриме · ${delayS(v)} с</button><div class="q-dlp" hidden><p>Сайт показывает бой с задержкой твоего стрима. Обгоняет стрим — прибавь, отстаёт — убавь.</p><div class="q-dlb"><button type="button" data-adj="-1" aria-label="Меньше на секунду">−</button><b>${delayS(v)} с</b><button type="button" data-adj="1" aria-label="Больше на секунду">+</button><button type="button" data-adj="0">как у стримера</button></div></div></div></div>`;
   }
-  // окно действий: то же, что места рисовали отдельными карточками (стадия, кнопки, подсказки, итог), - одним окном по центру
+
   function layAct(v) {
     const h0 = X.hero(), tw = v.town && h0 && h0.cy && h0.tw && X.openTown ? `<p class="q-town"><button type="button" class="btn primary" data-qtown="${esc(v.town.id)}">🏘 Войти в город «${esc(v.town.name)}»</button></p>` : '';
     let a = '';
@@ -1461,25 +1461,25 @@
     else if (v.lair && v.lair.is) a = islesHtml(v);
     else if (v.lair) a = lairHtml(v);
     else if (v.tr) a = trapHtml(v);
-    else if (v.pz) a = pzHtml(v);   // 28.10 (map-puzzles): головоломка
-    else if (v.ev) a = v.ev.gob ? gobHtml(v) : v.ev.hw ? hwEvHtml(v) : qaEvent(v);   // 28.10: событие Изнанки, ярмарка гоблинов
+    else if (v.pz) a = pzHtml(v);
+    else if (v.ev) a = v.ev.gob ? gobHtml(v) : v.ev.hw ? hwEvHtml(v) : qaEvent(v);
     else if (v.vote && !v.vote.done) a = voteHtml(v);
     else if (v.loot) a = lootHtml(v);
     else if (v.sh && v.sh.items && v.sh.items.length) a = shopHtml(v);
     const pb = pbHtml(v);
-    if (pb) { const i = a.indexOf('<div class="q-stage'), j = i >= 0 ? a.indexOf('</div>', i) : -1; a = j >= 0 ? a.slice(0, j + 6) + pb + a.slice(j + 6) : pb + a; }   // кнопки мест - сразу под стадией
+    if (pb) { const i = a.indexOf('<div class="q-stage'), j = i >= 0 ? a.indexOf('</div>', i) : -1; a = j >= 0 ? a.slice(0, j + 6) + pb + a.slice(j + 6) : pb + a; }
     if (!a.replace(/<[^>]*>/g, '').trim()) a = layHint(v);
     return tw + a;
   }
-  const gwName = (v) => (v.gather && v.gather.hw ? '🎃 Сбор у портала' : 'Сбор отряда');   // 28.10 (hw-portal-map)
-  // нет действий - коротко, что сейчас происходит
+  const gwName = (v) => (v.gather && v.gather.hw ? '🎃 Сбор у портала' : 'Сбор отряда');
+
   function layHint(v) {
     const p = partyOf(v), g = v.gather ? `<p class="q-big">${gwName(v)} · <span data-until="${v.gather.until}"></span> с</p>` : '';
     const t = v.k === 'rest' ? 'Привал: отряд отдыхает у костра' : v.k === 'travel' ? 'Отряд в пути' : v.k === 'town' ? 'Отряд в городе' : v.gather && v.gather.hw ? 'Отряд собирается у портала - пиши «портал»' : v.k === 'gather' || v.gather ? 'Стример собирает отряд' : 'Отряд на карте - стример выбирает, куда идти';
     const me = p === 'in' ? 'Ты в отряде - жди следующего места: кнопки появятся здесь' : p === 'q' ? 'Вступишь, когда отряд остановится' : p === 'ghost' ? 'Твой герой - призрак: в поход - после воскрешения' : 'Ты не в отряде - нажми «вступить в поход?» сверху или напиши «поход»';
     return `<div class="q-stage"><b>${esc(KIND_RU[v.k] || 'Поход')}</b><span>${esc(t)}</span></div>${g}<p class="muted ql-hint">${esc(me)}</p>`;
   }
-  // журнал: в бою - вкладки «Бой» (журнал боя) и «Мой» (журнал игрока); вне боя - журнал игрока
+
   function layLog(v) {
     const b = v.b, fd = b && Array.isArray(b.fd) && b.fd.length ? b.fd : null, jr = X.jrHtml ? X.jrHtml(30) : '';
     const tabs = !!(b && b.st !== 'end' || fd);
@@ -1489,7 +1489,7 @@
       + `<div class="ql-lb">${t === 'b' ? bt : `<div class="q-jr">${jr || '<p class="muted">Журнал загружается…</p>'}</div>`}</div>`;
   }
   const hpOf = (h, v) => { const mx = (h.stats && h.stats.hp) || 0; let now0 = h.ghost ? 0 : Math.max(0, Math.min(mx, h.hpNow ?? mx)); if (v && v.b && v.b.hp != null && v.b.hp >= 0 && mx) now0 = Math.round(v.b.hp * mx); return [now0, mx]; };
-  // карточка героя: имя и класс; под куклой - полоса здоровья (под персонажем) и «Здоровье a/b», баффы, еда
+
   function layHero(v) {
     const h = X.hero(); if (!h) return { hn: '<p class="muted">Герой загружается…</p>', hv: '' };
     const [hp, mx] = hpOf(h, v), k = mx ? hp / mx : 0, bf = (h.bf || []).filter((x) => +x[3] > X.now()), eatCd = h.eatUntil && h.eatUntil > X.now() ? h.eatUntil : 0;
@@ -1500,7 +1500,7 @@
       + (eatCd ? `<p class="muted ql-eat">Еда и зелья - через <i data-rt="${eatCd}"></i></p>` : '');
     return { hn, hv };
   }
-  // без библиотеки инвентаря (не загрузилась) - кукла и сумка простой разметкой: надетое по слотам, еда и зелья - кнопкой
+
   const SLOT5 = [['helmet', 'шлем'], ['weapon', 'оружие'], ['armor', 'доспех'], ['trinket', 'амулет'], ['shield', 'щит']];
   function layDollF(v) {
     const h = X.hero(); if (!h) return '';
@@ -1521,18 +1521,18 @@
   function layParts(v) {
     SCH = { h: '' };
     let act;
-    try { act = layAct(v); } finally { /* SCH заполнен местом */ }
+    try { act = layAct(v); } finally {   }
     const sch = SCH.h || schemeHtml(v); SCH = null;
     const H = layHero(v), lib = libOn();
     return { top: layTop(v), act, sch, log: layLog(v), hn: H.hn, hv: H.hv, dollf: lib ? '' : layDollF(v), ih: layInvHead(), bagf: lib ? '' : layBagF() };
   }
-  // сумка и кукла - один раз (библиотека инвентаря через app.js: те же действия, что «Персонаж»); дальше - только новые данные
+
   function invSync(el) {
-    if (!libOn()) { if (QL.inv) { try { QL.inv.destroy(); } catch (e) { /* уже снята */ } QL.inv = null; } return; }
+    if (!libOn()) { if (QL.inv) { try { QL.inv.destroy(); } catch (e) {   } QL.inv = null; } return; }
     if (!QL.inv) { try { QL.inv = X.invMount(QL.bag, QL.doll, el); } catch (e) { QL.inv = null; console.warn('[поход] сумка', e); } return; }
     const d = X.invData(); if (d) QL.inv.update(d);
   }
-  // «ход принят» (бой) и «слово принято» - комментарием к строке / нажатию в «предыдущих командах»; ход из чата - отдельной строкой
+
   function turnHist(v) {
     const b = v && v.b; if (!b) return;
     const k1 = b.turn ? `t:${b.id}:${b.round}:${b.turn}` : '', k2 = b.tele && b.tele.ok ? `w:${b.id}:${b.round}` : '';
@@ -1544,7 +1544,7 @@
     }
   }
   function layPaint(el, v) {
-    if (QL.inv && QL.inv.dragging && QL.inv.dragging()) return;   // тянут вещь - дорисуем после (paint по таймеру)
+    if (QL.inv && QL.inv.dragging && QL.inv.dragging()) return;
     turnHist(v);
     const P = layParts(v), key = Object.values(P).join('\u0001');
     let wrap = el.querySelector(':scope > .q-wrap');
@@ -1573,18 +1573,18 @@
     if (v.b) { foesWant(); squad(wrap.querySelector('.q-squad'), v.b); }
     clocks();
   }
-  function layDrop(el) {   // вкладка вернулась к прежнему виду (не тестер / похода нет): библиотека снимается, узлы - заново при возврате
-    if (QL.inv) { try { QL.inv.destroy(); } catch (e) { /* уже снята */ } QL.inv = null; }
+  function layDrop(el) {
+    if (QL.inv) { try { QL.inv.destroy(); } catch (e) {   } QL.inv = null; }
     const w = el && el.querySelector(':scope > .q-wrap.ql-on'); if (w) w.className = 'q-wrap';
     QL.k = {}; QL.wrap = null;
   }
 
-  /* ---------- 26.10 (стример): схемы мест - простые силуэты в цветах темы сайта (переменные стиля: Легион / Котики), без анимации.
-     По мотивам сцен оверлея (client/trap.js, rest.js, event.js, shop.js), упрощённо. Своего места на экране в виде похода нет
-     (кроме боя, арены, островов) - рисуем отряд и подпись «ты в отряде», координат не выдумываем. ---------- */
+  
+
+
   const SKW = 400, SKH = 230, SKG = 196;
   const skFig = (x, y, s, cls) => `<g class="${cls || 'sk-p'}" transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(${s})"><circle cy="-31" r="7"/><path d="M-9-21h18l3 21h-24z"/></g>`;
-  // отряд: до 14 фигурок рядом (сколько в отряде - подписью)
+
   function skParty(v, x0, x1, y, s = 1, max = 14) {
     const n = Math.max(1, Math.min(max, +v.n || 6)), out = [];
     for (let i = 0; i < n; i++) { const t = n === 1 ? 0.5 : i / (n - 1), j = ((i * 37) % 7) - 3; out.push(skFig(x0 + (x1 - x0) * t, y + (i % 2 ? 6 : 0) + j * 0.6, s * (i % 2 ? 0.92 : 1))); }
@@ -1601,7 +1601,7 @@
     if (ty === 'bait') return skGround() + `<rect class="sk-s" x="160" y="140" width="80" height="56"/><rect class="sk-gold" x="170" y="104" width="60" height="36" rx="6"/><path class="sk-l" d="M170 118h60"/><circle class="sk-gold" cx="252" cy="190" r="6"/><circle class="sk-gold" cx="148" cy="192" r="5"/>` + skParty(v, 30, 130, SKG - 2, 0.8, 6) + skT(200, 80, T.taker ? 'сундук уже открывают' : 'приманка', 'sk-tm');
     if (ty === 'greed') return skGround() + `<path class="sk-s" d="M0 0H400V24L370 40 340 22 300 46 260 20 220 42 180 18 140 44 100 22 60 40 30 20 0 34Z"/><path class="sk-gold" d="M120 196Q200 96 280 196Z"/><circle class="sk-gold" cx="170" cy="170" r="7"/><circle class="sk-gold" cx="226" cy="160" r="6"/>` + skParty(v, 40, 110, SKG - 2, 0.8, 5) + skParty({ n: 3 }, 310, 370, SKG - 2, 0.8, 3);
     if (ty === 'code') { const L = Math.max(3, Math.min(6, +T.len || 4)); return skGround() + `<path class="sk-s" d="M130 196V80Q200 10 270 80V196Z"/><path class="sk-l" d="M200 40V196"/>${Array.from({ length: L }, (_, i) => `<circle class="sk-rune" cx="${200 - (L - 1) * 14 + i * 28}" cy="120" r="11"/>`).join('')}` + skParty(v, 20, 110, SKG - 2, 0.8, 5) + skT(200, 160, 'руны: 1–' + (+T.max || 9), 'sk-tm'); }
-    // 28.10: переправа - берега, кочки по шагам (пройденные - светлые), отряд слева; трясина - топь, отряд по пути, шкала «увязли»
+
     if (ty === 'crossing' && T.cx) { const C = T.cx, n = Math.max(2, C.n || 4), dx = 200 / Math.max(1, n - 1); let s = `<rect class="sk-m" x="80" y="120" width="250" height="${SKH - 120}"/><path class="sk-g" d="M0 120H90L70 ${SKH}H0Z"/><path class="sk-g" d="M400 110H320L340 ${SKH}H400Z"/>`;
       for (let i = 0; i < n; i++) { const x = 105 + dx * i, hs = C.hist[i]; for (let r = 1; r <= (C.rows[i] || 2); r++) { const y = 140 + (r - 1) * 30, on = hs ? hs[0] === r : false, sunk = hs ? hs[1].includes(r) : i === C.step && C.bad.includes(r); s += `<ellipse class="${on ? 'sk-a' : sunk ? 'sk-d' : 'sk-s'}" cx="${x}" cy="${y}" rx="15" ry="7"/>${i === C.step && !hs && !sunk ? skT(x, y + 4, String(r), 'sk-tm') : ''}`; } }
       return s + skParty(v, 8, 66, 150, 0.6, 5) + skT(360, 100, '💰', 'sk-tm') + skT(200, 60, `шаг ${Math.min(C.step + 1, n)} из ${n}`, 'sk-tm'); }
@@ -1617,16 +1617,16 @@
     if (lk === 'traveler') return skGround() + `<rect class="sk-s" x="220" y="120" width="110" height="50" rx="6"/><path class="sk-m" d="M216 120Q275 70 334 120Z"/><circle class="sk-s" cx="240" cy="178" r="16"/><circle class="sk-s" cx="310" cy="178" r="16"/>${skFig(195, SKG - 2, 1.1, 'sk-p sk-npc')}` + P + skT(275, 60, E.st === 'vote' ? 'помочь или обобрать?' : 'путник', 'sk-tm');
     if (lk === 'dice') return skGround() + `<rect class="sk-s" x="200" y="150" width="120" height="14" rx="4"/><path class="sk-l" d="M215 164V196M305 164V196"/><rect class="sk-dice" x="230" y="124" width="24" height="24" rx="4"/><rect class="sk-dice" x="264" y="128" width="22" height="22" rx="4" transform="rotate(12 275 139)"/><circle class="sk-pip" cx="242" cy="136" r="3"/><circle class="sk-pip" cx="272" cy="134" r="2.6"/><circle class="sk-pip" cx="279" cy="143" r="2.6"/>${skFig(350, SKG - 2, 1.1, 'sk-p sk-npc')}` + P + skT(260, 60, `у бродяги ${+E.purse || 0}`, 'sk-tm');
     if (lk === 'well') return skGround() + `<rect class="sk-s" x="200" y="130" width="100" height="66" rx="8"/><path class="sk-l" d="M210 130V70M290 130V70"/><path class="sk-m" d="M190 74L250 40 310 74Z"/><path class="sk-l" d="M250 74V110"/><circle class="sk-gold" cx="250" cy="116" r="7"/>` + P + skT(250, 26, `монет ${+E.thrown || 0} из ${+E.need || 0}`, 'sk-tm');
-    // 28.10: события Изнанки
+
     if (lk === 'trick') return skGround() + `<rect class="sk-s" x="220" y="96" width="120" height="100"/><path class="sk-m" d="M210 98L280 44 350 98Z"/><rect class="sk-d" x="266" y="140" width="28" height="56"/><circle class="sk-gold" cx="236" cy="188" r="10"/><circle class="sk-gold" cx="326" cy="188" r="10"/>${skFig(190, SKG - 2, 1.1, 'sk-p sk-npc')}` + P + skT(280, 30, E.vt ? `сладость ${E.vt.sweet} · гадость ${E.vt.trick}` : 'сладость или гадость?', 'sk-tm');
     if (lk === 'fortune') return skGround() + `<path class="sk-m" d="M200 196L270 60 340 196Z"/><circle class="sk-a" cx="270" cy="160" r="20"/><rect class="sk-s" x="246" y="180" width="48" height="10" rx="3"/>${skFig(316, SKG - 2, 1.05, 'sk-p sk-npc')}` + P + skT(270, 40, `благословлено ${+E.bn || 0}`, 'sk-tm');
-    if (lk === 'cauldron') return skGround() + `<path class="sk-flame" d="M240 196c-10-12-6-24 4-30c-2 12 10 14 6 30zM290 196c-10-12-6-24 4-30c-2 12 10 14 6 30z"/><path class="sk-d" d="M220 120h110l-12 56q-43 16-86 0z"/><ellipse class="sk-a" cx="275" cy="120" rx="58" ry="10"/>${(E.picked || []).map((k, i) => `<circle class="sk-gold" cx="${235 + i * 20}" cy="${102 - (i % 2) * 8}" r="6"/>`).join('')}` + P + skT(275, 40, E.st === 'pay' ? `миска ведьмы: ${Math.min(100, Math.round((+E.pool || 0) / Math.max(1, +E.price || 1) * 100))}%` : (E.picked || []).length ? `в котле ${(E.picked || []).length}` : 'пишите ингредиенты', 'sk-tm');   // 28.10 (hw-events2)
+    if (lk === 'cauldron') return skGround() + `<path class="sk-flame" d="M240 196c-10-12-6-24 4-30c-2 12 10 14 6 30zM290 196c-10-12-6-24 4-30c-2 12 10 14 6 30z"/><path class="sk-d" d="M220 120h110l-12 56q-43 16-86 0z"/><ellipse class="sk-a" cx="275" cy="120" rx="58" ry="10"/>${(E.picked || []).map((k, i) => `<circle class="sk-gold" cx="${235 + i * 20}" cy="${102 - (i % 2) * 8}" r="6"/>`).join('')}` + P + skT(275, 40, E.st === 'pay' ? `миска ведьмы: ${Math.min(100, Math.round((+E.pool || 0) / Math.max(1, +E.price || 1) * 100))}%` : (E.picked || []).length ? `в котле ${(E.picked || []).length}` : 'пишите ингредиенты', 'sk-tm');
     if (lk === 'lostghost') return skGround() + `<rect class="sk-s" x="300" y="140" width="40" height="56" rx="18"/><path class="sk-a" d="M220 160V96a30 30 0 0 1 60 0v64l-10-10-10 10-10-10-10 10-10-10z"/><circle class="sk-eye" cx="240" cy="98" r="4"/><circle class="sk-eye" cx="260" cy="98" r="4"/>` + P + skT(250, 40, +E.qn ? `загадка ${Math.max(1, +E.qi || 1)} из ${E.qn}` : 'загадка призрака', 'sk-tm');
     if (lk === 'skeldance') return skGround() + [220, 280, 340].map((x) => `<circle class="sk-a" cx="${x}" cy="110" r="14"/><path class="sk-l" d="M${x} 124v40M${x - 16} 138h32M${x} 164l-12 30M${x} 164l12 30"/>`).join('') + P + skT(280, 40, E.st === 'show' ? 'запоминай па!' : E.st === 'input' ? 'повтори цепочку' : 'пляска скелетов', 'sk-tm');
     if (lk === 'priest') return skGround() + `<rect class="sk-s" x="210" y="140" width="90" height="56" rx="4"/><path class="sk-gold" d="M232 140Q255 118 278 140Z"/><rect class="sk-a" x="296" y="104" width="8" height="36"/><path class="sk-flame" d="M300 104q-6-10 0-18q6 8 0 18z"/>${skFig(350, SKG - 2, 1.15, 'sk-p sk-npc')}` + P + skT(255, 60, 'чаша жреца', 'sk-tm');
     return skGround() + P;
   }
-  // 28.10 (map-puzzles): головоломка - камень-плита посередине, отряд слева (что на плите - не рисуем: ответ - на стриме и во вкладке)
+
   function skPuzzle(P, v) {
     const k = P.kind, P0 = skParty(v, 30, 150, SKG - 2, 0.85, 7);
     let x = '';
@@ -1646,7 +1646,7 @@
     return s + `<circle class="sk-a" cx="${S[0]}" cy="${S[1]}" r="10"/>` + skParty(v, S[0] - 40, S[0] + 40, S[1] - 14, 0.6, 5) + skT(S[0], S[1] + 30, 'отряд', 'sk-tm');
   }
   function skRest(v) {
-    // костёр в центре, отряд кругом (дальние - за костром, ближние - перед ним)
+
     const n = Math.max(3, Math.min(14, +v.n || 8)), back = [], front = [];
     for (let i = 0; i < n; i++) { const a = Math.PI * 2 * (i / n) + 0.3, f = skFig(200 + Math.cos(a) * 140, 160 + Math.sin(a) * 42, 0.8 + Math.sin(a) * 0.12); (Math.sin(a) < 0 ? back : front).push(f); }
     return skGround(120) + `<ellipse class="sk-g" cx="200" cy="160" rx="170" ry="54"/>${back.join('')}<path class="sk-log" d="M176 176l48-16M176 160l48 16"/><path class="sk-flame" d="M200 168c-16-10-14-28 0-46c14 18 16 36 0 46z"/><path class="sk-flame2" d="M200 166c-7-6-6-16 0-26c6 10 7 20 0 26z"/>${front.join('')}`;
@@ -1658,14 +1658,14 @@
   function skLair(v) {
     return skGround() + `<path class="sk-d" d="M260 196V100Q260 50 300 50T340 100V196Z"/><path class="sk-d" d="M282 60L270 26 292 52M318 60L330 26 308 52"/><circle class="sk-eye" cx="290" cy="80" r="4"/><circle class="sk-eye" cx="310" cy="80" r="4"/>` + skParty(v, 30, 220, SKG - 2, 0.85, 10);
   }
-  function bossArt(g) {   // генерированный босс без арены: силуэт и отряд
+  function bossArt(g) {
     return `<figure class="ql-sc"><svg viewBox="0 0 ${SKW} ${SKH}" role="img" aria-label="Бой с боссом: отряд против ${esc((g && g.name) || 'босса')}">${skGround()}<path class="sk-d" d="M250 196V96Q250 40 300 40T350 96V196Z"/><circle class="sk-eye" cx="288" cy="78" r="5"/><circle class="sk-eye" cx="312" cy="78" r="5"/>${skParty({ n: 10 }, 30, 220, SKG - 2, 0.85, 10)}</svg><figcaption class="muted">Где ты - видно на стриме</figcaption></figure>`;
   }
   function schemeHtml(v) {
     let art = '', what = '';
     if (v.tr) { art = skTrap(v.tr, v); what = v.tr.name; }
     else if (v.ev) { art = skEvent(v.ev, v); what = v.ev.name; }
-    else if (v.pz) { art = skPuzzle(v.pz, v); what = v.pz.name; }   // 28.10 (map-puzzles)
+    else if (v.pz) { art = skPuzzle(v.pz, v); what = v.pz.name; }
     else if (v.sh && v.sh.items && v.sh.items.length) { art = skShop(v); what = 'лавка'; }
     else if (v.lair) { art = skLair(v); what = `логово ${bn().g}`; }
     else if (v.k === 'rest') { art = skRest(v); what = 'привал'; }
@@ -1676,50 +1676,50 @@
     return `<figure class="ql-sc"><svg viewBox="0 0 ${SKW} ${SKH}" role="img" aria-label="Схема: ${esc(what)}; ${esc(me)}">${art}</svg><figcaption><span class="ql-me ${p === 'in' ? 'in' : ''}">${esc(me)}</span>${v.n ? `<span class="muted">в отряде ${+v.n}</span>` : ''}</figcaption></figure>`;
   }
 
-  /* ---------- отрисовка ---------- */
+   
   function paint() {
     if (!X) return;
     const v = view(), on = !!(v && v.on);
-    X.onOff(on, on ? String(v.party || '') : '');   // 23.10: вступил в поход — «Город» закрыт
+    X.onOff(on, on ? String(v.party || '') : '');
     const bar = X.bar(), el = X.el();
-    // плашка — над любой вкладкой, кроме самой «Похода»
+
     const bh = on && !X.showing() ? bannerHtml(v) : '';
     if (bar) { if (bh !== keyBar) { keyBar = bh; bar.innerHTML = bh ? `<button type="button" class="q-bar">${bh}</button>` : ''; bar.hidden = !bh; ncPaint(bar); const btn = bar.querySelector('button'); if (btn) btn.onclick = () => X.tab('quest'); clocks(); } }
     if (!el || !shown) return;
-    qaBind(el); qaSeen(NEW);   // 25.10: кнопки похода — обработчик один на вкладку; «принято» по самому бою
-    if (v && v.on && qaOn() && !v.nb) { layPaint(el, v); return; }   // 26.10 (стример): тестерам кнопок - раскладка по схеме
+    qaBind(el); qaSeen(NEW);
+    if (v && v.on && qaOn() && !v.nb) { layPaint(el, v); return; }
     if (QL.wrap) { layDrop(el); keyTab = ''; }
     let th = tabHtml(v);
-    if (v && v.on && qaOn() && !th.includes('class="q-card qa-hero"')) th += qaHero(v);   // 26.10 (п. 35): персонаж - на вкладке всегда
-    { const pb = v && v.on ? pbHtml(v) : ''; if (pb) { const i = th.indexOf('<div class="q-stage'); const j = i >= 0 ? th.indexOf('</div>', i) : -1; th = j >= 0 ? th.slice(0, j + 6) + pb + th.slice(j + 6) : th + pb; } }   // 26.10: кнопки мест - сразу под стадией
+    if (v && v.on && qaOn() && !th.includes('class="q-card qa-hero"')) th += qaHero(v);
+    { const pb = v && v.on ? pbHtml(v) : ''; if (pb) { const i = th.indexOf('<div class="q-stage'); const j = i >= 0 ? th.indexOf('</div>', i) : -1; th = j >= 0 ? th.slice(0, j + 6) + pb + th.slice(j + 6) : th + pb; } }
     if (th === keyTab) { if (v && v.dgn && !v.b) dgMarks(v); sayMount(el, v); return; }
     keyTab = th;
-    // 26.10: вкладка - два узла: .q-wrap (перерисовывается) и строка «Команда в поход» (.q-say - постоянная: ввод и фокус не сбиваются)
+
     let wrap = el.querySelector(':scope > .q-wrap'); if (!wrap) { el.innerHTML = ''; wrap = document.createElement('div'); wrap.className = 'q-wrap'; el.appendChild(wrap); }
     wrap.innerHTML = th; ncPaint(wrap); sayMount(el, v);
-    qbag(el, v);   // 25.10: сумка (библиотека инвентаря) — тот же элемент в новой разметке
+    qbag(el, v);
     const dl = el.querySelector('.q-dl'), dp = el.querySelector('.q-dlp');
     if (dl && dp) { dl.onclick = () => { dp.hidden = !dp.hidden; dl.setAttribute('aria-expanded', String(!dp.hidden)); fitPop(dp); };
       dp.querySelectorAll('[data-adj]').forEach((b) => b.onclick = () => { const d = +b.dataset.adj; adj = d ? Math.max(-10, Math.min(30, adj + d)) : 0; try { localStorage.setItem(ADJ, String(adj)); } catch (e) {} keyTab = ''; tick(); const p2 = el.querySelector('.q-dlp'); if (p2) p2.hidden = false; }); }
-    { const tb = el.querySelector('[data-qtown]'); if (tb) tb.onclick = () => X.openTown(tb.dataset.qtown); }   // 23.10: город округа
-    el.querySelectorAll('[data-qv]').forEach((b) => { b.onclick = () => { const [vid, n] = b.dataset.qv.split(':').map(Number); castVote(vid, n); }; });   // 23.10: голос кликом
+    { const tb = el.querySelector('[data-qtown]'); if (tb) tb.onclick = () => X.openTown(tb.dataset.qtown); }
+    el.querySelectorAll('[data-qv]').forEach((b) => { b.onclick = () => { const [vid, n] = b.dataset.qv.split(':').map(Number); castVote(vid, n); }; });
     if (v && v.dgn && !v.b) { dgMount(el, v); el.querySelectorAll('[data-dgpan]').forEach((b) => { b.onclick = () => dgPan(+b.dataset.dgpan); }); }
     if (v && v.b) { foesWant(); squad(el.querySelector('.q-squad'), v.b); }
     if (v && v.sh) shopBind(el, v);
     const fx = el.querySelector('.q-fx'); if (fx) try { fx.setCurrentTime(0); fx.unpauseAnimations(); } catch (e) {}
     clocks();
   }
-  // таймеры — каждую четверть секунды, без перерисовки
+
   function clocks() {
     const v = CUR; if (!v) return;
     document.querySelectorAll('#qbar [data-until], #tab-quest [data-until]').forEach((s) => { const t = String(sec(+s.dataset.until, v)); if (s.textContent !== t) s.textContent = t; });
-    // 25.10: свои таймеры (еда, баффы) — без задержки стрима; кончился — перерисовать (кнопка «Съесть» снова доступна)
+
     const t0 = now();
     document.querySelectorAll('#tab-quest [data-rt]').forEach((s) => { const left = Math.max(0, Math.ceil((+s.dataset.rt - t0) / 1000)), t = left >= 60 ? `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` : `${left} с`; if (s.textContent !== t) s.textContent = t; });
     if (QA.rtEnd && QA.rtEnd <= t0) { QA.rtEnd = 0; keyTab = ''; }
   }
   function show(on) { shown = !!on; keyTab = null; keyBar = null; paint(); }
   function init(ctx) { X = ctx; paint(); }
-  // 25.10: result — ответ игры на кнопку похода (app.js, results живого канала); hero — герой обновился (здоровье, еда, баффы в панели)
-  window.LGQuest = { init, data, show, _view: () => view(), result: (r) => qaResult(r), hero: () => { if (QBG && qbOn()) QBG.inv.update(qbData()); if (QL.inv && X.invData) { const d = X.invData(); if (d) QL.inv.update(d); } const flip = !!QBG !== qbOn(); if (shown && (qaOn() || flip)) { if (!QL.wrap) keyTab = ''; paint(); } } };   // раскладка: меняется только своя часть
+
+  window.LGQuest = { init, data, show, _view: () => view(), result: (r) => qaResult(r), hero: () => { if (QBG && qbOn()) QBG.inv.update(qbData()); if (QL.inv && X.invData) { const d = X.invData(); if (d) QL.inv.update(d); } const flip = !!QBG !== qbOn(); if (shown && (qaOn() || flip)) { if (!QL.wrap) keyTab = ''; paint(); } } };
 })();

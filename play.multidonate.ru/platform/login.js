@@ -1,4 +1,4 @@
-// Вход в пульт без сессии (обычно — док-панель OBS): «через основной браузер» по коду или через Twitch здесь.
+
 (() => {
   const A = window.LG_AUTH || {};
   const $ = (id) => document.getElementById(id);
@@ -9,7 +9,7 @@
   let timer = 0, deadline = 0, url = '';
   const post = async (path, body) => {
     const r = await fetch(path, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
-    let j = null; try { j = await r.json(); } catch { /* не JSON */ }
+    let j = null; try { j = await r.json(); } catch {   }
     return { status: r.status, j: j || {} };
   };
   const left = () => {
@@ -42,11 +42,11 @@
     } finally { $('go').disabled = $('again').disabled = false; }
   }
 
-  // опрос раз в 2 с: подтвердили — сервер ставит куку входа, идём в пульт
+
   async function tick() {
     clearTimeout(timer);
     let j = null;
-    try { j = (await post('/auth/device/poll')).j; } catch { /* сеть моргнула — спросим ещё раз */ }
+    try { j = (await post('/auth/device/poll')).j; } catch {   }
     if (j && j.state === 'ok') {
       $('dot').className = 'dot ok'; $('st').textContent = 'Вход подтверждён, открываем пульт…';
       location.replace(j.next || A.next || '/');
@@ -59,10 +59,10 @@
     timer = setTimeout(tick, 2000);
   }
 
-  // копирование: буфер обмена, если нельзя (старый CEF, нет прав) — выделяем ссылку, чтобы скопировать вручную
+
   async function copy() {
     let ok = false;
-    try { if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(url); ok = true; } } catch { /* нет прав */ }
+    try { if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(url); ok = true; } } catch {   }
     if (!ok) {
       const i = $('url'); i.focus(); i.select(); i.setSelectionRange(0, i.value.length);
       try { ok = document.execCommand('copy'); } catch { ok = false; }
@@ -75,9 +75,9 @@
   $('again').onclick = start;
   $('copy').onclick = copy;
   $('url').onfocus = () => $('url').select();
-  // в док-панели OBS окно может открыться внутри OBS (там тоже не вошли) — поэтому это запасной вариант, главное — ссылка и код
-  $('open').onclick = () => { try { window.open(url, '_blank', 'noopener'); } catch { /* не открылось */ } };
+
+  $('open').onclick = () => { try { window.open(url, '_blank', 'noopener'); } catch {   } };
   $('back').onclick = () => { clearTimeout(timer); timer = 0; show('choose'); };
-  // вкладку вернули из фона — проверим сразу, не дожидаясь таймера
+
   document.addEventListener('visibilitychange', () => { if (!document.hidden && timer) tick(); });
 })();

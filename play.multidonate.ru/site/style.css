@@ -1,16 +1,16 @@
-/* Сайт Легиона. Одна разметка — три темы оформления: html[data-skin="poster" | "forge" | "sticker"].
-   Общая часть задаёт строение (сетки, кукла, сумка, карточка вещи), темы — цвета, шрифты, рамки и раскладку на широком экране. */
 
-/* ================= общая основа ================= */
+
+
+ 
 :root {
   --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px;
   --t-xs: 12px; --t-sm: 14px; --t-md: 16px; --t-lg: 18px; --t-xl: 22px; --t-2xl: 28px; --t-3xl: 40px; --t-4xl: 56px;
   --ease: cubic-bezier(.2,.8,.2,1);
-  /* 23.10: подсветка товара — обводка по силуэту рисунка вещи (лавки «Города» и прилавок лавки во вкладке «Поход»), не рамка */
+   
   --item-ol-c: #f2b632; --item-ol: drop-shadow(1.5px 0 0 var(--item-ol-c)) drop-shadow(-1.5px 0 0 var(--item-ol-c)) drop-shadow(0 1.5px 0 var(--item-ol-c)) drop-shadow(0 -1.5px 0 var(--item-ol-c));
 }
 *, *::before, *::after { box-sizing: border-box; }
-/* 29.10: выпадающий список (сортировка сумки и др.) - пункты в цветах темы: раньше светлый текст на белом фоне браузера */
+ 
 select option, select optgroup { background-color: var(--surface, #fff); color: var(--ink, #111); }
 html, body { margin: 0; }
 body { min-height: 100vh; background: var(--bg); color: var(--ink); font: 500 var(--t-md)/1.45 var(--tx); -webkit-font-smoothing: antialiased; }
@@ -24,10 +24,10 @@ button:disabled { cursor: not-allowed; }
 h1, h2, h3 { margin: 0; }
 p { margin: 0; text-wrap: pretty; }
 
-/* 29.10 (стример: «скролл по стилю сайта везде»): ОДИН стиль полос прокрутки для всего сайта - страница, окна, списки, поля ввода (textarea),
-   выпадающие списки: тонкие (8 px), скруглённые, без стрелок, цвет текста темы (--ink) с прозрачностью, акцент (--hov) при наведении.
-   Тёмные окна на светлой теме задают свой --sbt (цвет полосы), как .mn в mine.css. Chrome/Edge/Safari - ::-webkit-scrollbar (scrollbar-color в Chrome 121+
-   отключил бы его - поэтому для них свойств scrollbar-* не ставим), Firefox - scrollbar-width / scrollbar-color. */
+
+
+
+
 *::-webkit-scrollbar { width: 8px; height: 8px; }
 *::-webkit-scrollbar-track { background: transparent; }
 *::-webkit-scrollbar-thumb { background: var(--sbt, color-mix(in srgb, var(--ink, #888) 26%, transparent)); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
@@ -36,23 +36,23 @@ p { margin: 0; text-wrap: pretty; }
 *::-webkit-scrollbar-corner { background: transparent; }
 @supports (-moz-appearance: none) { * { scrollbar-width: thin; scrollbar-color: var(--sbt, color-mix(in srgb, var(--ink, #888) 34%, transparent)) transparent; } }
 
-/* человечки движка */
+ 
 .jl-doodle { display: block; width: 100%; height: auto; overflow: visible; }
-/* цвета обводки и лиц приходят из самого стиля человечков (MDDoodle.style.css) — у котиков и обезьян они свои */
+ 
 .art { display: block; width: 100%; height: 100%; overflow: visible; }
 .art.sil { opacity: .22; filter: grayscale(1) brightness(var(--sil-b, .4)); }
 
-/* --- шапка --- */
+ 
 .top { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: var(--s4); padding: var(--s3) var(--s5); }
 .brand { display: flex; align-items: center; gap: var(--s2); }
 .tabs { display: flex; gap: var(--s1); }
 .tabs button { padding: var(--s2) var(--s4); border: 0; background: none; }
 .user { margin-left: auto; display: flex; align-items: center; gap: var(--s3); }
 .who { font-weight: 700; }
-/* 18.10: метка администратора игры — как плашка уровня (.lv) своего оформления, только короче */
+ 
 .adm { flex: none; white-space: nowrap; font-size: var(--t-xs); letter-spacing: .06em; line-height: 1.6; }
 
-/* --- кнопки --- */
+ 
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--s2); min-height: 44px; padding: var(--s2) var(--s5); text-decoration: none; font-weight: 800; border: 0;
   transition: transform .2s var(--ease), box-shadow .2s var(--ease), background .2s var(--ease), color .2s var(--ease); }
 .btn.sm { min-height: 40px; padding: var(--s1) var(--s4); font-size: var(--t-sm); }
@@ -69,14 +69,14 @@ main { max-width: 1320px; margin: 0 auto; padding: var(--s5) var(--s5) var(--s7)
 .h2 { font-size: var(--t-xl); }
 .lead { margin-top: var(--s3); font-size: var(--t-lg); color: var(--mute); max-width: 46ch; }
 
-/* --- персонаж: сетка (узкий экран — столбик) --- */
+ 
 .hero-grid { display: grid; gap: var(--s5); grid-template-columns: 1fr; grid-template-areas: "stage" "vitals" "bag"; }
 .stage { grid-area: stage; } .vitals { grid-area: vitals; } .bag { grid-area: bag; } .detail { grid-area: detail; }
 @media (min-width: 760px) {
   .hero-grid { grid-template-columns: minmax(300px, 380px) 1fr; grid-template-areas: "stage bag" "vitals bag"; align-items: start; }
 }
 
-/* кукла: слоты вокруг героя */
+ 
 .doll { display: grid; gap: var(--s3); grid-template-columns: 1fr 1.5fr 1fr; grid-template-areas: ". helmet ." "weapon fig shield" "armor fig trinket"; align-items: center; position: relative; }
 .doll .fig { grid-area: fig; position: relative; z-index: 1; padding: 0 var(--s1); }
 .slot[data-slot="helmet"] { grid-area: helmet; } .slot[data-slot="weapon"] { grid-area: weapon; } .slot[data-slot="shield"] { grid-area: shield; }
@@ -94,7 +94,7 @@ main { max-width: 1320px; margin: 0 auto; padding: var(--s5) var(--s5) var(--s7)
 .rl { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: var(--mute); }
 .lv { padding: 2px var(--s2); font-weight: 800; }
 
-/* характеристики */
+ 
 .vitals { display: grid; gap: var(--s4); align-content: start; }
 .meter .mk { display: flex; justify-content: space-between; font-size: var(--t-sm); margin-bottom: 6px; }
 .meter .mk span { color: var(--mute); }
@@ -109,11 +109,11 @@ main { max-width: 1320px; margin: 0 auto; padding: var(--s5) var(--s5) var(--s7)
 .coins .m { margin-left: auto; color: var(--ink); }
 .coins .m b { font-variant-numeric: tabular-nums; }
 
-/* сумка */
+ 
 .bag-h { display: flex; align-items: baseline; gap: var(--s3); flex-wrap: wrap; margin-bottom: var(--s4); }
 .filters { display: flex; flex-wrap: wrap; gap: var(--s2); margin-bottom: var(--s4); }
 .filters button { min-height: 36px; padding: 6px var(--s3); font-size: var(--t-sm); font-weight: 700; transition: background .2s var(--ease), color .2s var(--ease), border-color .2s var(--ease); }
-/* 29.10: фильтр сумки по классу - одна строка «Класс: <список>»; цвета берёт у оформления (--ink, --surface2, --accent), стрелка рисуется границами */
+ 
 .clsf { position: relative; display: flex; width: fit-content; align-items: center; gap: var(--s2); max-width: 100%; margin: 0 0 var(--s3); font-size: var(--t-sm); color: var(--mute); }
 .clsf > span { flex: none; font-weight: 700; }
 .clsf select { appearance: none; -webkit-appearance: none; flex: 0 1 auto; min-width: 0; max-width: 100%; min-height: 36px; padding: 4px 32px 4px var(--s3); border: 1px solid color-mix(in srgb, var(--ink) 28%, transparent); border-radius: var(--pop-r, 999px); background: var(--surface2); color: var(--ink); font: inherit; font-weight: 700; text-overflow: ellipsis; cursor: pointer; }
@@ -135,11 +135,11 @@ html[data-skin="poster"] .clsf.on select option, html[data-skin="comic"] .clsf.o
 .cell .cnt { position: absolute; right: 6px; bottom: 34px; font-size: var(--t-xs); font-weight: 800; padding: 0 6px; }
 .cell .upg { position: absolute; top: 6px; right: 6px; display: grid; place-items: center; width: 22px; height: 22px; }
 .cell .upg .i { width: 14px; height: 14px; stroke-width: 3; }
-/* 31.10 (feat/candy-tile): плитка конфет Хэллоуина - после вещей, места не занимает (не вещь: без выбора и перетаскивания) */
+ 
 .cell.cnd-tile, [data-r].cell.cnd-tile { --rc: #ff8a1f; cursor: help; }
 .cell.cnd-tile .cnt, [data-skin] .cell.cnd-tile .cnt { z-index: 2; color: #ff9a3a; background: rgba(21, 18, 46, .88); border-radius: 999px; font-variant-numeric: tabular-nums; }
 
-/* карточка вещи */
+ 
 .detail { position: relative; }
 .detail .x { display: none; }
 .d-art { display: grid; place-items: center; height: 150px; margin-bottom: var(--s4); }
@@ -157,30 +157,30 @@ html[data-skin="poster"] .clsf.on select option, html[data-skin="comic"] .clsf.o
 .stat dd .pen-now { color: var(--dn); }
 .penl { grid-column: 1 / -1; margin: var(--s2) 0 0; padding: var(--s2) var(--s3); border-radius: 8px; border: 2px solid var(--dn); color: var(--ink); font-size: var(--t-sm); display: grid; gap: 2px; }
 .penl b { color: var(--dn); } .penl span { color: var(--mute); font-size: var(--t-xs); }
-/* 22.10: долг (кошелёк в минусе после пойманной кражи в лавке) */
+ 
 .debtl { grid-column: 1 / -1; margin: var(--s2) 0 0; padding: var(--s2) var(--s3); border-radius: 8px; border: 2px solid var(--dn); color: var(--ink); font-size: var(--t-sm); display: grid; gap: 2px; }
 .debtl b { color: var(--dn); } .debtl span { color: var(--mute); font-size: var(--t-xs); }
-.thiefl { color: var(--dn); font-weight: 600; }   /* 22.10: воровская наценка */
+.thiefl { color: var(--dn); font-weight: 600; }    
 .d-gear { margin-top: var(--s3); font-size: var(--t-sm); color: var(--mute); } .d-gear.bad b { color: var(--dn); }
 .d-st em.up { color: var(--up); } .d-st em.dn { color: var(--dn); } .d-st em.eq { color: var(--mute); }
 .d-eff, .d-cmp, .d-role { margin-top: var(--s3); font-size: var(--t-sm); color: var(--mute); }
 .d-eff { color: var(--ink); font-weight: 600; }
 .d-cmp b, .d-role b { color: var(--ink); }
-.d-cmp b.up { color: var(--up); } .d-cmp b.dn { color: var(--dn); }   /* итог «в целом лучше / слабее» (аукцион) */
+.d-cmp b.up { color: var(--up); } .d-cmp b.dn { color: var(--dn); }    
 .d-a { margin-top: var(--s5); }
-/* 22.10: подсказка характеристики по нажатию — окно персонажа и аукцион */
+ 
 .d-st li[data-stat] { cursor: help; }
 .d-pts { margin-top: var(--s3); font-size: var(--t-sm); color: var(--mute); }
-/* 24.10 (баг тестера): пояснение — обычный текст, не flex: суммы (<b>, .m) и куски текста не разъезжаются колонками; значок — в строке */
+ 
 .note { display: block; font-size: var(--t-sm); line-height: 1.45; color: var(--mute); overflow-wrap: break-word; }
 .note > svg.i:first-child { margin-right: var(--s2); }
 .note.lack, .note.bal { color: var(--ink); }
 .scrim { display: none; }
 
-/* редкость: цвет на всё, что помечено data-r */
+ 
 [data-r="common"] { --rc: var(--rc-common); } [data-r="uncommon"] { --rc: var(--rc-uncommon); } [data-r="rare"] { --rc: var(--rc-rare); } [data-r="epic"] { --rc: var(--rc-epic); } [data-r="legendary"] { --rc: var(--rc-legendary); }
 
-/* призрак, ожидание */
+ 
 .ghostnote { margin-top: var(--s4); padding: var(--s4); text-align: center; }
 .ghostnote .gt { font-weight: 800; }
 .ghostnote .cd { margin: var(--s2) 0 2px; font-size: var(--t-3xl); line-height: 1; font-variant-numeric: tabular-nums; }
@@ -201,7 +201,7 @@ html[data-skin="poster"] .clsf.on select option, html[data-skin="comic"] .clsf.o
 .pend { margin-top: var(--s4); padding: var(--s3) var(--s4); font-size: var(--t-sm); font-weight: 600; }
 .is-ghost .fig { opacity: .85; }
 
-/* узкий/средний экран: карточка вещи — выезжающая снизу шторка */
+ 
 @media (max-width: 1099px) {
   .detail, html .hero-grid > .detail.panel { position: fixed; left: 0; right: 0; bottom: 0; z-index: 41; max-height: 86vh; overflow: auto; margin: 0; padding-bottom: calc(var(--s5) + env(safe-area-inset-bottom));
     transform: translateY(105%); visibility: hidden; transition: transform .3s var(--ease), visibility 0s .3s; }
@@ -216,21 +216,21 @@ html[data-skin="poster"] .clsf.on select option, html[data-skin="comic"] .clsf.o
   .top { padding: var(--s2) var(--s3); gap: var(--s2); }
   .brand b { display: none; }
   .who { display: none; }
-  .user .adm { display: none; }   /* как и ник: на узком месте — вкладкам (метка «Админ игры» остаётся в режиме стримера) */
+  .user .adm { display: none; }    
   .tabs button { padding: var(--s2) var(--s3); }
   .grid { grid-template-columns: repeat(3, 1fr); gap: var(--s2); }
   .slot .art { width: 44px; height: 44px; }
   .h1 { font-size: var(--t-2xl); }
 }
 
-/* --- приветствие и «героя нет» --- */
+ 
 .hello { display: grid; gap: var(--s6); align-items: center; }
 .hello .btn { margin-top: var(--s5); }
 .crowd { display: flex; justify-content: center; align-items: flex-end; }
 .crowd .cf { width: clamp(60px, 19vw, 110px); margin: 0 clamp(-12px, -2vw, -6px); flex: none; }
 .hello > *, .nohero > * { min-width: 0; }
 .hello .h1 { overflow-wrap: anywhere; }
-/* страховка: ничего на странице не даёт прокрутки вбок на телефоне */
+ 
 main { overflow-x: clip; }
 @media (max-width: 520px) { .top .btn.twitch.sm { padding-inline: var(--s3); } .hello .btn.twitch { width: 100%; } }
 .crowd .cf:nth-child(odd) { transform: translateY(10px); }
@@ -238,7 +238,7 @@ main { overflow-x: clip; }
 .nohero .fig { width: 160px; margin: 0 auto; }
 @media (min-width: 900px) { .hello { grid-template-columns: 1.1fr .9fr; } .nohero { grid-template-columns: 200px 1fr; } }
 
-/* --- Легион --- */
+ 
 .legion { display: grid; gap: var(--s5); }
 .lg-head { display: grid; gap: var(--s4) var(--s6); grid-template-columns: 1fr; align-items: end; }
 .lg-big b { display: block; font-size: var(--t-4xl); line-height: .95; font-variant-numeric: tabular-nums; }
@@ -266,7 +266,7 @@ main { overflow-x: clip; }
 .rf .rlv { position: absolute; top: 0; right: 4px; font-size: 11px; font-weight: 800; min-width: 20px; padding: 0 4px; }
 .rf.gh .rd { opacity: .7; }
 
-/* --- всплывашка --- */
+ 
 .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); z-index: 60; transform: translate(-50%, 24px); padding: var(--s3) var(--s5); font-weight: 700; opacity: 0; pointer-events: none; transition: opacity .25s var(--ease), transform .25s var(--ease); }
 .toast.on { opacity: 1; transform: translate(-50%, 0); }
 
@@ -274,8 +274,8 @@ main { overflow-x: clip; }
 
 
 
-/* ================= раскладки широкого экрана =================
-   A — колонки: герой | сумка | вещь.  B — лист персонажа: характеристики | герой | вещь, сумка снизу.  C — баннер: герой во всю ширину, ниже характеристики и сумка, вещь справа. */
+
+
 @media (min-width: 1100px) {
   :is([data-skin="poster"], [data-skin="book"], [data-skin="plank"]) .hero-grid { grid-template-columns: 360px 1fr 330px; grid-template-areas: "stage bag detail" "vitals bag detail"; align-items: start; }
   :is([data-skin="forge"], [data-skin="den"], [data-skin="rage"]) .hero-grid { grid-template-columns: 290px 1fr 320px; grid-template-areas: "vitals stage detail" "bag bag bag"; align-items: stretch; }
@@ -292,11 +292,11 @@ main { overflow-x: clip; }
   .detail { position: sticky; top: 84px; }
 }
 
-/* =========================================================
-   ТЕМА 1 — «ПЛАКАТ»: как виджеты соц. рейтинга на стриме.
-   Бумага, тушь, красный; прямые углы, жёсткая смещённая тень, Unbounded + PT Mono.
-   Широкий экран: герой слева, сумка в центре, карточка вещи справа.
-   ========================================================= */
+
+
+
+
+
 html[data-skin="poster"] {
   --bg: #ece2cb; --surface: #f6eedb; --surface2: #e4d8bb; --ink: #1b1a17; --mute: #5c5446; --accent: #c81e17; --accent-2: #8f130e; --focus: #c81e17;
   --rc-common: #5c5446; --rc-uncommon: #24883a; --rc-rare: #1b64b4; --rc-epic: #7c34c4; --rc-legendary: #a86500; --up: #1d7a34; --dn: #c81e17;
@@ -370,10 +370,10 @@ html[data-skin="poster"] body { background: repeating-linear-gradient(0deg, rgba
 
 
 
-/* =========================================================
-   ТЕМА 2 — «АРСЕНАЛ»: тёмное железо и бронза, римские капители (Cinzel).
-   Широкий экран: герой — в центре, как лист персонажа; слева характеристики, справа вещь, сумка — во всю ширину снизу.
-   ========================================================= */
+
+
+
+
 html[data-skin="forge"] {
   --bg: #110f0c; --surface: #1c1813; --surface2: #15120e; --ink: #ece2cc; --mute: #a69779; --accent: #caa55c; --accent-2: #8c6d33; --focus: #e8c77d;
   --line: #3e3324; --frame: rgba(202,165,92,.2);
@@ -448,10 +448,10 @@ html[data-skin="forge"] body { background: radial-gradient(ellipse 80% 50% at 50
 
 
 
-/* =========================================================
-   ТЕМА 3 — «НАКЛЕЙКИ»: как сами человечки — плоские яркие цвета, толстая белая обводка, тёмная тушь.
-   Каждый блок — наклейка своего цвета, чуть повёрнута. Широкий экран: герой — баннер сверху, вещь — справа.
-   ========================================================= */
+
+
+
+
 html[data-skin="sticker"] {
   --bg: #262062; --surface: #fffaf0; --surface2: #f1ebff; --ink: #15122e; --mute: #59537c; --accent: #ff4f73; --accent-2: #c22a4c; --focus: #ffe27a;
   --rc-common: #7d78a0; --rc-uncommon: #24883a; --rc-rare: #1f7dff; --rc-epic: #8b3dff; --rc-legendary: #f08a00; --up: #12945a; --dn: #e0284d;
@@ -543,12 +543,12 @@ html[data-skin="sticker"] body { background: radial-gradient(rgba(255,255,255,.0
 @media (min-width: 1100px) { [data-skin="sticker"] .detail { transform: rotate(.8deg); } }
 
 
-/* #########################################################
-   КОТИКИ
-   ######################################################### */
 
-/* ТЕМА К1 — «КНИЖКА»: страница детской книжки, как карточки героя у котиков на стриме.
-   Тёплая бумага, коричневая обводка, розовые лапки, медовый свет. Pangolin + Nunito. Раскладка A. */
+
+
+
+
+
 html[data-skin="book"] {
   --bg: #f8e3c4; --surface: #fff8ec; --surface2: #fdeedd; --ink: #2b1d18; --mute: #7d5d48; --accent: #e8607a; --accent-2: #c2405a; --focus: #e8607a;
   --rc-common: #7d5d48; --rc-uncommon: #24883a; --rc-rare: #2a7fc7; --rc-epic: #8a45d0; --rc-legendary: #b86f00; --up: #3f8a2f; --dn: #c2405a;
@@ -610,8 +610,8 @@ html[data-skin="book"] body { background: radial-gradient(circle at 20% 30%, rgb
 [data-skin="book"] .rf .rlv { background: var(--honey); border-radius: 999px; }
 @media (max-width: 1099px) { [data-skin="book"] .detail { border-radius: 26px 26px 0 0; box-shadow: 0 -4px 0 var(--honey), 0 -7px 0 var(--ink); } }
 
-/* ТЕМА К2 — «ЛЕЖАНКА»: ночная кухня под тёплой лампой. Тёмный сливовый, мёд и розовый, мягкие подушки.
-   Comfortaa + Nunito. Слоты — круглые, как миски. Раскладка B. */
+
+
 html[data-skin="den"] {
   --bg: #1d1620; --surface: #2a2030; --surface2: #221a28; --ink: #f7eadf; --mute: #bfaab7; --accent: #ff8fa3; --accent-2: #ffcf6a; --focus: #ffcf6a;
   --rc-common: #c9b6c2; --rc-uncommon: #6fdc7a; --rc-rare: #7cc8ff; --rc-epic: #cf9bff; --rc-legendary: #ffcf6a; --up: #8fe39a; --dn: #ff8f8f;
@@ -674,8 +674,8 @@ html[data-skin="den"] body { background: radial-gradient(ellipse 60% 40% at 50% 
 [data-skin="den"] .foot { color: #8a7885; }
 @media (max-width: 1099px) { [data-skin="den"] .detail { border-radius: 32px 32px 0 0; } }
 
-/* ТЕМА К3 — «КОРОБКА»: котики живут в картонной коробке. Крафт-картон, малярный скотч, штампы краской.
-   Rubik Mono One (штамп) + Nunito. Вещи — в ячейках-отсеках. Раскладка C. */
+
+
 html[data-skin="box"] {
   --bg: #b98b55; --surface: #d6ad74; --surface2: #c99d63; --ink: #2e1f12; --mute: #5d4127; --accent: #b8321f; --accent-2: #7e1f12; --focus: #b8321f;
   --rc-common: #5d4127; --rc-uncommon: #24883a; --rc-rare: #1f5fa8; --rc-epic: #6c2fb0; --rc-legendary: #a35a00; --up: #2f6f22; --dn: #b8321f;
@@ -745,12 +745,12 @@ html[data-skin="box"] body { background: repeating-linear-gradient(90deg, rgba(6
 @media (max-width: 1099px) { [data-skin="box"] .detail { border-radius: 8px 8px 0 0; } [data-skin="box"] .detail::before { display: none; } }
 
 
-/* #########################################################
-   ЗЛЫЕ ОБЕЗЬЯНЫ
-   ######################################################### */
 
-/* ТЕМА О1 — «ТАБЛИЧКА»: табличка в джунглях, как карточки обезьян на стриме. Доски, гвозди, банановая плашка, листва.
-   Rubik Dirt (заголовки) + Golos Text. Раскладка A. */
+
+
+
+
+
 html[data-skin="plank"] {
   --bg: #17301b; --surface: #7a4a24; --surface2: #5c3518; --ink: #fff1d6; --mute: #e2c8a0; --accent: #ffd84a; --accent-2: #c9a21f; --focus: #ffd84a;
   --rc-common: #e2d6c0; --rc-uncommon: #6fdc7a; --rc-rare: #7fd0ff; --rc-epic: #d6a2ff; --rc-legendary: #ffd84a; --up: #a8f07a; --dn: #ff8a7a;
@@ -817,8 +817,8 @@ html[data-skin="plank"] body { background: radial-gradient(ellipse 30% 20% at 10
 [data-skin="plank"] .foot, [data-skin="plank"] .tab > .empty { color: #9cc29a; }
 @media (max-width: 1099px) { [data-skin="plank"] .detail { border-radius: 10px 10px 0 0; } }
 
-/* ТЕМА О2 — «ЯРОСТЬ»: злые обезьяны в гневе. Почти чёрный с красным, банановый акцент, срезанные углы, косой крик.
-   Dela Gothic One + Golos Text. Раскладка B. */
+
+
 html[data-skin="rage"] {
   --bg: #140b09; --surface: #22120e; --surface2: #190d0a; --ink: #fff0e4; --mute: #c7a597; --accent: #e0302a; --accent-2: #ffd84a; --focus: #ffd84a;
   --rc-common: #cbb8ac; --rc-uncommon: #6fdc7a; --rc-rare: #5ec8ff; --rc-epic: #c77dff; --rc-legendary: #ffcf4a; --up: #9be15d; --dn: #ff6a5a;
@@ -881,8 +881,8 @@ html[data-skin="rage"] body { background: repeating-linear-gradient(-55deg, rgba
 [data-skin="rage"] .rf .rlv { color: var(--accent-2); font-family: var(--hd); font-weight: 400; }
 @media (max-width: 1099px) { [data-skin="rage"] .detail { clip-path: none; box-shadow: inset 0 4px 0 var(--accent); } }
 
-/* ТЕМА О3 — «КОМИКС»: обезьяний комикс. Банановый фон с растром, белые кадры с толстой обводкой, крик в облачке.
-   Rubik Bubbles (заголовки) + Nunito. Раскладка C. */
+
+
 html[data-skin="comic"] {
   --bg: #ffd84a; --surface: #fffdf6; --surface2: #fff3c4; --ink: #1a120c; --mute: #5a4a3a; --accent: #e0302a; --accent-2: #ff7a1a; --focus: #1f6fe0;
   --rc-common: #6b5d50; --rc-uncommon: #24883a; --rc-rare: #1f6fe0; --rc-epic: #8a2fe0; --rc-legendary: #d77a00; --up: #1d8a3a; --dn: #e8322a;
@@ -956,43 +956,43 @@ html[data-skin="comic"] body { background: radial-gradient(circle, rgba(232,120,
 [data-skin="comic"] .foot, [data-skin="comic"] .tab > .empty { color: #5a4a20; }
 @media (max-width: 1099px) { [data-skin="comic"] .detail { border-width: 4px 0 0; border-radius: 12px 12px 0 0; box-shadow: 0 -6px 0 var(--ink); } }
 
-/* --- «Лежанка»: кошачьи детали --- */
+ 
 html[data-skin="den"] body { background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='%23ffcf6a' fill-opacity='.05'%3E%3Cg transform='translate(28 34) rotate(-18)'%3E%3Cellipse cx='0' cy='6' rx='8' ry='6.5'/%3E%3Ccircle cx='-8' cy='-4' r='3.2'/%3E%3Ccircle cx='-2.6' cy='-8.5' r='3.2'/%3E%3Ccircle cx='3.4' cy='-8.5' r='3.2'/%3E%3Ccircle cx='8.6' cy='-4' r='3.2'/%3E%3C/g%3E%3Cg transform='translate(86 88) rotate(14)'%3E%3Cellipse cx='0' cy='6' rx='8' ry='6.5'/%3E%3Ccircle cx='-8' cy='-4' r='3.2'/%3E%3Ccircle cx='-2.6' cy='-8.5' r='3.2'/%3E%3Ccircle cx='3.4' cy='-8.5' r='3.2'/%3E%3Ccircle cx='8.6' cy='-4' r='3.2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") 0 0 / 120px 120px, radial-gradient(ellipse 60% 40% at 50% -6%, rgba(255,207,106,.22), transparent 70%), var(--bg); }
-/* лапка вместо точки в шапке */
+ 
 [data-skin="den"] .brand .mark { width: 24px; height: 22px; border-radius: 0; box-shadow: none; filter: drop-shadow(0 0 6px rgba(255,207,106,.7));
   background: radial-gradient(ellipse 34% 28% at 50% 72%, var(--accent-2) 98%, transparent), radial-gradient(circle at 14% 34%, var(--accent-2) 13%, transparent 14.5%), radial-gradient(circle at 37% 13%, var(--accent-2) 13%, transparent 14.5%), radial-gradient(circle at 63% 13%, var(--accent-2) 13%, transparent 14.5%), radial-gradient(circle at 86% 34%, var(--accent-2) 13%, transparent 14.5%); }
-/* кошачьи ушки на каждой панели */
+ 
 [data-skin="den"] .panel { position: relative; margin-top: 14px; }
 [data-skin="den"] .panel::before, [data-skin="den"] .panel::after { content: ''; position: absolute; top: -17px; width: 40px; height: 30px; pointer-events: none;
   background: radial-gradient(ellipse 36% 46% at 50% 82%, rgba(255,143,163,.75) 0 60%, transparent 62%), var(--surface); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
 [data-skin="den"] .panel::before { left: 28px; transform: rotate(-14deg); }
 [data-skin="den"] .panel::after { right: 28px; transform: rotate(14deg); }
 [data-skin="den"] .stats .stat, [data-skin="den"] .grp::before { position: relative; }
-/* лампа над сценой и лежанка под котиком */
+ 
 [data-skin="den"] .stage { position: relative; background: radial-gradient(ellipse 36% 30% at 16% 22%, rgba(255,207,106,.3), transparent 75%), var(--surface); }
 [data-skin="den"] .stage .doll::before { content: ''; position: absolute; left: 13%; top: -26px; width: 2px; height: 46px; background: #4a3a50; }
 [data-skin="den"] .stage .doll::after { content: ''; position: absolute; left: calc(13% - 24px); top: 18px; width: 50px; height: 26px; background: linear-gradient(#ffd98a, #e8a83a); clip-path: polygon(28% 0, 72% 0, 100% 100%, 0 100%); filter: drop-shadow(0 8px 14px rgba(255,207,106,.75)); }
 [data-skin="den"] .doll .fig::before { content: ''; position: absolute; z-index: -1; left: 2%; right: 2%; bottom: -10px; height: 26%; border-radius: 50%;
   background: radial-gradient(ellipse at 50% 40%, #7a3f58, #4a2438 70%); box-shadow: inset 0 0 0 5px #8f4d6a, inset 0 0 0 7px rgba(255,255,255,.18), 0 10px 18px rgba(0,0,0,.4); }
 [data-skin="den"] .doll .fig::after { content: ''; position: absolute; z-index: -1; left: 14%; right: 14%; bottom: 4px; height: 12%; border-radius: 50%; border: 2px dashed rgba(255,190,210,.35); }
-/* слоты — кошачьи миски */
+ 
 [data-skin="den"] .slot { position: relative; overflow: visible; }
-/* 23.10 (баг с телефона): подставка — без градиента. Вертикальный linear-gradient с color-mix на маленьком эллипсе
-   телефоны на Android (DPR 2,6–3, растр на видеокарте) рисовали полосами — «строчки» поперёк подставок ШЛЕМ/ДОСПЕХ/АМУЛЕТ.
-   Теперь — ровная заливка, свет сверху и тень снизу — внутренние тени без размытия (их растр ровный при любом DPR) */
+
+
+
 [data-skin="den"] .slot::after { content: ''; position: absolute; left: 12%; right: 12%; bottom: 9%; height: 20%; border-radius: 50% 50% 46% 46% / 40% 40% 60% 60%;
   background: #3b2d44; box-shadow: inset 0 2px 0 rgba(255,255,255,.14), inset 0 -5px 0 rgba(20,14,26,.45); z-index: 0; }
 [data-skin="den"] .slot.full::after { background: color-mix(in srgb, var(--rc) 40%, #3b2d44); }
 [data-skin="den"] .slot .art, [data-skin="den"] .slot .sl { position: relative; z-index: 1; }
-/* опыт — клубок ниток катится по полоске */
+ 
 [data-skin="den"] .bar { overflow: visible; }
 [data-skin="den"] .bar.xp i { position: relative; }
 [data-skin="den"] .bar.xp i::after { content: ''; position: absolute; right: -9px; top: 50%; width: 18px; height: 18px; transform: translateY(-50%) rotate(20deg); border-radius: 50%;
   background: repeating-linear-gradient(60deg, #ffcf6a 0 3px, #e8a83a 3px 5px); box-shadow: 0 0 0 2px #1d1620; }
-/* здоровье — розовая подушечка лапки на конце */
+ 
 [data-skin="den"] .bar.hp i { position: relative; }
 [data-skin="den"] .bar.hp i::after { content: ''; position: absolute; right: -7px; top: 50%; width: 16px; height: 14px; transform: translateY(-50%); border-radius: 50% 50% 45% 45%; background: #ff8fa3; box-shadow: 0 0 0 2px #1d1620; }
-/* выбранная вещь — со следом лапки */
+ 
 [data-skin="den"] .cell[aria-pressed="true"]::after { content: ''; position: absolute; left: 8px; top: 8px; width: 18px; height: 17px; opacity: .9;
   background: radial-gradient(ellipse 34% 28% at 50% 72%, var(--accent-2) 98%, transparent), radial-gradient(circle at 14% 34%, var(--accent-2) 13%, transparent 14.5%), radial-gradient(circle at 37% 13%, var(--accent-2) 13%, transparent 14.5%), radial-gradient(circle at 63% 13%, var(--accent-2) 13%, transparent 14.5%), radial-gradient(circle at 86% 34%, var(--accent-2) 13%, transparent 14.5%); }
 [data-skin="den"] .lg-head, [data-skin="den"] .groups .grp, [data-skin="den"] .ranks { margin-top: 14px; }
@@ -1002,7 +1002,7 @@ html[data-skin="den"] body { background: url("data:image/svg+xml,%3Csvg xmlns='h
 [data-skin="den"] .slot .sl { position: absolute; left: 0; right: 0; bottom: 12%; z-index: 2; color: var(--ink); opacity: .85; font-size: 10px; }
 [data-skin="den"] .slot .art { margin-bottom: 18%; }
 
-/* ================= перетаскивание вещей ================= */
+ 
 [data-drag] { touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 html.is-dragging, html.is-dragging * { cursor: grabbing !important; }
 [data-drag]:not(:disabled) { cursor: grab; }
@@ -1014,7 +1014,7 @@ html.is-dragging, html.is-dragging * { cursor: grabbing !important; }
 .slot.drop-no { opacity: .35; filter: grayscale(.6); }
 .slot.drop-hover { outline-style: solid; transform: scale(1.07); }
 .bag.drop-ok { outline: 3px dashed var(--accent); outline-offset: -8px; }
-/* 24.10: свой порядок сумки — ячейка под вещью подсвечена (вещь встанет на её место) */
+ 
 .grid.ord-on .cell.drop-hover { outline: 3px solid var(--accent); outline-offset: 2px; }
 .bag-h .bag-sort { margin-left: auto; }
 .bag.drop-hover { outline-style: solid; background-image: linear-gradient(color-mix(in srgb, var(--accent) 10%, transparent), color-mix(in srgb, var(--accent) 10%, transparent)); }
@@ -1022,7 +1022,7 @@ html.is-dragging, html.is-dragging * { cursor: grabbing !important; }
 .bag-h .dnd-hint { order: 3; flex-basis: 100%; }
 @media (prefers-reduced-motion: reduce) { .slot.drop-hover { transform: none; } }
 
-/* ================= подсказка при наведении ================= */
+ 
 .tip { position: fixed; left: 0; top: 0; z-index: 75; width: 250px; padding: var(--s3) var(--s4); pointer-events: none;
   background: var(--surface); color: var(--ink); border: 1px solid color-mix(in srgb, var(--rc, var(--ink)) 60%, transparent); border-radius: 10px;
   box-shadow: 0 14px 30px rgba(0,0,0,.4); font-size: var(--t-sm); animation: tip-in .15s var(--ease); }
@@ -1040,16 +1040,16 @@ html.is-dragging, html.is-dragging * { cursor: grabbing !important; }
 .tip .t-eff { margin-top: var(--s2); font-weight: 600; }
 .tip .t-cmp { margin-top: var(--s2); font-size: var(--t-xs); color: var(--mute); }
 @media (prefers-reduced-motion: reduce) { .tip { animation: none; } }
-.tip.over { z-index: 260; }   /* 22.10: подсказка в зале «Города» (окно зала — z-index 200) */
-/* 23.10: подсказка-карточка вещи (наковальня, Склад, лавки «Города»: cardTip): тело — общая itemBody (o.tip), ужато под подсказку */
+.tip.over { z-index: 260; }    
+ 
 .tip.card { max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); max-height: calc(100dvh - 16px); overflow-y: auto; overscroll-behavior: contain; }
 .tip.card.scroll { pointer-events: auto; }
-/* 24.10 (баг тестера): карточка вещи всегда непрозрачная, с тенью и поверх окон (Кузня, залы «Города», окно персонажа) */
+ 
 .tip { background-color: var(--surface, #1c1813); }
-.tip.card { z-index: 270; opacity: 1; box-shadow: 0 14px 34px rgba(0, 0, 0, .55), 0 0 0 1px rgba(0, 0, 0, .25); }   /* 24.10: длинная карточка на телефоне — листается пальцем */
-/* 23.10 (просьба стримера): подсказка вещи — компактнее, главное — характеристики. Имя и строка «редкость · тип»; характеристики — вместе,
-   крупно, на своей подложке (сравнение с надетым — прежние цвета); эффект, аура и заточка — сразу за ними; остальное (.d-q: описание,
-   сравнение с надетым, класс, прочность, история) — мелко и приглушённо, описание — не длиннее двух строк. Одна подложка вместо черт */
+.tip.card { z-index: 270; opacity: 1; box-shadow: 0 14px 34px rgba(0, 0, 0, .55), 0 0 0 1px rgba(0, 0, 0, .25); }    
+
+
+
 .tip { padding: 10px 12px; }
 .tip .t-s { margin-top: 2px; }
 .tip .t-st, .tip.card .d-st { list-style: none; margin: 8px 0 0; padding: 6px 8px; border: 0; border-radius: 8px; background: color-mix(in srgb, var(--ink) 8%, transparent); display: grid; gap: 3px; }
@@ -1062,10 +1062,10 @@ html.is-dragging, html.is-dragging * { cursor: grabbing !important; }
 .tip .d-q:empty { display: none; }
 .tip .d-q :is(p, .lg-lorebox, .lg-desc, .lg-lore, .lg-hist) { margin: 3px 0 0; padding: 0; border: 0; background: none; font-size: 12px; line-height: 1.35; font-weight: 400; color: var(--mute); max-width: none; }
 .tip .d-q > :first-child, .tip .d-q .lg-lorebox > :first-child { margin-top: 0; }
-.tip .d-q :is(.lg-desc, .d-desc, .t-desc) { font-style: italic; opacity: .85; }   /* 24.10 (баг тестера): описание целиком, без «…» */
+.tip .d-q :is(.lg-desc, .d-desc, .t-desc) { font-style: italic; opacity: .85; }    
 .tip .d-q b { color: inherit; font-weight: 700; }
-/* 24.10 (баг тестера): шапка карточки вещи «[Обычное] Щит» - плашка редкости и место на одной линии, одного размера;
-   строки характеристик - значок по центру, числа по правому краю (лавки, сумка, аукцион, Кузня) */
+
+
 .tip .t-s, .d-h, .au-ch { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
 .tip .t-s > *, .d-h > *, .au-ch > * { display: inline-flex; align-items: center; box-sizing: border-box; min-height: 22px; margin: 0; line-height: 1.2; font-size: 12px; vertical-align: middle; transform: none; }
 .tip .t-s > :not(.rar), .d-h > :not(.rar), .au-ch > :not(.rar) { padding: 2px 0; border: 2px solid transparent; border-left: 0; border-right: 0; }
@@ -1075,7 +1075,7 @@ html.is-dragging, html.is-dragging * { cursor: grabbing !important; }
 .tip .t-st li b, .tip.card .d-st li b, .d-st li b { min-width: 3ch; text-align: right; }
 .tip .d-q :is(.d-gear.bad, .d-dur.br, .t-dur.br) { color: var(--dn); }
 .tip .d-q .lg-hist > summary { font-size: 12px; font-weight: 600; }
-/* под стиль каждого варианта */
+ 
 [data-skin="forge"] .tip { background: linear-gradient(180deg, #221c15, #17130f); border-radius: 4px; outline: 1px solid rgba(202,165,92,.18); outline-offset: -5px; }
 [data-skin="forge"] .tip .t-n { font-family: var(--hd); font-weight: 400; font-size: var(--t-lg); }
 [data-skin="forge"] .tip .t-st .i { color: var(--accent); }
@@ -1086,7 +1086,7 @@ html.is-dragging, html.is-dragging * { cursor: grabbing !important; }
 [data-skin="rage"] .tip .t-n { font-family: var(--hd); font-weight: 400; text-transform: uppercase; }
 [data-skin="rage"] .tip .t-st .i { color: var(--accent-2); }
 
-/* ================= ВРЕМЕННО: переключатель стиля сайта ================= */
+ 
 .style-switch { position: fixed; right: calc(16px + env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 70;
   display: flex; align-items: center; gap: 4px; padding: 6px; border-radius: 14px; background: rgba(16,14,20,.92); color: #f2eee6;
   box-shadow: 0 10px 28px rgba(0,0,0,.45); font: 600 13px/1 'Golos Text', system-ui, sans-serif; }
@@ -1097,7 +1097,7 @@ html.is-dragging, html.is-dragging * { cursor: grabbing !important; }
 html.is-dragging .style-switch { display: none; }
 @media (max-width: 520px) { .style-switch { left: 50%; right: auto; transform: translateX(-50%); } .style-switch .ss-l { display: none; } body { padding-bottom: 64px; } }
 
-/* узкие телефоны: шапка без переноса и без прокрутки вбок */
+ 
 .top > * { min-width: 0; }
 .tabs { flex-shrink: 1; }
 @media (max-width: 400px) {
@@ -1112,24 +1112,24 @@ html.is-dragging .style-switch { display: none; }
   html[data-skin] .top .btn.sm { padding-inline: 12px; font-size: 13px; }
 }
 
-/* ---------- легендарки (16.10): золотое сияние ячейки, лучи и эмблема ауры на рисунке, строка ауры ---------- */
+ 
 .d-art { position: relative; }
 .lgx { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 0; overflow: hidden;
   box-shadow: 0 0 0 2px #ffcf5a, 0 0 12px 1px rgba(255, 196, 70, .55), inset 0 0 16px rgba(255, 196, 70, .3); }
-/* 18.10: сияние легендарки — неподвижное в ячейках; «дышит» и бликует только в карточке вещи, и только прозрачностью
-   и сдвигом (их рисует видеокарта, без перерисовки страницы). Раньше пульсировала тень и ехал фон в каждой ячейке —
-   браузер перерисовывал их каждый кадр. Вечером: пульс — шагами (≈5 кадров в секунду), блик пробегает раз в 9 с —
-   в остальное время кадры не рисуются (без видеокарты карточка брала ~7% процессора, теперь ~2%) */
+
+
+
+
 .d-art > .lgx::before { content: ''; position: absolute; inset: 0; border-radius: inherit; box-shadow: 0 0 22px 5px rgba(255, 196, 70, .6), inset 0 0 26px rgba(255, 196, 70, .4); opacity: 0; animation: lgx-glow 3.2s steps(8) infinite; will-change: opacity; }
 .d-art > .lgx::after { content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 40%; background: linear-gradient(105deg, transparent, rgba(255, 244, 200, .2), transparent); transform: translateX(-120%); animation: lgx-sweep 9s linear infinite; will-change: transform; }
 @keyframes lgx-glow { 50% { opacity: 1; } }
 @keyframes lgx-sweep { 15%, 100% { transform: translateX(330%); } }
 @media (prefers-reduced-motion: reduce) { .d-art > .lgx::before, .d-art > .lgx::after { animation: none; } }
-/* 18.10 (вечер): человечек живой, но дешёвый — только transform (дыхание всего рисунка двигает видеокарта, без перерисовки SVG);
-   моргание и взмах оружием — короткие классы от таймера в app.js. Без filter/blur/тени в анимациях и без SMIL.
-   Пауза: человечек вне экрана (.zz), вкладка скрыта (.zz-all), «меньше движения» в системе.
-   Дыхание — шагами (≈3 кадра в секунду, шаг меньше пикселя — глазу плавно): без видеокарты каждый кадр стоит процессора,
-   плавные 60 кадров давали ~10% CPU, шаги — ~3%. Моргание — два кадра (закрыл/открыл), взмах — ~10 кадров в секунду */
+
+
+
+
+
 @media (prefers-reduced-motion: no-preference) {
   .alive > :is(.jl-doodle, .jd-aura-w) { transform-origin: 50% 95%; animation: jd-breathe 4.4s steps(6) infinite; will-change: transform; }
   .alive.zz > :is(.jl-doodle, .jd-aura-w), .zz-all .alive > :is(.jl-doodle, .jd-aura-w) { animation-play-state: paused; }
@@ -1137,25 +1137,25 @@ html.is-dragging .style-switch { display: none; }
   .alive .jl-doodle.blink .jd-eyes { transform-box: fill-box; transform-origin: center; animation: jd-blink .16s steps(1) both; }
   .alive .jl-doodle.sway .jd-weapon { animation: jd-sway 1.6s steps(5); }
   .alive > .jd-ghost { animation-name: jd-float; animation-duration: 3.4s; }
-  /* свой герой с аурой: аура плавная — и дыхание плавное (кадры композиции всё равно идут, шаги только дёргали бы) */
+   
   .alive > .jd-aura-w.au-own { animation-timing-function: ease-in-out; }
-  /* у зрителя без видеокарты (app.js auraSoft) — шагами по общим часам ауры: 0,125 с (18 шагов на половину вдоха) */
+   
   .alive > .jd-aura-w.au-soft { animation-duration: 4.5s; animation-timing-function: steps(18, end); }
 }
-/* 23.10 (баг с телефона): кукла «Персонажа» на телефоне — без «дыхания». Дыхание растягивает рисунок по вертикали (scale 1,018)
-   отдельным слоем видеокарты (will-change: transform): на Android с DPR 2,6–3 растр слоя растягивался с плиточными швами —
-   тонкие пунктирные полоски поперёк головы (там, где у шапки поля). Без слоя рисунок рисуется прямо в страницу — ровно;
-   моргание остаётся. И телефону легче (правило «не грузить ПК зрителей») */
+
+
+
+
 @media (pointer: coarse), (min-resolution: 1.5dppx) {
   .doll .fig.alive > :is(.jl-doodle, .jd-aura-w) { animation: none; will-change: auto; transform: none; }
 }
-/* 19.10: аура своего героя — запечёнными картинками вокруг рисунка (app.js auraLive): свечение позади, искры и нимб впереди.
-   Рисунок — position: relative, чтобы слои легли по порядку: свечение под ним, искры над ним */
+
+
 .jd-aura-w { position: relative; }
 .jd-aura-w > .jl-doodle { position: relative; }
 .jd-aura-l { position: absolute; inset: 0; pointer-events: none; }
-/* запечённые картинки ауры (app.js auraBuild): имя, длительность и задержка анимации — у самой картинки, здесь — линейно,
-   по кругу и на паузе; идут только у видимого (.au-on, не .zz, вкладка не скрыта). Только transform/opacity — без перерисовки */
+
+
 .jd-aura-l > .jd-al { position: absolute; display: block; max-width: none; will-change: transform, opacity; animation-timing-function: linear; animation-iteration-count: infinite; animation-play-state: paused; }
 .au-on:not(.zz) .jd-aura-l > .jd-al { animation-play-state: running; }
 .zz-all .au-on .jd-aura-l > .jd-al { animation-play-state: paused; }
@@ -1172,7 +1172,7 @@ html.is-dragging .style-switch { display: none; }
 .t-au span, .d-au span { display: block; margin-top: 2px; font-size: .82em; font-weight: 500; opacity: .8; }
 [data-skin="sticker"] .cell[data-r="legendary"]::before, [data-skin="den"] .cell[data-r="legendary"]::before { z-index: 1; }
 
-/* ---------- номера в сумке и откат еды/зелий (16.10) ---------- */
+ 
 .cell .no { position: absolute; left: 6px; top: 5px; z-index: 2; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; display: grid; place-items: center;
   font-size: 11px; font-weight: 800; line-height: 1; color: var(--ink, currentColor); background: color-mix(in srgb, currentColor 14%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 22%, transparent); }
 [data-skin="sticker"] .cell .no { left: 26px; }
@@ -1186,7 +1186,7 @@ html.is-dragging .style-switch { display: none; }
 .eatcd-t { display: inline-block; margin-top: 6px; font-weight: 700; }
 .eatcd-t b { font-variant-numeric: tabular-nums; }
 
-/* ================= 17.10: журнал действий ================= */
+ 
 .jr { display: grid; gap: var(--s3); }
 .jr .filters { margin-bottom: 0; }
 .jr .filters small { margin-left: 4px; font-size: .8em; opacity: .7; font-variant-numeric: tabular-nums; }
@@ -1194,7 +1194,7 @@ html.is-dragging .style-switch { display: none; }
 .jr-sum b { color: var(--ink); font-variant-numeric: tabular-nums; }
 .jr-sum b.up, .jr-c.up { color: var(--up); } .jr-sum b.dn, .jr-c.dn { color: var(--dn); }
 .jr-list { list-style: none; margin: 0; padding: 0; display: grid; }
-.jr-page { display: flex; margin: var(--s3) auto 0; }   /* 25.10: «Показать ещё» - следующая страница журнала */
+.jr-page { display: flex; margin: var(--s3) auto 0; }    
 .jr-day { padding: var(--s3) 0 var(--s1); font-size: var(--t-xs); font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--mute); }
 .jr-e { display: grid; grid-template-columns: 48px 92px minmax(0, 1fr) auto; align-items: baseline; gap: var(--s1) var(--s3); padding: var(--s2) 0; border-top: 1px solid color-mix(in srgb, var(--ink) 12%, transparent); }
 .jr-day + .jr-e { border-top: 0; }
@@ -1207,9 +1207,9 @@ html.is-dragging .style-switch { display: none; }
 .jr-c { font-weight: 700; } .jr-c .m, .jr-c .m b { color: inherit; }
 .jr-x { color: var(--mute); font-weight: 700; }
 .jr .foot { margin: 0; }
-/* 31.10 (feat/hw-pass-claim): кнопка «Забрать» у записи журнала с наградой */
+ 
 .jr-cl { min-height: 36px; padding: var(--s1) var(--s4); white-space: nowrap; }
-/* 23.10: журнал — внутри «Персонажа»: вид на всю ширину и короткий список последних записей под характеристиками */
+ 
 .jr-wrap > .views { justify-content: center; margin: 0 0 var(--s4); }
 .jr-mini { display: grid; gap: var(--s2); padding-top: var(--s3); border-top: 1px solid color-mix(in srgb, var(--ink) 14%, transparent); min-width: 0; }
 .jr-mh { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s3); }
@@ -1231,12 +1231,12 @@ html.is-dragging .style-switch { display: none; }
   .jr-m { grid-column: 1 / -1; justify-content: flex-start; }
 }
 
-/* 17.10: особые вещи (Печать Метаморфозы) — описание и пометка «пока недоступно» */
+ 
 .d-desc { margin-top: var(--s3); font-size: var(--t-sm); line-height: 1.5; color: #dccbff; font-style: italic; }
 .tip .t-desc { margin-top: var(--s2); font-size: 13px; line-height: 1.45; color: #dccbff; font-style: italic; max-width: 300px; }
 .note.relicn { color: #e7c8ff; border-color: rgba(199, 139, 255, .45); }
 
-/* ================= 17.10: страница ошибки (вход не удался, нет страницы и т.п.) — во всех темах ================= */
+ 
 .errp { min-height: 100vh; display: flex; flex-direction: column; }
 .errp .top .brand { color: inherit; text-decoration: none; }
 .err { flex: 1; display: grid; place-items: center; padding: var(--s6) var(--s4) var(--s7); }
@@ -1258,9 +1258,9 @@ html.is-dragging .style-switch { display: none; }
 @media (max-width: 480px) { .err h1 { font-size: var(--t-2xl); } .err-btns .btn { flex: 1 1 100%; } .err-art { width: 120px; height: 120px; } }
 @media (prefers-reduced-motion: reduce) { .err-sparks circle { animation: none; opacity: .7; } }
 
-/* ================= 17.10: соц. рейтинг — строка у героя и вкладка «Соц. рейтинг» (во всех темах) ================= */
+ 
 .socl { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin-top: var(--s2); font-size: var(--t-sm); color: var(--mute); }
-button.socl { width: 100%; background: none; border: 0; padding: 0; font: inherit; font-size: var(--t-sm); color: var(--mute); text-align: left; cursor: pointer; }   /* 23.10: строка рейтинга ведёт в «Легион (рейтинг)» */
+button.socl { width: 100%; background: none; border: 0; padding: 0; font: inherit; font-size: var(--t-sm); color: var(--mute); text-align: left; cursor: pointer; }    
 button.socl:hover .sr-r, button.socl:focus-visible .sr-r { text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 3px; }
 .lg-views { justify-content: center; margin: 0 0 var(--s4); }
 #lgRoster[hidden], #lgSoc[hidden] { display: none; }
@@ -1279,7 +1279,7 @@ button.socl:hover .sr-r, button.socl:focus-visible .sr-r { text-decoration: unde
 .soc-me.bad b { color: var(--dn, #ff7a6e); }
 .srl { list-style: none; margin: var(--s3) 0 0; padding: 0; display: grid; gap: 2px; }
 .srl.tail { margin-top: var(--s3); padding-top: var(--s3); border-top: 1px dashed var(--line); }
-.soc-nh { margin: var(--s4) 0 0; padding-top: var(--s3); border-top: 1px dashed var(--line); font-size: var(--t-md); color: var(--mute); }   /* 21.10: соседи по рейтингу */
+.soc-nh { margin: var(--s4) 0 0; padding-top: var(--s3); border-top: 1px dashed var(--line); font-size: var(--t-md); color: var(--mute); }    
 .srl.tail.nh { margin-top: var(--s2); padding-top: 0; border-top: 0; }
 .sr { display: grid; grid-template-columns: 44px minmax(0, 1fr) minmax(0, auto) 64px; align-items: center; gap: var(--s3); padding: 7px var(--s3); background: var(--surface2); }
 .sr .sp { font-variant-numeric: tabular-nums; color: var(--mute); text-align: right; font-weight: 700; }
@@ -1293,22 +1293,22 @@ button.socl:hover .sr-r, button.socl:focus-visible .sr-r { text-decoration: unde
 .sr.me { outline: 2px solid var(--accent); outline-offset: -2px; }
 @media (max-width: 560px) { .sr { grid-template-columns: 32px minmax(0, 1fr) 54px; } .sr .sk { grid-column: 2 / 3; grid-row: 2; } .sr .ss { grid-row: 1 / span 2; grid-column: 3; } .sr .sp { grid-row: 1 / span 2; } }
 
-/* 17.10: четыре вкладки — на узком экране не наезжают на «Выйти»: прокручиваются, «Соц. рейтинг» → «Рейтинг» */
+ 
 .tabs button { white-space: nowrap; flex: none; }
 @media (max-width: 720px) {
   .tabs { flex: 1 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
   .tabs::-webkit-scrollbar { display: none; }
   .user { flex: none; }
 }
-/* 18.10: на узком экране — короткая подпись отдельным словом (через ::first-letter буква иногда пропадала: «ейтинг») */
+ 
 .tabs .tws { display: none; }
 @media (max-width: 520px) { .tabs .tw { display: none; } .tabs .tws { display: inline; } }
-/* 18.10: переключатель стиля не перекрывает карточку вещи на телефоне — уходит под шторку и прячется, пока она открыта */
+ 
 @media (max-width: 1099px) { .style-switch { z-index: 39; } }
 body:has(.detail.open) .style-switch, body:has(.scrim.open) .style-switch { opacity: 0; visibility: hidden; pointer-events: none; }
 .style-switch { transition: opacity .2s, visibility .2s; }
 
-/* ---------- 18.10: выбранная вещь — светлая рамка цвета текста, а не золотая: золото — это легендарка ---------- */
+ 
 html[data-skin] .cell[aria-pressed="true"], html[data-skin] .slot[aria-pressed="true"] { outline: 2px solid var(--ink); outline-offset: 3px; }
 html[data-skin="forge"] .cell[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 2px 12px rgba(0,0,0,.75); }
 html[data-skin="forge"] .slot[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 2px 10px rgba(0,0,0,.7); }
@@ -1317,18 +1317,18 @@ html[data-skin="den"] .slot[aria-pressed="true"] { box-shadow: inset 0 3px 10px 
 html[data-skin="rage"] .cell[aria-pressed="true"] { box-shadow: inset 0 -4px 0 var(--rc), inset 0 0 0 3px var(--ink); }
 html[data-skin="rage"] .slot[aria-pressed="true"] { box-shadow: inset 0 0 0 3px var(--ink); }
 
-/* ---------- 18.10: «К содержимому» (для клавиатуры) — сверху по центру, поверх шапки, не на месте логотипа ---------- */
+ 
 .skip { position: fixed; left: 50%; top: 6px; transform: translate(-50%, -160%); opacity: 0; pointer-events: none; border-radius: 8px; font-weight: 700; box-shadow: 0 6px 18px rgba(0,0,0,.35); transition: transform .15s var(--ease), opacity .15s; }
 .skip:focus { left: 50%; transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
 
-/* ---------- 18.10: «Снаряжение | Облик» в центре вкладки «Персонаж» ---------- */
+ 
 .stage .views { justify-content: center; margin: 0 0 var(--s3); }
-/* 19.10: «Боевой / Походный» под куклой — тот же вид кнопок, что у переключателя «Снаряжение / Облик» */
-.stage .kit { justify-content: center; margin: var(--s2) 0 0; position: relative; z-index: 3; }   /* 19.10: поверх куклы — у котиков (den) фигура с подставкой свисает на кнопки и перехватывала нажатия */
-.lookv { display: grid; grid-template-columns: minmax(120px, 170px) minmax(0, 1fr); gap: var(--s3); align-items: start; }   /* 20.10: человечку — до 170 px, остальное — кнопкам */
+ 
+.stage .kit { justify-content: center; margin: var(--s2) 0 0; position: relative; z-index: 3; }    
+.lookv { display: grid; grid-template-columns: minmax(120px, 170px) minmax(0, 1fr); gap: var(--s3); align-items: start; }    
 .lookv .fig { position: relative; max-width: 230px; width: 100%; margin: 0 auto; }
 .lookv .fig svg { display: block; width: 100%; height: auto; }
-/* 20.10: компактнее — подпись слева в одну строку с кнопками (ПК), на телефоне — над кнопками; кнопки ниже и плотнее */
+ 
 .lk { display: grid; gap: var(--s2); min-width: 0; align-content: start; container-type: inline-size; }
 .lk .note { margin: 0; }
 .lk .lk-tip { font-size: var(--t-xs); color: var(--mute); }
@@ -1342,7 +1342,7 @@ html[data-skin="rage"] .slot[aria-pressed="true"] { box-shadow: inset 0 0 0 3px 
 .lk-fxs { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 4px 0 6px; }
 .lk-fx { display: inline-flex; align-items: center; gap: 5px; }
 .lk-fx b { font-weight: 600; color: var(--ink); }
-/* узкая колонка (сайт с боковыми панелями, телефон) — подпись над кнопками */
+ 
 @container (max-width: 400px) { .lk-f { grid-template-columns: minmax(0, 1fr); gap: 3px; } }
 .lk-fx .sw { width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 0 1px rgba(0,0,0,.4); flex: none; }
 .lk-c.filters button:disabled { opacity: .5; cursor: not-allowed; }
@@ -1351,60 +1351,60 @@ html[data-skin="rage"] .slot[aria-pressed="true"] { box-shadow: inset 0 0 0 3px 
 .lk-c .sw { width: 14px; height: 14px; border-radius: 50%; box-shadow: 0 0 0 1px rgba(0,0,0,.4), inset 0 0 0 1px rgba(255,255,255,.25); flex: none; }
 @media (max-width: 640px) { .lookv { grid-template-columns: 1fr; gap: var(--s2); } .lookv .fig { max-width: 150px; } }
 
-/* ---------- 18.10: крестик карточки вещи — поверх рисунка (рисунок легендарки перекрывал его на телефоне — карточка «не закрывалась»);
-   на широком экране — тоже есть: снимает выбор ---------- */
+
+
 .detail .x { z-index: 5; color: var(--mute); }
 .detail .x:hover { color: var(--ink); }
 @media (min-width: 1100px) { .detail:not([data-none]) .x { display: grid; place-items: center; position: absolute; top: 6px; right: 6px; width: 36px; height: 36px; border: 0; background: none; } }
 
-/* 18.10: на телефоне разделы шапки не обрезаются («Рейт…») и не наезжают на «Выйти»: лента вкладок прокручивается вбок,
-   у «Арсенала» (forge) буквы уже — широкая разрядка не помещалась в 390 px */
+
+
 @media (max-width: 520px) {
   .tabs { flex: 1 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: none; }
   .tabs::-webkit-scrollbar { display: none; }
   .tabs button { flex: 0 0 auto; white-space: nowrap; }
   .top .user { flex: 0 0 auto; }
   html[data-skin] .top .tabs button { letter-spacing: .02em; font-size: 12.5px; padding-inline: 7px; }
-  /* знак Легиона на телефоне не нужен — место нужнее всем четырём вкладкам и «Выйти» */
+   
   .top .brand { display: none; }
   .top .user .btn, .top .user button { padding-inline: 10px; }
 }
 
-/* ================= 18.10: режим стримера — пульт стримера внутри сайта =================
-   Пульт во фрейме — слева на всю оставшуюся ширину и всю высоту окна; разделы — колонкой справа (те же кнопки, что фильтры
-   сумки: у каждого оформления свои), по группам. Узко (док OBS, телефон) — полоса справа, список открывается поверх пульта.
-   Сам пульт перекрашивается своей темой (public/platform/skin.css) под текущее оформление. */
+
+
+
+
 .tabs button[hidden], .sm-frame[hidden] { display: none !important; }
 body.sm-on main { max-width: none; padding: 0; }
-/* одна прокрутка: страница в режиме стримера ровно в окно (шапка + пульт), прокручивается только пульт во фрейме */
+ 
 body.sm-on { overflow: hidden; padding-bottom: 0 !important; }
 .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .sm-wrap { --sm-col: 236px; --sm-h: calc(100vh - var(--sm-top, 72px)); position: relative; display: grid; grid-template-columns: var(--sm-col) minmax(0, 1fr); }
 @supports (height: 100dvh) { .sm-wrap { --sm-h: calc(100dvh - var(--sm-top, 72px)); } }
 .sm-body { position: relative; height: var(--sm-h); min-height: 240px; }
-/* без color-mix — запасные значения: док-панель OBS бывает на старом Chromium */
+ 
 .sm-side { position: relative; z-index: 6; height: var(--sm-h); min-height: 240px; border-right: 1px solid rgba(255,255,255,.08); border-right-color: var(--line, color-mix(in srgb, var(--ink) 12%, transparent)); background: rgba(0,0,0,.18); background: color-mix(in srgb, var(--surface2) 72%, transparent); }
 .sm-list { display: flex; flex-direction: column; gap: var(--s3); height: 100%; padding: var(--s3); overflow-y: auto; overscroll-behavior: contain; }
-/* список кнопок: поле в 4 px — рамка фокуса с клавиатуры не обрезается прокруткой */
-.filters.sm-nav { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: var(--s2); margin: 0; padding: 6px; }   /* 6 px — рамка фокуса (3 + 2 px) не обрезается прокруткой */
+ 
+.filters.sm-nav { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: var(--s2); margin: 0; padding: 6px; }    
 .filters.sm-nav button { display: flex; align-items: center; gap: var(--s2); width: 100%; min-height: 40px; text-align: left; white-space: normal; line-height: 1.2; }
 .filters.sm-nav button:active:not([aria-pressed="true"]) { transform: translateY(1px); }
 .sm-nav button[aria-pressed="true"] { cursor: default; }
 .sm-t { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
 .sm-gh { display: flex; align-items: center; margin: var(--s2) 0 0; padding: 0 var(--s1); color: var(--mute); font: 700 var(--t-xs)/1.4 var(--hd, inherit); letter-spacing: .08em; text-transform: uppercase; }
 .sm-gh .sm-adm { text-transform: none; }
-/* 20.10: подпись группы — кнопка «свернуть / развернуть» */
+ 
 button.sm-gh { width: 100%; gap: 6px; min-height: 30px; background: transparent !important; border: 0 !important; box-shadow: none !important; cursor: pointer; text-align: left; justify-content: flex-start; border-radius: 8px; }
 button.sm-gh:hover { color: var(--ink); }
 .sm-chev { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; transition: transform .2s var(--ease, ease); }
 button.sm-gh[aria-expanded="false"] .sm-chev { transform: rotate(-90deg); }
-/* 18.10: «Готовность»: пока не всё готово — первой, со счётчиком; потом — строкой с галочкой в конце */
+ 
 .sm-cnt, .sm-menu-cnt { font-variant-numeric: tabular-nums; }
 .sm-cnt { flex: none; display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--dn); color: #fff; font: 800 12px/1 var(--tx, inherit); letter-spacing: 0; }
 .sm-ready-ok { color: var(--up) !important; }
 .sm-ready-ok svg { flex: none; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
 .sm-ready-ok[aria-pressed="true"] { color: inherit !important; }
-/* 19.10: выключенные у канала разделы — серым (видны по «Показать выключенные» или пока открыт); сама строка — неброская, как подпись */
+ 
 .sm-nav button.sm-off:not([aria-pressed="true"]) { color: var(--mute); opacity: .62; }
 .sm-nav button.sm-off:not([aria-pressed="true"]):hover { opacity: .9; }
 .sm-nav button.sm-off[aria-pressed="true"] .sm-t { opacity: .75; }
@@ -1413,19 +1413,19 @@ button.sm-gh[aria-expanded="false"] .sm-chev { transform: rotate(-90deg); }
 .sm-sep { flex: none; height: 1px; margin: var(--s1) var(--s1); background: currentColor; opacity: .14; }
 .sm-dock { flex: none; margin-top: auto; width: 100%; min-height: 40px; height: auto; padding-inline: var(--s3) !important; white-space: normal; line-height: 1.25; text-align: center; }
 .sm-dock.sm-donwin { margin-top: 0; }
-/* 25.10: переключатель пультов «Поход Легиона | MultiDonate» и ссылка «Готовность →» (раздел — в пульте MultiDonate) */
+ 
 .sm-switch { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: 2px; padding: 3px; border-radius: 10px; background: color-mix(in srgb, var(--ink) 8%, transparent); }
 .sm-switch > * { display: flex; align-items: center; justify-content: center; min-height: 34px; padding: 4px 6px; border-radius: 8px; font: 700 var(--t-xs)/1.15 var(--hd, inherit); text-align: center; color: var(--mute); text-decoration: none; overflow-wrap: anywhere; }
 .sm-switch a:hover { color: var(--ink); background: color-mix(in srgb, var(--ink) 8%, transparent); }
 .sm-switch [aria-current] { background: var(--accent); color: var(--accent-ink, #1a1400); }
-/* 28.10 (fix/style-live): «Стиль канала: X» и замок стиля - всегда на виду в режиме стримера */
+ 
 .sm-style { flex: none; margin: 0; padding: 2px var(--s2); color: var(--mute); font-size: var(--t-xs); line-height: 1.35; }
 .sm-style b { color: var(--ink, inherit); }
 .sm-rd { flex: none; display: flex; align-items: center; gap: var(--s2); min-height: 32px; padding: 0 var(--s2); border-radius: 8px; color: var(--mute); font-size: var(--t-xs); text-decoration: none; }
 .sm-rd:hover { color: var(--ink); background: color-mix(in srgb, var(--ink) 6%, transparent); }
 .sm-rd.is-bad { color: var(--ink); }
-.sm-rd.is-ok svg { flex: none; width: 16px; height: 16px; fill: none; stroke: var(--up); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }   /* «Открыть окно последних донатов» — самой первой строкой меню */
-/* «Мятеж»: фон кнопок фильтров совпадает с колонкой — здесь они цвета его «призрачных» кнопок, чтобы читались кнопками */
+.sm-rd.is-ok svg { flex: none; width: 16px; height: 16px; fill: none; stroke: var(--up); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }    
+ 
 html[data-skin="rage"] { --chip: #3a1d17; --chip-h: #4d261e; }
 [data-skin="rage"] .sm-nav button:not([aria-pressed="true"]) { background: var(--chip); }
 [data-skin="rage"] .sm-nav button:not([aria-pressed="true"]):hover { background: var(--chip-h); }
@@ -1435,13 +1435,13 @@ html[data-skin="rage"] { --chip: #3a1d17; --chip-h: #4d261e; }
 .sm-frame.ready iframe { opacity: 1; }
 .sm-wait { position: absolute; inset: 0; display: grid; place-items: center; color: var(--mute); font-size: var(--t-sm); }
 .sm-frame.ready .sm-wait { display: none; }
-/* док-панель OBS: без шапки сайта */
+ 
 html.dock .top, html.dock .skip { display: none; }
 html.dock body { min-height: 0; }
 @media (max-width: 900px) { .sm-wrap { --sm-col: 200px; } .sm-list { padding: var(--s2); } }
 
-/* узко (док OBS 300–500 px, телефон): полоса 48 px — кнопка «Разделы» со счётчиком «Готовности» и название раздела;
-   список выезжает поверх пульта (пульт не сжимается), выбор раздела его закрывает */
+
+
 @media (max-width: 680px) {
   .sm-wrap { --sm-col: 48px; }
   .sm-side { display: flex; flex-direction: column; align-items: center; gap: var(--s2); padding: var(--s2) 0; }
@@ -1459,7 +1459,7 @@ html.dock body { min-height: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .sm-frame iframe, .sm-list, .sm-menu { transition: none !important; } }
 
-/* 18.10: полоса прокрутки колонки разделов — в цветах оформления, тонкая (без серой системной) */
+ 
 .sm-list { scrollbar-width: thin; scrollbar-color: var(--accent) transparent; scrollbar-color: color-mix(in srgb, var(--accent) 70%, transparent) transparent; }
 .sm-list::-webkit-scrollbar { width: 6px; }
 .sm-list::-webkit-scrollbar-track { background: transparent; }
@@ -1467,8 +1467,8 @@ html.dock body { min-height: 0; }
 .sm-list::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 .sm-list::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
 
-/* ================= 18.10: переключатель стримеров (шапка) и «Мои каналы» (меню ника) =================
-   Кнопка — тихая, в цветах оформления; список — всплывающая карточка под ней (токены оформления, свои углы у каждого). */
+
+
 .chsw { display: inline-flex; align-items: center; gap: 6px; flex: 0 1 auto; min-width: 0; max-width: 220px; min-height: 36px; padding: 4px 10px 4px 8px;
   border: 1px solid var(--line, color-mix(in srgb, var(--ink) 18%, transparent)); border-radius: var(--pop-r, 10px); background: transparent; color: var(--ink);
   font: 700 var(--t-sm)/1.1 var(--tx, inherit); cursor: pointer; transition: background .2s var(--ease), border-color .2s var(--ease); }
@@ -1492,7 +1492,7 @@ html.dock body { min-height: 0; }
 .pop-ch:hover, .pop-ch:focus-visible { background: color-mix(in srgb, var(--ink) 8%, transparent); }
 .pop-ch[aria-current="page"] { color: var(--accent); }
 .pop-n { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-:root { --live: #eb0400; --live-ink: #ff5a4f; --live-halo: rgba(235,4,0,.22); }   /* «в эфире» — красный Twitch, во всех оформлениях один */
+:root { --live: #eb0400; --live-ink: #ff5a4f; --live-halo: rgba(235,4,0,.22); }    
 .pop-live { flex: none; display: inline-flex; align-items: center; gap: 5px; color: var(--live-ink); font-size: var(--t-xs); font-weight: 800; }
 .pop-live i { width: 8px; height: 8px; border-radius: 50%; background: var(--live); box-shadow: 0 0 0 3px var(--live-halo); }
 .pop-here { margin-left: 6px; color: var(--mute); font-size: var(--t-xs); font-weight: 600; }
@@ -1504,7 +1504,7 @@ html.dock body { min-height: 0; }
 .pop-a a:hover, .pop-a a:focus-visible { border-color: var(--accent); color: var(--accent); }
 .pop-e { margin: var(--s2); color: var(--mute); font-size: var(--t-sm); }
 .pop-sep { margin: var(--s2) 0; border: 0; border-top: 1px solid var(--line, color-mix(in srgb, var(--ink) 12%, transparent)); }
-/* углы — как у оформления */
+ 
 html[data-skin="forge"] { --pop-r: 4px; }
 html[data-skin="den"] { --pop-r: 16px; }
 html[data-skin="rage"] { --pop-r: 2px; }
@@ -1512,29 +1512,29 @@ html[data-skin="rage"] { --pop-r: 2px; }
 [data-skin="rage"] .chsw { font-family: var(--hd); font-weight: 400; text-transform: uppercase; font-size: 12px; }
 [data-skin="rage"] .pop { box-shadow: inset 0 3px 0 var(--accent), 0 18px 44px rgba(0,0,0,.5); }
 @media (prefers-reduced-motion: reduce) { .pop { animation: none; } .chsw .chv, .whob .chv { transition: none; } }
-/* шапке тесно (вкладки широкими шрифтами оформлений): имя канала — только в подсказке и в списке, кнопка — значок со стрелкой */
+ 
 @media (max-width: 1360px) { .chsw .chsw-n { display: none; } .chsw { padding-inline: 8px; } }
-/* телефон: только значок (имя канала — в подсказке и в списке); «Мой канал» — в списке стримеров */
+ 
 @media (max-width: 520px) {
   .chsw { flex: none; padding: 0; width: 38px; justify-content: center; }
   .chsw .chsw-n, .chsw .chv { display: none; }
-  .mych, .whob { display: none; }   /* ник на телефоне скрыт и раньше; «Мои каналы» — в том же списке стримеров */
+  .mych, .whob { display: none; }    
 }
-/* 18.10: вкладок в шапке стало больше («Новости», переключатель стримеров) — на любой ширине лента вкладок не наезжает на ник
-   и «Выйти»: она сжимается и прокручивается вбок (как на телефоне), выбранная вкладка показывается целиком (tabSeen) */
+
+
 .top .tabs { flex: 1 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: none; }
 .top .tabs::-webkit-scrollbar { display: none; }
 .top .tabs button { flex: 0 0 auto; white-space: nowrap; }
 .top .user { flex: 0 0 auto; }
 .top .brand, .top .chsw { flex-shrink: 0; }
 
-/* 19.10: значок звания у ника (награды платформы, «Первопроходец Легиона» и т. п.): маленький, в цвет темы, с подсказкой.
-   Оттенок — класс aw-<tone>; вид рамки — как у остальных деталей темы (плакат — штамп, кузня — тонкая рамка, наклейка — белый кант) */
+
+
 .awb { display: inline-grid; place-items: center; width: 1.45em; height: 1.45em; margin-left: .35em; vertical-align: .14em; font: 700 clamp(10px, .55em, 20px)/1 var(--tx); border-radius: 50%; background: var(--aw-bg); color: var(--aw-fg); cursor: help; flex: 0 0 auto; user-select: none; }
 .awb > svg { display: block; width: 62%; height: 62%; }
 .awb:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .aw-pioneer { --aw-bg: var(--rc-rare); --aw-fg: #fff; }
-/* 23.10: подсказка значка звания — окошко у значка (app.js awPop): тап/клик, у мыши — наведение; тап мимо, Esc, 4 с — закрывается */
+ 
 .awpop { position: fixed; left: 0; top: 0; z-index: 80; max-width: min(260px, calc(100vw - 16px)); padding: var(--s2) var(--s3); pointer-events: none;
   background: var(--surface); color: var(--ink); border: 1px solid color-mix(in srgb, var(--ink) 35%, transparent); border-radius: 10px;
   box-shadow: 0 10px 24px rgba(0,0,0,.35); font: 400 var(--t-sm)/1.35 var(--tx, system-ui); animation: tip-in .15s var(--ease); }
@@ -1550,7 +1550,7 @@ html[data-skin="rage"] { --pop-r: 2px; }
 .nw-ch .awb { font-size: 10px; }
 
 
-/* ================= 20.10: заточка — «+N» на вещи и окно Кузни (все цвета — из переменных темы) ================= */
+ 
 .cell .en { position: absolute; left: 6px; bottom: 34px; padding: 0 6px; border-radius: 6px; font-size: var(--t-xs); font-weight: 800; font-variant-numeric: tabular-nums;
   background: var(--surface2, rgba(0,0,0,.3)); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .d-en { display: flex; align-items: center; gap: var(--s2); margin-top: var(--s3); font-size: var(--t-sm); font-weight: 700; color: var(--accent); }
@@ -1588,7 +1588,7 @@ html[data-skin="rage"] { --pop-r: 2px; }
 .fg-more > * + * { margin-top: var(--s2); }
 .fg-buy { display: flex; flex-wrap: wrap; gap: var(--s2); }
 .fg-buy .btn { flex: 1 1 180px; }
-/* итог: крупно, коротко; анимация — один раз, только transform/opacity */
+ 
 .fg-res { min-height: 0; text-align: center; }
 .fg-res:empty { display: none; }
 .fg-res b { display: block; font-size: var(--t-3xl); line-height: 1.05; font-variant-numeric: tabular-nums; }
@@ -1609,7 +1609,7 @@ html[data-skin="rage"] { --pop-r: 2px; }
   .fg-q { grid-template-columns: 1fr 1fr; } .fg-q div:last-child { grid-column: 1 / -1; }
 }
 @media (prefers-reduced-motion: reduce) { .fg-res.go, .fg-art.work .art, .fg-fx { animation: none; } .fg-fx { display: none; } }
-/* 20.10: характеристики второго ряда — крит, уклонение, пробивание… (окно персонажа; видны тестерам, пока не открыты всем) */
+ 
 .xst { display: grid; gap: var(--s2); }
 .xst-h { margin: 0; display: flex; align-items: center; gap: var(--s2); font-size: var(--t-xs); font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--mute); }
 .xst-b { padding: 1px 7px; border: 1px solid currentColor; border-radius: 99px; font-size: 10px; letter-spacing: .08em; }
@@ -1621,19 +1621,19 @@ html[data-skin="rage"] { --pop-r: 2px; }
 .xstats .stat.capped dd::after { content: ' · потолок'; font-size: var(--t-xs); font-weight: 700; color: var(--mute); }
 .tip .t-cap { margin-top: var(--s2); font-size: var(--t-xs); color: var(--mute); }
 
-/* ================= 22.10: прочность снаряжения — «повреждена» / «сломана» на вещи, строка в карточке, «починить всё» ================= */
+ 
 .cell .dur, .slot .dur { position: absolute; right: 6px; top: 6px; z-index: 2; padding: 0 5px; border-radius: 6px; font-size: 11px; font-weight: 800; font-variant-numeric: tabular-nums;
   background: var(--surface2, rgba(0,0,0,.3)); color: color-mix(in srgb, var(--dn) 55%, var(--ink)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dn) 55%, transparent); }
-.cell .dur { top: auto; bottom: 34px; }   /* вверху справа — «лучше надетого», внизу слева — заточка; стопок у снаряжения нет */
+.cell .dur { top: auto; bottom: 34px; }    
 .cell .dur.br, .slot .dur.br { background: var(--dn); color: #fff; box-shadow: none; }
 .d-dur { margin-top: var(--s3); font-size: var(--t-sm); color: color-mix(in srgb, var(--dn) 55%, var(--ink)); }
 .d-dur.br { color: var(--dn); }
-.d-dur.ok { color: var(--mute); }   /* аукцион: целая вещь — «прочность 100%» */
+.d-dur.ok { color: var(--mute); }    
 .d-a .rep-btn { margin-top: var(--s3); }
 .repl { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2); margin-top: var(--s2); padding: var(--s2) var(--s3); border-radius: 8px;
   border: 2px solid color-mix(in srgb, var(--dn) 50%, transparent); font-size: var(--t-sm); }
 .repl.br { border-color: var(--dn); }
-.repl .btn { min-height: 44px; flex-wrap: wrap; row-gap: 0; text-align: center; }   /* 24.10: в узкой колонке «Починить всё —» и цена переносятся строками, а не сжимаются в столбики */
+.repl .btn { min-height: 44px; flex-wrap: wrap; row-gap: 0; text-align: center; }    
 .t-dur { margin: var(--s1) 0 0; font-size: var(--t-xs); font-weight: 700; color: color-mix(in srgb, var(--dn) 55%, var(--ink)); }
 .t-dur.br { color: var(--dn); }
 .rep-box { display: grid; gap: var(--s2); margin-bottom: var(--s3); }
@@ -1645,13 +1645,13 @@ html[data-skin="rage"] { --pop-r: 2px; }
 .rep-list li em.br { color: var(--dn); }
 .rep-list .btn { min-height: 44px; }
 
-/* 22.10: склад — ячейки сумки (у кого открыт склад) */
+ 
 .bag-cnt { font-variant-numeric: tabular-nums; } .bag-cnt.full { color: var(--dn, #c81e17); } .bag-cnt.near { color: var(--warn, #b7791f); }
 .cell .cnt .cc { font-style: normal; } @media (max-width: 600px) { .cell .cnt .cc { display: none; } }
 .bag .grid .cell.free { border: 2px dashed color-mix(in srgb, var(--line, #888) 70%, transparent); background: transparent; box-shadow: none; opacity: .5; pointer-events: none; }
 .bag-full { margin: 0 0 8px; color: var(--dn, #c81e17); font-weight: 700; }
 
-/* 23.10: «Поход» — первая вкладка, пока у стримера открыт поход; выделена, чтобы сразу было видно, куда идти */
+ 
 .tabs button.tab-quest[data-tab] { display: inline-flex; align-items: center; gap: 6px; background: #b3261e; color: #fff; border-radius: 6px; font-weight: 800; border-bottom-color: transparent; }
 .tabs button.tab-quest[data-tab][hidden] { display: none; }
 .tabs button.tab-quest[data-tab]::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #fff; animation: tabLive 1.6s ease-in-out infinite; }
@@ -1659,12 +1659,12 @@ html[data-skin="rage"] { --pop-r: 2px; }
 .tabs button.tab-quest[data-tab][aria-current] { background: #d0342a; color: #fff; box-shadow: inset 0 -3px 0 rgba(255,255,255,.75); }
 @keyframes tabLive { 50% { opacity: .25; } }
 @media (prefers-reduced-motion: reduce) { .tabs button.tab-quest[data-tab]::before { animation: none; } }
-/* 23.10: герой в походе — «Город» в списке, но не открывается */
+ 
 .tabs button.tab-lock[data-tab] { opacity: .45; cursor: not-allowed; }
 .tab-note { position: fixed; z-index: 60; max-width: 260px; padding: 6px 10px; border-radius: 6px; background: #1d1b17; color: #fff; font: 600 13px/1.3 var(--tx, sans-serif); box-shadow: 0 4px 14px rgba(0,0,0,.35); pointer-events: none; }
 .tab-note[hidden] { display: none; }
 
-/* 23.10: окно персонажа — переключатель «Боевые характеристики / Ремесло» и список ремёсел */
+ 
 .xst-h .xst-t { padding: 2px 0; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--mute); font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; }
 .xst-h .xst-t[aria-selected="true"] { color: var(--ink); border-bottom-color: currentColor; }
 .xst-h .xst-t:hover { color: var(--ink); }
@@ -1677,17 +1677,17 @@ html[data-skin="rage"] { --pop-r: 2px; }
 .bar.craft-bar { height: 6px; }
 .craft-n { margin: 0; font-size: var(--t-xs); }
 
-/* 23.10: «Точно выйти?» — второе нажатие выходит */
+ 
 #out.warn { color: #fff; background: #b3261e; border-color: #b3261e; }
 
-/* 24.10: телефон — кнопки-фильтры («Снаряжение / Облик / Навыки», сумка, «Состав / Соц. рейтинг») и вкладки характеристик — не ниже 40px */
+ 
 @media (max-width: 520px) {
   .filters button, .filters.cls button { min-height: 40px; }
   .xst-h .xst-t { min-height: 40px; }
-  #out .out-x { display: none; }   /* 24.10: «Выйти» вместо «Выйти из аккаунта» — вкладкам в шапке больше места */
+  #out .out-x { display: none; }    
 }
-/* ================= 24.10: «Отправить баг» — плавающая кнопка (app.js: bfPlace; форма — bugreport.css/js, грузятся по нажатию) =================
-   Одна на все оформления: тёмная «таблетка», как переключатель стиля. Поднимается над нижними панелями (--bf-up), прячется (.off) */
+
+
 .bugfab { position: fixed; right: calc(16px + env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 50;
   display: flex; transform: translateY(calc(-1 * var(--bf-up, 0px))); transition: transform .22s var(--ease), opacity .18s var(--ease); }
 .bugfab[hidden] { display: none; }
@@ -1700,29 +1700,29 @@ html[data-skin="rage"] { --pop-r: 2px; }
 @keyframes bfBusy { to { opacity: .35; } }
 .bugfab-x { position: absolute; left: -11px; top: -11px; width: 22px; height: 22px; padding: 0; display: grid; place-items: center; border-radius: 50%;
   border: 1px solid rgba(255,255,255,.3); background: #23202b; color: #f2eee6; font: 700 14px/1 system-ui, sans-serif; opacity: 0; transition: opacity .15s; }
-.bugfab-x::after { content: ''; position: absolute; inset: -5px; }   /* чуть больше места для пальца (но не до середины кнопки) */
+.bugfab-x::after { content: ''; position: absolute; inset: -5px; }    
 .bugfab:hover .bugfab-x, .bugfab:focus-within .bugfab-x { opacity: 1; }
 @media (hover: none) { .bugfab-x { opacity: .9; } }
-/* свёрнута: язычок у правого края */
+ 
 .bugfab.min { right: 0; }
 .bugfab.min .bugfab-b { width: 30px; height: 40px; padding: 0 0 0 2px; justify-content: center; border-radius: 12px 0 0 12px; border-right: 0; opacity: .72; }
 .bugfab.min .bugfab-b:hover, .bugfab.min .bugfab-b:focus-visible { opacity: 1; }
 .bugfab.min .bugfab-t, .bugfab.min .bugfab-x { display: none; }
-/* телефон: только значок, круг 44 px */
+ 
 @media (max-width: 520px) {
   .bugfab-b { width: 44px; height: 44px; padding: 0; justify-content: center; }
   .bugfab-t { display: none; }
   .bugfab-i { font-size: 19px; }
 }
-/* внизу страницы — запас, чтобы последняя кнопка контента не оставалась под плавающей */
+ 
 html.bugfab-on:not(.cy-full) #main::after { content: ''; display: block; height: 56px; }
 html.is-dragging .bugfab { display: none; }
 @media (prefers-reduced-motion: reduce) { .bugfab, .bugfab.off { transition: none; } .bugfab.busy .bugfab-i { animation: none; } }
-/* 25.10: новая сумка (новинка inv2): на телефоне кукла и сумка - сразу под героем, характеристики - ниже */
+ 
 @media (max-width: 719px) { .hero-grid.inv2 { grid-template-areas: "stage" "bag" "vitals"; } }
-/* 26.10 (стример): персонаж - в карточке героя (библиотека, options.dollEl). Окно героя - по размеру героя (высота куклы - по слотам),
-   не тянется за столбцом характеристик; сумка - сразу под ним, как до inv2. ПК: характеристики | герой, под ним сумка | вещь;
-   уже 1100 px - столбиком: герой, сумка, характеристики */
+
+
+
 .hero-grid.inv2 > .stage > .inv2-doll { margin: var(--s2) 0 0; }
 @media (max-width: 1099px) { html .hero-grid.inv2 { grid-template-columns: minmax(0, 1fr); grid-template-areas: "stage" "bag" "vitals"; } }
 @media (min-width: 1100px) {
@@ -1730,13 +1730,13 @@ html.is-dragging .bugfab { display: none; }
   html .hero-grid.inv2 > .vitals { align-self: stretch; }
 }
 
-/* =========================================================
-   28.10: ОФОРМЛЕНИЯ СТИЛЕЙ 4–7 — «Грядка» (Овощи, garden), «VIP-зона» (42 Братухи, club), «Пекло» (Чертики, inferno),
-   «Пещера» (Уга-Буги, cave). Таблица стиль → оформление - packages/site-ui (STYLE_SKIN), одна для сервера и страницы.
-   Раскладка B (как «Арсенал», «Лежанка», «Ярость»). Общая часть - на токенах ниже, у каждого оформления - свои формы и мотивы.
-   Лёгкие: без размытия (backdrop-filter, blur), без анимаций, фоновые рисунки - маленькие SVG и градиенты.
-   Токены сверх общих: --on-accent (текст на --accent), --on-accent-2, --top-bg, --btn-ghost(-h), --r-panel/--r-btn/--r-cell, --hd2 (крупные заголовки).
-   ========================================================= */
+
+
+
+
+
+
+
 html[data-skin="garden"] {
   --bg: #15130d; --surface: #221e14; --surface2: #1a170f; --ink: #f3efd9; --mute: #b5ab8a; --accent: #8fd16a; --accent-2: #ffa64d; --focus: #ffd166;
   --line: #3a3322; --on-accent: #14200c; --on-accent-2: #2a1504; --top-bg: #100e09; --btn-ghost: #2c2618; --btn-ghost-h: #383020;
@@ -1770,14 +1770,14 @@ html[data-skin="cave"] {
   --g-mage: #c792f5; --g-heal: #7ed36f; --g-phys: #ff8a5c; --g-recruit: #9a8b74;
   --hd: 'Rubik Mono One', 'Golos Text', sans-serif; --hd2: 'Rubik Dirt', 'Rubik Mono One', sans-serif; --tx: 'Golos Text', 'Segoe UI', sans-serif; --hd-w: 400; --hd-case: uppercase; --hd-track: 0;
   --r-panel: 0; --r-btn: 0; --r-cell: 0; --sil-b: 1.5; --pop-r: 0;
-  /* пиксельные углы: ступенька 4 px */
+   
   --px: polygon(0 8px, 4px 8px, 4px 4px, 8px 4px, 8px 0, calc(100% - 8px) 0, calc(100% - 8px) 4px, calc(100% - 4px) 4px, calc(100% - 4px) 8px, 100% 8px,
     100% calc(100% - 8px), calc(100% - 4px) calc(100% - 8px), calc(100% - 4px) calc(100% - 4px), calc(100% - 8px) calc(100% - 4px), calc(100% - 8px) 100%,
     8px 100%, 8px calc(100% - 4px), 4px calc(100% - 4px), 4px calc(100% - 8px), 0 calc(100% - 8px));
   --px-s: polygon(0 4px, 4px 4px, 4px 0, calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px), 0 calc(100% - 4px));
 }
 
-/* ---------- общая часть четырёх оформлений ---------- */
+ 
 @media (min-width: 1100px) {
   :is([data-skin="garden"], [data-skin="club"], [data-skin="inferno"], [data-skin="cave"]) .hero-grid { grid-template-columns: 290px 1fr 320px; grid-template-areas: "vitals stage detail" "bag bag bag"; align-items: stretch; }
   :is([data-skin="garden"], [data-skin="club"], [data-skin="inferno"], [data-skin="cave"]) .detail { align-self: start; }
@@ -1840,19 +1840,19 @@ html:is([data-skin="garden"], [data-skin="club"], [data-skin="inferno"], [data-s
 html:is([data-skin="garden"], [data-skin="club"], [data-skin="inferno"], [data-skin="cave"]) .slot[aria-pressed="true"] { box-shadow: inset 0 0 0 3px var(--ink), inset 0 4px 12px rgba(0,0,0,.45); }
 @media (max-width: 1099px) { :is([data-skin="garden"], [data-skin="club"], [data-skin="inferno"], [data-skin="cave"]) .detail { border-radius: 20px 20px 0 0; } }
 
-/* ---------- «ГРЯДКА» (Овощи): ночной огород. Тёмная земля бороздами, ботва зелёным, морковный акцент; Pangolin - как надпись мелом на дачной табличке.
-   Кнопки и вкладки - листиком (скругление накрест), панели - грядки с ботвой поверху, слоты - лунки в земле. ---------- */
+
+
 html[data-skin="garden"] body { background: repeating-linear-gradient(0deg, rgba(255,240,200,.022) 0 2px, transparent 2px 26px), radial-gradient(ellipse 70% 40% at 50% -8%, rgba(143,209,106,.14), transparent 70%), var(--bg); }
 [data-skin="garden"] .top { border-bottom: 3px solid #2f4a1f; }
-/* морковка вместо точки */
+ 
 [data-skin="garden"] .brand .mark { width: 16px; height: 26px; background: linear-gradient(180deg, var(--accent) 0 30%, var(--accent-2) 30%); clip-path: polygon(10% 0, 30% 22%, 50% 0, 70% 22%, 90% 0, 100% 30%, 50% 100%, 0 30%); }
-/* ботва поверху панели - ряд листиков (один фоновый рисунок, без лишних узлов) */
+ 
 [data-skin="garden"] .panel { position: relative; margin-top: 12px; }
 [data-skin="garden"] .panel::before { content: ''; position: absolute; left: 22px; right: 22px; top: -11px; height: 12px; pointer-events: none;
   background: radial-gradient(ellipse 5px 11px at 50% 100%, #5fae45 96%, transparent) 0 0 / 22px 12px repeat-x, radial-gradient(ellipse 4px 9px at 50% 100%, #3f8a34 96%, transparent) 11px 3px / 22px 12px repeat-x; }
 [data-skin="garden"] .h2::before { content: ''; display: inline-block; width: 10px; height: 10px; margin-right: 8px; border-radius: 10px 0 10px 0; background: var(--accent); vertical-align: .05em; }
 [data-skin="garden"] .stage { background: radial-gradient(ellipse 50% 40% at 50% 20%, rgba(255,209,102,.14), transparent 70%), var(--surface); }
-/* под овощем - взрыхлённая земля грядки */
+ 
 [data-skin="garden"] .doll .fig::before { content: ''; position: absolute; z-index: -1; left: 4%; right: 4%; bottom: -8px; height: 18%; border-radius: 50%;
   background: repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0 3px, transparent 3px 7px), #4a3420; box-shadow: inset 0 3px 0 rgba(255,230,180,.12), 0 8px 14px rgba(0,0,0,.4); }
 [data-skin="garden"] .slot { box-shadow: inset 0 0 0 2px var(--line), inset 0 6px 14px rgba(0,0,0,.55); background: radial-gradient(ellipse 70% 40% at 50% 100%, #2b2214, transparent 70%), var(--surface2); }
@@ -1863,8 +1863,8 @@ html[data-skin="garden"] body { background: repeating-linear-gradient(0deg, rgba
 html[data-skin="garden"] .cell[aria-pressed="true"] { box-shadow: inset 0 5px 0 var(--rc), inset 0 0 0 2px var(--ink); }
 [data-skin="garden"] .lv { border-radius: 10px 3px 10px 3px; }
 
-/* ---------- «VIP-ЗОНА» (42 Братухи): ночной клуб. Сливовая темнота, золото цепей и неоновый розовый; Unbounded - широкий жирный шрифт афиши.
-   Панели - в «золотой цепи» (рамка-градиент), сцена - прожектор и красная дорожка, знак - «42» в золотом кружке. ---------- */
+
+
 html[data-skin="club"] body { background: radial-gradient(ellipse 45% 35% at 12% -5%, rgba(255,95,168,.16), transparent 70%), radial-gradient(ellipse 45% 35% at 88% -5%, rgba(255,200,61,.12), transparent 70%), var(--bg); }
 [data-skin="club"] .top { border-bottom: 2px solid transparent; border-image: var(--chain) 1; }
 [data-skin="club"] .brand .mark { position: relative; width: 30px; height: 30px; border-radius: 50%; background: var(--chain); box-shadow: 0 0 0 2px #3a2747; }
@@ -1877,10 +1877,10 @@ html[data-skin="club"] body { background: radial-gradient(ellipse 45% 35% at 12%
 [data-skin="club"] .h2::after { content: ''; display: block; width: 44px; height: 3px; margin-top: 6px; border-radius: 3px; background: var(--accent-2); }
 [data-skin="club"] .bag-h .h2::after { display: none; }
 [data-skin="club"] .nm { color: var(--ink); text-shadow: 0 0 0 transparent, 3px 3px 0 var(--accent-2); }
-/* сцена: два прожектора сверху; рамка-цепь - та же, что у панелей */
+ 
 [data-skin="club"] .stage { background: radial-gradient(ellipse 30% 55% at 30% 0, rgba(255,95,168,.13), transparent 70%) padding-box, radial-gradient(ellipse 30% 55% at 70% 0, rgba(255,200,61,.1), transparent 70%) padding-box,
   linear-gradient(var(--surface), var(--surface)) padding-box, var(--chain) border-box; }
-/* под братухой - красная дорожка с золотым краем */
+ 
 [data-skin="club"] .doll .fig::before { content: ''; position: absolute; z-index: -1; left: 6%; right: 6%; bottom: -10px; height: 16%;
   background: linear-gradient(180deg, #c4203a, #7a1430); clip-path: polygon(14% 0, 86% 0, 100% 100%, 0 100%); box-shadow: inset 0 3px 0 #ffc83d; }
 [data-skin="club"] .slot.full { box-shadow: inset 0 0 0 2px var(--rc), 0 0 14px color-mix(in srgb, var(--rc) 30%, transparent); }
@@ -1890,16 +1890,16 @@ html[data-skin="club"] body { background: radial-gradient(ellipse 45% 35% at 12%
 [data-skin="club"] .lv { background: var(--accent-2); }
 [data-skin="club"] .rar { font-family: var(--hd); font-size: 11px; letter-spacing: .02em; }
 
-/* ---------- «ПЕКЛО» (Чертики): котельная преисподней. Чёрно-сливовый дым, лава и сера; Russo One - кованые буквы на вывеске котла.
-   Кнопки и вкладки - с острыми концами (наконечник хвоста), на панелях - рожки, под героем - котёл с огнём. ---------- */
+
+
 html[data-skin="inferno"] body { background: radial-gradient(ellipse 80% 30% at 50% 105%, rgba(255,106,42,.16), transparent 70%), radial-gradient(ellipse 60% 30% at 50% -6%, rgba(208,140,255,.08), transparent 70%), var(--bg); }
 [data-skin="inferno"] .top { border-bottom: 2px solid #5a1f22; }
-/* вилы-трезубец */
+ 
 [data-skin="inferno"] .brand .mark { width: 22px; height: 26px; background: var(--accent);
   clip-path: polygon(0 0, 18% 0, 18% 34%, 41% 34%, 41% 0, 59% 0, 59% 34%, 82% 34%, 82% 0, 100% 0, 100% 50%, 59% 50%, 59% 100%, 41% 100%, 41% 50%, 0 50%); }
 [data-skin="inferno"] .tabs button, [data-skin="inferno"] .btn, [data-skin="inferno"] .filters button { clip-path: var(--point); padding-inline: var(--s5); }
 [data-skin="inferno"] .btn.primary { background: linear-gradient(180deg, #ff8a3d, var(--accent)); }
-/* рожки на панелях */
+ 
 [data-skin="inferno"] .panel { position: relative; margin-top: 12px; box-shadow: inset 0 0 0 1px var(--line), inset 0 3px 0 #5a1f22, 0 14px 30px rgba(0,0,0,.4); }
 [data-skin="inferno"] .panel::before, [data-skin="inferno"] .panel::after { content: ''; position: absolute; top: -13px; width: 16px; height: 18px; pointer-events: none; background: #7a2630; border-radius: 0 100% 0 0; }
 [data-skin="inferno"] .panel::before { left: 24px; transform: skewX(-12deg); }
@@ -1907,7 +1907,7 @@ html[data-skin="inferno"] body { background: radial-gradient(ellipse 80% 30% at 
 [data-skin="inferno"] .h2::before { content: ''; display: inline-block; width: 12px; height: 12px; margin-right: 8px; background: var(--accent); clip-path: polygon(50% 0, 100% 100%, 50% 72%, 0 100%); transform: rotate(90deg); vertical-align: -.05em; }
 [data-skin="inferno"] .nm { color: var(--ink); text-shadow: 0 3px 0 #7a2630; }
 [data-skin="inferno"] .stage { background: radial-gradient(ellipse 44% 30% at 50% 70%, rgba(255,106,42,.2), transparent 72%), var(--surface); }
-/* под чертёнком - котёл: тёмное нутро, кованый край и отсвет огня */
+ 
 [data-skin="inferno"] .doll .fig::before { content: ''; position: absolute; z-index: -1; left: 4%; right: 4%; bottom: -10px; height: 18%; border-radius: 50%;
   background: radial-gradient(ellipse at 50% 35%, #2a0f12, #120a0e 70%); box-shadow: inset 0 0 0 4px #5a1f22, inset 0 0 0 6px #7a2630, 0 0 20px rgba(255,106,42,.45); }
 [data-skin="inferno"] .slot { border-radius: 50% 50% var(--r-cell) var(--r-cell) / 26% 26% var(--r-cell) var(--r-cell); }
@@ -1917,13 +1917,13 @@ html[data-skin="inferno"] body { background: radial-gradient(ellipse 80% 30% at 
 [data-skin="inferno"] .lv { clip-path: var(--point); padding-inline: 12px; }
 @media (max-width: 1099px) { [data-skin="inferno"] .detail { margin-top: 0; } }
 
-/* ---------- «ПЕЩЕРА» (Уга-Буги): стойбище в пещере, пиксель-арт как у человечков. Камень, янтарь и охра наскальных рисунков;
-   Rubik Dirt (буквы, выбитые в камне) для крупных заголовков, Rubik Mono One - для вкладок и кнопок. Углы - пиксельной ступенькой,
-   рамки - пиксельный скос (свет слева сверху, тень справа снизу), на фоне - охряные рисунки охотников. ---------- */
+
+
+
 html[data-skin="cave"] body { background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='180' viewBox='0 0 220 180' shape-rendering='crispEdges'%3E%3Cg fill='%23c4502a' fill-opacity='.07'%3E%3Cpath d='M30 40h4v4h-4zM28 44h8v12h-8zM24 46h4v4h-4zM36 46h4v4h-4zM28 56h3v10h-3zM33 56h3v10h-3zM40 36h2v24h-2z'/%3E%3Cpath d='M140 110h30v14h-30zM136 114h4v6h-4zM170 112h8v4h-8zM142 124h4v10h-4zM164 124h4v10h-4zM176 108h4v4h-4z'/%3E%3Cpath d='M180 30h4v4h-4zM176 34h12v4h-12zM172 38h4v4h-4zM184 38h4v4h-4zM88 140h6v6h-6zM86 132h2v8h-2zM90 130h2v10h-2zM94 132h2v8h-2z'/%3E%3C/g%3E%3C/svg%3E") 0 0 / 220px 180px, radial-gradient(ellipse 70% 40% at 50% 110%, rgba(242,166,59,.12), transparent 70%), var(--bg); }
 [data-skin="cave"] .top { border-bottom: 4px solid #2e261d; box-shadow: 0 4px 0 #0c0a07; }
 [data-skin="cave"] .brand b { font-size: var(--t-2xl); }
-/* пиксельный костёр */
+ 
 [data-skin="cave"] .brand .mark { width: 4px; height: 4px; margin: 0 14px 18px 6px; background: var(--accent-2);
   box-shadow: 4px 0 var(--accent-2), 0 4px var(--accent-2), 4px 4px var(--accent), 8px 4px var(--accent-2), -4px 8px var(--accent-2), 0 8px var(--accent), 4px 8px #ffd27a, 8px 8px var(--accent), 12px 8px var(--accent-2),
     -4px 12px var(--accent), 0 12px #ffd27a, 4px 12px #ffd27a, 8px 12px #ffd27a, 12px 12px var(--accent), -4px 16px #6b4a2a, 0 16px #8a6238, 4px 16px #6b4a2a, 8px 16px #8a6238, 12px 16px #6b4a2a; }
@@ -1935,14 +1935,14 @@ html[data-skin="cave"] body { background: url("data:image/svg+xml,%3Csvg xmlns='
 [data-skin="cave"] .h1, [data-skin="cave"] .nm { text-transform: none; letter-spacing: .01em; }
 [data-skin="cave"] .nm { color: var(--ink); }
 [data-skin="cave"] .stage { background: radial-gradient(ellipse 40% 30% at 50% 72%, rgba(242,166,59,.18), transparent 72%), var(--surface); }
-/* под пещерным человеком - каменная плита пиксельной ступенькой */
+ 
 [data-skin="cave"] .doll .fig::before { content: ''; position: absolute; z-index: -1; left: 10%; right: 10%; bottom: -6px; height: 12%; clip-path: var(--px-s);
   background: #4a3d2f; box-shadow: inset 0 4px 0 #66553f, inset 0 -4px 0 #2e261d; }
 [data-skin="cave"] .slot { clip-path: var(--px); box-shadow: inset 4px 4px 0 rgba(0,0,0,.4), inset -4px -4px 0 rgba(255,255,255,.04), inset 0 0 0 6px var(--line); }
 [data-skin="cave"] .slot:hover { box-shadow: inset 4px 4px 0 rgba(0,0,0,.4), inset 0 0 0 4px var(--accent); }
 [data-skin="cave"] .slot.full { box-shadow: inset 4px 4px 0 rgba(0,0,0,.4), inset 0 0 0 4px var(--rc); }
 html[data-skin="cave"] .slot[aria-pressed="true"] { box-shadow: inset 0 0 0 4px var(--ink); }
-/* полоски - пиксельными делениями */
+ 
 [data-skin="cave"] .bar { height: 12px; box-shadow: inset 0 0 0 2px #0e0b08; }
 [data-skin="cave"] .bar i { background-image: repeating-linear-gradient(90deg, transparent 0 8px, rgba(0,0,0,.35) 8px 10px) !important; background-color: var(--accent); }
 [data-skin="cave"] .bar.xp i { background-color: var(--accent); }
@@ -1954,13 +1954,13 @@ html[data-skin="cave"] .cell[aria-pressed="true"] { box-shadow: inset 0 -6px 0 v
 [data-skin="cave"] .cell .upg { border-radius: 0; }
 @media (max-width: 1099px) { [data-skin="cave"] .detail { clip-path: none; border-radius: 0; box-shadow: inset 0 4px 0 var(--accent); } }
 
-/* переключатель стиля тестеров: 7 стилей - на телефоне переносом в две строки, не шире экрана */
+ 
 @media (max-width: 720px) { .style-switch { flex-wrap: wrap; justify-content: center; max-width: calc(100vw - 24px); } .style-switch button { min-height: 32px; padding: 0 8px; } html:has(.style-switch) body { padding-bottom: 104px; } }
 
-/* 29.10: личка страницы (packages/site-ui/dm.js, window.LGDm) - во вкладке «Личные» чата «Города» и шахты, вне них - окно в ЛЕВОМ
-   нижнем углу (правый - вебка стримера). Цвета - как у чата «Города» (тёмная подложка); движение - только opacity. */
+
+
 .dm { display: flex; flex-direction: column; gap: 4px; font: 500 14px/1.35 var(--tx, system-ui); color: #fff; }
-/* 30.10: строка собеседников - всегда одна линия фиксированной высоты (24px): без переноса, листается вбок (колесо, палец), края мягко гаснут маской; вид - как у верхних вкладок чата (без рамок) */
+ 
 .dm-tabs { scroll-padding-inline: 14px; display: flex; flex-wrap: nowrap; gap: 2px; height: 24px; padding: 0 12px; overflow-x: auto; overflow-y: hidden; overscroll-behavior: contain; scrollbar-width: none;
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 12px, #000 calc(100% - 12px), transparent); mask-image: linear-gradient(90deg, transparent, #000 12px, #000 calc(100% - 12px), transparent); }
 .dm-tabs::-webkit-scrollbar { display: none; }
@@ -1970,7 +1970,7 @@ html[data-skin="cave"] .cell[aria-pressed="true"] { box-shadow: inset 0 -6px 0 v
 .dm-tab button { min-height: 24px; border: 0; background: none; font: 700 12px/1 var(--tx, system-ui); cursor: pointer; }
 .dm-tab [data-dmt] { padding: 0 2px 0 8px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dm-x { position: relative; width: 18px; padding: 0; color: rgba(255, 255, 255, .6); font-size: 13px !important; }
-/* зона нажатия шире видимого крестика */
+ 
 .dm-x::after { content: ''; position: absolute; inset: -6px -2px; }
 @media (pointer: coarse) { .dm-x { width: 22px; } .dm-x::after { inset: -10px -4px; } }
 .dm-x:hover, .dm-x:focus-visible { color: #fff; }
@@ -2011,10 +2011,10 @@ html[data-skin="cave"] .cell[aria-pressed="true"] { box-shadow: inset 0 -6px 0 v
 .dm-fx:focus-visible { outline: 2px solid #fff; }
 .dm-fn { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: #ffc94d; color: #15122e; font-size: 11px; line-height: 18px; text-align: center; }
 .dm-fn[hidden] { display: none; }
-html.sm-on .dm-float, body.sm-on .dm-float { display: none; }   /* режим стримера - без лички поверх пульта */
+html.sm-on .dm-float, body.sm-on .dm-float { display: none; }    
 
-/* 30.10 (тюрьма, флаг legionary.jailPublic): забаненный сидит в клетке у Тюрьмы - только вкладка «Город», без друзей, лички,
-   переключателей и поиска; поле чата скрыто (только читать); плашка «Ты в тюрьме канала» сверху (на телефоне - узкая, клетку не закрывает) */
+
+
 html.jailed .tabs button:not([data-tab="city"]), html.jailed .chsw, html.jailed .mych, html.jailed #frBtn, html.jailed .fr-btn,
 html.jailed .bf-btn, html.jailed .style-switch, html.jailed .bugfab { display: none !important; }
 html.jailed .cy-chat-f, html.jailed .cy-chat-pf { display: none !important; }
@@ -2023,9 +2023,9 @@ html.jailed .cy-chat-f, html.jailed .cy-chat-pf { display: none !important; }
   box-shadow: 0 6px 18px rgba(0, 0, 0, .35); font: 600 14px/1.3 system-ui, sans-serif; pointer-events: none; }
 .jail-bar b { font-family: "Russo One", system-ui, sans-serif; letter-spacing: .5px; color: #ffd27a; }
 @media (max-width: 520px) { .jail-bar { top: auto; bottom: 10px; font-size: 12px; padding: 6px 10px; gap: 2px 10px; } }
-/* 30.10 (тюрьма): в «Городе» заключённому не нужны полоса зданий, подсказка «нажми на землю» и выбор города */
+ 
 html.jailed .cy-bar, html.jailed .cy-tipb, html.jailed .cy-town { display: none !important; }
-/* 30.10: режим «Технические работы» (app.js maintShow): плашка на весь экран, вкладки недоступны */
+ 
 .lg-maint{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;padding:24px;background:#0a0c12;color:#f1ead8;text-align:center}
 .lg-maint-box{max-width:520px}
 .lg-maint-ico{font-size:56px;line-height:1;margin-bottom:16px;opacity:.9}
@@ -2033,9 +2033,9 @@ html.jailed .cy-bar, html.jailed .cy-tipb, html.jailed .cy-town { display: none 
 html.lg-maint-on,html.lg-maint-on body{overflow:hidden}
 @media (max-width:600px){.lg-maint-t{font-size:20px}.lg-maint-ico{font-size:44px}}
 
-/* ================= 01.11: «Облик» конфигуратором (новинка lookConfig, app.js lcHtml) =================
-   Одна карточка: шапка над головой, лицо и аура справа от головы, ник и класс под человечком, форма и цвета ниже (эскиз стримера).
-   Узкая карточка (телефон) - всё столбиком под человечком: ничего не наезжает на рисунок. Движение - только transform/opacity. */
+
+
+
 .lc { container-type: inline-size; display: grid; gap: var(--s3); }
 .lc-in { display: grid; gap: var(--s2) var(--s3); grid-template-columns: minmax(0, 1fr); grid-template-areas: "busy" "fig" "plate" "top" "side" "bot"; }
 .lc-busy { grid-area: busy; margin: 0; }
@@ -2046,7 +2046,7 @@ html.lg-maint-on,html.lg-maint-on body{overflow:hidden}
 .hero-grid .stage .lc .lc-plate { grid-area: plate; margin: 0; text-align: center; }
 .hero-grid .stage .lc .lc-plate .role { justify-content: center; }
 .hero-grid.lc-on .stage { display: block; }
-/* строка «‹ Глаза ›»: стрелки под палец (40 px), название крупно, текущий вариант мелко под ним */
+ 
 .lc-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) 40px; align-items: center; gap: var(--s1); min-height: 48px; }
 .lc-a { width: 40px; height: 40px; display: grid; place-items: center; padding: 0; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--ink) 22%, transparent); background: var(--surface2, transparent); color: var(--ink); transition: transform .15s var(--ease), border-color .15s var(--ease); }
 .lc-a svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
@@ -2063,19 +2063,19 @@ html.lg-maint-on,html.lg-maint-on body{overflow:hidden}
 .lc-in-r { animation: lc-in-r .18s var(--ease); } .lc-in-l { animation: lc-in-l .18s var(--ease); }
 @keyframes lc-in-r { from { transform: translateX(8px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes lc-in-l { from { transform: translateX(-8px); opacity: 0; } to { transform: none; opacity: 1; } }
-/* аксессуары - можно несколько: кнопками */
+ 
 .lc-acc { display: grid; gap: var(--s1); justify-items: center; text-align: center; padding-top: var(--s1); }
 .lc-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
 .lc-chips button { min-height: 36px; padding: 4px 12px; border-radius: 999px; border: 2px solid color-mix(in srgb, var(--ink) 22%, transparent); background: transparent; color: var(--ink); font-size: var(--t-sm); font-weight: 700; }
 .lc-chips button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink, #1a140b); }
 .lc-chips button:disabled { opacity: .5; }
 .lc .lk-tip { font-size: var(--t-xs); color: var(--mute); margin: 0; text-align: center; }
-/* средняя карточка: строки парами под человечком */
+ 
 @container (min-width: 400px) {
   .lc-side, .lc-bot { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .lc-bot .lc-acc { grid-column: 1 / -1; }
 }
-/* широкая карточка (ПК): как на эскизе - шапка над головой, лицо справа от головы, ник под человечком, форма и цвета внизу */
+ 
 @container (min-width: 540px) {
   .lc-in { grid-template-columns: minmax(0, 1fr) minmax(170px, 210px) minmax(0, 1fr); grid-template-areas: "busy busy busy" ". top ." ". fig side" "plate plate plate" "bot bot bot"; align-items: start; }
   .lc-top { align-self: end; }

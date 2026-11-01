@@ -1,19 +1,19 @@
-/* 23.10: Шахта (промысел города) — локация на весь экран поверх «Города» (mine.js). Анимации — только transform/opacity. */
+ 
 body.mn-on { overflow: hidden; }
 .mn { --sbt: rgba(243, 239, 230, .3); position: fixed; inset: 0; z-index: 60; background: #1a1420; color: #f3efe6; font-family: inherit; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
 .mn-view { position: absolute; inset: 0; overflow: hidden; touch-action: none; cursor: grab; outline: none; }
 .mn-view:active { cursor: grabbing; }
 .mn-world { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
-/* 25.10 (телефон мигал): огромный слой на GPU телефона не помещается в текстуру и мерцает — на сенсорных экранах без will-change */
+ 
 @media (pointer: coarse) { .mn-world { will-change: auto; } }
 .mn-bg { position: absolute; top: 0; overflow: visible; }
 .mn-bg [data-i].open, .mn-bg [data-npc] { cursor: pointer; }
 .mn-bg [data-i].open:hover { filter: brightness(1.15); }
-.mn-bg [data-i].far { filter: brightness(.62) saturate(.8); }   /* закрыт другими камнями — копать нельзя */
+.mn-bg [data-i].far { filter: brightness(.62) saturate(.8); }    
 .mn-bg .mn-nm, .mn-nm { font-family: Golos Text, Arial, sans-serif; font-weight: 800; fill: #ffe27a; stroke: #15122e; stroke-width: 4px; paint-order: stroke; }
 .mn-bars { position: absolute; inset: 0; pointer-events: none; }
 .mn-bar { position: absolute; width: 88px; height: 12px; border-radius: 6px; background: rgba(21,18,46,.82); padding: 2px; box-sizing: border-box; }
-.mn-bar .mn-hpt { display: block; height: 100%; border-radius: 4px; overflow: hidden; text-decoration: none; }   /* 30.10: дорожка - прячет уехавшую заливку (mine.js hpGo) */
+.mn-bar .mn-hpt { display: block; height: 100%; border-radius: 4px; overflow: hidden; text-decoration: none; }    
 .mn-bar i { display: block; height: 100%; border-radius: 4px; background: #7ff07a; }
 .mn-bar.me i { background: #ffe27a; }
 .mn-bar em { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); white-space: nowrap; font: 800 17px Golos Text, Arial, sans-serif; font-style: normal; color: #ffe27a; background: #15122e; border: 2px solid #ffe27a; border-radius: 10px; padding: 1px 9px; }
@@ -52,8 +52,8 @@ body.mn-on { overflow: hidden; }
 .mn-res li { display: flex; align-items: center; gap: 6px; }
 .mn-res li i { width: 10px; height: 10px; border-radius: 3px; border: 1.5px solid #15122e; }
 .mn-res li span { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
-.mn-res li b { margin-left: auto; text-align: right; white-space: nowrap; }   /* 25.10: «2 шт. + 37 осколков» - одной строкой */
-.mn-osk { margin: 4px 0 0; font-size: 12px; }   /* 25.10: осколки */
+.mn-res li b { margin-left: auto; text-align: right; white-space: nowrap; }    
+.mn-osk { margin: 4px 0 0; font-size: 12px; }    
 .mn-btns { display: flex; gap: 8px; flex-wrap: wrap; }
 .mn-log h3, .mn-npc-p h3 { margin: 0 0 4px; color: #ffc94d; font-size: 15px; }
 .mn-log ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; font-size: 13px; color: #e8dcc8; }
@@ -61,7 +61,7 @@ body.mn-on { overflow: hidden; }
 .mn-npc-p p { margin: 0 0 8px; font-size: 14px; }
 .mn-tip { position: absolute; z-index: 7; left: 50%; bottom: 24px; transform: translateX(-50%); max-width: min(92vw, 520px); padding: 10px 16px; border-radius: 12px; background: #15122e; color: #fff; font-weight: 700; font-size: 14px; text-align: center; box-shadow: 0 6px 20px rgba(0,0,0,.4); }
 
-/* телефон: панель — выдвижная снизу */
+ 
 @media (max-width: 720px) {
   .mn-top { padding: 8px 10px; flex-wrap: wrap; row-gap: 2px; }
   .mn-ttl b { font-size: 20px; }
@@ -71,19 +71,19 @@ body.mn-on { overflow: hidden; }
   .mn-zoom { bottom: 64px; }
 }
 
-/* 23.10: камень выкопан — осколки разлетаются, «+руда» всплывает (один раз, transform/opacity) */
+ 
 .mn-burst { position: absolute; width: 0; height: 0; pointer-events: none; }
 .mn-burst i { position: absolute; left: -6px; top: -6px; width: 12px; height: 10px; border-radius: 3px; border: 2px solid #15122e; animation: mn-shard .9s cubic-bezier(.2,.7,.4,1) forwards; }
 @keyframes mn-shard { 0% { transform: translate(0, 0) rotate(0); opacity: 1; } 70% { opacity: 1; } 100% { transform: translate(var(--dx), calc(var(--dy) + 60px)) rotate(var(--r)); opacity: 0; } }
 .mn-burst b { position: absolute; left: 50%; top: -40px; transform: translateX(-50%); white-space: nowrap; font: 900 22px Golos Text, Arial, sans-serif; color: #ffe27a; text-shadow: 0 0 4px #15122e, 0 2px 0 #15122e, 0 0 2px #15122e; animation: mn-up 1.4s ease-out forwards; }
 @keyframes mn-up { 0% { transform: translate(-50%, 10px) scale(.7); opacity: 0; } 15% { transform: translate(-50%, 0) scale(1.1); opacity: 1; } 70% { opacity: 1; } 100% { transform: translate(-50%, -50px) scale(1); opacity: 0; } }
-.mn-burst b.mn-loot { white-space: normal; width: min(260px, 70vw); text-align: center; font-size: 16px; line-height: 1.2; }   /* 25.10: сундук - несколько ресурсов */
+.mn-burst b.mn-loot { white-space: normal; width: min(260px, 70vw); text-align: center; font-size: 16px; line-height: 1.2; }    
 @media (prefers-reduced-motion: reduce) { .mn-burst i { display: none; } .mn-burst b { animation-duration: 2s; } }
-/* 1.11 (feat/mine-candy): Хэллоуин - «+N 🍬» над героем (mine.js hwCandy), выше и чуть позже «+руды»; только transform / opacity */
+ 
 .mn-burst.mn-hwc b { top: -78px; color: #ffb347; opacity: 0; animation: mn-up 1.6s ease-out .35s forwards; }
 
-/* 26.10 (тестерам - mineShardFxPublic): осколок из камня - внешний span летит вбок (X), внутренний - дугой вверх и вниз (Y), крутится и гаснет.
-   Только transform / opacity; цвет руды - --c, контур и грани - как у значков (тёмный контур, плоский тон, светлая грань) */
+
+
 .mn-sfx-p { position: absolute; left: -15px; top: 4px; width: 30px; height: 30px; opacity: 0; animation: mn-sfx-x var(--t, 1s) cubic-bezier(.25,.6,.5,1) var(--dl, 0s) forwards; will-change: transform; }
 .mn-sfx-p > .mn-sfx-s { display: block; width: 100%; height: 100%; animation: mn-sfx-y var(--t, 1s) linear var(--dl, 0s) forwards; will-change: transform, opacity; }
 @keyframes mn-sfx-x { 0% { transform: translateX(0); opacity: 1; } 100% { transform: translateX(var(--dx)); opacity: 1; } }
@@ -101,10 +101,10 @@ body.mn-on { overflow: hidden; }
 .mn-sfx-s .gl, .mn-sfx-ic .gl { fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; opacity: .9; }
 .mn-sfx-s .sp, .mn-sfx-ic .sp { fill: #fff; stroke: #15122e; stroke-width: .9; paint-order: stroke; }
 .mn-sfx-gem .b { stroke-width: 2.2; }
-.mn-sfx-s .sp { transform-box: fill-box; transform-origin: center; animation: mn-sfx-tw .45s ease-in-out .15s 2 alternate; }   /* искра / блик мигает */
+.mn-sfx-s .sp { transform-box: fill-box; transform-origin: center; animation: mn-sfx-tw .45s ease-in-out .15s 2 alternate; }    
 @keyframes mn-sfx-tw { from { transform: scale(.4); } to { transform: scale(1.35); } }
 .mn-burst b.mn-sfx-t { display: inline-flex; align-items: center; gap: 4px; }
-.mn-burst b.mn-sfx-t.mn-loot { display: block; }   /* сундук: значки - в начале текста, текст переносится */
+.mn-burst b.mn-sfx-t.mn-loot { display: block; }    
 .mn-burst b.mn-sfx-t.mn-loot .mn-sfx-ic { vertical-align: -4px; margin-right: 2px; }
 .mn-burst b.mn-sfx-t > span { min-width: 0; }
 .mn-sfx-ic { display: inline-block; flex: none; width: 22px; height: 22px; filter: drop-shadow(0 1px 0 #15122e); }
@@ -113,7 +113,7 @@ body.mn-on { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) { .mn-sfx-p { display: none; } .mn-burst b.mn-sfx-t { animation-name: mn-sfx-fade; } }
 @keyframes mn-sfx-fade { 0% { opacity: 0; transform: translateX(-50%); } 12%, 75% { opacity: 1; transform: translateX(-50%); } 100% { opacity: 0; transform: translateX(-50%); } }
 
-/* «пока тебя не было» */
+ 
 .mn-news-w { position: absolute; inset: 0; z-index: 4; display: grid; place-items: center; padding: 76px 16px 16px; background: rgba(8,6,12,.45); }
 .mn-news { position: relative; width: min(100%, 420px); max-height: 100%; overflow: auto; padding: 18px 20px !important; background: rgba(28,22,34,.97) !important; color: #f3efe6; border-radius: 16px; box-shadow: 0 12px 40px rgba(0,0,0,.55); box-sizing: border-box; }
 .mn-news .mn-btns { position: sticky; bottom: -18px; padding: 8px 0 0; background: inherit; }
@@ -121,7 +121,7 @@ body.mn-on { overflow: hidden; }
 .mn-news ul { margin: 0 0 10px; padding-left: 18px; display: grid; gap: 4px; }
 .mn-news b { color: #ffe27a; }
 
-/* поручения у скупщика */
+ 
 .mn-q { display: grid; gap: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,.1); }
 .mn-q h4 { margin: 6px 0 0; font-size: 13px; color: #ffc94d; text-transform: uppercase; letter-spacing: .06em; }
 .mn-q ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
@@ -131,9 +131,9 @@ body.mn-on { overflow: hidden; }
 .mn-q li.done b { color: #7ff07a; }
 .mn-q li.cl { opacity: .5; }
 
-/* 25.10: своя каска — рисует сам человечек (doodle-core: minerHat), отдельная картинка над головой «левитировала» */
+ 
 
-/* 23.10: доска итогов шахты (окно поверх «Города») */
+ 
 .mn-board-w { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; background: rgba(8,6,12,.55); padding: 16px; }
 .mn-board { width: min(460px, 100%); max-height: calc(100vh - 32px); overflow: auto; padding: 18px 20px !important; display: grid; gap: 10px; }
 .mn-board h3 { margin: 0; }
@@ -147,7 +147,7 @@ body.mn-on { overflow: hidden; }
 .mn-bd-top li em { font-style: normal; font-weight: 800; font-variant-numeric: tabular-nums; }
 .mn-bd-top li.me b { text-decoration: underline; text-underline-offset: 3px; }
 
-/* 23.10: сумка в шахте */
+ 
 .mn-inv h4 { margin: 8px 0 2px; font-size: 13px; color: #ffc94d; text-transform: uppercase; letter-spacing: .06em; }
 .mn-inv ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .mn-inv li { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 14px; }
@@ -155,7 +155,7 @@ body.mn-on { overflow: hidden; }
 .mn-inv li small { font-size: 11px; opacity: .65; }
 .mn-inv li.lamp span { color: #ffe27a; font-weight: 800; }
 
-/* 24.10: доска итогов — вкладки шахт; выбор шахты (шахты городов своих округов); самоцвет этих мест */
+ 
 .mn-bd-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
 .mn-go ul { list-style: none; padding: 0; margin: 10px 0 14px; display: grid; gap: 8px; }
 .mn-go [data-go] { width: 100%; display: grid; grid-template-columns: 2em 1fr; column-gap: 8px; text-align: left; align-items: center; padding: 10px 12px; }
@@ -165,15 +165,15 @@ body.mn-on { overflow: hidden; }
 .mn-gem b i { width: 12px; height: 12px; border-radius: 3px; transform: rotate(45deg); box-shadow: 0 0 6px currentColor; display: inline-block; }
 .mn-go [data-go] em { grid-column: 2; font-style: normal; font-size: .85em; opacity: .85; }
 
-/* 25.10: оформление сайта (скины «den», «box», «plank» и др.: [data-skin] .panel { position: relative; margin-top; ушки ::before/::after;
-   clip-path }) — сильнее правил шахты: панель уезжала влево за экран, «Пока тебя не было» и «Понятно» — ниже экрана, на телефоне
-   шапка панели ложилась поверх «В город» (кнопка не нажималась). Здесь — ещё сильнее (html body …) */
+
+
+
 html body .mn .panel, html body .mn-board-w .panel { margin: 0; clip-path: none; outline: 0; }
 html body .mn .panel::before, html body .mn .panel::after, html body .mn-board-w .panel::before, html body .mn-board-w .panel::after { content: none !important; display: none !important; }
 html body .mn .mn-news { position: relative; left: auto; top: auto; transform: none; }
 html body .mn-board-w .mn-board { position: relative; }
 
-/* 25.10: «Ты» — поверх всех ников; очередь камней; масштаб; шахта в другой вкладке; доли монеты */
+ 
 .mn-menm { position: absolute; left: 0; top: 0; z-index: 100000; white-space: nowrap; font: 800 15px Golos Text, Arial, sans-serif; color: #ffe27a; text-shadow: 0 0 3px #15122e, 0 0 3px #15122e, 0 1px 2px #15122e; pointer-events: none; }
 .mn-qn { position: absolute; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: #ffe27a; color: #15122e; border: 3px solid #15122e; font: 900 15px Golos Text, Arial, sans-serif; }
 .mn-zoom { position: absolute; left: 12px; bottom: 16px; z-index: 3; display: flex; gap: 6px; }
@@ -184,8 +184,8 @@ html body .mn-board-w .mn-board { position: relative; }
 .mn-frac { opacity: .85; font-weight: 700; }
 .mn-hide[aria-pressed="true"] { opacity: .75; }
 
-/* 25.10 (обновление шахты mine2): копание - замах, удар с отдачей, искры и крошка, камень вздрагивает; у каждого копателя свой темп
-   (--dd, --dl - один раз из mine.js, без кадров JS). Только transform/opacity - анимации идут на видеокарте, не трогая страницу */
+
+
 .mn[data-m2="1"] .mn-h.dig .mn-fig > svg { transform-origin: 50% 100%; animation: mna-body var(--dd, 1.2s) var(--dl, 0s) infinite; }
 .mn[data-m2="1"] .mn-h.dig .mn-fig::after { animation: mna-pick var(--dd, 1.2s) var(--dl, 0s) infinite; }
 .mn[data-m2="1"] .mn-h.dig .mn-fig::before { content: ''; position: absolute; left: 86px; top: 50px; width: 6px; height: 6px; border-radius: 50%; background: #fff6c0; pointer-events: none; opacity: 0;
@@ -209,15 +209,15 @@ html body .mn-board-w .mn-board { position: relative; }
   100% { transform: rotate(-25deg); }
 }
 @keyframes mna-spark { 0%, 56% { opacity: 0; transform: scale(.2); } 58% { opacity: 1; transform: scale(.55); } 72% { opacity: .9; transform: translateY(-4px) scale(1.5); } 86% { opacity: 0; transform: translateY(5px) scale(1.9); } 100% { opacity: 0; transform: scale(.2); } }
-/* камень, который копают: копия поверх сцены (mine-art.js digging), оригинал в сцене скрыт; трещины - по прогрессу */
+ 
 .mn-rk { position: absolute; overflow: visible; pointer-events: none; }
 .mn[data-m2="1"] .mn-rk.hit { animation: mna-shake var(--sd, 1.1s) var(--sl, 0s) infinite; }
 @keyframes mna-shake { 0%, 56% { transform: translate(0, 0); } 59% { transform: translate(2.5px, -1px); } 63% { transform: translate(-2px, 1px); } 67% { transform: translate(1px, 0); } 71%, 100% { transform: translate(0, 0); } }
 .mn-bg [data-i].dg .rk { opacity: 0; }
 @media (prefers-reduced-motion: reduce) { .mn[data-m2="1"] .mn-h.dig .mn-fig > svg, .mn[data-m2="1"] .mn-h.dig .mn-fig::before, .mn[data-m2="1"] .mn-rk.hit { animation: none; } .mn[data-m2="1"] .mn-h.dig .mn-fig::after { animation: none; } }
-/* сцена (SVG этажа) - свой слой: идущие герои и полоски не перерисовывают тысячи узлов сцены (на телефоне - нет, как .mn-world) */
+ 
 @media (pointer: fine) { .mn[data-m2="1"] .mn-bg { will-change: transform; } .mn[data-m2="1"] .mn-heroes { will-change: transform; } }
-/* камень над головой (стоит под ним): кирка из-за головы бьёт вверх, кот приседает и тянется */
+ 
 .mn[data-m2="1"] .mn-h.dig.up .mn-fig > svg { animation-name: mna-body-up; }
 .mn[data-m2="1"] .mn-h.dig.up .mn-fig::after { right: auto; left: 28px; top: 16px; animation-name: mna-pick-up; }
 .mn[data-m2="1"] .mn-h.dig.up .mn-fig::before { left: 56px; top: 8px; }
@@ -238,7 +238,7 @@ html body .mn-board-w .mn-board { position: relative; }
   68% { transform: rotate(-4deg); }
   100% { transform: rotate(-30deg); }
 }
-/* 25.10 (mine/ui): подписи NPC — поверх героев; предметы входа нажимаются; телефон: шапка в одну строку, «−/+» над панелью */
+ 
 .mn-labels { position: absolute; inset: 0; pointer-events: none; z-index: 100001; }
 .mn-lbl, .mn-hl { position: absolute; transform: translate(-50%, -100%); white-space: nowrap; font: 800 17px Golos Text, Arial, sans-serif; color: #ffe27a; text-shadow: 0 0 3px #15122e, 0 0 3px #15122e, 0 2px 2px #15122e; }
 .mn-hl { padding: 4px 12px; border-radius: 999px; background: rgba(21,18,46,.92); border: 2px solid #ffe27a; color: #fff; font-size: 16px; text-shadow: none; box-shadow: 0 6px 18px rgba(0,0,0,.45); }
@@ -255,16 +255,16 @@ html body .mn-board-w .mn-board { position: relative; }
   html body .mn .mn-zoom { bottom: 64px; }
 }
 
-/* ===== 25.10: обновление шахты (mine2, тестерам): панель, шапка, подсветка предметов, сумка ячейками. Всё — под .mn[data-m2="1"] ===== */
+ 
 .mn[data-m2="1"] { --m2-bg: rgba(29,22,32,.95); --m2-card: rgba(255,255,255,.05); --m2-line: rgba(255,255,255,.08); --m2-gold: var(--accent-2, #ffcf6a); --m2-mute: var(--mute, #bfaab7); }
-/* шапка: название и этаж — плашкой; кнопки — одной группой */
+ 
 .mn[data-m2="1"] .mn-top { padding: 12px 16px; background: linear-gradient(rgba(14,10,18,.9), rgba(14,10,18,0)); }
 .mn[data-m2="1"] .mn-ttl { display: grid; gap: 2px; padding: 6px 14px 7px; border-radius: 16px; background: rgba(21,16,26,.78); box-shadow: 0 6px 18px rgba(0,0,0,.3); }
 .mn[data-m2="1"] .mn-ttl b { font: 700 22px/1.1 var(--hd, "Russo One", sans-serif); letter-spacing: .02em; color: var(--m2-gold); text-shadow: none; }
 .mn[data-m2="1"] .mn-ttl span { font-size: 13px; color: var(--m2-mute); font-weight: 700; }
 .mn[data-m2="1"] .mn-reset { align-self: center; padding: 4px 10px; border-radius: 999px; background: rgba(21,16,26,.6); font-size: 12px; color: var(--m2-mute); }
 .mn[data-m2="1"] .mn-tb { padding: 4px; gap: 4px; border-radius: 999px; background: rgba(21,16,26,.78); box-shadow: 0 6px 18px rgba(0,0,0,.3); }
-/* панель справа: карточки */
+ 
 .mn[data-m2="1"] .mn-pb { padding: 0 12px 12px; gap: 10px; }
 .mn[data-m2="1"] .m2-card { display: grid; gap: 8px; padding: 12px 14px; border-radius: 16px; background: var(--m2-card); box-shadow: inset 0 0 0 1px var(--m2-line); }
 .mn[data-m2="1"] .m2-k { font: 800 12px var(--tx, Golos Text, sans-serif); text-transform: uppercase; letter-spacing: .08em; color: var(--m2-mute); }
@@ -273,14 +273,14 @@ html body .mn-board-w .mn-board { position: relative; }
 .mn[data-m2="1"] .m2-mini { display: block; height: 4px; border-radius: 999px; background: #15101a; overflow: hidden; margin-top: 2px; }
 .mn[data-m2="1"] .m2-mini i { display: block; height: 100%; background: #8fe3b0; border-radius: 999px; }
 .mn[data-m2="1"] .m2-mini.xp i { background: var(--m2-gold); }
-/* окна NPC и поручения — та же карточка */
+ 
 .mn[data-m2="1"] .mn-npc-p { display: grid; gap: 8px; }
 .mn[data-m2="1"] .mn-npc-p h3 { font: 700 18px var(--hd, sans-serif); color: var(--m2-gold); }
 .mn[data-m2="1"] .mn-q li { padding: 5px 0; border-bottom: 1px solid var(--m2-line); }
-/* подсветка предмета под мышью: контур по форме (SVG-фильтр), подпись */
+ 
 .mn[data-m2="1"] .mn-bg .hl { filter: url(#mnGlow); }
 .mn[data-m2="1"] .mn-h.walk .mn-nm2 { font-size: 12px; opacity: .7; }
-/* телефон: панель снизу; свёрнута — что делаю и заработок */
+ 
 @media (max-width: 720px) {
   .mn[data-m2="1"] .mn-top { padding: 8px 10px; gap: 8px; }
   .mn[data-m2="1"] .mn-ttl { padding: 5px 10px; border-radius: 12px; }
@@ -291,15 +291,15 @@ html body .mn-board-w .mn-board { position: relative; }
 @media (max-width: 720px) {
 }
 .mn-nm2 { bottom: calc(110px + var(--nmy, 0) * 15px); }
-/* 25.10 (обновление шахты): чат шахты — тот же чат, что в «Городе» (sitechat.js, стили city.css): слева снизу над «−/+» */
+ 
 .mn .cy-chat { position: absolute; left: 12px; bottom: 64px; margin: 0; z-index: 4; width: min(360px, calc(100% - 24px)); }
 @media (max-width: 720px) { .mn .cy-chat:not(.open) { width: auto; } }
-/* 25.10 (mine2): чат не закрывает подъёмник и предметы (mine.js chatFit: data-chat="side" - слева от шахты, ширина --mn-chw;
-   "band" - нижняя полоса, сцена кончается над ней). Свёрнут - язычок «Чат» у левого края (число непрочитанных - в нём) */
+
+
 .mn[data-m2="1"] .cy-chat { left: 0; bottom: 64px; width: var(--mn-chw, min(360px, calc(100% - 24px))); }
 .mn[data-m2="1"] .cy-chat.open { left: 12px; }
-/* 30.10: полоса - не шире 720 px, прижата влево, ширина ЗАДАНА (было right: 12px; width: auto: из-за justify-self: start у .cy-chat ширина считалась
-   по длине сообщений и при длинных строках растягивалась на весь экран; а в Шахте 3.0 полоса - всегда, зал шире окна). На телефоне ниже - на ширину экрана */
+
+
 .mn[data-m2="1"][data-chat="band"] .cy-chat.open { right: auto; width: min(720px, calc(100% - 24px)); }
 @media (min-width: 721px) { .mn[data-m2="1"][data-chat="band"] .cy-chat-l { max-height: min(200px, 26vh); } }
 .mn[data-m2="1"] .cy-chat:not(.open) { width: auto; }
@@ -307,32 +307,32 @@ html body .mn-board-w .mn-board { position: relative; }
 @media (max-width: 720px) {
   .mn[data-m2="1"] .cy-chat { left: 0; right: auto; bottom: 64px; }
   .mn[data-m2="1"] .cy-chat.open, .mn[data-m2="1"][data-chat="band"] .cy-chat.open { left: 10px; right: 10px; width: auto; }
-  html body .mn[data-m2="1"][data-chat] .mn-zoom { left: auto; right: 10px; }   /* язычок чата - слева, «−/+» - справа: не налезают */
+  html body .mn[data-m2="1"][data-chat] .mn-zoom { left: auto; right: 10px; }    
 }
 
-/* 25.10 (mine2): сумка — компактная карточка на месте правой панели (вид карточки, ячейки, кукла, полоски, фильтр — библиотека
-   инвентаря: /lib/inventory.css, .lgi--compact). Здесь — только где она стоит: справа сверху; шахта рядом видна и нажимается
-   (у обёртки нет подложки); на телефоне — снизу на ~60% высоты */
+
+
+
 .mn-inv2-w { position: absolute; z-index: 6; right: 16px; top: 76px; width: 276px; max-height: calc(100% - 92px); display: flex; pointer-events: none; }
 .mn-inv2 { pointer-events: auto; }
 @media (max-width: 720px) {
   .mn-inv2-w { left: 0; right: 0; top: auto; bottom: 0; width: auto; height: 60vh; height: 60dvh; max-height: none; }
   .mn.bag-on .cy-chat, .mn.bag-on .mn-zoom { display: none; }
-  /* 29.10 (зритель: «Сумка на телефоне не пролистывается - список вещей обрезан»): кукла и фильтры занимали почти всю карточку, на
-     список оставалось 100 px с прокруткой внутри, низ карточки обрезался. На телефоне прокручивается вся карточка (как с рудной
-     сумкой, .lgi-wob): заголовок и подсказка - прилипают сверху и снизу */
+  
+
+
   .mn-inv2-w .lgi--compact { overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; touch-action: pan-y; }
   .mn-inv2-w .lgi--compact .lgi-g { flex: none; min-height: 0; overflow: visible; }
   .mn-inv2-w .lgi--compact > .lgi-h { position: sticky; top: -8px; z-index: 2; margin: -8px -10px 0; padding: 8px 10px 4px; background: rgb(29,22,32); }
   .mn-inv2-w .lgi--compact > .lgi-a { position: sticky; bottom: -10px; z-index: 2; margin: 0 -10px -10px; padding: 4px 10px 10px; background: rgb(29,22,32); }
 }
 
-/* 25.10 (mine2, просьба стримера): на широком ПК панель, окна и сумка - вплотную к правой стене зала (mine.js dockFit: --mn-pl - где
-   начинается тёмная полоса за стеной, --mn-pw - ширина: 340, окно - до 600), шапка с кнопками - над ними; чат - у левой стены */
+
+
 .mn[data-m2="1"][data-chat="side"] .cy-chat.open { left: var(--mn-chx, 12px); }
-/* 26.10 (mine2): чат на ПК перетаскивается за заголовок (mine.js chatDrag): data-chat="free" - стоит, где поставил зритель (--mn-cfx от
-   левого края шахты, --mn-cfb - от нижнего: окно растёт вверх, когда тянут верхний край), сцену не укорачивает. 30.10: на ПК открытый
-   чат - всегда free (по умолчанию слева внизу), размер тянут за края (chat.js, .cy-chat-rz в city.css); «⤢» убрана, двойной клик - на место */
+
+
+
 @media (min-width: 721px) {
   .mn[data-m2="1"][data-chat="side"] .cy-chat-h, .mn[data-m2="1"][data-chat="free"] .cy-chat-h { cursor: move; user-select: none; -webkit-user-select: none; touch-action: none; }
   .mn[data-m2="1"][data-chat="side"] .cy-chat-h button, .mn[data-m2="1"][data-chat="free"] .cy-chat-h button { cursor: pointer; }
@@ -343,7 +343,7 @@ html body .mn-board-w.dock { display: block; padding: 0; background: none; point
 html body .mn-board-w.dock .mn-board { position: absolute; left: var(--bl); top: var(--bt); width: var(--bw); max-height: calc(100vh - var(--bt) - 16px); pointer-events: auto;
   background: rgba(29,22,32,.96) !important; color: #f3efe6; border-radius: 22px; box-shadow: 0 18px 40px rgba(0,0,0,.45); }
 
-/* 25.10 (mine2): строки поручений - название целиком, прогресс и награда фишками справа; в узкой панели фишки - строкой ниже */
+ 
 .mn[data-m2="1"] .mn-q li.mn-qr { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 8px 0; }
 .mn[data-m2="1"] .mn-qt { flex: 1 1 240px; min-width: 0; font-size: 14px; line-height: 1.3; }
 .mn[data-m2="1"] .mn-qt small { display: block; font-size: 11px; color: var(--m2-mute); }
@@ -356,8 +356,8 @@ html body .mn-board-w.dock .mn-board { position: absolute; left: var(--bl); top:
 .mn[data-m2="1"] .mn-q [data-mn-claim] { margin-top: 6px; }
 .mn[data-m2="1"] .mn-q [data-mn-claim][disabled] { opacity: .5; cursor: default; filter: saturate(.4); }
 
-/* 25.10 (mine2): кнопки шахты - в цветах пласта (латунь и дерево с тёмной обводкой), а не розовые сайта: «В город», «Сдать скупщику»,
-   «Забрать награду», «Назад», «Надеть» в сумке. Цвета - по пласту (mine-biome.js ставит .mn[data-mnb]) */
+
+
 .mn[data-m2="1"] { --mb-l: #f2c56a; --mb: #d49a3c; --mb-d: #8a5a1e; --mb-ink: #2a1806; --mg: #4a3426; --mg-l: #5e4432; --mg-ink: #f3e3c8; }
 .mn[data-m2="1"][data-mnb="clay"] { --mb-l: #f0b47e; --mb: #cc7c46; --mb-d: #7e3e1c; --mb-ink: #2a1206; --mg: #4e2c20; --mg-l: #64382a; }
 .mn[data-m2="1"][data-mnb="stone"] { --mb-l: #e6d39a; --mb: #b89c56; --mb-d: #6a5628; --mb-ink: #221a08; --mg: #3a3a44; --mg-l: #4c4c58; --mg-ink: #e8e6f0; }
@@ -370,15 +370,15 @@ html body .mn[data-m2="1"] .btn.primary:active:not([disabled]) { box-shadow: ins
 html body .mn[data-m2="1"] .btn.ghost { background: linear-gradient(var(--mg-l), var(--mg)); color: var(--mg-ink); border: 2px solid #15122e; box-shadow: inset 0 -2px 0 rgba(0,0,0,.35); }
 html body .mn[data-m2="1"] .btn.ghost:hover:not([disabled]) { filter: brightness(1.15); }
 html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); outline-offset: 2px; }
-/* 26.10: подпись верхней клети длинная - переносится и не шире 320 px */
+ 
 .mn .mn-hl.long { white-space: normal; width: max-content; max-width: 320px; text-align: center; line-height: 1.3; border-radius: 14px; }
 .mn .mn-hl.dn { transform: translate(-50%, 0); }
-/* 26.10 (mine2): счётчики в шапке - «👥 В шахте N · ⛏ копают M»; на телефоне - коротко (только значки и числа) */
+ 
 .mn-cnt { display: none; }
 .mn[data-m2="1"] .mn-cnt:not([hidden]) { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 3px; }
 .mn[data-m2="1"] .mn-cnt b { display: inline-flex; align-items: center; gap: 3px; padding: 1px 9px; border-radius: 999px; background: rgba(255,255,255,.08); font: 800 12px var(--tx, Golos Text, sans-serif); color: var(--m2-gold); white-space: nowrap; }
 .mn[data-m2="1"] .mn-cnt i { font-style: normal; color: var(--m2-mute); font-weight: 700; }
-/* 26.10 (mine/count-fix): число «В шахте / копают» - свойством --mn-n (mine.js cnt): новое значение докручивается за 1,2 с самим CSS */
+ 
 @property --mn-n { syntax: '<integer>'; inherits: false; initial-value: 0; }
 .mn-cnt .mn-num { --mn-n: 0; counter-reset: mnn var(--mn-n); transition: --mn-n 1.2s ease-out; font-variant-numeric: tabular-nums; }
 .mn-cnt .mn-num::after { content: counter(mnn); }
@@ -387,11 +387,11 @@ html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); 
   .mn[data-m2="1"] .mn-cnt { margin-top: 2px; gap: 4px; }
   .mn[data-m2="1"] .mn-cnt b { padding: 0 6px; font-size: 11px; }
   .mn[data-m2="1"] .mn-cnt i { display: none; }
-  /* шапка на телефоне - уже: «Игроки» и «Итоги» - значками (текст остаётся для экранного диктора), «В город» - словом */
+   
   .mn[data-m2="1"] .mn-tb [data-mn-hide][aria-pressed="true"]::before { opacity: .45; }
 }
-/* 26.10 (mine2): телефон боком (низкий экран): шапка в одну строку - короткое название, кнопки значками, без срока недели и имени пласта;
-   панель уже и ниже шапки */
+
+
 @media (max-height: 480px) and (pointer: coarse) {
   .mn[data-m2="1"] .mn-top { padding: 6px 10px; }
   .mn[data-m2="1"] .mn-ttl { padding: 4px 10px; }
@@ -400,21 +400,27 @@ html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); 
   .mn[data-m2="1"] .mnb-nm, .mn[data-m2="1"] .mn-reset { display: none; }
   .mn[data-m2="1"] .mn-cnt i { display: none; }
 }
-/* 26.10: полоска копания - «здоровье» камня (mine.js hpGo): цвет по остатку, свой камень - светлая рамка */
+ 
 @keyframes mnHp { 0% { background-color: #5fd35f; } 50% { background-color: #ffd23f; } 100% { background-color: #ff4d3d; } }
-.mn .mn-bar i { background: none; background-color: #5fd35f; }
+@keyframes mnHpY { 0%, 50% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes mnHpG { 0% { opacity: 1; } 50%, 100% { opacity: 0; } }
+.mn .mn-bar i { background: none; background-color: #5fd35f; position: relative; }
+ 
+.mn .mn-bar i.hp::before, .mn .mn-bar i.hp::after { content: ''; position: absolute; inset: 0; border-radius: inherit; animation: mnHpY var(--hpD, 1s) linear var(--hpL, 0s) 1 both; }
+.mn .mn-bar i.hp::before { background: #ffd23f; }
+.mn .mn-bar i.hp::after { background: #5fd35f; animation-name: mnHpG; }
 .mn .mn-bar.me { box-shadow: 0 0 0 2px #ffe27a; }
 
-/* 26.10: шахта не нарисовалась - текст ошибки в панели (mine.js fail) */
+ 
 .mn .mn-err { padding: 4px 2px; } .mn .mn-err p { margin: 0 0 8px; } .mn .mn-err code { word-break: break-all; font-size: 12px; color: #ffb4a0; }
-/* 26.10: окно скупщика (флаг mineBuyerPublic / тестеры): прилавок, предложение «Дам за это N», руда из сумки — библиотекой инвентаря */
+ 
 .mn[data-m2="1"] .mb-earn p { margin: 4px 0 0; font-size: 12.5px; line-height: 1.35; }
 .mn[data-m2="1"] .mb-wait { padding: 6px 9px; border-radius: 10px; background: rgba(255,170,80,.12); color: #ffd19a; }
 .mn[data-m2="1"] .mb-head { grid-template-columns: 1fr; }
 .mn[data-m2="1"] .mb-who h3 { margin: 0; font: 700 18px var(--hd, sans-serif); color: var(--m2-gold); }
 .mn[data-m2="1"] .mb-say { margin: 4px 0 0; font-size: 14px; line-height: 1.4; color: var(--ink, #f7eadf); font-style: italic; }
 .mn[data-m2="1"] .mb-say .m { font-style: normal; }
-.mn[data-m2="1"] .mb-say.thx { color: #c9f5c0; }   /* 26.10: благодарность после обмена */
+.mn[data-m2="1"] .mb-say.thx { color: #c9f5c0; }    
 .mn[data-m2="1"] .mb-counter { border: 2px dashed rgba(255,207,106,.35); background: linear-gradient(rgba(120,82,40,.22), rgba(70,46,24,.18)); transition: border-color .15s, background-color .15s; }
 .mn[data-m2="1"] .mb-counter.ig-ok { border-color: rgba(143,227,154,.6); }
 .mn[data-m2="1"] .mb-counter.ig-hover { border-color: #8fe39a; background-color: rgba(143,227,154,.08); }
@@ -434,9 +440,9 @@ html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); 
 .mn[data-m2="1"] .mb-offer { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 8px 12px; border-radius: 12px; background: rgba(0,0,0,.3); color: var(--m2-mute); font-weight: 700; font-size: 13px; }
 .mn[data-m2="1"] .mb-offer b { font: 700 22px/1.1 var(--hd, sans-serif); color: var(--m2-mute); }
 .mn[data-m2="1"] .mb-offer.on b { color: var(--m2-gold); }
-/* 30.10 (стример, окно Скупщика 1420x1016): «Обменя / ть», «Забрать / обратн / о» - слова рвались из-за overflow-wrap: anywhere окна (min-content кнопки
-   становился в одну букву, колонки сжимались). Кнопки облачек: перенос только между словами, не уже самого длинного слова; две кнопки - в ряд,
-   не помещаются - в столбик на всю ширину (flex-wrap, flex-grow) */
+
+
+
 .mn .btn { overflow-wrap: normal; word-break: normal; hyphens: manual; }
 .mn .mn-btns > .btn { min-width: min-content; }
 .mn[data-m2="1"] .mb-counter .mn-btns { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -455,7 +461,7 @@ html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); 
   .mn[data-m2="1"] .mb-inv .cy-grid { grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); }
 }
 
-/* 26.10 (mine2): «Как устроена шахта» - значок «i» в шапке (только с обновлением) и окно (mine.js help: вид - как у «Итогов», .mn-board) */
+ 
 .mn .mn-info { display: none; }
 .mn[data-m2="1"] .mn-info { display: grid; font: italic 700 17px/1 Georgia, serif; text-transform: none; }
 .mn-help .mn-board { width: min(560px, 100%); gap: 6px; }
@@ -469,7 +475,7 @@ html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); 
   html body .mn-help .mn-board { width: 100%; height: 100%; max-height: none; border-radius: 0; overflow-y: auto; overscroll-behavior: contain; padding: 14px 16px calc(16px + env(safe-area-inset-bottom)) !important; }
 }
 
-/* 26.10 (mine/pickaxe): окно Снабженца Кремня (mine.js supHtml) - вкладки «Кирка», «Рудная сумка», «Каска»; вид - как окно скупщика (.mb-*) */
+ 
 .mn[data-m2="1"] .sp-tabs { display: flex; gap: 4px; margin-top: 10px; padding: 3px; border-radius: 12px; background: rgba(0,0,0,.28); }
 .mn[data-m2="1"] .sp-tab { flex: 1 1 0; min-height: 36px; padding: 0 8px; border: 0; border-radius: 9px; background: none; color: var(--m2-mute); font: 700 13px var(--tx, sans-serif); cursor: pointer; }
 .mn[data-m2="1"] .sp-tab[aria-selected="true"] { background: rgba(255,207,106,.16); color: var(--m2-gold); box-shadow: inset 0 0 0 1px rgba(255,207,106,.35); }
@@ -488,7 +494,7 @@ html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); 
 .mn[data-m2="1"] .sp-next { display: grid; gap: 10px; border: 1px solid rgba(255,207,106,.28); background: linear-gradient(rgba(120,82,40,.2), rgba(70,46,24,.14)); }
 .mn[data-m2="1"] .sp-reqs { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
 .mn[data-m2="1"] .sp-req { display: grid; grid-template-columns: 36px minmax(0, 1fr); align-items: center; gap: 2px 8px; padding: 5px 8px; border-radius: 11px; background: rgba(0,0,0,.25); }
-/* 26.10 (стример: «не влезает в окно»): «есть … / нужно …» - под названием, переносится; деньги длинные («10 серебряных рыбок 72 чешуйки») */
+ 
 .mn[data-m2="1"] .sp-req .sp-ri { grid-row: span 2; }
 .mn[data-m2="1"] .sp-ri { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 9px; background: rgba(255,255,255,.06); }
 .mn[data-m2="1"] .sp-ri svg { width: 30px; height: 30px; }
@@ -514,12 +520,12 @@ html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); 
   .mn[data-m2="1"] .sp-rv { grid-column: 2; }
   .mn[data-m2="1"] .sp-ri { width: 32px; height: 32px; }
 }
-/* 26.10: «Можно дешевле» - медь / кристаллы вместо части железа / золота (галочка - отдать) */
+ 
 .mn[data-m2="1"] .sp-cheap { display: grid; gap: 5px; padding: 8px; border-radius: 12px; background: rgba(143,227,154,.07); border: 1px dashed rgba(143,227,154,.35); }
 .mn[data-m2="1"] .sp-opt { display: grid; grid-template-columns: auto 36px minmax(0, 1fr); align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--ink, #f7eadf); cursor: pointer; }
 .mn[data-m2="1"] .sp-opt input { width: 20px; height: 20px; accent-color: #8fe39a; }
 .mn[data-m2="1"] .sp-opt small { display: block; font-weight: 600; color: var(--m2-mute); }
-/* 28.10 (новые поручения): общее поручение шахты - строка с общим прогрессом и своим вкладом */
+ 
 .mn-qc { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 13px; padding: 6px 0; }
 .mn-qc .mn-qt { flex: 1 1 200px; min-width: 0; }
 .mn-qc .mn-qt small { display: block; font-size: 11px; opacity: .75; }
@@ -527,17 +533,17 @@ html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); 
 .mn-qc.done b { color: #7ff07a; }
 .mn-qc .m2-mini { flex: 1 1 100%; display: block; height: 4px; border-radius: 2px; background: rgba(255,255,255,.12); overflow: hidden; }
 .mn-qc .m2-mini i { display: block; height: 100%; background: #ffc94d; }
-/* 27.10: угольный этаж - табличка в шапке рядом с номером этажа */
+ 
 .mn .mn-ttl span.mn-coal, .mn[data-m2="1"] .mn-ttl span.mn-coal { display: inline-flex; align-items: center; justify-self: start; width: max-content; padding: 1px 10px; border-radius: 999px; background: #2a2a34; border: 2px solid #5a5c72; color: #f2e6c8; font: 800 12px var(--tx, Golos Text, sans-serif); letter-spacing: .02em; white-space: nowrap; }
 .mn .mn-ttl span.mn-coal::before { content: ""; width: 9px; height: 9px; margin-right: 6px; border-radius: 3px; background: #121218; box-shadow: inset 2px 2px 0 #5a5c72; transform: rotate(18deg); }
 
-/* 29.10 (Шахта 3.0): большой этаж - куски сцены (mine3.js), камни фронта и закрытые, мини-карта */
-.mn3 { position: absolute; inset: 0; z-index: 0; isolation: isolate; pointer-events: auto; }   /* 29.10: куски этажа - свой слой, герои и предметы зала поверх */
+ 
+.mn3 { position: absolute; inset: 0; z-index: 0; isolation: isolate; pointer-events: auto; }    
 .mn3 .mn3-ch { overflow: visible; }
 .mn3 [data-i].open { cursor: pointer; }
 .mn3 [data-i].far { opacity: .72; }
 .mn3 [data-i].dg .rk { opacity: 0; }
-/* 30.10 (лаги при сдвиге камеры): копающий за краем кадра не рисуется и не анимируется (mine.js cullHeroes) */
+ 
 .mn-h.mn-off { display: none; }
 .mn-mm { position: absolute; left: 16px; top: 104px; z-index: 7; background: rgba(14, 12, 20, .86); border: 2px solid rgba(243, 239, 216, .3); border-radius: 10px; padding: 6px; pointer-events: none; }
 .mn-mm-t { font: 600 12px/1.2 system-ui, sans-serif; color: #f3efd8; opacity: .85; margin: 0 0 4px 2px; }
@@ -545,7 +551,7 @@ html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); 
 @media (max-width: 720px) { .mn-mm { left: auto; top: 52px; right: 8px; padding: 4px; } .mn-mm svg { width: 140px; height: auto; } .mn-mm-t { font-size: 10px; } }
 .mn-bg.v3 { pointer-events: none; }
 .mn-bg.v3 [data-obj], .mn-bg.v3 [data-npc] { pointer-events: auto; }
-/* 29.10 (Шахта 3.0, шаг 3): окно лифта - этажи, сбор, кто скинулся */
+ 
 .mn-lift .mn-lfl { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 12px; max-height: 132px; overflow-y: auto; }
 .mn-lift .mn-lfl .btn { min-width: 44px; justify-content: center; }
 .mn-lbar { position: relative; height: 22px; border-radius: 11px; background: rgba(243, 239, 216, .12); overflow: hidden; margin: 8px 0; }
@@ -557,24 +563,24 @@ html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); 
 .mn-lchip { position: absolute; transform: translateX(-50%); padding: 2px 10px; border-radius: 10px; background: rgba(14, 12, 20, .82); color: #f3efd8; font: 600 13px/18px system-ui, sans-serif; white-space: nowrap; border: 2px solid rgba(243, 239, 216, .25); }
 .mn-lchip-fund { border-color: #f4c74e; color: #ffe08a; }
 .mn-lchip-up { border-color: #7ad38a; color: #b9f3c2; }
-/* 29.10 (шаг 4): буровая - бур ходит, колесо крутится (только transform) */
+ 
 .mn3 .mn-drill { cursor: pointer; }
-/* 30.10: подвижные части буровой - <img> в HTML-слое куска (.mn3-fx): двигает видеокарта, кусок этажа не перерисовывается */
+ 
 .mn3-fx { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; }
 .mn-dfx { position: absolute; width: 0; height: 0; }
-.mn-dfx img { position: absolute; display: block; max-width: none; will-change: transform; user-select: none; -webkit-user-drag: none; }   /* своё полотно: перерисовка картинки не задевает кусок этажа */
+.mn-dfx img { position: absolute; display: block; max-width: none; will-change: transform; user-select: none; -webkit-user-drag: none; }    
 .mn-dbar i { background: linear-gradient(#c9a0ff, #8e63d8); }
 
-/* 30.10: облачко у лифта - «В город» и «Этажи» (mine.js liftMenu): в слое вида, место - из камеры; кнопки крупные под палец */
+ 
 .mn-lm { position: absolute; left: 0; top: 0; z-index: 8; display: flex; gap: 10px; padding: 10px; border-radius: 18px; background: rgba(29, 22, 32, .96); border: 2px solid rgba(255, 226, 122, .55); box-shadow: 0 10px 28px rgba(0, 0, 0, .5); --tail: 50%; }
 .mn-lm::after { content: ''; position: absolute; left: var(--tail); bottom: -9px; width: 16px; height: 16px; margin-left: -8px; background: inherit; border-right: 2px solid rgba(255, 226, 122, .55); border-bottom: 2px solid rgba(255, 226, 122, .55); transform: rotate(45deg); }
 .mn-lm.dn::after { bottom: auto; top: -9px; transform: rotate(225deg); }
 .mn-lm .btn { min-width: 112px; min-height: 52px; padding: 0 20px; font-size: 18px; font-weight: 800; justify-content: center; }
 @media (max-width: 720px) { .mn-lm { gap: 8px; padding: 8px; } .mn-lm .btn { min-width: 96px; min-height: 56px; font-size: 17px; padding: 0 14px; } }
-/* 30.10: зум колесом - короткий плавный ход (только transform слоя мира) */
+ 
 .mn-world.zm { transition: transform .12s ease-out; }
 @media (prefers-reduced-motion: reduce) { .mn-world.zm { transition: none; } }
-/* 30.10: облачко буровой (mine.js liftMenu 'drill'): компактно, 280-320 px, читаемо, кнопки под палец */
+ 
 .mn-lm.mn-lmd { display: block; width: min(310px, calc(100% - 16px)); padding: 12px 14px; font-size: 14px; line-height: 1.35; color: #f3efe6; }
 .mn-lmd .mn-lm-t { font: 800 16px Golos Text, Arial, sans-serif; color: #ffe27a; margin-bottom: 4px; }
 .mn-lmd .mn-lm-s, .mn-lmd .mn-lm-by { margin: 0 0 8px; }
@@ -588,20 +594,20 @@ html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); 
 .mn-lmd .mn-onote { font-size: 12px; margin: 0 0 6px; }
 .mn-lmd > .mn-btns:last-child { margin-bottom: 0; }
 .mn-lmd .mn-lm-by + .mn-btns .btn, .mn-lmd > .mn-btns:last-child .btn { min-width: min-content; padding: 0 16px; }
-/* 30.10: таблички со временем улучшения над лифтом и буровой - крупно, как подписи НПС */
+ 
 .mn-tmrs { position: absolute; left: 0; top: 0; pointer-events: none; }
 .mn-tmr { transform: translate(-50%, -100%); padding: 5px 16px; border-radius: 14px; border-width: 3px; font: 800 24px/30px Golos Text, Arial, sans-serif; color: #b9f3c2; border-color: #7ad38a; }
 .mn-tmr-drill { color: #e3cdfb; border-color: #c9a0ff; }
 @media (max-width: 720px) { .mn .cy-chat { left: auto; right: 10px; bottom: 64px; } .mn .cy-chat.open { left: 10px; width: auto; } }
 
-/* ===== 30.10 (стример: убрать правую панель): компактный интерфейс шахты - шапка слева, угловые кнопки и виджет справа, «Сейчас»
-   над своим камнем, окна - облачками у предметов. Только transform / opacity, без filter. ===== */
+
+
 .mn .mn-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 8px 10px; background: none; }
 .mn-tl { display: grid; gap: 6px; justify-items: start; min-width: 0; pointer-events: none; }
 .mn-tl > * { pointer-events: auto; }
 .mn-tr { display: grid; gap: 6px; justify-items: end; flex: 0 0 auto; pointer-events: none; }
 .mn-tr > * { pointer-events: auto; }
-/* шапка слева: меньше шрифт и отступы */
+ 
 .mn .mn-ttl, .mn[data-m2="1"] .mn-ttl { display: grid; gap: 1px; padding: 5px 10px 6px; border-radius: 12px; background: rgba(21,16,26,.72); box-shadow: 0 4px 12px rgba(0,0,0,.28); }
 .mn .mn-ttl b, .mn[data-m2="1"] .mn-ttl b { font: 700 16px/1.15 var(--hd, "Russo One", sans-serif); letter-spacing: .02em; color: var(--m2-gold, #ffc94d); text-shadow: none; max-width: 46vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mn .mn-ttl span, .mn[data-m2="1"] .mn-ttl span { font-size: 11.5px; color: var(--m2-mute, #cfc4b0); font-weight: 700; white-space: nowrap; }
@@ -610,11 +616,11 @@ html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); 
 .mn[data-m2="1"] .mn-cnt:not([hidden]) { gap: 4px; margin-top: 2px; }
 .mn[data-m2="1"] .mn-cnt b { padding: 0 7px; font-size: 11px; }
 .mn[data-m2="1"] .mn-cnt b[hidden] { display: none; }
-/* мини-карта - под шапкой, меньше */
+ 
 .mn .mn-tl .mn-mm { position: static; padding: 4px; border-width: 1px; border-radius: 8px; background: rgba(14,12,20,.78); }
 .mn .mn-tl .mn-mm svg { width: 120px; height: auto; }
 .mn .mn-tl .mn-mm-t { font-size: 10px; margin-bottom: 2px; }
-/* угловые кнопки: «i», глаз, кубок - круглые, одного размера */
+ 
 .mn .mn-tb, .mn[data-m2="1"] .mn-tb { display: flex; gap: 6px; padding: 0; background: none; box-shadow: none; }
 .mn-cb { width: 36px; height: 36px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: rgba(21,16,26,.78); color: #f3efe6; box-shadow: 0 3px 10px rgba(0,0,0,.3); cursor: pointer; }
 .mn-cb:hover, .mn-cb:focus-visible { background: rgba(40,30,48,.95); outline: 2px solid var(--m2-gold, #ffc94d); outline-offset: 0; }
@@ -622,7 +628,7 @@ html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); 
 .mn-cb .mn-eye-x { display: none; }
 .mn-cb.off { color: var(--m2-gold, #ffc94d); }
 .mn-cb.off .mn-eye-x { display: inline; }
-/* виджет справа сверху: полупрозрачная плашка, мелкий шрифт, ~240 px */
+ 
 .mn-wg { width: 236px; padding: 7px 10px 8px; border-radius: 12px; background: rgba(21,16,26,.7); color: #f3efe6; box-shadow: 0 4px 14px rgba(0,0,0,.3); font-size: 12px; line-height: 1.25; box-sizing: border-box; }
 .mn-wg:empty { display: none; }
 .mn-wg-in { display: grid; gap: 4px; }
@@ -642,10 +648,10 @@ html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); 
 .mn-wg-a button:hover, .mn-wg-a button:focus-visible { background: rgba(255,255,255,.16); outline: 1px solid var(--m2-gold, #ffc94d); }
 .mn-wg-dot { position: absolute; right: 3px; top: 3px; width: 7px; height: 7px; border-radius: 50%; background: #7ff07a; box-shadow: 0 0 0 2px rgba(21,16,26,.9); }
 .mn-wg-t { display: none; }
-/* каска нужна и не надета - строка сверху по центру */
+ 
 .mn-hat { position: absolute; left: 50%; top: 10px; z-index: 7; transform: translateX(-50%); max-width: calc(100% - 32px); padding: 4px 12px; border-radius: 999px; background: rgba(60,22,16,.88); border: 1px solid rgba(255,180,120,.55); color: #ffe0c0; font: 700 12px var(--tx, Golos Text, sans-serif); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
 .mn-hat[hidden] { display: none; }
-/* «Сейчас» над своим камнем: название и уровень, «ещё N мин», маленькая «Стоп» */
+ 
 .mn-nowl { position: absolute; left: 0; top: 0; z-index: 3; display: flex; align-items: center; gap: 6px; padding: 3px 4px 3px 9px; border-radius: 10px; background: rgba(21,18,46,.88); border: 1.5px solid #ffe27a; color: #fff; font: 700 12px var(--tx, Golos Text, sans-serif); white-space: nowrap; box-shadow: 0 3px 10px rgba(0,0,0,.35); pointer-events: none; }
 .mn-nowl[hidden] { display: none; }
 .mn-nowl b { color: #ffe27a; font-weight: 800; }
@@ -653,7 +659,7 @@ html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); 
 .mn-nowl em:empty { display: none; }
 .mn-nowx { pointer-events: auto; min-height: 22px; padding: 0 8px; border: 0; border-radius: 7px; background: rgba(255,255,255,.14); color: #fff; font: 800 11px var(--tx, Golos Text, sans-serif); cursor: pointer; }
 .mn-nowx:hover, .mn-nowx:focus-visible { background: #ff8a7a; color: #2a1206; outline: none; }
-/* окно-облачко (Скупщик, Снабженец, доска, лифт, буровая; ошибка - по центру) */
+ 
 .mn-win { position: absolute; left: 0; top: 0; z-index: 8; width: min(340px, calc(100% - 16px)); max-height: 560px; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; box-sizing: border-box; padding: 10px 12px 12px; border-radius: 16px; background: rgb(29,22,32); border: 2px solid rgba(255,226,122,.5); color: #f3efe6; box-shadow: 0 12px 30px rgba(0,0,0,.5); font-size: 13px; -webkit-user-select: text; user-select: text; --tail: 50%; }
 .mn-win[hidden] { display: none; }
 .mn-win[data-k="buy"], .mn-win[data-k="lamp"], .mn-win[data-k="quests"] { width: min(360px, calc(100% - 16px)); }
@@ -672,30 +678,30 @@ html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); 
 .mn-win .sp-now .sp-pic { width: 52px; height: 52px; }
 .mn-win .sp-up .sp-pic { width: 46px; height: 46px; }
 .mn-win .sp-nm { font-size: 15px; }
-/* закрыть - «×» в углу облачка, Esc или отойти от NPC */
+ 
 .mn-win [data-mn-back] { display: none; }
 .mn-log ul { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 2px; }
-/* доска: вкладки «Поручения / Доска почёта» */
+ 
 .mn-hon-me { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 2px 8px; padding: 8px 10px; border-radius: 10px; background: rgba(255,207,106,.1); }
 .mn-hon-me span { color: var(--m2-mute, #bfaab7); font-weight: 700; font-size: 12px; }
 .mn-hon-me b { font: 700 18px var(--hd, sans-serif); color: var(--m2-gold, #ffcf6a); }
 .mn-hon-me small { grid-column: 1 / -1; font-size: 11px; color: var(--m2-mute, #bfaab7); }
 .mn-hon .mn-bd-top li { font-size: 12.5px; }
-/* «Пока тебя не было» - небольшое окошко по центру */
+ 
 .mn .mn-news-w { padding: 16px; background: rgba(8,6,12,.3); }
 .mn .mn-news { width: min(100%, 300px); padding: 12px 14px !important; border-radius: 14px; font-size: 13px; }
 .mn .mn-news h3 { font-size: 15px; margin: 0 0 6px; }
 .mn .mn-news ul { margin: 0 0 6px; padding-left: 16px; gap: 2px; }
 .mn .mn-news .mn-btns { bottom: -12px; justify-content: flex-end; }
-/* «Итоги» из шахты - окно по центру, компактнее */
+ 
 .mn-board { font-size: 13px; }
-/* сумка - отдельным окном справа под виджетом */
+ 
 .mn .mn-inv2-w { top: var(--mn-bagt, 56px); right: 10px; max-height: calc(100% - var(--mn-bagt, 56px) - 10px); }
-/* шахта в другой вкладке: «Копать здесь» и аварийный «В город» */
+ 
 .mn-other .mn-btns { justify-content: center; }
-/* старая шахта (без обновления): кнопки и виджет - те же; чат её не показывает, «Журнал» - кнопкой в виджете */
+ 
 .mn:not([data-m2="1"]) .mn-cb.mn-info { display: none; }
-/* телефон: шапка короче, виджет - одной строкой (раскрывается нажатием), окна - по ширине экрана */
+ 
 @media (max-width: 720px) {
   .mn .mn-top { padding: 6px 8px; }
   .mn .mn-ttl b, .mn[data-m2="1"] .mn-ttl b { font-size: 14px; max-width: 52vw; }
@@ -706,7 +712,7 @@ html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); 
   .mn .mn-tl .mn-mm-t { display: none; }
   .mn-cb { width: 34px; height: 34px; }
   .mn-wg { width: auto; max-width: 220px; padding: 0; }
-  /* раскрытый - поверх, шапку не сдвигает */
+   
   .mn-wg.open { position: absolute; right: 8px; top: 46px; z-index: 9; width: 210px; padding: 0 8px 8px; background: rgba(21,16,26,.94); }
   .mn-wg-t { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 30px; padding: 0 10px; border: 0; background: none; color: #f3efe6; font: 800 12px var(--tx, Golos Text, sans-serif); cursor: pointer; position: relative; }
   .mn-wg.open .mn-wg-t { padding: 0 2px; }
@@ -718,21 +724,21 @@ html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); 
   .mn-win, .mn-win[data-k="buy"], .mn-win[data-k="lamp"], .mn-win[data-k="quests"] { width: calc(100% - 16px); }
   .mn .mn-inv2-w { top: auto; right: 0; }
 }
-/* журнал шахты во вкладке чата - строки событий, мелко и спокойно */
+ 
 .mn .cy-chat-l .cy-chat-lg { font-style: normal; font-size: 12.5px; color: #e8dcc8; background: none; padding: 2px 0; }
-/* в облачке - без «карточки в карточке»: заголовок NPC и подвал - прямо на фоне облачка */
+ 
 .mn-win .mb-head, .mn-win .sp-head, .mn-win .mb-foot { padding: 0; background: none; box-shadow: none; }
 .mn-win .mb-head .h3 { padding-right: 30px; }
 .mn-win .mb-say { margin-top: 2px; }
 
-/* 30.10: телефон, чат открыт - плашки внизу шахты («Выбери камень», «Копаешь» и др.) над окном чата, не на поле ввода (--mn-chb ставит mine.js chatFit) */
+ 
 @media (max-width: 720px) {
   .mn[style*="--mn-chb"] .mn-tip { bottom: var(--mn-chb); }
   .mn[style*="--mn-chb"] .mn-hat { bottom: calc(var(--mn-chb) + 34px); }
 }
 
-/* 31.10 (баг стримера: после выбора этажа мигал экран и на миг показывался прежний этаж): экран поездки лифта (mine.js rideGo) -
-   поверх сцены и шапки (подсказки - выше), пока не придёт вид выбранного этажа; появление и уход - только opacity, клеть ездит transform (без filter) */
+
+
 .mn-ride { position: absolute; inset: 0; z-index: 6; display: grid; place-items: center; background: #120d18; opacity: 0; transition: opacity .25s ease; pointer-events: auto; }
 .mn-ride.on { opacity: 1; }
 .mn-riding .mn-mm { opacity: 0; }
@@ -746,9 +752,9 @@ html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); 
 @keyframes mn-ride-up { from { transform: translateY(124px); } to { transform: translateY(-34px); } }
 @media (prefers-reduced-motion: reduce) { .mn-ride-c::after { animation: none; transform: translateY(45px); } .mn-ride { transition: none; } }
 
-/* ===== 01.11 (стример: окно поручений «всё перемешано и некомпактно»): строки поручений - mine.js questsHtml. Строка: название
-   (одной строкой, многоточие) и награда значками справа; под ними - тонкая полоса прогресса и числа (или состояние). Нажатие - подробности.
-   Готово - тёплая полоса слева; получено - одной приглушённой строкой без полосы, в конце секции. Полоса - transform: scaleX ===== */
+
+
+
 .mn-qs { display: grid; gap: 8px; }
 .mn-npc-p .mn-qs-s h4 { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 2px 0 3px; font: 800 12px var(--tx, Golos Text, sans-serif); letter-spacing: .02em; color: var(--m2-gold, #ffcf6a); text-transform: none; }
 .mn-npc-p .mn-qs-s h4 small { font-weight: 700; font-size: 11px; color: var(--m2-mute, #bfaab7); }
@@ -766,14 +772,14 @@ html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); 
 .mn-qs-bar { height: 3px; border-radius: 2px; background: rgba(255,255,255,.1); overflow: hidden; }
 .mn-qs-bar i { display: block; height: 100%; background: #8fe3b0; transform-origin: 0 50%; transition: transform .4s ease-out; }
 @media (prefers-reduced-motion: reduce) { .mn-qs-bar i { transition: none; } }
-/* награда: значок монеты + число, один стиль везде; без зелёной подсветки чисел (старое .mn-qr.done b красило и числа внутри суммы) */
+ 
 .mn-qc2 { display: inline-flex; align-items: center; gap: 3px; font: 800 12px var(--tx, Golos Text, sans-serif); color: #ffe27a; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .mn-qc2.mute { color: var(--m2-mute, #bfaab7); }
 .mn-cn { display: inline-block; width: 9px; height: 9px; margin-left: 2px; border-radius: 50%; background: #d08a4a; box-shadow: inset 0 -1.5px 0 rgba(0,0,0,.3); }
 .mn-cn:first-child { margin-left: 0; }
 .mn-cn.s { background: #cfd6e0; }
 .mn-cn.g { background: #ffcf6a; }
-/* состояния */
+ 
 .mn-qs-r.ok .mn-qs-h { background: rgba(255,207,106,.12); box-shadow: inset 3px 0 0 #ffcf6a; }
 .mn-qs-r.ok .mn-qs-st { color: #ffcf6a; }
 .mn-qs-r.ok .mn-qs-bar i, .mn-qs-r.no .mn-qs-bar i { background: #ffcf6a; }
@@ -782,20 +788,20 @@ html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); 
 .mn-qs-r.cl .mn-qs-st { grid-row: 1; grid-column: 2; color: #8fe39a; font-weight: 700; }
 .mn-qs-r.cl .mn-qs-h .mn-qc2 { grid-column: 3; }
 .mn-npc-p .mn-qs-d { margin: 2px 8px 4px; font-size: 11.5px; line-height: 1.35; color: var(--m2-mute, #bfaab7); }
-/* общее поручение: подробности - одной мелкой строкой под строкой */
+ 
 .mn-npc-p .mn-qs-i { margin: 3px 8px 0; font-size: 11px; line-height: 1.3; color: var(--m2-mute, #bfaab7); }
 .mn-npc-p .mn-qs-i.ok { color: #c9f5c0; }
-/* «Забрать»: одна на окно (сервер выдаёт за все готовые разом) - сверху, со счётом готовых и суммой; нечего забирать - мелкая строка */
+ 
 .mn-qs-cl { display: flex; align-items: center; gap: 6px; padding: 6px 6px 6px 10px; border-radius: 11px; background: rgba(255,207,106,.12); border: 1px solid rgba(255,207,106,.4); font-weight: 700; font-size: 12.5px; }
 .mn-qs-cn { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mn-qs-cl > .mn-qc2 { margin-right: auto; font-size: 13px; }
 .mn-win .mn-qs-cl .btn { flex: none; min-height: 32px; padding: 0 14px; }
-/* на широком экране окно поручений чуть шире - названия влезают целиком (телефон - по ширине экрана, как было) */
+ 
 @media (min-width: 721px) { .mn-win[data-k="quests"] { width: min(400px, calc(100% - 16px)); } }
 .mn-npc-p .mn-qs-cl0 { margin: 0; font-size: 11.5px; color: var(--m2-mute, #bfaab7); }
 
-/* ===== 01.11 (стример: окна Снабженца и Скупщика некомпактны; mine.js supHtml / buyerHtml). Только в облачке .mn-win ===== */
-/* Снабженец: «сейчас → следующая» одной строкой, требования - сеткой 2 колонки, кнопка сразу под ними, пояснение мелко */
+ 
+ 
 .mn[data-m2="1"] .mn-win .sp-head h3 small.sp-sub { font: 600 11px var(--tx, Golos Text, sans-serif); color: var(--m2-mute, #bfaab7); }
 .mn[data-m2="1"] .mn-win .sp-head .mb-say { font-size: 12px; }
 .mn[data-m2="1"] .mn-win .sp-body { gap: 8px; }
@@ -804,7 +810,7 @@ html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); 
 .mn[data-m2="1"] .mn-win .sp-step .sp-pic, .mn[data-m2="1"] .mn-win .sp-now .sp-pic, .mn[data-m2="1"] .mn-win .sp-up .sp-pic { width: 30px; height: 30px; border-radius: 8px; }
 .mn[data-m2="1"] .mn-win .sp-step .sp-pic svg { width: 27px; height: 27px; }
 .mn[data-m2="1"] .mn-win .sp-step .sp-bagi { font-size: 24px; }
-/* название кирки - целиком одной строкой («Деревянная», «Адамантитовая»): мельче, без обрезки; иконки - уже (стрелка - тоже) */
+ 
 .mn[data-m2="1"] .mn-win .sp-step .sp-nm { font-size: 12.5px; line-height: 1.15; white-space: nowrap; overflow-wrap: normal; }
 .mn[data-m2="1"] .mn-win .sp-step .sp-now, .mn[data-m2="1"] .mn-win .sp-step .sp-up { flex: 1 1 auto; }
 .mn[data-m2="1"] .mn-win .sp-step .sp-up .sp-nm { color: var(--m2-gold, #ffcf6a); }
@@ -839,12 +845,12 @@ html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); 
 .mn[data-m2="1"] .mn-win .sp-opt .sp-ri { width: 26px; height: 26px; }
 .mn[data-m2="1"] .mn-win .sp-opt .sp-ri svg { width: 22px; height: 22px; }
 .mn[data-m2="1"] .mn-win .sp-max { padding: 6px 8px; font-size: 12.5px; }
-/* Скупщик: пустой прилавок - низкий, «Даст N» и кнопки одной строкой, плитки руды мельче */
+ 
 .mn[data-m2="1"] .mn-win .mb-counter { gap: 4px; padding: 6px 8px; }
 .mn[data-m2="1"] .mn-win .mb-counter.empty .m2-k { display: none; }
 .mn[data-m2="1"] .mn-win .mb-empty { padding: 2px 0; font-size: 12px; text-align: left; }
-/* 01.11 (стример, скриншот ~350 px: «Дас / т», «8 чеш…»): «Даст:» и сумма значками монет (●8) - без переноса и многоточия;
-   не помещаются вместе с кнопками - кнопки переходят на строку ниже (flex-wrap), а не сжимают сумму */
+
+
 .mn[data-m2="1"] .mn-win .mb-deal { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .mn[data-m2="1"] .mn-win .mb-offer { flex: 1 0 auto; min-width: max-content; align-items: center; justify-content: flex-start; gap: 6px; padding: 4px 8px; border-radius: 9px; font-size: 12px; white-space: nowrap; }
 .mn[data-m2="1"] .mn-win .mb-offer > span { flex: none; }
@@ -861,8 +867,8 @@ html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); 
 .mn[data-m2="1"] .mn-win .mb-nm b { font-size: 12.5px; }
 .mn[data-m2="1"] .mn-win .mb-nm small { font-size: 11px; }
 .mn[data-m2="1"] .mn-win .mb-lb .btn { min-width: 30px; min-height: 28px; }
-/* 01.11: сколько класть - поле «штук» с кнопками − / + (как обмен монет на конфеты в Ступе); слева в ряду кнопок строки */
-/* ряд кнопок строки - на всю ширину (и под значком): поле, «½», «Всё» и × помещаются в один ряд в окне ~350 px */
+ 
+ 
 .mn[data-m2="1"] .mb-lb { flex-wrap: wrap; align-items: center; }
 .mn[data-m2="1"] .mb-lb:has(.mb-num) { grid-column: 1 / -1; }
 .mn[data-m2="1"] .mb-num { display: inline-flex; align-items: stretch; margin-right: auto; border-radius: 9px; border: 1px solid rgba(255,207,106,.35); background: rgba(0,0,0,.35); overflow: hidden; }
@@ -874,14 +880,24 @@ html body .mn[data-m2="1"] .btn:focus-visible { outline: 3px solid var(--mb-l); 
 .mn[data-m2="1"] .mb-ni.bad { color: #ff8a7a; box-shadow: inset 0 -2px 0 #ff8a7a; }
 @media (pointer: coarse) { .mn[data-m2="1"] .mb-nb, .mn[data-m2="1"] .mb-ni { min-height: 34px; } .mn[data-m2="1"] .mb-nb { min-width: 34px; } .mn[data-m2="1"] .mb-ni { font-size: 16px; } }
 .mn[data-m2="1"] .mn-win .mb-inv { gap: 4px; }
-/* сумка окна: плитки мельче, без пустого места снизу (сетка библиотеки - не ниже 100 px, пустой подвал - 40 px) */
+ 
 .mn[data-m2="1"] .mn-win .mb-inv .lgi--full .lgi-g { min-height: 0; padding: 0; }
 .mn[data-m2="1"] .mn-win .mb-inv .lgi--full .lgi-a:empty { display: none; }
 .mn[data-m2="1"] .mn-win .mb-inv .lgi--full .lgi-in { gap: 0; }
 .mn[data-m2="1"] .mn-win .mb-inv .lgi--full .lgi-g .cy-grid { grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)); gap: 4px; }
 .mn[data-m2="1"] .mn-win .mb-inv .lgi--full .lgi-g .cy-sc .cy-gi, .mn[data-m2="1"] .mn-win .mb-inv .lgi--full .lgi-g .cy-sc .cy-gi svg { width: 32px; height: 32px; }
 .mn[data-m2="1"] .mn-win .sp-tab { flex: 1 1 auto; padding: 0 6px; white-space: nowrap; }
-/* шапка Снабженца - ниже: «Улучшить» видна без прокрутки и на 390×844 с рамкой «Можно дешевле» */
+ 
 .mn[data-m2="1"] .mn-win .sp-head .sp-tabs { margin-top: 4px; }
 .mn[data-m2="1"] .mn-win .sp-head .mb-say { margin-top: 0; }
 .mn[data-m2="1"] .mn-win .sp-body { padding-top: 6px; padding-bottom: 6px; }
+
+
+
+
+
+@media (pointer: coarse) {
+  .mn.mn-lite .mn-h.dig .mna-ht { display: none !important; }
+  .mn.mn-lite .mn-world.mn-drag .mn-h.dig *, .mn.mn-lite .mn-world.mn-drag .mn-h.dig .mn-fig::after, .mn.mn-lite .mn-world.mn-drag .mn-h.dig .mn-fig::before, .mn.mn-lite .mn-world.mn-drag .mn-rk.hit { animation-play-state: paused !important; }
+  .mn.mn-lite .mn-cnt .mn-num { transition: none; }
+}

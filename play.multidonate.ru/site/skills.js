@@ -1,14 +1,14 @@
 'use strict';
-/* 20.10: «Навыки» во вкладке «Персонаж» — деревья классов: ветки с узлами, подсказка «что даст», «Вложить очко», «Сбросить».
-   Деревья — /api/skills (одни на всех, ETag), свой герой — hero.sk из /api/me: { md, c, m: { класс: [ур., опыт в ур., нужно] }, t: { класс: { узел: ранг } }, rp, lv }.
-   Действия — /api/skill { cls, node } и /api/skillReset { cls } через act() сайта (очередь → комната, как «надеть»).
-   Без анимаций и таймеров: перерисовка — только по клику или по новым данным героя. */
+
+
+
+
 (() => {
   let TREE = null, loading = false, failed = false;
   let cls = null, br = null, sel = null, confirmReset = false;
   try { cls = localStorage.getItem('lgSkCls') || null; } catch {}
   const STEPS = [0, 5, 10, 20, 30];
-  // значки веток — простые SVG одной толщины (как IC в app.js); неизвестная ветка (новый класс) — ромб
+
   const BI = {
     blade: '<path d="M19.5 4.5 20 4l-.5 4.5L9.5 18.5l-4-4zM7.5 16.5l-3 3M4 15l5 5"/>',
     shield: '<path d="M12 3.5l7 2.8v5.1c0 4.6-3 7.8-7 9.6-4-1.8-7-5-7-9.6V6.3z"/>',
@@ -22,7 +22,7 @@
     mercy: '<path d="M12 5v14M5 12h14"/><circle cx="12" cy="12" r="9"/>',
     faith: '<circle cx="12" cy="12" r="3.8"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>',
     wrath: '<path d="M13.5 2.5 5.5 13.5h6l-1.5 8 8-11h-6z"/>',
-    // 20.10: ветки новых классов (Разбойник, Некромант, Паладин)
+
     blades: '<path d="M14.5 3.5 16 5l-7.5 9-2-2zM6.5 12l-2.5 2.5 2 2 2.5-2.5M5 15.5l-1.5 1.5 3 3L8 18.5"/><path d="M15 13.5l5 5"/>',
     venom: '<path d="M9.5 3.5h5M10.5 3.5v5L6 17a2.6 2.6 0 0 0 2.3 3.5h7.4A2.6 2.6 0 0 0 18 17l-4.5-8.5v-5M8 14.5h8"/>',
     shadow: '<path d="M15.5 4.5A8 8 0 1 0 19.5 16 6.5 6.5 0 0 1 15.5 4.5z"/>',
@@ -37,41 +37,41 @@
   const LOCK = '<rect x="5.5" y="10.5" width="13" height="9.5" rx="2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/>';
   const svg = (p, cls2 = '') => `<svg class="i ${cls2}" viewBox="0 0 24 24" aria-hidden="true">${p}</svg>`;
   const num = (v) => (Math.round(v * 100) / 100).toString().replace('.', ',');
-  // подсказка узла на ранге r (как skills/index.js → text): {ключ} — итог; {critX}, {cleaveBoss}, {penBoss} — особые
-  // 20.10: XON — герою открыты новые характеристики (h.xs): крит от ×1,5, «бронебойные» и «стойкость к яду» идут в «Пробивание» и «Сопротивление»
-  let XON = false, SK0 = {};   // SK0 — навыки героя текущей отрисовки (открыто ли умение — в карточке узла)
-  // 25.10: доля узла в характеристике (FROM_FX), подписи и сила крита основы (×1,5) - из legionary/stats.js через данные игры (packages/game-data)
+
+
+  let XON = false, SK0 = {};
+
   const XSD = () => window.LGGameData.xstats;
   const xnote = () => ({ pierce: [XSD().fromFx.pierce, XSD().label.pierce, '%'], resist: [XSD().fromFx.resist, XSD().label.resist, ''] });
   const xCrit = () => 1 + XSD().base.critDmg / 100;
-  // значение {ключа} подсказки на ранге R
+
   function kv(fx, R, k) {
     if (k === 'critX') return num((XON ? xCrit() : 2) + (fx.critDmg || 0) * R / 100);
     if (k === 'cleaveBoss') return num((fx.cleave || 0) * R * 0.4);
     if (k === 'penBoss') return num((fx.pierce || 0) * R / 20);
     return fx[k] != null ? num(fx[k] * R) : '';
   }
-  // 25.10: «по рангам» — как растёт первое число подсказки (1,2 → 2,4 → … ), чтобы видеть, что даст каждый ранг
+
   function rankLine(n) {
     if (!(n.max > 1)) return '';
     const m = /\{(\w+)\}/.exec(n.text || ''); if (!m) return '';
     return Array.from({ length: n.max }, (_, i) => kv(n.fx || {}, i + 1, m[1])).join(' → ');
   }
-  // 25.10: умение, к которому относится узел («натиск» сильнее, «град» чаще, оглушение…): что оно делает и какое слово писать в чат
+
   const relAct = (c, n) => { if (n.kind === 'act') return null; for (const k of Object.keys(n.fx || {})) { const m = /^(?:a|cd|ctl)_([a-z]+)$/.exec(k); if (m) return (c.actions || []).find((a) => a.id === m[1]) || null; } return null; };
   function txt(n, r) {
     const fx = n.fx || {}, R = Math.max(0, r);
     const XNOTE = XON ? xnote() : {}, note = Object.keys(XNOTE).filter((k) => fx[k]).map((k) => ` · характеристика «${XNOTE[k][1]}» +${num(fx[k] * R * XNOTE[k][0])}${XNOTE[k][2]}`).join('');
     return String(n.text || '').replace(/\{(\w+)\}/g, (_, k) => kv(fx, R, k)).replace(XON ? /×2 → ×/ : /$^/, () => `×${num(xCrit())} → ×`) + note;
   }
-  // 20.10: врождённое класса (крит и хрупкость разбойника) — первой строкой в списке умений
+
   const innateLi = (c, X) => (c.innate ? `<li class="ska on"><span class="ska-w">класс</span><div><b>${X.esc(c.innate)}</b> <span class="ska-t">всегда, пока в руках оружие класса</span></div></li>` : '');
   function load(X) {
     if (TREE || loading) return;
     loading = true; failed = false;
     X.api('/api/skills').then((r) => { loading = false; if (r && r.ok && Array.isArray(r.classes)) TREE = r; else failed = true; X.rerender(); });
   }
-  // состояние дерева героя для класса c
+
   function st(sk, c) {
     const t = (sk.t && sk.t[c.id]) || {}, m = (sk.m && sk.m[c.id]) || [1, 0, null];
     const pts = sk.md === 'hero' ? Math.max(1, +sk.lv || 1) : Math.max(1, +m[0] || 1);
@@ -79,7 +79,7 @@
     for (const B of c.branches) { inB[B.id] = 0; for (const n of B.nodes) { const r = +t[n.id] || 0; inB[B.id] += r; spent += r; } }
     return { t, m, pts, spent, free: Math.max(0, pts - spent), inB, over: spent > pts };
   }
-  // можно ли вложить в узел: '' — можно, иначе — почему нельзя
+
   function why(c, S, B, n, X) {
     const r = +S.t[n.id] || 0;
     if (r >= n.max) return 'Максимальный ранг';
@@ -99,10 +99,10 @@
   function html(h, X, o) {
     XON = !!(h && h.xs);
     const sk = h.sk; SK0 = sk || {};
-    const TREE_MODE = !!(o && o.tree);   // зал Тренера в «Городе» — своя разметка (treeHtml), вкладка «Персонаж» — как была
+    const TREE_MODE = !!(o && o.tree);
     if (!sk) return `<section class="panel sk"><p class="empty">Навыки появятся, как только игра стримера пришлёт данные героя.</p></section>`;
     if (!TREE) { load(X); return `<section class="panel sk"><p class="empty">${failed ? 'Деревья навыков не загрузились — обнови страницу.' : 'Загружаем деревья навыков…'}</p></section>`; }
-    const list = (TREE.classes || []).filter((x) => !x.beta || sk.cb || x.id === sk.c);   // 20.10: новые классы — только тем, кому открыты (пока — тестерам)
+    const list = (TREE.classes || []).filter((x) => !x.beta || sk.cb || x.id === sk.c);
     if (!list.length) return `<section class="panel sk"><p class="empty">Деревьев навыков пока нет.</p></section>`;
     if (!cls || !list.some((c) => c.id === cls)) cls = list.some((c) => c.id === sk.c) ? sk.c : list[0].id;
     const c = list.find((x) => x.id === cls), S = st(sk, c), name = (id, fb) => X.roleOf(id, fb);
@@ -154,11 +154,11 @@
     </section>${node ? '<div class="sk-scrim" data-skx></div>' : ''}`;
   }
 
-  /* ---------- 20.10 → 21.10: режим «дерево» — доска в зале Тренера («Город»). Ветка — колонка со стволом от корня вверх,
-     узлы — жетоны со значком по эффекту, ранги — точки, пороги по очкам — засечки на стволе. Подсказка — при наведении/фокусе,
-     клик — та же карточка с «Вложить очко» (на телефоне — листом сверху). Координаты по X — в % колонки (колонка тянется
-     от 340px телефона до ~480px ПК), линии — SVG с non-scaling-stroke, поэтому толщина не искажается. Данные и действия — те же. ---------- */
-  const NI = {   // значки узлов по тому, что даёт навык (24×24, одной толщины)
+  
+
+
+
+  const NI = {
     sword: '<path d="M19.5 4.5 20 4l-.5 4.5L9.5 18.5l-4-4zM7.5 16.5l-3 3M4 15l5 5"/>',
     shield: '<path d="M12 3.5l7 2.8v5.1c0 4.6-3 7.8-7 9.6-4-1.8-7-5-7-9.6V6.3z"/>',
     bow: '<path d="M6 3c6 3 9 9 6 18M6 3l12 18M14 5h5v5M19 5 9 15"/>',
@@ -175,12 +175,12 @@
     dagger: BI.blades, vial: BI.venom, sun: BI.light, drop: BI.life,
     coin: '<circle cx="12" cy="12" r="8"/><path d="M14.5 9.5c-.6-.9-1.5-1.3-2.5-1.3-1.5 0-2.5.8-2.5 1.9 0 2.7 5.2 1.3 5.2 4 0 1.1-1.1 1.9-2.7 1.9-1.1 0-2.1-.5-2.6-1.4M12 6.5v1.7M12 15.8v1.7"/>',
   };
-  // замкнутые силуэты — с заливкой в тон (плоский «наклеечный» значок), открытые штрихи (ветер, лук) — только контур
+
   const SOLID = new Set(['sword', 'shield', 'heart', 'cross', 'star', 'bolt', 'crown', 'fire', 'spark']);
   const FXI = [[/^(melee|dmg|cleave|first|a_natisk|cd_natisk)$/, 'sword'], [/^(def|block|shieldBlock|resist|a_stoyka)$/, 'shield'], [/^(ranged|volley|pierce|a_pricel|a_grad|cd_grad)$/, 'bow'],
     [/^(magic|crit|critDmg|a_vspyshka|cd_vspyshka)$/, 'spark'], [/^(hp|regen|leech|healIn)$/, 'heart'], [/^(healPow|healCrit|a_obereg|cd_obereg|a_siyanie|cd_siyanie)$/, 'cross'],
     [/^(low|lastStand)$/, 'skull'], [/^(dodge|trapDodge)$/, 'wind'], [/^(steady|lead)$/, 'eye'], [/^(a_oznob|cd_oznob)$/, 'frost'],
-    // 20.10: новые классы
+
     [/^(poison|poisonT|a_yad|cd_yad)$/, 'vial'], [/^(steal|loot)$/, 'coin'], [/^(a_vspinu|cd_vspinu)$/, 'dagger'], [/^(skel|skelT|skelN|a_podnyat|cd_podnyat)$/, 'skull'],
     [/^(drain|a_vytyanut|cd_vytyanut)$/, 'drop'], [/^(hex|a_proklyat|cd_proklyat)$/, 'fire'], [/^(holy|a_svet)$/, 'sun'], [/^(aura|a_dlan|cd_dlan|cd_aura)$/, 'cross']];
   function iconOf(n, B) {
@@ -188,12 +188,12 @@
     for (const k of Object.keys(n.fx || {})) for (const [re, ic] of FXI) if (re.test(k)) return ic;
     return '';
   }
-  const CLI = { legionary: 'sword', archer: 'bow', mage: 'spark', priest: 'cross', rogue: 'dagger', necromancer: 'skull', paladin: 'sun' };   // значок класса на табличке
+  const CLI = { legionary: 'sword', archer: 'bow', mage: 'spark', priest: 'cross', rogue: 'dagger', necromancer: 'skull', paladin: 'sun' };
   const TH = 140, TOP = 40, BOT = 80, XS = { 1: [50], 2: [28, 72], 3: [18, 50, 82], 4: [14, 38, 62, 86] };
-  const BH = TOP + TH * (STEPS.length - 1) + BOT;   // высота доски ветки
-  let TIPS = {};   // id узла → карточка-подсказка (собирается при отрисовке, показывается при наведении)
+  const BH = TOP + TH * (STEPS.length - 1) + BOT;
+  let TIPS = {};
   const nodeIcon = (n, B) => { const k = iconOf(n, B); return k ? `<svg class="i${SOLID.has(k) ? ' so' : ''}" viewBox="0 0 24 24" aria-hidden="true">${NI[k]}</svg>` : svg(BI[B.id] || DIAM); };
-  // содержимое карточки узла: что даёт сейчас и на следующем ранге, почему закрыт
+
   function nodeCard(c, S, B, n, X, can, mine) {
     const r = +S.t[n.id] || 0, w = why(c, S, B, n, X);
     return `<p class="sxt-h"><b>${X.esc(n.name)}</b><span>${X.esc(B.name)} · ранг <b>${r}</b> из ${n.max}${n.kind ? ' · ' + (KIND[n.kind] || '') : ''}</span></p>
@@ -208,9 +208,9 @@
     const sk = h.sk, name = (id, fb) => X.roleOf(id, fb), rp = +sk.rp || 0, canReset = S.spent > 0 && !busy && !ghost && !off;
     const plaques = list.map((x) => {
       const s2 = st(sk, x), m = s2.m, pct = !(sk.m && sk.m[x.id]) ? 0 : m[2] == null ? 100 : Math.max(0, Math.min(100, (+m[1] || 0) / Math.max(1, +m[2]) * 100));
-      const none = !(sk.m && sk.m[x.id]);   // классом ещё не воевали — данных мастерства нет (это не «максимум»)
+      const none = !(sk.m && sk.m[x.id]);
       const meta = sk.md === 'hero' ? `уровень героя ${sk.lv || 1}` : `мастерство ${m[0]}${!none && m[2] == null ? ' · максимум' : ''}`;
-      const xpT = sk.md === 'hero' || none || m[2] == null ? '' : `, опыт ${m[1]} из ${m[2]}`;   // опыт уровня — в подсказке, на табличке его показывает полоска
+      const xpT = sk.md === 'hero' || none || m[2] == null ? '' : `, опыт ${m[1]} из ${m[2]}`;
       return `<button type="button" role="tab" class="skc-p" data-skc="${x.id}" aria-selected="${x.id === cls}" aria-pressed="${x.id === cls}" title="${X.esc(name(x.id, x.name))}: ${meta}${xpT}" style="--c:${X.esc(x.color || '#ffc94d')}">
         <span class="skc-ic">${svg(NI[CLI[x.id]] || DIAM)}</span><span class="skc-tx"><b>${X.esc(name(x.id, x.name))}</b><small>${meta}</small>${sk.md === 'hero' ? '' : `<span class="skc-bar" aria-hidden="true"><i style="width:${pct.toFixed(1)}%"></i></span>`}</span>
         ${s2.free ? `<span class="skc-f" title="Свободных очков: ${s2.free}"><span class="sr-only">свободных очков: </span>${s2.free}</span>` : ''}${x.id === sk.c ? '<span class="skc-on">в руках</span>' : ''}</button>`;
@@ -224,12 +224,12 @@
     const cols = c.branches.map((B, bi) => {
       const inB = S.inB[B.id], yT = (t) => BH - BOT - t * TH, top = yT(STEPS.length - 1);
       const openT = STEPS.reduce((a, req, t) => (inB >= req ? t : a), 0);
-      const root = yT(0) + 40;   // ствол — от нижнего яруса (корень) вверх
+      const root = yT(0) + 40;
       let ln = `<path class="tk-bg" d="M50 ${root} V${top}"/><path class="tk-on" d="M50 ${root} V${yT(openT)}"/>${openT < STEPS.length - 1 ? `<path class="tk-off" d="M50 ${yT(openT)} V${top}"/>` : ''}`;
       let gates = '', btns = '', pop = '';
       STEPS.forEach((req, t) => {
         const ns = B.nodes.filter((n) => n.req === req), xs = XS[ns.length] || ns.map((_, j) => 100 * (j + 1) / (ns.length + 1)), y = yT(t);
-        if (req) { const open = inB >= req, gy = y + Math.round((48 + TH) / 2);   // засечка — посередине между подписью яруса и значками следующего
+        if (req) { const open = inB >= req, gy = y + Math.round((48 + TH) / 2);
           gates += `<span class="skg${open ? ' on' : ''}" style="top:${gy}px" title="${open ? `Ярус открыт: в ветке ${inB} из ${req}` : `Откроется при ${req} ${X.plural(req, 'очке', 'очках', 'очках')} в ветке «${X.esc(B.name)}» (сейчас ${inB})`}">${open ? '' : svg(LOCK)}<span class="sr-only">${open ? 'открыто с' : 'нужно очков в ветке:'} </span>${req}</span>`; }
         ns.forEach((n, j) => {
           const x = xs[j], r = +S.t[n.id] || 0, w = why(c, S, B, n, X), can = !w && !busy && !ghost && !off;
@@ -267,11 +267,11 @@
       <div class="skx-g" style="--nb:${nb}">${cols}</div>
     </section>`;
   }
-  // подсказка при наведении мышью и при фокусе с клавиатуры: та же карточка, рядом с узлом (на телефоне — тап открывает карточку)
-  // после касания браузер шлёт «мышиные» события на то, что оказалось под пальцем, — подсказку не показываем (на телефоне — карточка по тапу)
+
+
   let touchAt = 0;
   document.addEventListener('pointerdown', (e) => { if (e.pointerType !== 'mouse') touchAt = Date.now(); }, true);
-  const canHover = () => (window.matchMedia ? window.LGSiteUi.is('hover') : true);   // 25.10: packages/site-ui; без matchMedia - как было, «мышь есть»
+  const canHover = () => (window.matchMedia ? window.LGSiteUi.is('hover') : true);
   function tipBind(el) {
     const show = (b, kb) => {
       const id = b.dataset.skn, box = b.parentElement && b.parentElement.querySelector('.skx-tip');
@@ -279,7 +279,7 @@
       box.innerHTML = TIPS[id];
       const x = parseFloat(b.style.left), y = parseFloat(b.style.top), side = b.dataset.sd, lo = b.dataset.lo === '1';
       box.className = `skx-tip sd-${side}${lo ? ' lo' : ''}`;
-      box.style.cssText = `--x:${x}%;--y:${y}px;--yb:${BH - y}px`;   // место — в CSS: сбоку от узла (доска) или под/над ним (узкая доска)
+      box.style.cssText = `--x:${x}%;--y:${y}px;--yb:${BH - y}px`;
       box.hidden = false;
     };
     const hide = (b) => { const box = b.parentElement && b.parentElement.querySelector('.skx-tip'); if (box) box.hidden = true; };
@@ -295,7 +295,7 @@
     const re = () => X.rerender();
     el.querySelectorAll('[data-skc]').forEach((b) => b.onclick = () => { cls = b.dataset.skc; sel = null; br = null; confirmReset = false; try { localStorage.setItem('lgSkCls', cls); } catch {} re(); });
     el.querySelectorAll('[data-skbt]').forEach((b) => b.onclick = () => { br = b.dataset.skbt; re(); });
-    // в зале Тренера повторный клик по тому же узлу закрывает карточку; фокус — на «Вложить очко» (доска) или как раньше (узкий экран)
+
     el.querySelectorAll('[data-skn]').forEach((b) => b.onclick = () => { const tree = b.classList.contains('skx'); if (tree && sel === b.dataset.skn) { sel = null; re(); const n = el.querySelector(`[data-skn="${b.dataset.skn}"]`); if (n) n.focus(); return; } sel = b.dataset.skn; const B = b.closest('[data-skb]'); if (B) br = B.dataset.skb; re(); const d = el.querySelector('.skd [data-skl]:not([disabled]), .skd [data-skx]'); if (d && (tree || window.LGSiteUi.is('(max-width: 899px)'))) d.focus({ preventScroll: true }); });
     tipBind(el);
     fitPlaques(el);
@@ -309,25 +309,25 @@
     });
     XL = X;
   }
-  /* 25.10: названия классов на табличках («Котоармеец», «Горилла-громила», «Колдун-корнеплод») — в одну строку, без разрыва посреди слова:
-     шрифт уменьшается под ширину таблички (не меньше FIT_MIN px). Не влезает и так — перенос только по пробелу или дефису;
-     слово всё равно шире таблички (очень узкий экран) — тогда уже перенос с дефисом (hyphens). Замер — раз после отрисовки и при смене ширины окна. */
+  
+
+
   const FIT_MIN = 11;
   function fitName(b) {
     b.style.fontSize = ''; b.classList.remove('wrap', 'hy');
     const w = b.clientWidth; if (!w || b.scrollWidth <= w) return;
     const base = parseFloat(getComputedStyle(b).fontSize) || 17;
     const shrink = () => { const fs = Math.floor(base * (b.clientWidth / b.scrollWidth) * 10) / 10 - 0.1; b.style.fontSize = Math.max(FIT_MIN, fs) + 'px'; return fs >= FIT_MIN; };
-    if (shrink()) return;   // одной строкой, мельче
-    b.style.fontSize = ''; b.classList.add('wrap');   // по пробелу / дефису, самое длинное слово — целиком
+    if (shrink()) return;
+    b.style.fontSize = ''; b.classList.add('wrap');
     if (b.scrollWidth <= b.clientWidth || shrink()) return;
-    b.classList.add('hy');   // слово шире таблички даже мелким шрифтом
+    b.classList.add('hy');
   }
   function fitPlaques(el) { (el || document).querySelectorAll('.skc-tx b').forEach(fitName); }
   let fitT = 0;
   window.addEventListener('resize', () => { clearTimeout(fitT); fitT = setTimeout(() => fitPlaques(document), 150); });
-  try { if (document.fonts) { document.fonts.ready.then(() => fitPlaques(document)); document.fonts.addEventListener('loadingdone', () => fitPlaques(document)); } } catch {}   // шрифт табличек (Russo One) догрузился — ширина другая
-  // Esc закрывает карточку навыка (один обработчик на страницу)
+  try { if (document.fonts) { document.fonts.ready.then(() => fitPlaques(document)); document.fonts.addEventListener('loadingdone', () => fitPlaques(document)); } } catch {}
+
   let XL = null;
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && sel && XL && document.querySelector('#tab-hero .sk, .cy-room .sk')) { sel = null; XL.rerender(); } });
   window.LGSkills = { html, bind, reset: () => { TREE = null; }, fit: fitName };

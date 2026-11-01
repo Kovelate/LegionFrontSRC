@@ -1,20 +1,20 @@
 'use strict';
-/* 24.10: «Отправить баг» — окно формы (грузится только по первому нажатию на кнопку 🐞, см. bfPlace / bugOpen в app.js).
-   Тема (до 100), описание (до 10000), до 5 скриншотов: выбрать, перетащить или вставить из буфера (Ctrl+V). Картинки браузер
-   уменьшает до 1920 px по большей стороне и пережимает в WebP (нет WebP — JPEG) ~0.85: так они лёгкие, а метаданные (EXIF:
-   место съёмки, телефон) не уходят вовсе. Сервер (src/site/bugreports.ts) всё равно проверяет и чистит сам.
-   Отправка: каждая картинка — POST /api/bugs/img (тело — байты), потом POST /api/bugs { title, body, images, context }.
-   Черновик живёт, пока открыта страница: закрыл окно — текст и картинки на месте. */
+
+
+
+
+
+
 window.LGBug = (() => {
   const L = { title: 100, body: 10000, images: 5, pick: 20 * 1024 * 1024, bytes: 5 * 1024 * 1024, side: 1920, q: 0.85 };
   const OK = /^image\/(png|jpeg|webp)$/;
-  const esc = window.LGSiteUi.esc;   // 25.10: общая (packages/site-ui → ui-kit), была своя копия
+  const esc = window.LGSiteUi.esc;
   const kb = (n) => (n >= 1048576 ? (n / 1048576).toFixed(1).replace('.', ',') + ' МБ' : Math.max(1, Math.round(n / 1024)) + ' КБ');
   const len = (s) => [...String(s)].length;
-  const draft = { title: '', body: '', imgs: [] };   // imgs: { blob, url, w, h, id? }
+  const draft = { title: '', body: '', imgs: [] };
   let W = null, ctx = null, busy = false, lastFocus = null;
 
-  /* ---------- картинки: уменьшить и пережать в браузере ---------- */
+   
   function loadImg(file) {
     return new Promise((ok, bad) => { const u = URL.createObjectURL(file), im = new Image(); im.onload = () => { ok(im); setTimeout(() => URL.revokeObjectURL(u), 0); }; im.onerror = () => { URL.revokeObjectURL(u); bad(new Error('img')); }; im.src = u; });
   }
@@ -30,7 +30,7 @@ window.LGBug = (() => {
       const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
       const g = cv.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(src, 0, 0, w, h);
       let b = await toBlob(cv, 'image/webp', q);
-      if (!b || b.type !== 'image/webp') {   // старый Safari: WebP не умеет — JPEG на белом фоне (прозрачное не станет чёрным)
+      if (!b || b.type !== 'image/webp') {
         g.globalCompositeOperation = 'destination-over'; g.fillStyle = '#fff'; g.fillRect(0, 0, w, h);
         b = await toBlob(cv, 'image/jpeg', q);
       }
@@ -55,7 +55,7 @@ window.LGBug = (() => {
     say(err);
   }
 
-  /* ---------- что приложим автоматически ---------- */
+   
   function browser() {
     const u = navigator.userAgent, m = /(Edg|OPR|YaBrowser|Firefox|Chrome|CriOS|FxiOS|Version)\/(\d+)/.exec(u);
     const name = !m ? '' : { Edg: 'Edge', OPR: 'Opera', YaBrowser: 'Яндекс Браузер', Firefox: 'Firefox', FxiOS: 'Firefox', CriOS: 'Chrome', Chrome: 'Chrome', Version: /Safari/.test(u) ? 'Safari' : '' }[m[1]] || '';
@@ -75,7 +75,7 @@ window.LGBug = (() => {
     return [where && `раздел «${where}»`, c.ch && `канал ${c.ch}`, browser(), `экран ${c.screen}`, c.ver && `версия сайта ${c.ver.slice(0, 8)}`].filter(Boolean).join(', ');
   }
 
-  /* ---------- окно ---------- */
+   
   function build() {
     const c = context();
     W = document.createElement('div');
@@ -117,7 +117,7 @@ window.LGBug = (() => {
     ti.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); bo.focus(); } });
     drop.onclick = () => file.click();
     file.onchange = () => { addFiles(file.files); file.value = ''; };
-    // перетаскивание — на всё окно (не только на поле): уронил мимо — всё равно прикрепится, а не откроется в браузере
+
     const box = W.querySelector('.bugm-box');
     box.addEventListener('dragover', (e) => { if (e.dataTransfer && [...e.dataTransfer.types].includes('Files')) { e.preventDefault(); drop.classList.add('over'); } });
     box.addEventListener('dragleave', (e) => { if (!box.contains(e.relatedTarget)) drop.classList.remove('over'); });
@@ -172,7 +172,7 @@ window.LGBug = (() => {
       btn.textContent = imgs.length > 1 ? `Картинки ${i + 1}/${imgs.length}…` : 'Картинка…';
       const up = () => req('/api/bugs/img', { method: 'POST', headers: { 'Content-Type': imgs[i].blob.type || 'application/octet-stream' }, body: imgs[i].blob });
       let r = await up();
-      // 27.10: сбой связи или сервера (мобильный интернет) - ещё две попытки, сами
+
       for (let k = 0; k < 2 && !r.j.ok && (r.status === 0 || r.status >= 500); k++) { await new Promise((ok) => setTimeout(ok, 1500 * (k + 1))); r = await up(); }
       if (r.status === 401) { done(); sayLogin(); return; }
       if (!r.j.ok) { done(r.j.text || `Картинка не загрузилась - попробуй ещё раз (код ${r.status}${r.j.error ? ' ' + String(r.j.error).replace(/[^\w-]/g, '') : ''})`); return; }
@@ -182,10 +182,10 @@ window.LGBug = (() => {
     const r = await req('/api/bugs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: t, body: b, images: imgs.map((x) => x.id), context: context() }) });
     if (r.status === 401) { done(); sayLogin(); return; }
     if (!r.j.ok) {
-      if (r.j.error === 'bad_images') imgs.forEach((x) => { delete x.id; });   // картинки устарели — загрузим заново
+      if (r.j.error === 'bad_images') imgs.forEach((x) => { delete x.id; });
       done(r.j.text || 'Не отправилось - попробуй ещё раз'); return;
     }
-    // отправлено: черновик — с чистого листа
+
     for (const x of draft.imgs) if (x.url) URL.revokeObjectURL(x.url);
     draft.title = ''; draft.body = ''; draft.imgs = [];
     busy = false;
@@ -193,7 +193,7 @@ window.LGBug = (() => {
     ctx.toast('Спасибо! Репорт отправлен');
   }
 
-  /* ---------- открыть / закрыть ---------- */
+   
   function onKey(e) {
     if (!W) return;
     if (e.key === 'Escape') { if (!busy) { e.preventDefault(); close(); } return; }

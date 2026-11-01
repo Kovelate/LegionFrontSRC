@@ -1,13 +1,13 @@
-/* 23.10: вкладка сайта «Карта мира» — мир сезона, как в оверлее (quest/world.js, worldview.js), только смотреть.
-   Грузится, только когда вкладку открыли (app.js → worldFiles). Требование стримера — не грузить ПК и телефоны зрителей:
-   - геометрия — один раз (/site/worldgeo.json?v=…, кэш «навсегда»), рисунок — один SVG, собранный один раз;
-     меняется только слой владельцев (раз в минуту, если данные поменялись);
-   - сдвиг и масштаб: во время жеста — CSS-сдвиг готовой картинки (видеокарта, без перерисовки), в конце жеста (и не чаще
-     раза в 250 мс при долгом перетаскивании) — новый viewBox: одна перерисовка на жест; в покое — ничего (ни таймеров кадров, ни анимаций);
-   - подписи и значки — постоянного размера на экране (CSS-переменная --u — единиц мира на пиксель), мелкое — только при приближении;
-   - данные: при открытии вкладки и не чаще раза в 60 с, пока вкладка видна; скрыта — ничего.
-   Данные — /api/world (src/site/worldmap.ts): владельцы, брошенные / отросшие округа, врата и логова, сезон, таблица каналов,
-   свой канал, где отряд (если идёт поход), в какие города зрителю можно сейчас (правило quest/towns.js townAccess). */
+
+
+
+
+
+
+
+
+
+
 window.LGWorld = (() => {
   const NS = 'http://www.w3.org/2000/svg';
   const GROUND = { meadow: '#c4ca8c', forest: '#a7b878', taiga: '#9aac7c', ice: '#e3e9f1', mount: '#b8b29c', swamp: '#929c70', desert: '#dcc48a', ash: '#80696a', coast: '#d0cc94', ruin: '#ad9f88', blight: '#7a6e7c' };
@@ -16,10 +16,10 @@ window.LGWorld = (() => {
   const KIND_RU = { village: 'деревня', settle: 'посёлок', capital: 'столица региона', grand: 'главный город мира', fair: 'Ярмарка', special: 'особое место' };
   const WHY_RU = { fair: 'Ярмарка — открыта всегда', owned: 'город вашего канала — вход открыт', party: 'отряд здесь, идёт эфир — вход участникам отряда', tester: 'тестерам открыты все города' };
   const REFRESH_MS = 60000;
-  const Z2 = 0.055, Z3 = 0.16;   // пикселей на единицу мира: с Z2 — названия округов и ★, с Z3 — без названий регионов
+  const Z2 = 0.055, Z3 = 0.16;
   let X = null, root = null, G = null, D = null, Dkey = '', geoP = null, S = null, timer = 0, vis = false, loading = null;
 
-  const esc = window.LGSiteUi.esc;   // 25.10: общая (packages/site-ui → ui-kit), была своя копия
+  const esc = window.LGSiteUi.esc;
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const now = () => (X && X.now ? X.now() : Date.now());
   const leftRu = (ms) => { const m = Math.max(1, Math.ceil(ms / 60000)), d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60), mm = m % 60; return d ? `${d} д ${h} ч` : h ? `${h} ч ${mm} мин` : `${mm} мин`; };
@@ -28,7 +28,7 @@ window.LGWorld = (() => {
   const hash = (s) => { let h = 2166136261; for (const c of String(s)) { h ^= c.codePointAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
   const kindOf = (t) => { const k = t.tw && t.tw.k; if (!k) return null; if (k === 'fair') return 'fair'; if (k === 'grandcapital') return 'grand'; if (k === 'capital') return 'capital'; if (k === 'town') return t.d >= 2 ? 'settle' : 'village'; return 'special'; };
 
-  /* ---------------- геометрия (один раз) ---------------- */
+   
   const pairs = (f) => { const o = []; for (let i = 0; i + 1 < f.length; i += 2) o.push([f[i], f[i + 1]]); return o; };
   const lineD = (p) => 'M' + p.map(([x, y]) => x + ' ' + y).join('L');
   function pip(rs, x, y) { let c = false; for (const p of rs) for (let i = 0, j = p.length - 1; i < p.length; j = i++) { const [xi, yi] = p[i], [xj, yj] = p[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; }
@@ -44,7 +44,7 @@ window.LGWorld = (() => {
     return { g, T, byId, R, chains, land: [a, b, c, d] };
   }
 
-  /* ---------------- рисунок: значки природы ---------------- */
+   
   const GLYPH = {
     meadow: '<path d="M-40 30 Q-34 -10 -26 -36 M0 30 Q2 -20 6 -50 M40 30 Q34 -6 26 -32" stroke="#93a65e" stroke-width="12" fill="none" stroke-linecap="round"/>',
     forest: '<rect x="-9" y="10" width="18" height="40" fill="#6d5a3c"/><circle cx="0" cy="-12" r="44" fill="#7f9a52"/><circle cx="-14" cy="-24" r="16" fill="#97b066"/>',
@@ -65,18 +65,18 @@ window.LGWorld = (() => {
       const [a, b, c, d] = t.bb, h = hash(t.id);
       for (let y = Math.ceil(b / STEP) * STEP; y < d; y += STEP) for (let x = Math.ceil(a / STEP) * STEP; x < c; x += STEP) {
         const k = hash(t.id + ':' + x + ':' + y), jx = x + ((k % 200) - 100), jy = y + (((k >> 8) % 200) - 100);
-        if (((k >> 16) & 7) === 0) continue;   // проплешины — не сетка
+        if (((k >> 16) & 7) === 0) continue;
         if (!pip(t.poly, jx, jy)) continue;
-        if (Math.hypot(jx - t.c[0], jy - t.c[1]) < 420) continue;   // подпись
-        if (t.tw && Math.hypot(jx - t.tw.x, jy - t.tw.y) < 260) continue;   // город
-        // у края округа значки не лезут на соседа: проверка ещё двух точек
+        if (Math.hypot(jx - t.c[0], jy - t.c[1]) < 420) continue;
+        if (t.tw && Math.hypot(jx - t.tw.x, jy - t.tw.y) < 260) continue;
+
         if (!pip(t.poly, jx + 70, jy) || !pip(t.poly, jx - 70, jy)) continue;
         out.push([t.b, jx, jy, 0.8 + ((k >> 20) % 5) / 10 + (h % 3) / 20]);
       }
     }
     return out;
   }
-  // значки поверх — постоянного размера на экране (scale(var(--u)): единиц мира на пиксель)
+
   const icon = (x, y, body, cls = '') => `<g class="ic ${cls}" style="transform:translate(${x}px,${y}px) scale(var(--ui))">${body}</g>`;
   const ICON = {
     lock: '<g transform="translate(9 -9)"><rect x="-6" y="-2" width="12" height="10" rx="2" fill="#2a2236"/><path d="M-3.5 -2v-3a3.5 3.5 0 0 1 7 0v3" stroke="#2a2236" stroke-width="2" fill="none"/><circle cx="0" cy="3" r="1.6" fill="#ffd76a"/></g>',
@@ -132,7 +132,7 @@ window.LGWorld = (() => {
       + `</svg>`;
   }
 
-  /* ---------------- слой состояния (владельцы, туман, брошенные, отросшие, замки, отряд) ---------------- */
+   
   function overlay() {
     const W = G, d = D, t0 = now(), ov = [], ic = [];
     const cleared = new Set(Object.keys(d.t).filter((id) => d.t[id].c));
@@ -148,9 +148,9 @@ window.LGWorld = (() => {
       }
       if (s.rg != null && t0 >= s.rg) { ov.push(`<path d="${t.dd}" class="rs"/>`); ic.push(icon(t.c[0] + 260, t.c[1] - 260, ICON.restless, 'tm-x')); }
     }
-    // свои земли — поверх всех (золотая кайма видна целиком)
+
     for (const t of W.T) { const s = d.t[t.id]; if (s && s.o != null && d.ch[s.o] && d.ch[s.o][0] === d.me) ov.push(`<path d="${t.dd}" class="mine-o"/>`); }
-    // врата и логова: закрыты — замок
+
     for (const t of W.T) {
       if (t.gate) { const at = d.gates[t.id]; if (at == null || t0 < at) ic.push(icon(t.c[0], t.c[1] - 200, ICON.lock, 'tm-l')); }
       if (t.lair && (d.lairsAt == null || t0 < d.lairsAt)) ic.push(icon(t.c[0], t.c[1] - 220, ICON.lock, 'tm-l'));
@@ -160,7 +160,7 @@ window.LGWorld = (() => {
     S.svg.querySelector('.wm-ic').innerHTML = ic.join('');
   }
 
-  /* ---------------- вид: сдвиг и масштаб ---------------- */
+   
   function size() { const r = S.map.getBoundingClientRect(); S.w = Math.max(1, r.width); S.h = Math.max(1, r.height); }
   function fitOf(bb, pad = 0.06) {
     const w = (bb[2] - bb[0]) * (1 + pad * 2) || 1, h = (bb[3] - bb[1]) * (1 + pad * 2) || 1;
@@ -173,7 +173,7 @@ window.LGWorld = (() => {
     const cy = (L[3] - L[1]) < hh * 2 ? (L[1] + L[3]) / 2 : clamp(v.cy, L[1] + hh * 0.3, L[3] - hh * 0.3);
     return { cx, cy, k };
   }
-  // готовый рисунок (S.v) → живой вид (S.live): во время жеста — только CSS-сдвиг картинки
+
   function preview() {
     const a = S.v, b = S.live, m = b.k / a.k;
     const tx = S.w / 2 - m * S.w / 2 + (a.cx - b.cx) * b.k, ty = S.h / 2 - m * S.h / 2 + (a.cy - b.cy) * b.k;
@@ -186,9 +186,9 @@ window.LGWorld = (() => {
     S.svg.setAttribute('viewBox', `${cx - w / 2} ${cy - h / 2} ${w} ${h}`);
     S.svg.style.transform = '';
     S.svg.style.setProperty('--u', String(1 / k));
-    S.svg.style.setProperty('--ui', String((S.w < 600 && k < Z2 ? 0.72 : 1) / k));   // телефон во весь мир — значки мельче
-    // что подписывать — по настоящему масштабу (пикселей на единицу мира), а не «во сколько раз приблизили»: на телефоне и на ПК
-    // названия округов появляются, когда им хватает места
+    S.svg.style.setProperty('--ui', String((S.w < 600 && k < Z2 ? 0.72 : 1) / k));
+
+
     const cls = k < Z2 ? 'z1' : k < Z3 ? 'z2' : 'z3';
     S.svg.classList.toggle('narrow', S.w < 600);
     if (S.z !== cls) { S.svg.classList.remove('z1', 'z2', 'z3'); S.svg.classList.add(cls); S.z = cls; }
@@ -197,7 +197,7 @@ window.LGWorld = (() => {
   function setLive(v, soon) {
     S.live = clampView(v); preview();
     if (soon === true) commit();
-    else if (soon === 'drag') { if (performance.now() - S.lastCommit > 250) commit(); }   // долгое перетаскивание — края дорисовываются
+    else if (soon === 'drag') { if (performance.now() - S.lastCommit > 250) commit(); }
     else { clearTimeout(S.cT); S.cT = setTimeout(commit, 160); }
   }
   const toWorld = (px, py, v = S.live) => [v.cx + (px - S.w / 2) / v.k, v.cy + (py - S.h / 2) / v.k];
@@ -253,7 +253,7 @@ window.LGWorld = (() => {
     });
   }
 
-  /* ---------------- карточка округа ---------------- */
+   
   function enterInfo(t) {
     const d = D, why = d.enter && d.enter[t.id];
     if (!t.tw) return { html: '' };
@@ -299,7 +299,7 @@ window.LGWorld = (() => {
     try { S.sr.textContent = `${t.n}: опасность ${t.d} из 5`; } catch (e) {}
   }
 
-  /* ---------------- боковая панель: сезон, каналы, легенда ---------------- */
+   
   function seasonHtml() {
     const se = D.season || {}, t0 = now();
     if (se.startsAt == null) return `<p class="wm-se"><b>Сезон ${se.no || 1}</b> · ещё не начат</p>`;
@@ -340,7 +340,7 @@ window.LGWorld = (() => {
     return bb;
   }
 
-  /* ---------------- данные ---------------- */
+   
   function geoLoad(v) {
     if (geoP) return geoP;
     geoP = fetch(`/site/worldgeo.json?v=${encodeURIComponent(v || '')}`).then((r) => { if (!r.ok) throw new Error('geo ' + r.status); return r.json(); }).then((g) => (G = prep(g)))
@@ -378,7 +378,7 @@ window.LGWorld = (() => {
   }
   function onVis() { if (!S || !vis) return; if (document.hidden) { clearTimeout(timer); timer = 0; } else { if (Date.now() - (S.at || 0) > REFRESH_MS) { S.at = Date.now(); refresh(); } tick(); } }
 
-  /* ---------------- разметка вкладки ---------------- */
+   
   function build() {
     const el = S.el;
     el.innerHTML = `<div class="wm-wrap"><div class="wm-head"><h2 class="h2">Карта мира</h2><div class="wm-season"></div></div>`
@@ -399,7 +399,7 @@ window.LGWorld = (() => {
   }
 
   return {
-    /** Вкладку открыли: el — секция вкладки, ctx — { api, now, openTown(id, why), toast }. */
+     
     open(el, ctx) {
       X = ctx; vis = true;
       if (!S || S.el !== el) {
@@ -409,10 +409,10 @@ window.LGWorld = (() => {
       } else if (S.built) { size(); commit(); }
       S.at = Date.now(); refresh(); tick();
     },
-    /** Ушли на другую вкладку: опрос стоп (рисунок остаётся — вернулся, и он сразу на месте). */
+     
     close() { vis = false; clearTimeout(timer); timer = 0; },
     refresh,
-    // для проверок
+
     _state: () => ({ S, D, G }),
   };
 })();

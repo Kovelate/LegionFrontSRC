@@ -1,13 +1,13 @@
-// Маленький генератор QR-кода (без внешних библиотек и CDN): байтовый режим, уровень коррекции M, версии 1–10
-// (до ~210 байт — для ссылки входа хватает с запасом). Алгоритм — по стандарту ISO 18004, как у Nayuki.
-// window.LGQR.svg(текст, { border, dark, light }) → строка <svg>; null — текст слишком длинный.
+
+
+
 window.LGQR = (() => {
-  const ECC = [10, 16, 26, 18, 24, 16, 18, 22, 22, 26];   // байт коррекции на блок (уровень M)
+  const ECC = [10, 16, 26, 18, 24, 16, 18, 22, 22, 26];
   const BLOCKS = [1, 1, 1, 2, 2, 4, 4, 4, 5, 5];
   const rawModules = (v) => { let r = (16 * v + 128) * v + 64; if (v >= 2) { const n = Math.floor(v / 7) + 2; r -= (25 * n - 10) * n - 55; if (v >= 7) r -= 36; } return r; };
   const dataBytes = (v) => Math.floor(rawModules(v) / 8) - ECC[v - 1] * BLOCKS[v - 1];
 
-  // Рида — Соломона в GF(256), многочлен 0x11D
+
   const mul = (x, y) => { let z = 0; for (let i = 7; i >= 0; i--) { z = (z << 1) ^ ((z >>> 7) * 0x11d); z ^= ((y >>> i) & 1) * x; } return z & 0xff; };
   function divisor(deg) {
     const r = new Array(deg).fill(0); r[deg - 1] = 1; let root = 1;
@@ -28,7 +28,7 @@ window.LGQR = (() => {
     let v = 1;
     while (v <= 10 && 4 + (v < 10 ? 8 : 16) + bytes.length * 8 > dataBytes(v) * 8) v++;
     if (v > 10) return null;
-    // биты данных: режим «байты», длина, сами байты, терминатор, добивка
+
     const bits = [];
     const put = (val, n) => { for (let i = n - 1; i >= 0; i--) bits.push((val >>> i) & 1); };
     put(4, 4); put(bytes.length, v < 10 ? 8 : 16); bytes.forEach((b) => put(b, 8));
@@ -38,7 +38,7 @@ window.LGQR = (() => {
     for (let pad = 0xec; bits.length < cap; pad ^= 0xec ^ 0x11) put(pad, 8);
     const data = []; for (let i = 0; i < bits.length; i += 8) data.push(parseInt(bits.slice(i, i + 8).join(''), 2));
 
-    // блоки с коррекцией и перемежение
+
     const nb = BLOCKS[v - 1], ecc = ECC[v - 1], raw = Math.floor(rawModules(v) / 8);
     const nShort = nb - raw % nb, shortLen = Math.floor(raw / nb);
     const div = divisor(ecc), blocks = [];
@@ -51,7 +51,7 @@ window.LGQR = (() => {
     const words = [];
     for (let i = 0; i < blocks[0].length; i++) blocks.forEach((b, j) => { if (i !== shortLen - ecc || j >= nShort) words.push(b[i]); });
 
-    // поле: служебные узоры
+
     const size = v * 4 + 17;
     const mod = Array.from({ length: size }, () => new Array(size).fill(false));
     const fn = Array.from({ length: size }, () => new Array(size).fill(false));
@@ -73,7 +73,7 @@ window.LGQR = (() => {
       }));
     }
     const format = (mask) => {
-      const d = (0 << 3) | mask;   // уровень M — биты 00
+      const d = (0 << 3) | mask;
       let r = d; for (let i = 0; i < 10; i++) r = (r << 1) ^ ((r >>> 9) * 0x537);
       const b = ((d << 10) | r) ^ 0x5412, bit = (i) => ((b >>> i) & 1) === 1;
       for (let i = 0; i <= 5; i++) set(8, i, bit(i));
@@ -89,7 +89,7 @@ window.LGQR = (() => {
       const b = (v << 12) | r;
       for (let i = 0; i < 18; i++) { const d = ((b >>> i) & 1) === 1, a = size - 11 + i % 3, c = Math.floor(i / 3); set(a, c, d); set(c, a, d); }
     }
-    // данные змейкой снизу вверх по парам столбцов
+
     let bi = 0;
     for (let right = size - 1; right >= 1; right -= 2) {
       if (right === 6) right = 5;
@@ -98,7 +98,7 @@ window.LGQR = (() => {
         if (!fn[y][x] && bi < words.length * 8) { mod[y][x] = ((words[bi >>> 3] >>> (7 - (bi & 7))) & 1) === 1; bi++; }
       }
     }
-    // маска: пробуем все 8, берём с наименьшим штрафом (читается надёжнее)
+
     const MASKS = [(x, y) => (x + y) % 2, (x, y) => y % 2, (x) => x % 3, (x, y) => (x + y) % 3, (x, y) => (Math.floor(x / 3) + Math.floor(y / 2)) % 2,
       (x, y) => x * y % 2 + x * y % 3, (x, y) => (x * y % 2 + x * y % 3) % 2, (x, y) => ((x + y) % 2 + x * y % 3) % 2];
     const applyMask = (m) => { for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) if (!fn[y][x] && MASKS[m](x, y) === 0) mod[y][x] = !mod[y][x]; };
@@ -111,7 +111,7 @@ window.LGQR = (() => {
             if (b < size && get(a, b) === get(a, b - 1)) run++;
             else { if (run >= 5) p += run - 2; run = 1; }
           }
-          for (let b = 0; b + 10 < size; b++) {   // 1:1:3:1:1 со светлой полосой 4 с любой стороны
+          for (let b = 0; b + 10 < size; b++) {
             const s = []; for (let k = 0; k < 11; k++) s.push(get(a, b + k) ? 1 : 0);
             const t = s.join('');
             if (t === '10111010000' || t === '00001011101') p += 40;

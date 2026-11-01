@@ -1,5 +1,5 @@
-/* 20.10: зал «Аукцион» (auction.js). Цвета, шрифты и рамки — из оформления сайта (--surface, --ink, --mute, --accent, --line, --rc-*),
-   поэтому зал выглядит своим в любом оформлении. Панель шире обычной: витрина — список с ценами. */
+
+
 .cy-room[data-b="auction"] .cy-rui { width: min(760px, 62vw); display: flex; flex-direction: column; }
 .cy-room[data-b="auction"] .cy-pb { min-height: 0; flex: 1; display: flex; flex-direction: column; }
 .au-root { min-height: 0; flex: 1; display: flex; flex-direction: column; }
@@ -14,7 +14,7 @@
 .au-body { min-height: 0; flex: 1; overflow: auto; overscroll-behavior: contain; padding: 2px; }
 .au-ret { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; border: 2px dashed var(--accent, #c9a55c); border-radius: 12px; }
 
-/* поиск и фильтры */
+ 
 .au-f { display: grid; gap: 8px; margin-bottom: 10px; }
 .au-q input { width: 100%; }
 .au-more summary { cursor: pointer; font-weight: 700; font-size: 14px; padding: 4px 0; color: var(--mute); }
@@ -30,7 +30,7 @@
 .au-fs .au-fp { grid-column: span 2; }
 .au input:focus-visible, .au select:focus-visible { outline: 3px solid var(--focus, #e8c77d); outline-offset: 1px; }
 
-/* список лотов */
+ 
 .au-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .au-row { width: 100%; display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 6px 10px 6px 6px; text-align: left; border: 1px solid var(--line, rgba(0, 0, 0, .15)); border-left: 4px solid var(--rc, var(--rc-common, #999)); border-radius: 12px; background: var(--surface, #fff); color: var(--ink); transition: transform .15s ease, border-color .15s ease; }
 .au-row:hover { transform: translateY(-1px); border-color: var(--accent, #c9a55c); }
@@ -45,18 +45,18 @@
 .au-ri { display: grid; min-width: 0; }
 .au-ri b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .au-ri em { font-style: normal; font-size: 12px; color: var(--mute); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* 22.10: характеристики строкой под названием (значки — как в окне персонажа); выбранная в фильтре — подсвечена */
+ 
 .au-rs { display: flex; flex-wrap: wrap; gap: 2px 10px; margin-top: 2px; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink); }
 .au-rs > span { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
 .au-rs .i { width: 14px; height: 14px; flex: none; fill: none; stroke: var(--mute); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .au-rs .on { color: var(--accent, #c9a55c); } .au-rs .on .i { stroke: currentColor; }
-.au-rs.br { opacity: .5; }   /* сломанная: характеристики вернутся после починки */
+.au-rs.br { opacity: .5; }    
 .au-rp { display: grid; justify-items: end; font-size: 14px; text-align: right; }
 .au-rp small { font-size: 11px; color: var(--mute); }
 .au-mine { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; align-items: center; }
 .au-empty { padding: 18px 6px; text-align: center; }
 
-/* карточка лота */
+ 
 .au-card { margin-top: 8px; padding: 14px; border: 1px solid var(--line, rgba(0, 0, 0, .15)); border-top: 5px solid var(--rc); border-radius: 14px; background: var(--surface, #fff); display: grid; gap: 8px; }
 .au-art { width: 120px; height: 120px; margin: 0 auto; display: grid; place-items: center; border-radius: 16px; background: var(--surface2, rgba(0, 0, 0, .05)); }
 .au-art .art { width: 96px; height: 96px; }
@@ -67,7 +67,7 @@
 .au-st em { font-style: normal; font-size: 13px; text-align: right; font-weight: 800; }
 .au-st em.up, .au-hl b.up { color: var(--up, #3a8a4a); } .au-st em.dn, .au-hl b.dn { color: var(--dn, #c0392b); } .au-st em.eq { color: var(--mute); }
 .au-cmp { margin: 0; font-size: 13px; color: var(--mute); }
-/* 22.10: тело карточки — общее с окном персонажа (app.js itemBody, классы d-*); здесь — только отступы зала */
+ 
 .au-art { position: relative; }
 .au-ib { display: grid; gap: 6px; }
 .au-ib > :is(p, div, ul) { margin: 0; }
@@ -85,7 +85,7 @@
 .au-sure { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px; border: 2px solid var(--accent, #c9a55c); border-radius: 12px; }
 .au-sure p { grid-column: 1 / -1; margin: 0; font-weight: 700; }
 
-/* выставить */
+ 
 .au-bag { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; max-height: 220px; overflow: auto; margin: 6px 0 10px; padding: 2px; }
 .au-bi { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 6px; align-items: center; padding: 4px 6px; text-align: left; font-size: 13px; border: 1px solid var(--line, rgba(0, 0, 0, .15)); border-left: 4px solid var(--rc); border-radius: 10px; background: var(--surface, #fff); color: var(--ink); }
 .au-bi .au-gi { width: 40px; height: 40px; } .au-bi .art { width: 34px; height: 34px; }
@@ -102,7 +102,7 @@
 .au-hrs { display: flex; gap: 6px; }
 .au-sum { padding-top: 6px; border-top: 1px dashed var(--line, rgba(0, 0, 0, .2)); }
 
-/* история */
+ 
 .au-hl { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 14px; }
 .au-hl li { display: grid; grid-template-columns: 92px minmax(0, 1fr) auto; gap: 8px; align-items: baseline; padding: 6px 0; border-bottom: 1px dashed var(--line, rgba(0, 0, 0, .15)); }
 .au-hl time { font-size: 12px; color: var(--mute); }
@@ -118,10 +118,10 @@
   .au-hl li { grid-template-columns: minmax(0, 1fr) auto; } .au-hl time { grid-column: 1 / -1; }
 }
 @media (prefers-reduced-motion: reduce) { .au-row { transition: none; } .au-row:hover { transform: none; } }
-/* 22.10: прочность лота */
+ 
 .au-br { color: var(--dn); }
 .au-dm { color: color-mix(in srgb, var(--dn) 55%, var(--ink)); }
-/* 24.10 (баг тестера): «от» больше «до» - поля подсвечены, под ними подсказка (ищем между ними) */
+ 
 .au-pr input[aria-invalid="true"] { border-color: var(--dn, #c0392b); box-shadow: 0 0 0 1px var(--dn, #c0392b); }
 .au-pe { margin: 6px 0 0; font-size: 13px; line-height: 1.4; color: var(--dn, #c0392b); }
 .au-pe[hidden] { display: none; }

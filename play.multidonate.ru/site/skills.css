@@ -1,11 +1,11 @@
-/* 20.10: «Навыки» (skills.js) — деревья классов. Цвета — только переменные оформления (forge / den / rage / …), без анимаций.
-   Узкий экран: одна ветка за раз (переключатель веток), карточка навыка — снизу листом. От 900px: три ветки рядом, карточка — справа. */
+
+
 .sk-wrap > .views { justify-content: center; margin: 0 0 var(--s4); }
 .sk { --sk-line: var(--line, color-mix(in srgb, var(--ink) 18%, transparent)); --sk-dim: color-mix(in srgb, var(--surface2) 70%, var(--bg)); }
 .sk-top { display: grid; gap: var(--s2); margin-bottom: var(--s4); }
 .sk-top p { max-width: 70ch; }
 
-/* классы */
+ 
 .skc { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s2); margin-bottom: var(--s4); }
 .skc button { display: grid; gap: 2px; justify-items: start; text-align: left; min-height: 56px; padding: var(--s2) var(--s3); min-width: 0; touch-action: manipulation; }
 .skc .skc-n { font-weight: 800; font-size: var(--t-md); overflow-wrap: normal; hyphens: auto; }
@@ -14,7 +14,7 @@
 .skc button[aria-pressed="true"] .skc-on { color: inherit; }
 @media (min-width: 640px) { .skc { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 
-/* сводка: мастерство, очки, сброс */
+ 
 .sk-sum { display: grid; gap: var(--s3); padding: var(--s3) 0 var(--s4); border-bottom: 1px solid var(--sk-line); margin-bottom: var(--s4); }
 .sk-pts { font-variant-numeric: tabular-nums; }
 .sk-pts > b { font-size: var(--t-xl); color: var(--accent); }
@@ -27,7 +27,7 @@
 .btn:disabled { opacity: .5; }
 @media (min-width: 760px) { .sk-sum { grid-template-columns: minmax(240px, 1fr) auto; align-items: center; } .sk-sum .meter { grid-column: 1 / -1; } .skr-b, .skr-c { justify-self: end; } }
 
-/* действия класса: слово для чата */
+ 
 .ska-l { list-style: none; margin: 0 0 var(--s4); padding: 0; display: grid; gap: var(--s2); }
 .ska { display: grid; grid-template-columns: auto 1fr; gap: var(--s3); align-items: start; padding: var(--s3); border: 1px dashed var(--sk-line); border-radius: 6px; opacity: .78; }
 .ska.on { border-style: solid; border-color: color-mix(in srgb, var(--accent) 55%, transparent); opacity: 1; }
@@ -37,7 +37,7 @@
 .ska p { margin-top: 2px; font-size: var(--t-sm); color: var(--mute); }
 @media (min-width: 900px) { .ska-l { grid-template-columns: 1fr 1fr; } }
 
-/* ветки */
+ 
 .skbt { margin-bottom: var(--s3); }
 .sk-g { display: grid; gap: var(--s4); }
 .sk-tree { display: grid; gap: var(--s4); min-width: 0; }
@@ -54,7 +54,7 @@
 .skt.shut .skt-n { opacity: .55; }
 .skt-n { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--s2); }
 
-/* узел */
+ 
 .skn { position: relative; display: grid; gap: 4px; align-content: start; text-align: left; min-height: 64px; padding: var(--s2) var(--s2) var(--s2) var(--s3); border: 1px solid var(--sk-line); border-radius: 6px; background: var(--sk-dim); touch-action: manipulation; min-width: 0; }
 .skn-n { font-size: var(--t-sm); font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
 .skn-k { font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
@@ -69,7 +69,7 @@
 .skn:hover { border-color: var(--accent); }
 .skn[aria-pressed="true"] { outline: 2px solid var(--focus); outline-offset: 1px; }
 
-/* карточка навыка: узкий экран — лист снизу */
+ 
 .skd { position: fixed; left: 0; right: 0; bottom: 0; z-index: 41; max-height: 80vh; overflow: auto; padding: var(--s4) var(--s4) calc(var(--s4) + env(safe-area-inset-bottom)); background: var(--surface); border-top: 2px solid var(--accent); box-shadow: 0 -12px 30px rgba(0,0,0,.45); display: none; }
 .skd.open { display: block; }
 .sk-scrim { position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,.45); }
@@ -96,10 +96,10 @@
 }
 @media (min-width: 1200px) { .skt-n { grid-template-columns: 1fr 1fr; } }
 
-/* 20.10 → 21.10: режим «дерево» — доска в зале Тренера («Город»). Язык — как у Ярмарки: толстый тёмный контур, плоские цвета,
-   дерево и мел. Цвета доски — переменные --tb-* по стилю канала (legion / cats / monkeys / veggies), цвет класса — --c.
-   Доска одна на двоих: зал Тренера в «Городе» (рамка — сама панель зала, city.css) и вкладка «Персонаж → Навыки» (.sk-tab, рамка — ниже).
-   Анимация одна — мягкий «пульс» кольца у узлов, куда можно вложить очко (transform/opacity, выключается reduced-motion). */
+
+
+
+
 html {
   --tb-ink: #15122e; --tb-wood: #a0703a; --tb-woodD: #6b4423; --tb-slate: #223029; --tb-slate2: #2e3f35; --tb-slate3: #162019;
   --tb-chalk: #f4f1e4; --tb-chalk2: #c9d2c3; --tb-paper: #f5e9c8; --tb-paperTx: #2a2010; --tb-paperMu: #5c4a30; --tb-gold: #ffc94d; --tb-dn: #9a1c14; --tb-red: #b3261e;
@@ -112,7 +112,7 @@ html[data-style="veggies"] { --tb-wood: #a0703a; --tb-woodD: #6b4423; --tb-slate
 .cy-room .sk.skx-s { background: transparent; border: 0; box-shadow: none; padding: 0; }
 .skx-s .busybar { margin: 0; background: rgba(0, 0, 0, .28); border: 2px dashed var(--tb-gold); color: var(--tb-chalk); }
 
-/* верх: таблички классов + очки и сброс */
+ 
 .skx-top { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: stretch; padding-bottom: 10px; }
 .skx-cls { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
 .skc-p { position: relative; display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 10px; align-items: center; min-height: 62px; padding: 8px 14px 9px 10px; text-align: left;
@@ -126,7 +126,7 @@ html[data-style="veggies"] { --tb-wood: #a0703a; --tb-woodD: #6b4423; --tb-slate
 .skc-ic .i { width: 22px; height: 22px; stroke-width: 2.4; }
 .skc-tx { display: grid; gap: 2px; min-width: 0; }
 .skc-tx b { font: 400 17px/1.1 'Russo One', var(--hd, system-ui); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal; hyphens: manual; }
-/* 25.10: шрифт названия подгоняет skills.js (fitPlaques); .wrap — перенос по пробелу/дефису, .hy — крайний случай: перенос слова с дефисом */
+ 
 .skc-tx b.wrap { white-space: normal; overflow: visible; text-overflow: clip; }
 .skc-tx b.hy { hyphens: auto; overflow-wrap: break-word; }
 .skc-tx small { font: 700 13px/1.2 var(--tx, system-ui); color: var(--tb-chalk2); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -156,8 +156,8 @@ html[data-style="veggies"] { --tb-wood: #a0703a; --tb-woodD: #6b4423; --tb-slate
 .skx-rc { display: grid; gap: 8px; max-width: 340px; padding: 0; border: 0; font-size: 14px; color: var(--tb-chalk); }
 .skx-rc > div { display: flex; gap: 8px; }
 
-/* действия класса: листки на доске (слово — для чата) */
-.skx-s ul.skx-acts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); align-items: start; gap: 14px; margin: 0; padding: 0; list-style: none; }   /* 23.10: карточка по своему тексту, без пустоты до высоты соседней */
+ 
+.skx-s ul.skx-acts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); align-items: start; gap: 14px; margin: 0; padding: 0; list-style: none; }    
 .skx-acts .ska { position: relative; display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; padding: 10px 14px 11px; opacity: 1;
   background: var(--tb-paper); color: var(--tb-paperTx); border: 3px solid var(--tb-ink); border-radius: 8px; box-shadow: 0 4px 0 rgba(0, 0, 0, .35); transform: rotate(-.4deg); }
 .skx-acts .ska:nth-child(2n) { transform: rotate(.5deg); }
@@ -170,7 +170,7 @@ html[data-style="veggies"] { --tb-wood: #a0703a; --tb-woodD: #6b4423; --tb-slate
 .skx-acts .ska p { margin: 0; font-size: 14px; line-height: 1.4; color: var(--tb-paperTx); }
 .skx-acts .ska p.ska-h { margin-bottom: 2px; }
 
-/* переключатель веток — только на узкой доске */
+ 
 .skx-bt { display: none; gap: 8px; }
 .skx-bt button { flex: 1 1 0; min-width: 0; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 42px; padding: 0 8px; border-radius: 10px;
   border: 3px solid var(--tb-ink); background: var(--tb-woodD); color: var(--tb-chalk); box-shadow: 0 3px 0 var(--tb-ink); font: 800 14px/1.1 var(--tx, system-ui); touch-action: manipulation; }
@@ -179,7 +179,7 @@ html[data-style="veggies"] { --tb-wood: #a0703a; --tb-woodD: #6b4423; --tb-slate
 .skx-bt button[aria-pressed="true"] { background: var(--tb-gold); color: var(--tb-ink); }
 .skx-bt button[aria-pressed="true"] b { background: var(--tb-ink); color: var(--tb-gold); }
 
-/* ветки: колонки со стволом */
+ 
 .skx-g { display: grid; grid-template-columns: repeat(var(--nb, 3), minmax(0, 1fr)); }
 .skx-c { position: relative; min-width: 0; }
 .skx-c + .skx-c { border-left: 2px dashed color-mix(in srgb, var(--tb-chalk) 14%, transparent); }
@@ -200,7 +200,7 @@ html[data-style="veggies"] { --tb-wood: #a0703a; --tb-woodD: #6b4423; --tb-slate
 .skx-ln .pre { stroke: var(--tb-chalk); stroke-opacity: .3; stroke-width: 2.5px; stroke-dasharray: 3 7; }
 .skx-ln .pre.op { stroke-opacity: .75; }
 .skx-ln .pre.on { stroke: var(--c); stroke-opacity: 1; stroke-width: 4px; stroke-dasharray: none; }
-/* засечка порога на стволе: ─[замок 20]─ */
+ 
 .skg { position: absolute; left: 50%; z-index: 1; transform: translate(-50%, -50%); display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px 3px 7px; border-radius: 6px;
   font: 400 14px/1 'Russo One', var(--hd, system-ui); background: var(--tb-slate3); color: var(--tb-chalk); border: 2px solid var(--tb-chalk2); white-space: nowrap; cursor: help; }
 .skg::before, .skg::after { content: ''; position: absolute; top: 50%; width: 14px; height: 4px; margin-top: -2px; border-radius: 2px; background: var(--tb-chalk2); }
@@ -209,7 +209,7 @@ html[data-style="veggies"] { --tb-wood: #a0703a; --tb-woodD: #6b4423; --tb-slate
 .skg.on { background: var(--c); color: var(--tb-ink); border-color: var(--tb-ink); padding-left: 9px; }
 .skg.on::before, .skg.on::after { background: var(--c); }
 
-/* узел: жетон-значок, точки рангов, подпись */
+ 
 .skx { position: absolute; z-index: 2; transform: translate(-50%, -28px); display: grid; justify-items: center; width: 116px; padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; touch-action: manipulation; }
 .skx:hover, .skx:focus-visible { z-index: 4; outline: none; }
 .skx-i { position: relative; width: 56px; height: 56px; display: grid; place-items: center; border-radius: 50%; background: var(--tb-slate2); border: 3px solid var(--tb-chalk2); color: var(--tb-chalk); transition: translate .12s; }
@@ -240,7 +240,7 @@ html[data-style="veggies"] { --tb-wood: #a0703a; --tb-woodD: #6b4423; --tb-slate
 .skx[aria-pressed="true"] .skx-i { outline: 3px solid var(--tb-chalk); outline-offset: 5px; }
 .skx:focus-visible .skx-i { outline: 3px solid var(--tb-gold); outline-offset: 5px; }
 
-/* подсказка (наведение/фокус) и карточка (клик): листок рядом с узлом; сбоку — на широкой доске, под/над узлом — на узкой */
+ 
 .skx-s .skx-tip, .skx-s .skx-pop.skd { position: absolute; z-index: 8; left: auto; right: auto; top: auto; bottom: auto; width: 304px; max-width: calc(100vw - 40px); max-height: none; overflow: visible;
   display: block; margin: 0; padding: 12px 14px 13px; text-align: left; background: var(--tb-paper); color: var(--tb-paperTx); border: 3px solid var(--tb-ink); border-radius: 12px;
   box-shadow: 0 6px 0 rgba(0, 0, 0, .35); font: 500 14px/1.4 var(--tx, system-ui); }
@@ -263,7 +263,7 @@ html[data-style="veggies"] { --tb-wood: #a0703a; --tb-woodD: #6b4423; --tb-slate
 .sxt-s span { display: block; font-size: 12.5px; font-weight: 800; color: var(--tb-paperMu); }
 .sxt-s.nx { padding-left: 10px; border-left: 4px solid var(--c); }
 .sxt-s.mx span { color: var(--tb-paperTx); }
-/* 25.10: «по рангам» и умение узла (что делает, слово для чата) — мельче, под основным текстом */
+ 
 .sxt-s.rk { font-size: 13px; font-variant-numeric: tabular-nums; }
 .sxt-s.ac { padding: 6px 8px; border-radius: 8px; background: rgba(0, 0, 0, .06); font-size: 13px; line-height: 1.35; }
 .sxt-w { display: flex; gap: 6px; align-items: flex-start; margin-top: 8px; font-size: 13.5px; font-weight: 700; line-height: 1.35; color: var(--tb-dn); }
@@ -275,10 +275,10 @@ html[data-style="veggies"] { --tb-wood: #a0703a; --tb-woodD: #6b4423; --tb-slate
 .skx-pop .skd-x:focus-visible { outline: 3px solid var(--tb-ink); }
 .skx-pop .skd-x .i { width: 20px; height: 20px; }
 
-/* широкая доска: подписи шире — длинные названия в одну строку */
+ 
 @container skx (min-width: 1300px) { .skx { width: 144px; } .skx-n { max-width: 144px; } }
-/* узкая доска (ПК-окно поуже, телефон): одна ветка за раз, листок — под узлом или над ним, по центру ветки */
-/* средняя доска (вкладка сайта на ПК): очки и сброс — отдельной строкой под табличками, шапки веток — одной высоты */
+ 
+ 
 @container skx (max-width: 1400px) {
   .skx-top { grid-template-columns: 1fr; }
   .skx-sum { justify-content: space-between; flex-wrap: wrap; }
@@ -305,9 +305,9 @@ html[data-style="veggies"] { --tb-wood: #a0703a; --tb-woodD: #6b4423; --tb-slate
   .skx-free > b { font-size: 32px; } .skx-free > span { font-size: 15px; }
   .skx-s ul.skx-acts { order: 5; grid-template-columns: 1fr; }
   .skx-h { margin: 0 4px; } .skx-h h3 { font-size: 18px; }
-  .skx { width: 104px; } .skx-n { max-width: 104px; font-size: 11.5px; padding: 0 3px; hyphens: auto; overflow-wrap: anywhere; }   /* 24.10: «Сосредоточение» не обрезается на телефоне */
+  .skx { width: 104px; } .skx-n { max-width: 104px; font-size: 11.5px; padding: 0 3px; hyphens: auto; overflow-wrap: anywhere; }    
 }
-/* вкладка «Персонаж → Навыки»: та же доска в рамке по ширине колонки сайта; у котиков — ушки над рамкой */
+ 
 .sk-tab .skx-s { position: relative; margin-top: 30px; padding: 18px 20px 22px; background: radial-gradient(ellipse 50% 40% at 25% 15%, rgba(255, 255, 255, .05), transparent 70%), var(--tb-slate);
   border: 12px solid var(--tb-wood); border-radius: 18px; box-shadow: 0 0 0 4px var(--tb-ink), inset 0 0 0 4px var(--tb-ink), 0 14px 30px rgba(0, 0, 0, .35); }
 html[data-style="cats"] .sk-tab .skx-s::before, html[data-style="cats"] .sk-tab .skx-s::after { content: ''; position: absolute; top: -58px; width: 76px; height: 54px; pointer-events: none;

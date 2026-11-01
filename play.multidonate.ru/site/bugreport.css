@@ -1,4 +1,4 @@
-/* 24.10: «Отправить баг» — окно формы (bugreport.js; грузится только по нажатию на 🐞). Цвета и рамки — от оформления сайта (.panel, .btn). */
+ 
 html.bugm-lock, html.bugm-lock body { overflow: hidden; }
 .bugm { position: fixed; inset: 0; z-index: 75; display: grid; place-items: center; padding: var(--s4); }
 .bugm-scrim { position: absolute; inset: 0; background: rgba(10, 8, 20, .62); opacity: 0; transition: opacity .2s var(--ease); }
@@ -15,7 +15,7 @@ html.bugm-lock, html.bugm-lock body { overflow: hidden; }
 .bugm-lt b { color: var(--accent); }
 .bugm-lt .muted { font-weight: 500; }
 .bugm input[type=text], .bugm textarea { width: 100%; min-width: 0; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--ink) 22%, transparent); border-radius: 8px;
-  background: var(--surface2, var(--bg)); color: var(--ink); font: inherit; font-size: 16px; }   /* 16 px — телефон не приближает страницу при вводе */
+  background: var(--surface2, var(--bg)); color: var(--ink); font: inherit; font-size: 16px; }    
 .bugm textarea { resize: vertical; min-height: 120px; max-height: 45dvh; line-height: 1.4; }
 .bugm input:focus, .bugm textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
 .bugm [aria-invalid="true"] { border-color: #d83a2f; box-shadow: 0 0 0 2px rgba(216, 58, 47, .35); }
@@ -48,7 +48,7 @@ html.bugm-lock, html.bugm-lock body { overflow: hidden; }
 .bugm-err a { color: inherit; }
 .bugm-acts { display: flex; justify-content: flex-end; gap: var(--s2); flex-wrap: wrap; }
 .bugm.busy .bugm-send { opacity: .8; cursor: progress; }
-/* телефон: окно снизу во всю ширину, кнопки — во всю ширину; «перетащи» на телефоне не бывает */
+ 
 @media (max-width: 520px) {
   .bugm { place-items: end stretch; padding: 0; }
   .bugm-box { width: 100%; max-height: 94dvh; border-bottom-left-radius: 0 !important; border-bottom-right-radius: 0 !important; padding-bottom: calc(var(--s5) + env(safe-area-inset-bottom, 0px)); transform: translateY(24px); }

@@ -1,11 +1,11 @@
-/* Библиотека инвентаря (packages/inventory, /lib/inventory.css) - вид сумки во всех местах игры. Классы - lgi-*; ячейки - прежние
-   .cy-grid / .cy-sc (их же рисует Склад «Города», city.css); здесь - их основа для страниц без city.css (вкладка «Поход», расширение).
-   Цвета - из оформления сайта (--ink, --mute, --accent-2, --rc-*), у каждого - запасное значение. Только transform / opacity в
-   переходах, без бесконечных анимаций. */
+
+
+
+
 .lgi { color: var(--ink, #f7eadf); }
 .lgi, .lgi *, .lgi *::before, .lgi *::after { box-sizing: border-box; }
 
-/* ---------- ячейки (основа: как у Склада) ---------- */
+ 
 .lgi .cy-gi { width: 44px; height: 44px; display: grid; place-items: center; }
 .lgi .cy-gi svg { width: 44px; height: 44px; }
 .lgi .cy-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 6px; }
@@ -28,13 +28,13 @@
 .lgi [data-igdrag] { touch-action: manipulation; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 .lgi .ig-dragging { opacity: .35; }
 .lgi.ig-on, .lgi.ig-on * { cursor: grabbing !important; }
-/* призрак перетаскивания (в body) и меню ячейки - когда city.css на странице нет */
+ 
 .lgi-ghost { position: fixed; left: 0; top: 0; z-index: 300; width: 60px; height: 60px; display: grid; place-items: center; border-radius: 12px; pointer-events: none; opacity: .92;
   border: 2px solid var(--rc, #9a9a9a); background: var(--surface, #241b29); box-shadow: 0 10px 24px rgba(0, 0, 0, .4); }
 .lgi-ghost .cy-gi, .lgi-ghost svg { width: 44px; height: 44px; }
 @media (prefers-reduced-motion: reduce) { .lgi .cy-sc { transition: none; } .lgi .cy-sc:hover { transform: none; } }
 
-/* ---------- общие части: шапка, кукла, полоски, фильтр, сетка, нижняя строка ---------- */
+ 
 .lgi { display: flex; flex-direction: column; gap: 8px; }
 .lgi-h { display: flex; align-items: center; gap: 6px; min-height: 28px; }
 .lgi-title { font: 700 15px/1.2 var(--hd, sans-serif); color: var(--accent-2, #ffcf6a); }
@@ -49,7 +49,7 @@
 .lgi-ped svg { width: 100%; height: 100%; max-height: 146px; }
 .lgi .lgi-slot.e2 { border-style: dashed; }
 .lgi .cy-gi.sil { opacity: .25; filter: grayscale(1); }
-/* пока тянут: свой слот - зелёный, не тот - красный (бросок туда ничего не делает), под вещью - жёлтая подсветка */
+ 
 .lgi .lgi-slot.ig-ok { border-color: #7ff07a; border-style: solid; }
 .lgi .lgi-slot.ig-no { border-color: #ff6b6b; border-style: solid; box-shadow: 0 0 0 2px rgba(255,107,107,.45); }
 .lgi .lgi-slot.ig-hover { box-shadow: 0 0 0 2px #ffe27a, 0 0 12px rgba(255,226,122,.6); }
@@ -86,7 +86,7 @@
 .lgi-sel b[data-r="legendary"], .lgi-tip b[data-r="legendary"], .lgi-card b[data-r="legendary"] { color: var(--rc-legendary, #ffcf6a); }
 .lgi-sel small { font-size: 11px; color: var(--mute, #bfaab7); }
 .lgi-sel .btn { min-height: 34px; padding: 4px 12px; font-size: 13px; }
-/* кнопка без оформления сайта (расширение, стенд): своё, но у сайта (.btn) - его */
+ 
 :where(.lgi-btn) { min-height: 34px; padding: 4px 12px; border: 0; border-radius: 10px; background: var(--accent-2, #ffcf6a); color: #2a1b22; font: 700 13px var(--tx, sans-serif); cursor: pointer; }
 :where(.lgi-btn.ghost) { background: rgba(255,255,255,.1); color: var(--ink, #f7eadf); }
 .lgi-btn[disabled] { opacity: .55; cursor: default; }
@@ -95,15 +95,15 @@
 .lgi-ok { font-size: 12px; font-weight: 700; color: #7ff07a; }
 .lgi .muted { color: var(--mute, #bfaab7); }
 
-/* ---------- compact: карточка сбоку ~276 px (сумка шахты, расширение Twitch) ---------- */
+ 
 .lgi--compact, .lgi--sheet { width: 100%; max-height: 100%; padding: 8px 10px 10px; border-radius: 16px; background: rgba(29,22,32,.96); border: 1px solid rgba(255,255,255,.08);
   box-shadow: 0 14px 34px rgba(0,0,0,.45); overflow: hidden; }
 .lgi--compact .cy-sc, .lgi--sheet .cy-sc { width: 44px; height: 44px; padding: 2px; border-radius: 8px; background: radial-gradient(circle at 50% 35%, #34283a, #1b141f); cursor: pointer; }
-.lgi--inline .cy-sc { width: 44px; height: 44px; padding: 2px; border-radius: 8px; }   /* inline - в карточке страницы: фон ячеек - её оформления (--surface2) */
+.lgi--inline .cy-sc { width: 44px; height: 44px; padding: 2px; border-radius: 8px; }    
 .lgi--compact .cy-sc .cy-gi, .lgi--compact .cy-sc .cy-gi svg, .lgi--sheet .cy-sc .cy-gi, .lgi--sheet .cy-sc .cy-gi svg, .lgi--inline .cy-sc .cy-gi, .lgi--inline .cy-sc .cy-gi svg { width: 34px; height: 34px; }
 .lgi--compact .lgi-g .cy-grid { grid-template-columns: repeat(4, 1fr); gap: 5px; }
 .lgi--compact .lgi-g .cy-sc, .lgi--sheet .lgi-g .cy-sc, .lgi--inline .lgi-g .cy-sc { width: auto; height: auto; aspect-ratio: 1; }
-/* sheet: снизу на ~60% высоты (сама встаёт к низу экрана, если страница не поставила её в свою обёртку: options - класс lgi-float) */
+ 
 .lgi--sheet { border-radius: 18px 18px 0 0; }
 .lgi--sheet .lgi-stage { height: 144px; } .lgi--sheet .lgi-ped svg { max-height: 140px; }
 .lgi--sheet .lgi-g .cy-grid { grid-template-columns: repeat(auto-fill, minmax(48px, 1fr)); gap: 5px; }
@@ -114,7 +114,7 @@
   .lgi--compact .lgi-g .cy-grid { grid-template-columns: repeat(auto-fill, minmax(48px, 1fr)); }
 }
 
-/* ---------- inline: маленький блок без куклы (вкладка «Поход»: еда и зелья, надетое значками) ---------- */
+ 
 .lgi--inline { gap: 6px; }
 .lgi--inline .lgi-g { min-height: 0; max-height: 168px; }
 .lgi--inline .lgi-g .cy-grid { grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 5px; }
@@ -123,7 +123,7 @@
 .lgi--inline .lgi-eqrow .cy-sc .cy-gi, .lgi--inline .lgi-eqrow .cy-sc .cy-gi svg { width: 28px; height: 28px; }
 .lgi--inline .lgi-a { min-height: 34px; }
 
-/* ---------- full: большой ПК (вкладка «Персонаж»): кукла и полоски слева, сумка посередине, карточка вещи справа ---------- */
+ 
 .lgi--full { display: block; container-type: inline-size; }
 .lgi--full .lgi-in { display: grid; grid-template-columns: minmax(260px, 320px) minmax(0, 1fr) minmax(220px, 300px); grid-template-areas: "side main det" "foot foot foot"; gap: 14px; align-items: start; }
 .lgi--full.lgi-nodet .lgi-in { grid-template-columns: minmax(230px, 300px) minmax(0, 1fr); grid-template-areas: "side main" "foot foot"; }
@@ -140,18 +140,18 @@
 .lgi--full .lgi-g { overflow: visible; }
 .lgi--full .lgi-g .cy-grid { grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); gap: 8px; }
 .lgi--full .lgi-g .cy-sc .cy-gi, .lgi--full .lgi-g .cy-sc .cy-gi svg { width: 52px; height: 52px; }
-/* раскладка - по ширине самой сумки: в узкой колонке страницы кукла встаёт над сеткой */
+ 
 @container (max-width: 860px) { .lgi--full .lgi-in { grid-template-columns: minmax(230px, 300px) minmax(0, 1fr); grid-template-areas: "side main" "det det" "foot foot"; } }
 @container (max-width: 560px) { .lgi--full .lgi-in, .lgi--full.lgi-nodet .lgi-in { grid-template-columns: 1fr; grid-template-areas: "side" "main" "det" "foot"; } .lgi--full .lgi-stage { height: 240px; } }
 
-/* ---------- storage: две сетки одна под другой, без куклы ---------- */
+ 
 .lgi-m-storage.lgi--full .lgi-in { grid-template-columns: minmax(0, 1fr); grid-template-areas: "main" "det" "foot"; }
 .lgi-m-storage.lgi--full .lgi-side:empty { display: none; }
 .lgi-m-storage.lgi--full .lgi-main, .lgi-m-storage.lgi--compact, .lgi-m-storage.lgi--sheet { gap: 10px; }
 .lgi-m-storage .lgi-g { min-height: 80px; }
-/* 30.10: склад - обёртки столбцов. Узко (телефон, ждущая вкладка): «прозрачны», сетки идут столбиком, как раньше */
+ 
 .lgi-cols, .lgi-col { display: contents; }
-/* 30.10 (окно Склада, options.slots): шапка сетки - «Сумка 5 / 20» слева и кнопки страницы справа; ниже - своя строка страницы (монеты). Колонка «между» (mid): узко - строка между сетками */
+ 
 .lgi-gh2 { position: relative; flex-wrap: wrap; justify-content: flex-start; align-items: center; gap: 4px 10px; }
 .lgi-gh2 .lgi-gx { display: contents; }
 .lgi-mid { display: flex; flex-direction: row; justify-content: center; gap: 4px 18px; flex-wrap: wrap; }
@@ -159,8 +159,8 @@
 @container (max-width: 799.98px) {
   .lgi-m-storage [data-lgi="g-bag"] { order: 1; } .lgi-m-storage .lgi-ob { order: 2; } .lgi-mid { order: 3; } .lgi-m-storage [data-lgi="g-st"] { order: 4; }
 }
-/* 30.10: широкое окно склада (по ширине самой сумки, а не экрана): «Сумка» + «Рудная сумка» слева, «Склад» справа; столбцы одной высоты,
-   каждый листается сам, если окно страницы ограничило высоту (city.css: .cy-store2) - иначе просто растут */
+
+
 @container (min-width: 800px) {
   .lgi-m-storage.lgi--full .lgi-main { flex: 1 1 auto; min-height: 0; }
   .lgi-m-storage.lgi--full .lgi-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: stretch; flex: 1 1 auto; min-height: 0; }
@@ -171,7 +171,7 @@
   .lgi-mid { flex-direction: column; align-self: start; justify-content: flex-start; width: 118px; margin-top: 84px; gap: 14px; }
 }
 
-/* ---------- карточка вещи (встроенная: если у страницы своей нет) ---------- */
+ 
 .lgi-tip { position: fixed; left: 0; top: 0; z-index: 330; width: min(280px, calc(100vw - 16px)); padding: 10px 12px; border-radius: 12px; pointer-events: none;
   background: rgba(24,18,28,.98); color: var(--ink, #f7eadf); border: 2px solid var(--rc, rgba(255,255,255,.14)); box-shadow: 0 14px 30px rgba(0,0,0,.5); font: 13px/1.35 var(--tx, system-ui, sans-serif); }
 .lgi-tip[data-r="uncommon"], .lgi-card[data-r="uncommon"] { --rc: var(--rc-uncommon, #3fae4f); } .lgi-tip[data-r="rare"], .lgi-card[data-r="rare"] { --rc: var(--rc-rare, #3a7ee0); }
@@ -185,19 +185,19 @@
 .lgi-teff, .lgi-tdur, .lgi-tdesc, .lgi-tcmp { margin: 6px 0 0; font-size: 12px; } .lgi-tdur.br { color: #ff8a80; font-weight: 700; } .lgi-tcmp, .lgi-tdesc { color: var(--mute, #bfaab7); }
 .lgi-card { border-left: 3px solid var(--rc, rgba(255,255,255,.2)); padding-left: 10px; }
 
-/* номер вещи в сумке (для команд чата) - страница рисует его через options.extra */
+ 
 .lgi .cy-sc .no { position: absolute; right: 3px; top: 2px; font: 800 10px/1 var(--tx, system-ui); color: var(--mute, #bfaab7); }
-/* свой порядок: ячейка - цель */
+ 
 .lgi .cy-sc.ig-ok[data-igdrop="cell"] { border-style: dashed; }
 .lgi .cy-sc.ig-hover[data-igdrop="cell"] { box-shadow: -4px 0 0 0 var(--focus, #ffc94d); }
 
-/* 26.10: кукла в своём элементе страницы (options.dollEl - карточка героя): сетка без левой колонки; кукла крупно */
+ 
 .lgi--full.lgi-nodoll .lgi-in, .lgi--full.lgi-nodoll.lgi-nodet .lgi-in { grid-template-columns: minmax(0, 1fr); grid-template-areas: "main" "det" "foot"; }
 .lgi--full.lgi-nodoll .lgi-side:empty { display: none; }
 .lgi-dollx { display: block; color: inherit; }
-/* слоты вокруг куклы - крупные, как до inv2 (.doll .slot): картинка 60px, подпись слота, название вещи цветом редкости */
-/* 26.10 (стример): высота куклы - по столбцу слотов (3 крупных слота), рамка героя не тянется и не пустеет; рисунок вписан в рамку
-   (contain: size - рисунок не раздувает высоту ряда) */
+ 
+
+
 .lgi-dollx .lgi-stage { height: auto; grid-template-columns: minmax(104px, 150px) minmax(0, 1fr) minmax(104px, 150px); gap: 14px; max-width: 680px; margin: 0 auto; }
 .lgi-dollx .lgi-ped { contain: size; min-height: 280px; grid-template: minmax(0, 1fr) / minmax(0, 1fr); }
 .lgi-dollx .lgi-ped > * { max-width: 100%; max-height: 100%; }
@@ -216,16 +216,16 @@
 .lgi-dollx.lgi--sheet .lgi-slot .lgi-sl { font-size: 10px; letter-spacing: .05em; }
 .lgi-dollx.lgi--sheet .lgi-slot .lgi-sn { font-size: 11px; }
 
-/* 26.10 (mine/pickaxe): рудная сумка - своя сетка под сумкой (руда с ob), рамка цвета руды */
+ 
 .lgi-ob { margin-top: 10px; padding: 8px; border-radius: 12px; border: 1px dashed rgba(255, 207, 106, .35); background: rgba(120, 82, 40, .14); }
-/* 28.10 (mine-orebag-scroll): компактная карточка с рудной сумкой - одна прокрутка на всю карточку (сумка, потом рудная сумка),
-   а не две маленьких: на телефоне блок руды уходил за край без прокрутки, на ПК колесо упиралось в конец сумки. Шапка и подвал прилипают. */
+
+
 .lgi--compact.lgi-wob, .lgi--sheet.lgi-wob { overflow-y: auto; overscroll-behavior: contain; }
 .lgi--compact.lgi-wob .lgi-g, .lgi--sheet.lgi-wob .lgi-g { flex: none; min-height: 0; overflow: visible; }
 .lgi--compact.lgi-wob > .lgi-h, .lgi--sheet.lgi-wob > .lgi-h { position: sticky; top: -8px; z-index: 2; margin: -8px -10px 0; padding: 8px 10px 4px; background: rgb(29,22,32); }
 .lgi--compact.lgi-wob > .lgi-a, .lgi--sheet.lgi-wob > .lgi-a { position: sticky; bottom: -10px; z-index: 2; margin: 0 -10px -10px; padding: 4px 10px 10px; background: rgb(29,22,32); }
 .lgi-ob .lgi-gh b::before { content: "⛏ "; color: var(--gold, #ffcf6a); }
-/* 30.10: заголовок рудной сумки - кнопка «свернуть / развернуть»; свёрнута - видна только строка с числом (сетка скрыта, но заголовок остаётся целью броска) */
+ 
 .lgi-foldbt { appearance: none; width: calc(100% - 4px); min-height: 32px; margin: 0 2px; padding: 0 4px; border: 0; border-radius: 8px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; align-items: center; gap: 8px; }
 .lgi-foldbt b { flex: 1 1 auto; }
 .lgi-foldbt[aria-expanded="true"] { margin-bottom: 6px; }
@@ -238,7 +238,7 @@
 .lgi .lgi-g.lgi-fold { min-height: 0; }
 .lgi-ob.lgi-fold .cy-grid { display: none; }
 
-/* 24.10: меню ячейки (LGInventory.menu): «1 / половина / всё / N…» Склада, 26.10 - и меню товара лавки похода («Купить», «Что даёт»); до 26.10 - city.css */
+ 
 .ig-menu { position: fixed; left: 0; top: 0; z-index: 320; min-width: 168px; display: grid; gap: 2px; padding: 6px; border-radius: 12px; background: var(--surface, #fff); color: var(--ink, #222);
   border: 1px solid var(--line, rgba(0, 0, 0, .15)); box-shadow: 0 12px 28px rgba(0, 0, 0, .35); }
 .ig-menu .ig-mt { padding: 4px 8px 6px; font-size: 12px; color: var(--mute, #666); }
@@ -250,7 +250,7 @@
 .ig-menu .ig-mn input { width: 76px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line, rgba(0, 0, 0, .25)); background: var(--surface, #fff); color: inherit; font: inherit; }
 .ig-menu .ig-mn button { padding: 6px 12px; border-radius: 8px; border: 0; background: var(--accent, #c81e17); color: #fff; font: inherit; cursor: pointer; }
 
-/* 28.10 (bag-trash): слот «Выбросить» под сеткой (actions.discard - вкладка «Поход») и окно подтверждения. Цвета - из оформления сайта */
+ 
 .lgi-trash { flex: none; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 48px; margin-top: 2px; padding: 6px 12px;
   border: 2px dashed var(--line, rgba(255, 255, 255, .16)); border-radius: 10px; background: transparent; color: var(--mute, #bfaab7); font: inherit; cursor: pointer;
   transition: transform .12s ease, opacity .12s ease; }
@@ -259,7 +259,7 @@
 .lgi-trash small { font-size: 11px; opacity: .8; }
 .lgi-trash:hover, .lgi-trash:focus-visible { border-color: color-mix(in srgb, var(--dn, #ff7a6e) 55%, transparent); color: var(--ink, #f7eadf); }
 .lgi-trash:focus-visible { outline: 3px solid var(--focus, #ffc94d); outline-offset: 1px; }
-/* тянут вещь: можно сюда - красноватая рамка, над слотом - заливка; нельзя (надето, вещь события) - тусклый с красным пунктиром */
+ 
 .lgi .lgi-trash.ig-ok { border-color: var(--dn, #ff7a6e); color: var(--ink, #f7eadf); }
 .lgi .lgi-trash.ig-hover { border-style: solid; background: color-mix(in srgb, var(--dn, #ff7a6e) 22%, transparent); transform: scale(1.02); }
 .lgi .lgi-trash.ig-no { opacity: .55; border-color: #ff6b6b; }
@@ -279,8 +279,8 @@
 .lgi-dlgn label:has(input:checked) { background: var(--accent-2, #ffcf6a); color: #2a1b22; }
 .lgi-dlgb { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
 .lgi-dlgb .lgi-btn { min-height: 40px; }
-.lgi-dlgb .lgi-dlgy { background: #b3261e; border-color: transparent; color: #fff; }   /* белый на тёмно-красном - контраст 6:1 при любом оформлении */
+.lgi-dlgb .lgi-dlgy { background: #b3261e; border-color: transparent; color: #fff; }    
 .lgi-dlgb .lgi-dlgy:hover, .lgi-dlgb .lgi-dlgy:focus-visible { background: #c62f26; }
-/* 31.10 (feat/candy-tile): плитка «не вещи» (конфеты ивента) - в конце сетки сумки, места не занимает; рамка - оранжевая, не по редкости */
+ 
 .lgi .cy-sc.lgi-pin { --rc: #ff8a1f; cursor: help; }
 .lgi .cy-sc.lgi-pin i.n { background: #ff8a1f; color: #15122e; }

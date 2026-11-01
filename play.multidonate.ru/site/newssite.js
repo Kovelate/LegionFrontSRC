@@ -1,12 +1,12 @@
 'use strict';
-/* 18.10: правка новостей прямо на сайте — только администратору игры (зрителям этот файл не грузится вовсе: его подгружает news.js,
-   когда сервер прислал флаг admin). Редактор — общий с пультом (/platform/newsedit.js, window.NewsEdit); права проверяет сервер.
-   На вкладке «Новости»: кнопка «+» (новый пост), черновики сверху ленты, у каждой записи «Изменить / Снять / Удалить». */
+
+
+
 window.LGNewsSite = (feed) => {
   const N = window.NewsEdit, esc = N.esc;
   let all = [], byId = new Map();
-  let bin = [], inTrash = false;   // 19.10: «Удалённые» (30 дней) и показаны ли они вместо ленты
-  const toast = (t, bad) => window.LGSiteUi.toast(t, bad, { ms: bad ? 5000 : 3200 });   // 25.10: packages/site-ui (один таймер на #toast)
+  let bin = [], inTrash = false;
+  const toast = (t, bad) => window.LGSiteUi.toast(t, bad, { ms: bad ? 5000 : 3200 });
   const PLUS = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
   const BIN = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 12.5h9l1-12.5M10 10.5v6M14 10.5v6"/></svg>';
 
@@ -17,10 +17,10 @@ window.LGNewsSite = (feed) => {
     all = j.list || []; byId = new Map(all.map((x) => [x.id, x]));
     return true;
   }
-  // после правки: свой список и ленту зрителей — заново (лента у сервера уже сброшена)
+
   async function changed() { await refresh(); await feed.reload(); }
 
-  /* ---------- окно редактора (на телефоне — во весь экран) ---------- */
+   
   let modal = null;
   function openEditor(x, from) {
     if (modal) return;
@@ -46,10 +46,10 @@ window.LGNewsSite = (feed) => {
       document.documentElement.classList.remove('nwm-open');
       document.removeEventListener('keydown', key, true);
       if (from && from.isConnected) from.focus();
-      // лента перерисуется — фокус на «+», если прежней кнопки больше нет
+
       if (dirtyAny) changed().then(() => { if (!from || !from.isConnected) { const b = document.querySelector('.nw-plus'); if (b) b.focus(); } });
     }
-    // Esc и крестик — с защитой несохранённого (первый раз — «Выйти без сохранения?»); фокус не уходит из окна
+
     function key(e) {
       if (e.key === 'Escape') { e.preventDefault(); ed.close(); return; }
       if (e.key !== 'Tab') return;
@@ -65,10 +65,10 @@ window.LGNewsSite = (feed) => {
     ed.focus();
   }
 
-  /* ---------- в ленте ---------- */
+   
   const plus = () => `<div class="nw-hb"><button type="button" class="btn ghost nw-binb" data-bin aria-pressed="${inTrash}" aria-label="Удалённые: ${bin.length}" title="Удалённые записи (30 дней)">${BIN}<span>Удалённые</span><b class="nw-binn">${bin.length}</b></button>`
     + '<button type="button" class="btn primary nw-plus" aria-label="Новый пост" title="Новый пост">' + PLUS + '<span>Новый пост</span></button></div>';
-  // «Удалённые» вместо ленты: зрители их не видят; «Вернуть» — как была, «Удалить навсегда» — в два нажатия
+
   const trashBody = () => `<div class="nw-trash" role="region" aria-label="Удалённые записи">
       <p class="muted nw-trash-h">Удалённые записи видишь только ты. Через 30 дней запись удаляется сама — вместе с лайками и комментариями. <button type="button" class="nw-link" data-bin-back>К ленте</button></p>
       ${bin.length ? `<div class="nw-list">${bin.map((x) => `<article class="nw-post nw-draft nw-del" data-id="${esc(x.id)}" aria-labelledby="nw-t-${esc(x.id)}">
@@ -78,8 +78,8 @@ window.LGNewsSite = (feed) => {
         ${admBar('<button type="button" class="nw-act" data-na="restore">Вернуть</button>', '<button type="button" class="nw-act is-del" data-na="purge">Удалить навсегда</button>', 'Удалённая запись (видишь только ты)')}
       </article>`).join('')}</div>` : '<p class="empty">Здесь пусто. Удалённые записи лежат тут 30 дней — их можно вернуть.</p>'}</div>`;
   const drafts = () => all.filter((x) => !x.published).map((x) => ({ id: x.id, title: x.title, tag: x.tag, tags: x.tags, html: x.html, publishedAt: x.publishedAt }));
-  // 20.10: инструменты админа — отдельной компактной панелью с подписью «Админ», чтобы не путались с «Нравится» и «Комментарии» зрителей;
-  // «Удалить» — красным и отдельно от остальных
+
+
   const SHIELD = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l7 2.6v5.2c0 4.3-2.9 7.7-7 9.2-4.1-1.5-7-4.9-7-9.2V6.1z"/><path d="M9 12l2 2 4-4"/></svg>';
   const admBar = (inner, del, label) => `<div class="nw-adm" role="group" aria-label="${label}"><span class="nw-adm-l">${SHIELD}Админ</span>
       <span class="nw-adm-b">${inner}</span><span class="nw-adm-d">${del}</span></div>`;

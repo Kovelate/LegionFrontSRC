@@ -1,13 +1,13 @@
-// 18.10: редактор новостей игры — один на пульт (страница «Новости», newsadmin.js) и сайт (кнопка «+» на вкладке «Новости», newssite.js).
-// Права проверяет сервер (/admin/api/news*: 401/403); здесь — только интерфейс.
-// Правило: само ничего не публикуется. Новая запись — черновик; «Опубликовать» — отдельное действие с подтверждением.
+
+
+
 window.NewsEdit = (() => {
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const TAGS = { update: 'Обновление', balance: 'Баланс', event: 'Событие', fix: 'Исправления' };
-  // 01.11: у записи может быть несколько тегов (tags, порядок - как в TAGS); старая запись (или старый сервер) - только tag
+
   const tagsOf = (x) => (x && Array.isArray(x.tags) ? x.tags : x && x.tag ? [x.tag] : []).filter((k, i, a) => TAGS[k] && a.indexOf(k) === i);
   const LIM = { title: 200, body: 20000 };
-  // цвета текста — те же имена, что понимает сервер (src/site/news.ts NEWS_COLORS); цвет в каждом оформлении — CSS (.nc-*)
+
   const COLORS = [['gold', 'Золотой'], ['red', 'Красный'], ['green', 'Зелёный'], ['blue', 'Синий'], ['purple', 'Фиолетовый'], ['orange', 'Оранжевый'], ['grey', 'Серый']];
   const COLOR_TOKEN = /\{\{(gold|red|green|blue|purple|orange|grey)\|([^{}\n]*?)\}\}/g;
   const when = (t) => (t ? new Date(t).toLocaleString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '');
@@ -27,19 +27,19 @@ window.NewsEdit = (() => {
       return j;
     } catch { return { ok: false, status: 0, text: 'Нет связи с сервером — проверь интернет и повтори' }; }
   }
-  // 20.10: картинка в новость. Браузер сам уменьшает до 1600 px по ширине и пережимает в WebP (~80%), чтобы зрителям не тянуть тяжёлое;
-  // анимированный GIF — как есть (его не пережать без потери анимации). Сервер ещё раз проверяет, что это картинка, и лимиты.
+
+
   const IMG = { pick: 8 << 20, gif: 3 << 20, width: 1600, q: 0.8 };
   const IMG_TYPES = /^image\/(png|jpeg|webp|gif)$/;
-  // несколько кадров в GIF: блоки управления кадром (21 F9 04) — грубо, без декодера
+
   const gifAnimated = (u8) => { let n = 0; for (let i = 0; i + 2 < u8.length; i++) if (u8[i] === 0x21 && u8[i + 1] === 0xf9 && u8[i + 2] === 0x04 && ++n > 1) return true; return false; };
   const toBlob = (c, type, q) => new Promise((ok) => { try { c.toBlob((b) => ok(b), type, q); } catch { ok(null); } });
   async function decode(file) {
-    if (window.createImageBitmap) { try { return await createImageBitmap(file); } catch { /* ниже — через <img> */ } }
+    if (window.createImageBitmap) { try { return await createImageBitmap(file); } catch {   } }
     const url = URL.createObjectURL(file);
     try { const im = new Image(); im.src = url; await im.decode(); return im; } finally { setTimeout(() => URL.revokeObjectURL(url), 1000); }
   }
-  /** Файл → что отправить на сервер (Blob) или текст ошибки. */
+   
   async function prepImage(file) {
     if (!file || !IMG_TYPES.test(file.type)) return { err: 'Нужна картинка: PNG, JPG, WebP или GIF' };
     if (file.size > IMG.pick) return { err: 'Файл больше 8 МБ — уменьши его' };
@@ -53,11 +53,11 @@ window.NewsEdit = (() => {
     const c = document.createElement('canvas'); c.width = w; c.height = h;
     c.getContext('2d').drawImage(src, 0, 0, w, h);
     if (src.close) src.close();
-    // WebP; старый Safari его не кодирует (вернёт PNG) — тогда JPEG
+
     let blob = await toBlob(c, 'image/webp', IMG.q);
     if (!blob || blob.type !== 'image/webp') blob = await toBlob(c, 'image/jpeg', 0.85);
     if (!blob) return { err: 'Не получилось сжать картинку' };
-    // исходник уже маленький и не больше нужного — пусть идёт как есть, если пережатый вышел тяжелее
+
     if (k === 1 && file.type !== 'image/gif' && file.size < blob.size && file.size <= (2 << 20)) blob = file;
     return { blob };
   }
@@ -74,7 +74,7 @@ window.NewsEdit = (() => {
     } catch { return { ok: false, text: 'Нет связи с сервером — проверь интернет и повтори' }; }
   }
 
-  // «опасная» кнопка: первый клик — «Точно?», второй (в течение 4 с) — действие
+
   function confirmBtn(b, ask, act) {
     b.addEventListener('click', () => {
       if (b.dataset.armed) { delete b.dataset.armed; clearTimeout(b._t); b.textContent = b.dataset.label; act(); return; }
@@ -82,14 +82,14 @@ window.NewsEdit = (() => {
       b._t = setTimeout(() => { if (!b.dataset.armed) return; delete b.dataset.armed; b.textContent = b.dataset.label; }, 4000);
     });
   }
-  /** Опубликовать / снять. Возвращает новую запись или null (ошибку показывает say). */
+   
   async function setPub(id, on, say) {
     const j = await call('/admin/api/news/publish', { id, on });
     if (!j.ok) { say(j.text, true); return null; }
     say(on ? 'Опубликовано — зрители видят на вкладке «Новости»' : 'Снято — зрители больше не видят');
     return j.post;
   }
-  // 19.10: «Удалить» — в «Удалённые» на 30 дней (с лайками и комментариями); оттуда — «Вернуть» или «Удалить навсегда»
+
   async function del(id, say) {
     const j = await call('/admin/api/news/delete', { id });
     if (!j.ok) { say(j.text, true); return false; }
@@ -106,15 +106,15 @@ window.NewsEdit = (() => {
     if (!j.ok) { say(j.text, true); return false; }
     say('Удалено навсегда'); return true;
   }
-  // сколько осталось до окончательного удаления: «ещё 29 дн.» / «сегодня»
+
   const left = (t) => { const d = Math.ceil(((t || 0) - Date.now()) / 864e5); return d > 0 ? `удалится сама через ${d} дн.` : 'удалится сама сегодня'; };
 
-  /**
-   * Редактор в box. post — запись (правка) или null (новая).
-   * o.say(text, bad) — сообщение; o.onChange(post) — запись сохранена/опубликована/снята; o.onClose() — закрыть редактор;
-   * o.closeLabel — подпись кнопки выхода; o.titleTag — тег заголовка (h2 в окне сайта, h3 в пульте).
-   * Возвращает { dirty(), close() } — close() с защитой несохранённого (true — закрыто).
-   */
+  
+
+
+
+
+
   function editor(box, post, o) {
     const id0 = 'ne' + (++uid);
     const ed = { id: post ? post.id : null, tags: tagsOf(post), published: !!(post && post.published), publishedAt: post ? post.publishedAt : null, dirty: false };
@@ -163,13 +163,13 @@ window.NewsEdit = (() => {
       const ub = $('[data-unpub]'); if (ub) confirmBtn(ub, 'Снять с сайтов?', async () => { if (ed.dirty && !(await save(false, true))) return; const p = await setPub(ed.id, false, o.say); if (p) upd(p); });
       $('[data-back]').onclick = () => close();
     }
-    // выйти: есть несохранённые правки — сначала «Выйти без сохранения?» (второе нажатие или Esc ещё раз)
+
     function close() {
       const back = $('[data-back]');
       if (ed.dirty && back && !back.dataset.armed) { back.dataset.armed = '1'; back.textContent = 'Выйти без сохранения?'; back.focus(); return false; }
       o.onClose && o.onClose(); return true;
     }
-    // предпросмотр — тем же кодом сервера, что у зрителей (с задержкой, чтобы не слать каждую букву)
+
     let pt = 0, pseq = 0;
     async function preview() {
       $('[data-ptag]').innerHTML = ed.tags.map((k) => `<span class="nwa-tag" data-tag="${esc(k)}">${TAGS[k]}</span>`).join('');
@@ -187,9 +187,9 @@ window.NewsEdit = (() => {
     };
     ti.oninput = changed; tx.oninput = changed;
     ti.addEventListener('blur', () => { if (ed.dirty && !ti.value.trim()) { err.textContent = 'Нужен заголовок'; ti.setAttribute('aria-invalid', 'true'); } });
-    // теги - переключатели: отмеченные по порядку на странице - как в TAGS (так же сохраняет сервер)
+
     $$(`input[name="${id0}-tag"]`).forEach((r) => { r.onchange = () => { ed.tags = tagsOf({ tags: $$(`input[name="${id0}-tag"]:checked`).map((x) => x.value) }); ed.dirty = true; state(); preview(); }; });
-    // кнопки оформления: оборачивают выделение или вставляют заготовку
+
     $$('[data-fx]').forEach((b) => b.addEventListener('click', () => {
       const a = tx.selectionStart, z = tx.selectionEnd, sel = tx.value.slice(a, z), fx = b.dataset.fx;
       const lineStart = tx.value.lastIndexOf('\n', a - 1) + 1;
@@ -205,17 +205,17 @@ window.NewsEdit = (() => {
       tx.setRangeText(ins, from, to, 'end'); tx.focus(); if (cur) tx.setSelectionRange(cur[0], cur[1]);
       changed();
     }));
-    // цвет выделенного: оборачиваем {{цвет|…}}; «Без цвета» — снимаем цвет с выделения (и с метки, внутри которой курсор)
+
     const cbtn = $('[data-color]'), pal = $('.nwe-pal');
     let selKeep = [0, 0];
     const palShow = (on) => { pal.hidden = !on; cbtn.setAttribute('aria-expanded', String(on)); if (on) { selKeep = [tx.selectionStart, tx.selectionEnd]; const f = pal.querySelector('button'); if (f) f.focus(); } };
-    cbtn.addEventListener('mousedown', (e) => e.preventDefault());   // не сбрасывать выделение в тексте
+    cbtn.addEventListener('mousedown', (e) => e.preventDefault());
     cbtn.onclick = () => palShow(pal.hidden);
     pal.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.stopPropagation(); palShow(false); cbtn.focus(); } });
     box.addEventListener('click', (e) => { if (!pal.hidden && !e.target.closest('.nwe-cwrap')) palShow(false); });
     pal.querySelectorAll('[data-col]').forEach((b) => b.addEventListener('click', () => {
       const [a0, z0] = selKeep, v = tx.value, col = b.dataset.col;
-      // метки цвета, которые задевает выделение (или в которых стоит курсор), — снимаем
+
       let a = a0, z = z0, m; COLOR_TOKEN.lastIndex = 0;
       while ((m = COLOR_TOKEN.exec(v))) { const s0 = m.index, e0 = s0 + m[0].length; if (s0 < Math.max(z, a + 1) && e0 > a) { a = Math.min(a, s0); z = Math.max(z, e0); } }
       const plain = v.slice(a, z).replace(COLOR_TOKEN, '$2');
@@ -225,7 +225,7 @@ window.NewsEdit = (() => {
       if (col) tx.setSelectionRange(a + col.length + 3, a + col.length + 3 + inner.length); else tx.setSelectionRange(a, a + ins.length);
       palShow(false); changed();
     }));
-    // 20.10: картинка — кнопка, вставка из буфера, перетаскивание. Строка разметки — на своей строке в месте курсора, курсор — в подпись
+
     const ib = $('[data-img]'), inp = $('[data-imgf]');
     let imgBusy = false;
     async function addImage(file) {
@@ -239,12 +239,12 @@ window.NewsEdit = (() => {
         const ins = pre + j.md + post;
         if (v.length - (z - a) + ins.length > LIM.body) { err.textContent = 'Текст и так на пределе длины — картинка не поместится'; return; }
         tx.setRangeText(ins, a, z, 'end'); tx.focus();
-        const cap = a + pre.length + 2; tx.setSelectionRange(cap, cap);   // курсор — в [подпись]
+        const cap = a + pre.length + 2; tx.setSelectionRange(cap, cap);
         changed();
         o.say('Картинка добавлена — подпись можно написать в квадратных скобках');
       } finally { imgBusy = false; ib.disabled = false; ib.lastChild.textContent = lbl; }
     }
-    ib.addEventListener('mousedown', (e) => e.preventDefault());   // не сбрасывать курсор в тексте
+    ib.addEventListener('mousedown', (e) => e.preventDefault());
     ib.onclick = () => inp.click();
     inp.onchange = () => { const f = inp.files && inp.files[0]; inp.value = ''; if (f) addImage(f); };
     tx.addEventListener('paste', (e) => {
@@ -258,11 +258,11 @@ window.NewsEdit = (() => {
       const f = [...((e.dataTransfer && e.dataTransfer.files) || [])].find((x) => /^image\//.test(x.type));
       if (!f) return;
       e.preventDefault();
-      // место вставки — куда бросили (если браузер умеет сказать), иначе — курсор
-      try { const p = document.caretPositionFromPoint ? document.caretPositionFromPoint(e.clientX, e.clientY) : null; if (p && p.offsetNode === tx) tx.setSelectionRange(p.offset, p.offset); } catch { /* курсор как есть */ }
+
+      try { const p = document.caretPositionFromPoint ? document.caretPositionFromPoint(e.clientX, e.clientY) : null; if (p && p.offsetNode === tx) tx.setSelectionRange(p.offset, p.offset); } catch {   }
       addImage(f);
     });
-    // quiet — без сообщения (сохранение перед снятием с публикации)
+
     async function save(publish, quiet) {
       const title = ti.value.trim();
       if (!title) { err.textContent = 'Нужен заголовок'; ti.setAttribute('aria-invalid', 'true'); ti.focus(); return false; }

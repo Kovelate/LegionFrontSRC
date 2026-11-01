@@ -1,29 +1,29 @@
 'use strict';
-/* Сайт Легиона: персонаж (кукла со слотами, сумка, карточка вещи) и состав Легиона.
-   Данные — /api/me, /api/legion; надеть/снять — /api/equip, /api/unequip.
-   window.LG_DEMO (демо-сборка для выбора дизайна) подменяет сеть на локальные данные. */
+
+
+
 (() => {
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
-  const SU = window.LGSiteUi;   // 25.10: общие части сайта (packages/site-ui)
-  const esc = SU.esc;   // 25.10: общая (packages/site-ui → ui-kit), была своя копия
+  const SU = window.LGSiteUi;
+  const esc = SU.esc;
   const DEMO = window.LG_DEMO || null;
-  // 25.10: данные игры (классы, редкости, слоты, броня, таблицы по умолчанию) - одна библиотека с сервером (packages/game-data, /lib/game-data.js)
+
   const GD = window.LGGameData;
-  // 18.10: время сервера — откаты еды и воскрешения считаем от него (часы у зрителя могут спешить или отставать)
+
   let OFF = 0;
   const now = () => Date.now() + OFF;
   const clock = (t) => { const d = (+t || 0) - Date.now(); if (Number.isFinite(d)) OFF = Math.abs(d) > 1500 ? d : 0; };
-  const api = (p, body) => (DEMO ? DEMO.api(p, body) : fetch(p, { ...(body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}), ...(typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? { signal: AbortSignal.timeout(20000) } : {}) })   // 23.10: не ждём вечно — через 20 с «нет связи», кнопки оживают
+  const api = (p, body) => (DEMO ? DEMO.api(p, body) : fetch(p, { ...(body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}), ...(typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? { signal: AbortSignal.timeout(20000) } : {}) })
     .then((r) => { try { const d = Date.parse(r.headers.get('date') || ''); if (d) clock(d + 500); } catch {} return r.json(); }))
     .catch(() => ({ ok: false, error: 'нет связи с сайтом' }));
-  /* 19.10: звания зрителей (награды платформы) — значок у ника с подсказкой; aw: [{ id, n: название, d: подсказка, i: значок, t: оттенок }].
-     Нажатие показывает подсказку и на телефоне (title там не видно) */
-  // 19.10: значок — SVG, а не символ шрифта: у символа ✦ в разных шрифтах своё смещение (был сдвинут вниз-влево)
+  
+
+
   const AW_STAR = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0.8 9.7 6.3 15.2 8 9.7 9.7 8 15.2 6.3 9.7 0.8 8 6.3 6.3Z" fill="currentColor"/></svg>';
   const awb = (aw) => (Array.isArray(aw) ? aw.slice(0, 3).map((a) => `<span class="awb aw-${esc(String(a.t || a.id).replace(/[^a-z0-9-]/gi, ''))}" role="img" tabindex="0" aria-label="${esc(a.n)}: ${esc(a.d)}" data-awn="${esc(a.n)}" data-awd="${esc(a.d)}">${(a.i || '✦') === '✦' ? AW_STAR : esc(a.i)}</span>`).join('') : '');
-  /* 23.10: подсказка значка звания — маленькое окошко у самого значка (было — тост внизу экрана): нажатие/тап, у мыши — наведение.
-     Закрывается тапом мимо, Esc, через 4 с. Одно окошко на весь сайт; Город, где ник нарисован картинкой, зовёт его сам: awPop(a, рамка, ключ) */
+  
+
   let awEl = null, awKey = '', awT = 0, awFor = null;
   function awHide(pre) { if (!awEl || awEl.hidden || (pre && !awKey.startsWith(pre))) return; clearTimeout(awT); awEl.hidden = true; awKey = ''; awFor = null; }
   function awPop(a, r, key) {
@@ -40,29 +40,29 @@
   }
   const awOf = (b) => ({ n: b.dataset.awn || b.getAttribute('aria-label') || b.title || '', d: b.dataset.awd || '' });
   const awOpen = (b) => { awPop(awOf(b), b.getBoundingClientRect(), 'el'); awFor = b; };
-  document.addEventListener('click', (e) => { const b = e.target && e.target.closest && e.target.closest('.awb'); if (!b) return; e.preventDefault(); e.stopPropagation(); if (awFor === b && e.pointerType !== 'mouse') return awHide(); awOpen(b); }, true);   // второй тап по тому же значку — закрыть
+  document.addEventListener('click', (e) => { const b = e.target && e.target.closest && e.target.closest('.awb'); if (!b) return; e.preventDefault(); e.stopPropagation(); if (awFor === b && e.pointerType !== 'mouse') return awHide(); awOpen(b); }, true);
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') return awHide();
     if ((e.key === 'Enter' || e.key === ' ') && e.target && e.target.classList && e.target.classList.contains('awb')) { e.preventDefault(); awOpen(e.target); }
   });
-  document.addEventListener('pointerdown', (e) => { if (!awEl || awEl.hidden || (e.target.closest && e.target.closest('.awb, .awpop'))) return; awHide(); }, true);   // тап мимо
+  document.addEventListener('pointerdown', (e) => { if (!awEl || awEl.hidden || (e.target.closest && e.target.closest('.awb, .awpop'))) return; awHide(); }, true);
   document.addEventListener('pointerover', (e) => { if (e.pointerType !== 'mouse') return; const b = e.target.closest && e.target.closest('.awb'); if (b) awOpen(b); });
   document.addEventListener('pointerout', (e) => { if (e.pointerType !== 'mouse' || awKey !== 'el') return; const b = e.target.closest && e.target.closest('.awb'); if (b && !(e.relatedTarget && b.contains(e.relatedTarget))) awHide(); });
   window.addEventListener('scroll', () => awHide(), { capture: true, passive: true });
-  const toast = (t, err) => SU.toast(t, err);   // 25.10: всплывающая надпись #toast - packages/site-ui (2,8 с)
-  const plural = SU.plural;   // 25.10: packages/site-ui (ui-kit)
+  const toast = (t, err) => SU.toast(t, err);
+  const plural = SU.plural;
   const D = () => window.MDDoodle;
-  /* ---------- стиль человечков: сайт берёт из него цвета обводки, названия вещей, ролей, характеристик и монет ---------- */
-  // 19.10: в доке OBS сборки человечков нет — стиль канала из LG_STYLES (первый — стиль канала)
+   
+
   const sty = () => { try { return (D() && D().active) || (window.LG_STYLES && window.LG_STYLES[0]) || 'legion'; } catch { return 'legion'; } };
-  // 28.10: оформление сайта для каждого стиля - одна таблица с сервером (packages/site-ui: STYLE_SKIN, skinOf; нет стиля - «Арсенал»)
+
   const names = () => { try { return (D().names || {})[sty()] || {}; } catch { return {}; } };
   const partCache = {};
   function part(n) { const k = sty() + ':' + n; if (!(k in partCache)) { try { partCache[k] = D().part(n) || null; } catch { partCache[k] = null; } } return partCache[k]; }
-  // 28.10: тексты сайта в голосе стиля (группы Легиона, сумка, кнопки) - packages/site-ui STYLE_TEXT, у всех 7 стилей
+
   const word = (k, fb) => SU.styleText(sty(), 'copy', k) || fb;
   const nameOf = (it) => { const n = names().items; return (n && n[it.id] && n[it.id].name) || it.baseName || it.name; };
-  // 18.10: у «Легиона» нет names.json — его названия исходные (baseName с сервера, роли — как в Легионере)
+
   const ROLE_BASE = GD.roleNames();
   const roleOf = (id, fb) => (names().roles || {})[id] || (sty() === 'legion' && ROLE_BASE[id]) || fb || id;
   const stLabel = (k) => { const h = part('hero'), l = h && h.stats && h.stats[k] && h.stats[k].label; const t = l ? String(l).replace(/^[^\p{L}]+/u, '').trim() : ''; return t || ST[k] || XST[k] || k; };
@@ -74,22 +74,22 @@
   }
   const jhash = (s) => { let h = 2166136261; for (const c of String(s)) { h ^= c.codePointAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
 
-  /* ---------- словари ---------- */
+   
   const SLOTS = ['helmet', 'weapon', 'armor', 'shield', 'trinket'];
   const SLOT = GD.slotNames();
   const ST = { hp: 'Макс. здоровье', atk: 'Физ. урон', mag: 'Магия', def: 'Броня' };
-  const STW = { hp: 0.35, atk: 1, mag: 1, def: 1.2 };   // для стрелки «лучше надетого»
-  // 20.10: характеристики второго ряда (legionary/stats.js) — видны, только если они открыты герою (h.xs: тестерам, пока statsPublic выкл.)
+  const STW = { hp: 0.35, atk: 1, mag: 1, def: 1.2 };
+
   const XST = { ...GD.xstats.label };
   const XSTW = { crit: 0.8, critDmg: 0.25, dodge: 0.8, pierce: 0.2, healPow: 0.4, luck: 0.2, resist: 0.6 };
-  const XPCT = { crit: 1, critDmg: 1, dodge: 1, pierce: 1, healPow: 1 };   // в процентах
+  const XPCT = { crit: 1, critDmg: 1, dodge: 1, pierce: 1, healPow: 1 };
   const stOk = (k, h) => !!ST[k] || !!(h && h.xs && XST[k]);
   const stNum = (k, v) => `${v > 0 ? '+' : ''}${String(v).replace('.', ',')}${XPCT[k] ? '%' : ''}`;
   const RAR = GD.rarityNames();
-  const RORD = Object.fromEntries(GD.RARITIES.map((r) => [r, GD.RARITIES.length - 1 - GD.rarityRank(r)]));   // лучшие - первыми
+  const RORD = Object.fromEntries(GD.RARITIES.map((r) => [r, GD.RARITIES.length - 1 - GD.rarityRank(r)]));
   const GROUP_OF = Object.fromEntries([...GD.classIds(), 'recruit'].map((r) => [r, GD.groupOf(r)]));
 
-  /* ---------- значки (простые, одной толщины линии) ---------- */
+   
   const IC = {
     hp: '<path d="M12 20.5s-7.5-4.6-7.5-10.4A4.1 4.1 0 0 1 12 7.6a4.1 4.1 0 0 1 7.5 2.5c0 5.8-7.5 10.4-7.5 10.4z"/>',
     atk: '<path d="M19.5 4.5 20 4l-.5 4.5L9.5 18.5l-4-4zM7.5 16.5l-3 3M4 15l5 5"/>',
@@ -115,20 +115,20 @@
   };
   const ico = (k, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${IC[k] || ''}</svg>`;
 
-  /* ---------- рисунки вещей: из того же движка, что человечки на стриме ----------
-     25.10: рисунки, рамки и силуэты пустых слотов - в библиотеке инвентаря (packages/inventory, /lib/inventory.js): одна на сайт,
-     шахту, «Город» и вкладку «Поход». Движок и части стиля - сайта (D, part: стиль канала) */
+  
+
+
   const INV = window.LGInventory;
   INV.configure({ engine: () => D(), part: (n) => part(n) });
   const still = INV.still, art = (it, cls) => INV.art(it, cls), lgx = INV.lgx;
-  // 26.10: руда шахты — кучка (q осколков): «4 шт. + 37 оск.» (окно скупщика, docs/mine.md)
+
   const oreQty = (q) => (INV.oreQty ? INV.oreQty(q) : String(q));
   const auraLine = (it, cls) => (it && it.aura && it.aura.name ? `<p class="${cls}">${esc(it.aura.icon || '✦')} <b>${esc(it.aura.name)}</b> — ${esc(it.aura.text || '')}<span>Аура на весь отряд в бою, пока владелец жив</span></p>` : '');
   const EMPTY = INV.EMPTY;
 
-  /* ---------- человечек ---------- */
-  // 26.10 (ТЗ «старт для стримера», часть 4): сборка сайта - только стиль канала; герой с личным стилем (Печать Метаморфозы,
-  // метка ps в облике) - его стиль догружается отдельным файлом (без ядра человечков), один раз, потом сайт перерисовывается
+   
+
+
   const PACKS = {};
   function stylePack(id) {
     if (!/^[\w-]{1,30}$/.test(id) || PACKS[id] || DEMO) return;
@@ -139,41 +139,41 @@
     sc.onload = () => setTimeout(() => window.LG && window.LG.rerender(true), 0);
     document.head.appendChild(sc);
   }
-  // 19.10: kit — 'battle' (боевой вид: оружие, шлем, доспех, амулет) или 'peace' (походный: косметика, руки свободны)
+
   function doodle(login, hero, mood, kit) {
     const d = D(); if (!d || !d.jDoodle) return '';
     const seed = jhash(String(login).toLowerCase());
-    // 18.10: облик — прямо из героя (по нику), а не через общую карту по хэшу ника: у двух ников с одним хэшем был один облик
+
     const look = hero ? hero.look || null : undefined, who = String(login).toLowerCase();
-    if (look && look.ps) stylePack(look.ps);   // 26.10: личный стиль героя (Печать Метаморфозы) - догрузить его рисунок
+    if (look && look.ps) stylePack(look.ps);
     try {
       if (hero && hero.ghost) return d.jDoodle(seed, 'happy', false, { ghost: true, who }, look);
-      if (hero && kit === 'peace') return d.jDoodle(seed, 'walk', false, { alive: true, gear: hero.gear || {}, who, kit, ...(hero.minerHat ? { minerHat: true } : {}) }, look);   // 25.10: каска шахтёра в шахте
+      if (hero && kit === 'peace') return d.jDoodle(seed, 'walk', false, { alive: true, gear: hero.gear || {}, who, kit, ...(hero.minerHat ? { minerHat: true } : {}) }, look);
       return d.jDoodle(seed, mood || 'stern', false, hero ? { alive: true, armed: true, gear: hero.gear || {}, who, ...(kit ? { kit } : {}) } : { who }, look);
     } catch (e) { console.warn(e); return ''; }
   }
 
-  // 25.10: человечек на улице «Города» и в шахте - один путь (мирный вид, без анимаций SVG): v - { lk - облик, g - снаряжение, gh - призрак },
-  // o.minerHat - каска шахтёра (шахта). Раньше у шахты была своя копия (свой still, свой сбор героя) - облик расходился с «Городом»
+
+
   const figSvg = (login, v, o) => String(doodle(login, { look: (v && v.lk) || null, gear: (v && v.g) || {}, ghost: !!(v && v.gh), ...(o && o.minerHat ? { minerHat: true } : {}) }, 'walk', 'peace'))
     .replace(/<(animate|animateTransform|animateMotion|set)\b[^>]*?(\/>|>[\s\S]*?<\/\1>)/g, '');
 
-  /* ---------- состояние ---------- */
+   
   let TIPS = {}, TIPHERO = null;
   let ME = null, filter = 'all', cls = 'all', sel = null, sheet = false, busy = false, last = '';
-  // 18.10: в центре вкладки «Персонаж» — «Снаряжение» (кукла со слотами) или «Облик» (гардероб)
-  let view = 'gear'; try { const v = localStorage.getItem('lgView'); if (v === 'look' || v === 'skills' || v === 'ach' || v === 'log') view = v; } catch {}   // 23.10: + «Журнал» (была отдельная вкладка)   // 23.10: + «Достижения» (achievements.js)   // 20.10: + «Навыки» (skills.js)
-  let kit = 'battle'; try { if (localStorage.getItem('lgKit') === 'peace') kit = 'peace'; } catch {}   // 19.10: вид героя на кукле
-  const mqWide = SU.media('wide');   // 25.10: (min-width: 1100px) - packages/site-ui
 
-  /* ---------- вкладки ---------- */
-  // 17.10: на узком экране вкладки прокручиваются — выбранную показываем целиком (после раскладки и шрифтов — ещё раз)
+  let view = 'gear'; try { const v = localStorage.getItem('lgView'); if (v === 'look' || v === 'skills' || v === 'ach' || v === 'log') view = v; } catch {}
+  let kit = 'battle'; try { if (localStorage.getItem('lgKit') === 'peace') kit = 'peace'; } catch {}
+  const mqWide = SU.media('wide');
+
+   
+
   const tabSeen = (b) => { const go = () => { try { const T = b.parentElement; if (T.scrollWidth > T.clientWidth + 1) T.scrollLeft = Math.max(0, b.offsetLeft - T.offsetLeft - (T.clientWidth - b.offsetWidth) / 2); } catch (e) {} }; go(); setTimeout(go, 120); setTimeout(go, 900); };
   window.addEventListener('load', () => { const b = document.querySelector('.tabs button[aria-current]'); if (b) tabSeen(b); });
-  /* 23.10 (баг с телефона): сайт обновили, а вкладка браузера открыта со старым кодом (телефон держит страницу днями) —
-     и «Город» грузился старым: лавка в старом виде. Версия кода сайта — в LG_SITEV (сервер, static.ts); сверяем с /site/ver
-     при входе в «Город», при возврате на вкладку (не чаще раза в минуту) — разошлась: перезагрузка на свежий код
-     (раздел запомнен в lgTab). Не в доке OBS и не посреди ввода текста */
+  
+
+
+
   const SITEV = window.LG_SITEV || '';
   let verAt = 0, verP = null, siteOld = false;
   function verCheck(gap = 60000) {
@@ -188,8 +188,8 @@
   const typing = () => { const a = document.activeElement; return !!a && (/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || a.isContentEditable) && !!String(a.value || '').trim(); };
   function verReload() { if (typing()) return false; try { location.reload(); } catch {} return true; }
   document.addEventListener('visibilitychange', () => { if (!document.hidden) verCheck().then((old) => { if (old && !$('#tab-streamer').classList.contains('on')) verReload(); }); });
-  window.LG_VER = { check: verCheck, reload: verReload, old: () => siteOld };   // «Город» (city.js) — перед входом в лавку
-  // 23.10: короткая подсказка под вкладкой («Вы сейчас в походе»)
+  window.LG_VER = { check: verCheck, reload: verReload, old: () => siteOld };
+
   let tabNoteT = 0;
   function tabNote(b, text) {
     let n = document.getElementById('tabNote');
@@ -201,51 +201,51 @@
     clearTimeout(tabNoteT); tabNoteT = setTimeout(() => { n.hidden = true; }, 2500);
   }
   function tab(id) {
-    // 30.10 (тюрьма): заключённому - только «Город»
+
     if (inJail() && id !== 'city') id = 'city';
-    if (id !== 'city') townEntry = 0;   // ушли из города, зашедшего с «Похода», — блокировка снова действует
+    if (id !== 'city') townEntry = 0;
     if (id === 'city' && cityLocked()) { const b = $('.tabs button[data-tab="city"]'); if (b) tabNote(b, 'Вы сейчас в походе'); return; }
     if (siteOld && !window.LG_DOCK) { try { localStorage.setItem('lgTab', id); } catch {} if (verReload()) return; }
-    if (id === 'soc') { lgv = 'soc'; id = 'legion'; }   // 23.10: «Соц. рейтинг» — теперь вид вкладки «Легион (рейтинг)»
+    if (id === 'soc') { lgv = 'soc'; id = 'legion'; }
     $$('.tabs button').forEach((b) => { if (b.dataset.tab === id) { b.setAttribute('aria-current', 'page'); tabSeen(b); } else b.removeAttribute('aria-current'); });
     $$('.tab').forEach((t) => t.classList.toggle('on', t.id === 'tab-' + id));
     if (!DOCK) try { localStorage.setItem('lgTab', id); } catch {}
     document.body.classList.toggle('sm-on', id === 'streamer');
-    if (id === 'streamer' && window.scrollY) window.scrollTo(0, 0);   // страница в режиме стримера не прокручивается — с самого верха
+    if (id === 'streamer' && window.scrollY) window.scrollTo(0, 0);
     if (id === 'streamer') openStreamer(); else if (SM.frames.panel) smVisible();
     if (id === 'legion') legOpen();
-    if (id === 'news' && window.LGNews) window.LGNews.open();   // 18.10: новости игры (news.js)
-    // 23.10: «Город» — сначала сверить версию сайта (старая страница грузила старый «Город»); проверка не прошла — входим как есть
+    if (id === 'news' && window.LGNews) window.LGNews.open();
+
     if (id === 'city') verCheck(15000).then((old) => { if (old && verReload()) return; if ($('#tab-city').classList.contains('on')) openCity(); });
-    else if (window.LGCity) window.LGCity.close();   // 20.10: «Город» (city.js)
+    else if (window.LGCity) window.LGCity.close();
     if (id !== 'city') verCheck();
-    questTab(id === 'quest');   // 22.10: вкладка «Поход» (quest.js)
-    if (id === 'world') openWorld(); else if (window.LGWorld) window.LGWorld.close();   // 23.10: «Карта мира» (worldmap.js)
-    bfSoon();   // 24.10: «Отправить баг» — в другом разделе другие панели внизу
-    // 29.10: ушли из «Города» - личка окном слева внизу, вернулись - в чат
+    questTab(id === 'quest');
+    if (id === 'world') openWorld(); else if (window.LGWorld) window.LGWorld.close();
+    bfSoon();
+
     if (window.LGDm) setTimeout(() => window.LGDm.place(), 0);
-    // 29.10: единый чат - на место сцены или слева внизу
+
     if (window.LGChatOne) setTimeout(() => window.LGChatOne.place(), 0);
-    if (window.LGStart) window.LGStart.tabChanged(id);   // 26.10: переключатель «Зритель / Стример» (start.js)
+    if (window.LGStart) window.LGStart.tabChanged(id);
   }
   $$('.tabs button').forEach((b) => b.addEventListener('click', () => tab(b.dataset.tab)));
 
-  /* ---------- 18.10: режим стримера — пульт стримера внутри сайта ----------
-     Вкладку видит только стример (сервер ставит флаг streamer в /api/me; разделы /api/streamer и сами пульты ?embed=1
-     сервер отдаёт только ему). Пульты — свои страницы во фреймах того же сайта, в оформлении сайта канала.
-     Ничего не грузим, пока вкладку не открыли; фрейм раздела создаём при первом открытии и дальше держим (не теряет состояние).
-     LG_DOCK — док-панель OBS (/c/<канал>/streamer): сразу режим стримера, компактно, без шапки сайта. */
+  
+
+
+
+
   const DOCK = !!window.LG_DOCK;
   const SM = { data: null, loading: false, cur: '', frames: {}, pages: null };
-  let smWant = false;   // в прошлый раз ушёл из режима стримера — откроем его, как только станет известно, что он доступен
+  let smWant = false;
   const smOk = () => DOCK || !!(ME && ME.streamer);
   function smVis() {
     const ok = smOk(), b = $('.tabs button[data-tab="streamer"]');
-    if (b) b.hidden = !ok || !!(ME && ME.roleSw);   // 26.10: открыт переключатель «Зритель / Стример» (start.js) - вкладка не нужна
+    if (b) b.hidden = !ok || !!(ME && ME.roleSw);
     if (ok && smWant) { smWant = false; tab('streamer'); return; }
     if (!ok) { smDrop(); if ($('#tab-streamer').classList.contains('on')) tab('hero'); }
   }
-  // вышел или права забрали — фреймы закрываем (их соединения с сервером — тоже)
+
   function smDrop() { if (!SM.data && !SM.loading) return; SM.data = null; SM.frames = {}; SM.pages = null; SM.cur = ''; $('#tab-streamer').innerHTML = ''; }
   async function openStreamer() {
     const el = $('#tab-streamer');
@@ -260,56 +260,56 @@
       smBuild(el);
     }
     let first = SM.cur;
-    // док OBS всегда открывается с главного — «Поход и Ярмарка»; на сайте — последний раздел в этом окне.
-    // 18.10: пока что-то не настроено — с «Готовности» (принцип «минимум действий»)
+
+
     if (!first && smReadyFirst()) first = 'ready';
     if (!first && !DOCK) { try { first = sessionStorage.getItem('lgSm') || ''; } catch {} }
-    // при открытии выключенный раздел не выбираем (он спрятан) — первый включённый
-    // 25.10: новое устройство (smg, новинка «smgame») - главная вкладка «Игра» (первая в ленте), иначе - «Стрим сейчас»
+
+
     const main = SM.data.smg ? 'game' : 'shop';
     const want = smSecs().find((x) => x.id === (first || main));
     smShow(want && want.off && !smOffOpen ? '' : first || main);
   }
-  // 18.10: «Готовность»: пока не всё готово — первым пунктом ленты; когда готово — значком в её конце
-  // 25.10: «Готовность» — раздел пульта MultiDonate (/p/): в режиме стримера её нет, только ссылка «Готовность →» (smRd)
+
+
   const smReadyFirst = () => !!(SM.data && SM.data.ready && !SM.data.ready.ok && (SM.data.sections || []).some((x) => x.id === 'ready'));
-  // доступ к виджетам меняет администратор игры — раздел может появиться или пропасть: перечитываем список разделов
-  // при возвращении на вкладку (не чаще раза в 20 с) — без перезагрузки фреймов
-  // 18.10: и сразу по событию «sm» живого канала (force — без ограничения 20 с; style — стиль канала из события)
-  // Стример посреди работы: ничего не перезагружаем целиком — только лента разделов, значок «Готовности» и оформление;
-  // открытый раздел, прокрутка и введённое в поля остаются. Раздел пропал (закрыли доступ) — только тогда переход, с объяснением
+
+
+
+
+
   let smAt = 0, smBusy = false, smAgain = null;
   async function smRefresh(force, style) {
     if (!SM.data || SM.loading || (!force && Date.now() - smAt < 20000)) return;
-    if (smBusy) { if (force) smAgain = { style: style || (smAgain && smAgain.style) }; return; }   // запрос уже идёт — повторим после него
+    if (smBusy) { if (force) smAgain = { style: style || (smAgain && smAgain.style) }; return; }
     smAt = Date.now(); smBusy = true;
     const r = await api('/api/streamer').catch(() => null);
     smBusy = false;
     if (smAgain) { const a = smAgain; smAgain = null; setTimeout(() => smRefresh(true, a.style), 0); }
     if (!r || !r.ok || !SM.data) {
-      // права на режим стримера забрали — пульты закрываем (их соединения тоже)
+
       if (r && r.ok === false && /недоступен/.test(r.error || '')) { smDrop(); if (DOCK) $('#tab-streamer').innerHTML = `<p class="empty">${esc(r.error)}</p>`; else if (ME) { ME.streamer = false; smVis(); } }
       return;
     }
-    // стиль канала сменили (Костюмерная) — оформление на месте, без перезагрузки страницы и фреймов
+
     const st = style || r.style;
     if (st && SM.data.style && st !== SM.data.style) smRestyle(st);
     if (r.style || st) SM.data.style = st || r.style;
     const same = JSON.stringify([SM.data.sections, SM.data.ready]) === JSON.stringify([r.sections, r.ready]);
     const gone = SM.cur && !r.sections.some((x) => x.id === SM.cur) ? (SM.data.sections.find((x) => x.id === SM.cur) || {}).t : '';
     SM.data.sections = r.sections; SM.data.ready = r.ready;
-    if (same) return;   // ничего не поменялось — ленту не трогаем
-    // раздел-игра пропал (закрыли доступ) — его фрейм закрываем (и его соединение); остальные фреймы не трогаем
+    if (same) return;
+
     for (const k of Object.keys(SM.frames)) if (k !== 'panel' && !r.sections.some((x) => x.id === k && !x.panel)) { SM.frames[k].remove(); delete SM.frames[k]; }
     if (SM.frames.panel && !r.sections.some((x) => x.panel)) { SM.frames.panel.remove(); delete SM.frames.panel; SM.pages = null; }
     smNav();
     if (!smSecs().some((x) => x.id === SM.cur)) { smShow(''); if (gone) toast(`Раздел «${gone}» закрыл администратор игры`); }
   }
-  // стиль канала: оформление сайта и пультов во фреймах меняем на месте (атрибуты), человечков сайта — новой сборкой стилей
+
   function smRestyle(st) { siteRestyle(st); }
-  /* 28.10 (fix/style-live): стиль канала сменили (мастер, «Настройки игры», пульт) - сервер шлёт событие «style» всем открытым страницам
-     сайта канала (и зрителям, и стримеру не в режиме стримера). Оформление - на месте, человечки - новой сборкой стилей сайта
-     (/doodle.js - стиль канала), потом перерисовать сайт и открытые «Город» / «Поход». Без перезагрузки страницы. → Promise */
+  
+
+
   let restyleP = null, restyleTo = '';
   function siteRestyle(st) {
     if (!/^[\w-]{1,30}$/.test(String(st || '')) || DEMO) return Promise.resolve(false);
@@ -318,15 +318,15 @@
     root.dataset.style = st; if (!DEMO) root.dataset.skin = skin;
     for (const b of Object.values(SM.frames)) { try { b.querySelector('iframe').contentDocument.documentElement.setAttribute('data-skin', skin); } catch {} }
     if (SM.data) SM.data.style = st;
-    try { localStorage.removeItem('lgStyle'); } catch {}   // временный выбор стиля зрителя - стиль канала важнее
-    if (DOCK) return Promise.resolve(true);   // в доке человечков нет
+    try { localStorage.removeItem('lgStyle'); } catch {}
+    if (DOCK) return Promise.resolve(true);
     const have = () => { try { return !!(D() && D().styles && D().styles[st]); } catch { return false; } };
     const redraw = () => {
       restyleP = null; restyleTo = '';
-      if (!have()) return false;   // сборки нет — оформление уже сменено, человечки прежние
+      if (!have()) return false;
       try { D().use(st); } catch {}
       window.LG.rerender(true);
-      // открытые «Город» и «Поход» - заново в новом стиле (city.js сам пересобирает город, если стиль другой)
+
       if ($('#tab-city').classList.contains('on')) { try { if (window.LGCity) window.LGCity.close(); } catch {} openCity(); }
       if ($('#tab-quest') && $('#tab-quest').classList.contains('on')) { questTab(false); questTab(true); }
       smStyleLine();
@@ -343,7 +343,7 @@
     });
     return restyleP;
   }
-  // 28.10 (fix/style-live): режим стримера - строка «Стиль канала: X» и что с замком (выбрать / закрыт до победы над Закхуэлем / смена)
+
   function smStyleLine() {
     const el = $('#smStyle'); if (!el) return;
     api('/api/style').then((r) => {
@@ -358,34 +358,34 @@
     const nm = (() => { try { return (D().styles[st] && D().styles[st].name) || ''; } catch { return ''; } })();
     siteRestyle(st).then(() => { const n = nm || (() => { try { return D().styles[st].name || st; } catch { return st; } })(); toast(`Стиль канала сменился: «${n}»`); });
   }
-  // Комната перезапустилась с другим набором модулей (пульт во фрейме сообщает «stale» или пришло «sm» mods): страницы пульта
-  // платформы другие, но посреди работы фрейм не перезагружаем — только когда стример уйдёт с него (другой раздел)
-  // или фрейм скрыт. Перезагружается на нужной странице (она в адресе фрейма); фреймы игр не трогаем
+
+
+
   let smStale = false;
   function smStaleCheck(go) {
     const b = SM.frames.panel, f = b && b.querySelector('iframe');
     if (!smStale || !f) { if (!f) smStale = false; return; }
-    if (!go && !b.hidden && $('#tab-streamer').classList.contains('on') && !document.hidden) return;   // стример сейчас в нём
+    if (!go && !b.hidden && $('#tab-streamer').classList.contains('on') && !document.hidden) return;
     smStale = false; SM.pages = null; b.classList.remove('ready');
     try { const u = new URL(f.contentWindow.location.href); if (go) u.searchParams.set('page', go); f.contentWindow.location.replace(u.href); } catch { f.src = f.src; }
   }
-  // событие «sm» — и пультам во фреймах (страница «Готовность» сразу перепроверяет: канал/бот подключили — галочки зелёные)
+
   function smTell(why) {
     for (const b of Object.values(SM.frames)) { try { b.querySelector('iframe').contentWindow.postMessage({ lg: 'sm', why: Array.isArray(why) ? why : [] }, location.origin); } catch {} }
   }
-  // нет живого канала (SSE недоступен) — лёгкий опрос разделов раз в минуту, только пока открыт режим стримера
+
   setInterval(() => { if (SM.data && !smEs && $('#tab-streamer').classList.contains('on') && (DOCK || !document.hidden)) smRefresh(true); }, 60000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) smRefresh(); });
   window.addEventListener('focus', () => smRefresh());
-  // пульт устарел (комната с другим набором модулей) — его старый список страниц не в счёт: разделы — по серверу
+
   const smSecs = () => (SM.data ? SM.data.sections : []).filter((x) => !x.panel || !SM.pages || smStale || SM.pages.includes(x.id));
-  // 18.10: разделы — колонкой слева (решение стримера; пульт справа на всю оставшуюся ширину). Узко (док OBS 300–500 px,
-  // телефон) — узкая полоса слева: кнопка «Разделы» (со счётчиком «Готовности») и название открытого раздела; список — поверх пульта
-  // 25.10: режим стримера — пульт «Поход Легиона» (src/platform/pults.ts): стрим, игроки и администрирование игры
-  // (aw / at / ab — под меткой «Админ игры»); game / set / adm — подписи прежнего общего пульта
+
+
+
+
   const SM_GROUP = { game: 'Стрим', ply: 'Игроки', set: 'Канал' };
   const SM_ADM = { adm: '', aw: 'Мир и сезон', at: 'Новинки и тесты', ab: 'Баланс и экономика' };
-  // адрес пульта MultiDonate и его «Готовности» (в доке OBS — в том же окне: переключатель вверху ведёт обратно)
+
   const smMd = (page) => ((SM.data && SM.data.pult) || `/p/${encodeURIComponent((window.LG_CH && window.LG_CH.login) || '')}/`) + (page ? `?page=${page}` : '');
   function smRd() {
     const a = $('#smRd'); if (!a || !SM.data) return;
@@ -394,9 +394,9 @@
     a.innerHTML = `<span class="sm-t">Готовность →</span>${left ? `<span class="sm-cnt" aria-label="не готово: ${left}">${left}</span>` : r && r.ok ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>' : ''}`;
     a.title = left ? `Готовность к стриму (пульт MultiDonate): осталось ${left}` : 'Готовность к стриму - в пульте MultiDonate';
   }
-  // 19.10: в ленте — только включённое у канала (сервер помечает выключенное off: модуль выключен или снята галочка «Видно»
-  // на «Сцене»). Внизу — неброская строка «Показать выключенные (N)»: раскрывает их серым, выбор помнится.
-  // Открытый раздел выключили — он остаётся в ленте (серым), пока стример сам не уйдёт с него
+
+
+
   let smOffOpen = false;
   try { smOffOpen = localStorage.getItem('lgSmOff') === '1'; } catch {}
   const smShown = (x) => !x.off || smOffOpen || x.id === SM.cur;
@@ -422,28 +422,28 @@
       const ok = () => toast('Адрес док-панели скопирован: ' + u);
       try { navigator.clipboard.writeText(u).then(ok, () => toast(u)); } catch { toast(u); }
     };
-    // 19.10: «Последние донаты» — отдельное окно (как на ПК); из дока OBS тоже открывается окном, без адресной строки (решение стримера)
+
     $('#smDonWin').onclick = () => {
       const u = `${location.origin}/p/${encodeURIComponent((SM.data && SM.data.channel) || (window.LG_CH && window.LG_CH.login) || '')}/donations`;
       const copy = (msg) => { try { navigator.clipboard.writeText(u).then(() => toast(msg), () => toast(u)); } catch { toast(u); } };
       const w = window.open(u, 'md-donations', (() => { let g = null; try { g = JSON.parse(localStorage.getItem('mdDonWin') || 'null'); } catch {} const n = (v) => Number.isFinite(v); return g && n(g.w) && n(g.h) ? `popup,width=${g.w},height=${g.h}` + (n(g.x) && n(g.y) ? `,left=${g.x},top=${g.y}` : '') : 'popup,width=470,height=1000'; })());
       if (w) { try { w.focus(); } catch {} } else copy('Браузер не дал открыть окно — ссылка скопирована');
     };
-    const hb = $('#smHelp'); if (hb) hb.onclick = () => startLoad().then(() => window.LGStart && window.LGStart.help(), () => {});   // 26.10: мастер (start.js)
+    const hb = $('#smHelp'); if (hb) hb.onclick = () => startLoad().then(() => window.LGStart && window.LGStart.help(), () => {});
     const root = $('.sm-wrap', el), menu = $('.sm-menu', el);
     menu.onclick = () => smMenu(!root.classList.contains('open'));
     $('.sm-curv', el).onclick = () => smMenu(true);
     $('.sm-scrim', el).onclick = () => smMenu(false);
     root.addEventListener('keydown', (e) => { if (e.key === 'Escape' && root.classList.contains('open')) { smMenu(false); menu.focus(); } });
   }
-  // узкий режим: список разделов поверх пульта (открыть / закрыть)
+
   function smMenu(on) {
     const root = $('#tab-streamer .sm-wrap'); if (!root) return;
     root.classList.toggle('open', !!on);
     const m = $('.sm-menu', root); if (m) m.setAttribute('aria-expanded', String(!!on));
     if (on) { const b = $('.sm-nav [aria-pressed="true"]', root) || $('.sm-nav [data-sec]', root); if (b) setTimeout(() => { try { b.focus({ preventScroll: true }); smSeen(b); } catch {} }, 30); }
   }
-  // выбранный раздел — в видимой части колонки (колонка прокручивается сама, страница — нет)
+
   function smSeen(b) {
     const L = b && b.closest('.sm-list'); if (!L) return;
     const top = b.offsetTop - L.offsetTop, bot = top + b.offsetHeight;
@@ -458,15 +458,15 @@
     const left = SM.data && SM.data.ready ? SM.data.ready.left : 0;
     const head = rd && smReadyFirst() ? `<button type="button" data-sec="ready" class="sm-ready" aria-pressed="${SM.cur === 'ready'}"><span class="sm-t">${esc(rd.t)}</span>${left ? `<span class="sm-cnt" aria-label="осталось ${left}">${left}</span>` : ''}</button>` : '';
     const tail = rd && !smReadyFirst() ? `<span class="sm-sep" aria-hidden="true"></span><button type="button" data-sec="ready" class="sm-ready-ok" aria-pressed="${SM.cur === 'ready'}" title="Готовность: всё настроено"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span class="sm-t">${esc(rd.t)}</span></button>` : '';
-    // подписи групп: «Игра», «Канал»; разделы администратора — под меткой «Админ игры»
-    // 20.10: группы сворачиваются (стрелка у подписи); свёрнутая группа показывает только открытый сейчас раздел; запоминается
+
+
     const fold = smFold();
     const capBtn = (x, inner) => `<button type="button" class="sm-gh" data-grp="${esc(x.g)}" aria-expanded="${!fold.has(x.g)}"><svg class="sm-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 10l4 4 4-4"/></svg>${inner}</button>`;
     const cap = (x) => x.g in SM_ADM ? capBtn(x, `<span class="lv adm sm-adm" title="Администратор игры: здесь и глобальные настройки для всех каналов">${SM_ADM[x.g] ? 'Админ' : 'Админ игры'}</span>${SM_ADM[x.g] ? ' ' + esc(SM_ADM[x.g]) : ''}`) : SM_GROUP[x.g] ? capBtn(x, SM_GROUP[x.g]) : '';
-    const L = nav.closest('.sm-list'), st = L ? L.scrollTop : 0;   // список обновился сам — прокрутку стримера не сбиваем
+    const L = nav.closest('.sm-list'), st = L ? L.scrollTop : 0;
     const offT = 'Выключено у канала — открой раздел, чтобы включить';
     const more = offN ? `<button type="button" class="sm-offs" aria-expanded="${smOffOpen}">${smOffOpen ? 'Скрыть' : 'Показать'} выключенные (${offN})</button>` : '';
-    nav.innerHTML = head + rest.map((x) => { const c = ''; void g; void fold; void cap;   // 25.10 (стример): без подписей групп («Стрим», «Админ · Мир и сезон»…) - только вкладки
+    nav.innerHTML = head + rest.map((x) => { const c = ''; void g; void fold; void cap;
       return `${c}<button type="button" data-sec="${esc(x.id)}" aria-pressed="${x.id === SM.cur}"${x.off ? ` class="sm-off" title="${offT}"` : ''}><span class="sm-t">${esc(x.t)}</span>${x.n ? `<span class="sm-cnt" aria-label="новых: ${+x.n}">${+x.n > 99 ? '99+' : +x.n}</span>` : ''}${x.off ? '<span class="sr-only"> (выключено)</span>' : ''}</button>`; }).join('') + tail + more;
     if (L) L.scrollTop = st;
     nav.onclick = (e) => {
@@ -482,7 +482,7 @@
     };
     smRail(); smRd();
   }
-  // узкая полоса: счётчик «Готовности» на кнопке и название открытого раздела
+
   function smRail() {
     const root = $('#tab-streamer .sm-wrap'); if (!root || !SM.data) return;
     const left = smReadyFirst() ? (SM.data.ready.left || 0) : 0, c = $('.sm-menu-cnt', root);
@@ -496,11 +496,11 @@
     const sec = list.find((x) => x.id === id) || list.find((x) => !x.off) || list[0];
     const was = SM.cur;
     SM.cur = sec.id;
-    // ушли с раздела, который выключили, пока он был открыт, — теперь его можно убрать из ленты
+
     if (was && was !== sec.id && !smOffOpen && (list.find((x) => x.id === was) || {}).off) smNav();
     try { sessionStorage.setItem('lgSm', sec.id); } catch {}
     const body = $('#tab-streamer .sm-body'); if (!body) return;
-    // страницы платформенного пульта (Сцена, OBS, модули) — в одном фрейме: одно соединение, переключение мгновенное
+
     const key = sec.panel ? 'panel' : sec.id;
     let box = SM.frames[key];
     if (!box) {
@@ -512,34 +512,34 @@
       f.addEventListener('load', () => box.classList.add('ready'));
       box.appendChild(f); body.appendChild(box); SM.frames[key] = box;
     } else if (sec.panel && smStale) {
-      smStaleCheck(sec.id);   // стример сам ушёл на другую страницу — устаревший пульт перезагружаем сразу на ней
+      smStaleCheck(sec.id);
     } else if (sec.panel) {
       try { box.querySelector('iframe').contentWindow.postMessage({ lg: 'show', page: sec.id }, location.origin); } catch {}
     }
     Object.values(SM.frames).forEach((b) => { b.hidden = b !== box; });
-    smStaleCheck();   // пульт платформы ушёл в фон — теперь его можно перезагрузить незаметно
+    smStaleCheck();
     smVisible();
     $$('#tab-streamer .sm-nav [data-sec]').forEach((b) => { const on = b.dataset.sec === sec.id; b.setAttribute('aria-pressed', String(on)); if (on) smSeen(b); });
     smRail();
     smFit();
   }
-  // пульту платформы — виден ли он сейчас (скрытый не держит включённым оверлей «Сцены»)
+
   function smVisible() {
     const b = SM.frames.panel, f = b && b.querySelector('iframe'); if (!f) return;
     const on = !b.hidden && $('#tab-streamer').classList.contains('on') && !document.hidden;
     try { f.contentWindow.postMessage({ lg: 'visible', on }, location.origin); } catch {}
   }
   document.addEventListener('visibilitychange', () => { smVisible(); smStaleCheck(); });
-  // фрейм — на всю высоту окна под шапкой и лентой разделов (страница сайта при этом не прокручивается)
+
   function smFit() {
     const body = $('#tab-streamer .sm-body'); if (!body || !$('#tab-streamer').classList.contains('on')) return;
     const top = Math.max(0, Math.round(body.getBoundingClientRect().top + window.scrollY));
     (body.closest('.sm-wrap') || body).style.setProperty('--sm-top', top + 'px');
   }
   window.addEventListener('resize', () => { clearTimeout(smFit.t); smFit.t = setTimeout(smFit, 100); });
-  // пульт во фрейме сообщает, какие его страницы есть на самом деле (модуль выключен — раздела нет),
-  // 18.10: итог «Готовности» (галочка в ленте) и переход на свою страницу (кнопка «Открыть настройку OBS»)
-  // 26.10: «? Помощь» в пульте «Игра» (фрейм раздела) - мастер стримера (start.js)
+
+
+
   window.addEventListener('message', (e) => {
     if (e.origin !== location.origin || !e.data || e.data.lg !== 'help' || !ME || !ME.roleSw) return;
     if (!Object.values(SM.frames).some((b) => { const f = b.querySelector('iframe'); return f && f.contentWindow === e.source; })) return;
@@ -561,38 +561,38 @@
       return;
     }
     if (e.data.lg === 'stale') { smStale = true; smStaleCheck(); return; }
-    // 24.10: «Репорты» — пульт сообщил, сколько новых (счётчик у раздела)
+
     if (e.data.lg === 'bugs' && SM.data) { const x = (SM.data.sections || []).find((s) => s.id === 'bugs'), n = Math.max(0, +e.data.n || 0); if (x && (x.n || 0) !== n) { x.n = n; smNav(); } return; }
     if (e.data.lg !== 'pages' || !Array.isArray(e.data.pages)) return;
     SM.pages = e.data.pages.map((x) => String(x.id));
     smNav();
   });
 
-  /* ---------- вход ---------- */
+   
   function renderUser() {
     const u = $('#user');
-    // 18.10: администратор игры (PLATFORM_ADMINS) — метка «Админ» рядом с ником (флаг ставит сервер)
-    // 18.10: свои каналы есть — ник открывает «Мои каналы»; зашёл на чужой канал — тихая кнопка «Мой канал»
+
+
     const mine = (ME && ME.mine) || [], here = CH && mine.some((m) => m.login.toLowerCase() === CH.login.toLowerCase());
     const who = ME && ME.user ? (mine.length ? `<button type="button" class="who whob" id="whob" aria-haspopup="true" aria-expanded="false" title="Мои каналы">${esc(ME.user.name)}${ico('chev', 'chv')}</button>` : `<span class="who">${esc(ME.user.name)}</span>`) : '';
     const myc = mine.length && CH && !here ? `<a class="btn ghost sm mych" href="/c/${encodeURIComponent(mine[0].login)}/" title="Перейти в свой канал: ${esc(mine[0].name)}">Мой канал</a>` : '';
-    const OUTL = 'Выйти<span class="out-x"> из аккаунта</span>';   // 24.10: на телефоне — просто «Выйти» (длинная кнопка закрывала вкладки)
+    const OUTL = 'Выйти<span class="out-x"> из аккаунта</span>';
     if (ME && ME.user) u.innerHTML = `${myc}${who}${ME.admin ? '<span class="lv adm" title="Администратор игры: глобальные настройки и админские действия для всех каналов">Админ</span>' : ''}<button type="button" class="btn ghost sm" id="out" title="Выйти из аккаунта Twitch на этом сайте">${OUTL}</button>`;
     else u.innerHTML = `<a class="btn twitch sm" href="${window.LG_LOGIN || '/auth/login'}" aria-label="Войти через Twitch">${ico('twitch')}<span>Войти</span></a>`;
-    const o = $('#out'); if (o) o.onclick = async () => {   // 23.10: защита от случайного нажатия — второе нажатие в течение 4 с
-      if (!SU.confirmTwice(o, { text: 'Точно выйти?', cls: 'warn', mark: 'sure' })) return;   // 25.10: packages/site-ui
+    const o = $('#out'); if (o) o.onclick = async () => {
+      if (!SU.confirmTwice(o, { text: 'Точно выйти?', cls: 'warn', mark: 'sure' })) return;
       await api('/auth/logout', {}); last = ''; load(); };
     const w = $('#whob'); if (w) w.onclick = () => popToggle(w, 'mine');
-    if (POP.el && POP.kind) popRender();   // меню открыто, а данные обновились
-    if (window.LGNews && window.LGNews.me) window.LGNews.me(ME);   // 18.10: админу игры — правка новостей прямо на сайте (news.js)
-    startSync();   // 26.10: переключатель «Зритель / Стример», поиск стримера (start.js)
-    if (ME && ME.user && ME.friends) friendsLoad().catch(() => null);   // 29.10: кнопка «Друзья» (friends.js, новинка «friends»)
+    if (POP.el && POP.kind) popRender();
+    if (window.LGNews && window.LGNews.me) window.LGNews.me(ME);
+    startSync();
+    if (ME && ME.user && ME.friends) friendsLoad().catch(() => null);
   }
 
-  /* ---------- 29.10 (новинка chatone): единый чат страницы (packages/site-ui/chatone.js → window.LGChatOne) - вместо чатов «Города» и шахты;
-     нужен общий модуль чата (site-chat.js), его вид (city.css) и личка (LGDm) ---------- */
+  
+
   let ONEL = null;
-  // 30.10: единый чат включён для этого зрителя (флаг c1 с сервера и ленты Города / шахты) - тогда окно лички dm.js не показывается никогда
+
   const oneIsOn = () => { const h = ME && ME.hero; return !!(h && h.c1 && (h.cc || h.mc) && (window.LGChatOne || ONEL)); };
   const oneCtx = () => ({ api, hero: () => (ME && ME.hero) || null, login: () => (ME && ME.user ? String(ME.user.login).toLowerCase() : ''), awb, live: () => esOk });
   function oneLoad() {
@@ -605,14 +605,14 @@
     return ONEL.then(() => { if (window.LGChatOne) window.LGChatOne.init(oneCtx()); });
   }
 
-  /* ---------- 29.10: личка страницы (packages/site-ui/dm.js → window.LGDm): вкладки собеседников не закрываются при переходах,
-     вне «Города» и шахты - окно слева внизу; новые личные - событие SSE «dm» на любой вкладке сайта ---------- */
+  
+
   let DML = null;
   function dmLoad() {
     if (!DML) DML = (window.LGDm ? Promise.resolve() : loadJs('/lib/site-dm.js' + (window.LG_DMV ? '?v=' + window.LG_DMV : ''))).catch((e) => { DML = null; throw e; });
     return DML.then(() => { if (window.LGDm && ME && ME.user) window.LGDm.init({ api, toast, me: () => (ME && ME.user ? String(ME.user.login).toLowerCase() : ''), ch: CH ? CH.login : '', one: oneIsOn, showOne: () => oneLoad().catch(() => null) }); });
   }
-  /* ---------- 29.10: друзья (friends.js, src/site/friends.ts) - грузятся, только когда сервер открыл их этому входу (ME.friends) ---------- */
+   
   let FRL = null;
   function friendsLoad() {
     if (!FRL) {
@@ -623,9 +623,9 @@
     return FRL.then(() => { if (window.LGFriends && ME && ME.friends) window.LGFriends.init({ api, toast, me: () => ME }); });
   }
 
-  /* ---------- 26.10: старт для стримера и зрителя (start.js, docs/reports/streamer-start.md) ----------
-     Новинки «roles» (переключатель «Зритель / Стример», мастер первого запуска) и «find» (поиск стримера, свой список).
-     Файл грузится, только когда сервер открыл этому входу хоть одну из них (флаги roleSw / find в /api/me) */
+  
+
+
   let START = null;
   function startLoad() {
     if (START) return START;
@@ -636,7 +636,7 @@
       .catch((e) => { START = null; throw e; });
     return START;
   }
-  // 26.10 (новинка «seal»): Печать Метаморфозы - выбор стиля героя (окно - start.js), дальше - как остальные действия сайта
+
   function sealPick(uid) {
     if (!ME || !ME.seal) return;
     startLoad().then(() => window.LGStart.stylePick({
@@ -651,8 +651,8 @@
     startLoad().then(() => { if (window.LGStart) window.LGStart.sync(); }, () => {});
   }
 
-  /* ---------- 18.10: переключатель стримеров (шапка) и «Мои каналы» (меню ника) ----------
-     Список стримеров — один небольшой ответ сервера (кеш минута, ETag), грузится только при первом открытии списка. */
+  
+
   const CH = window.LG_CH || null;
   const POP = { el: null, kind: '', from: null, list: null, loading: false, err: '' };
   const chUrl = (l) => `/c/${encodeURIComponent(l)}/`;
@@ -698,7 +698,7 @@
         : `<p class="pop-e">${POP.err ? esc('Список ' + POP.err) : 'Загружаем…'}</p>`);
     }
     el.innerHTML = (POP.kind === 'all' ? all + (mineHtml ? '<hr class="pop-sep">' + mineHtml : '') : mineHtml);
-    // «Режим стримера» своего же канала — без перезагрузки
+
     el.onclick = (e) => {
       const a = e.target.closest('a[data-sm]');
       if (a && a.dataset.sm.toLowerCase() === cur && smOk()) { e.preventDefault(); popClose(false); tab('streamer'); }
@@ -714,15 +714,15 @@
     b.title = `${CH.name} — стримеры: открыть сайт другого канала`;
     b.setAttribute('aria-label', `Канал ${CH.name}. Стримеры — другие каналы`);
     b.hidden = false;
-    // 26.10: новинка «find» - поиск стримера и свой список (start.js) вместо общего списка «Стримеры»
+
     b.onclick = () => { if (ME && ME.find) { popClose(false); startLoad().then(() => window.LGStart && window.LGStart.findToggle(b), () => popToggle(b, 'all')); } else popToggle(b, 'all'); };
   }
 
-  /* ---------- персонаж ---------- */
+   
   const equipped = (h, sl) => h.items.find((x) => x.on && x.slot === sl);
   function deltas(it, h) {
     const c = it.wearable && !it.on ? equipped(h, it.slot) : null;
-    const keys = Array.from(new Set([...Object.keys(it.stats || {}), ...Object.keys((c && c.stats) || {})])).filter((k) => stOk(k, h));   // 20.10: крит и т. п. — только если открыты (h.xs)
+    const keys = Array.from(new Set([...Object.keys(it.stats || {}), ...Object.keys((c && c.stats) || {})])).filter((k) => stOk(k, h));
     const cs = (c && c.stats) || {}, own = it.stats || {};
     const rows = keys.map((k) => { const v = (it.stats || {})[k] || 0, dv = c ? Math.round(((own[k] || 0) - (cs[k] || 0)) * 10) / 10 : 0; return { k, v, dv }; });
     const score = rows.reduce((a, r) => a + r.dv * (STW[r.k] || XSTW[r.k] || 1), 0);
@@ -736,18 +736,18 @@
     if (e.buff) p.push(`${stLabel(e.buff.stat).toLowerCase()} +${e.buff.add} на ${e.buff.min || 60} мин`);
     return p.join(', ');
   }
-  // еда и зелья (16.10): общий откат 3 мин после любого съеденного/выпитого; команды чата — по номеру в сумке
+
   const mmss = (t) => { const s2 = Math.max(0, Math.ceil(((+t || 0) - now()) / 1000)); return `${Math.floor(s2 / 60)}:${String(s2 % 60).padStart(2, '0')}`; };
-  // откат вещи: еда и зелья — общий (3 мин), свиток возрождения — свой (1 час). Возвращает время конца или 0
+
   const cdUntil = (it, h) => { if (!h) return 0; const t = now(); if ((it.slot === 'food' || it.slot === 'potion') && h.eatUntil > t) return h.eatUntil; if (it.effect && it.effect.revive && h.scrollUntil > t) return h.scrollUntil; return 0; };
   const eatCd = (it, h) => !!cdUntil(it, h);
-  // 17.10: съесть / выпить прямо с сайта (еда и зелья; свиток возрождения — только командой на стриме)
+
   const edible = (it) => !it.wearable && (it.slot === 'food' || it.slot === 'potion') && !!it.effect && !it.effect.revive;
   const eatVerb = (it) => (it.slot === 'potion' || it.drink ? 'Выпить' : 'Съесть');
   const BUSY_NOTE = 'Идёт бой на стриме — снаряжение менять нельзя. Снять и надеть можно после боя';
   const useCmd = (it) => { const k = it.no ? ' ' + it.no : ''; const e = it.effect || {}; if (e.revive) return 'свиток (или свиток @ник)'; if (it.slot === 'potion' || it.drink) return 'выпить' + k; if (it.slot === 'food') return 'съесть' + k; return ''; };
-  // 18.10: откат кончился — перерисовываем героя целиком: кнопка «Съесть» снова доступна без обновления страницы.
-  // Таймер раз в секунду работает, только пока на странице есть отсчёт и вкладка видна
+
+
   function tickCd() {
     if (document.hidden) return;
     let done = false;
@@ -755,7 +755,7 @@
     if (done && !DR.active) renderHero();
   }
   setInterval(() => { if (document.querySelector('[data-eat]')) tickCd(); }, 1000);
-  // одинаковые расходники — одной стопкой
+
   function bagList(h) {
     const out = [], stacks = {};
     for (const it of h.items) {
@@ -763,42 +763,42 @@
       if (!it.wearable) { const k = it.id; if (stacks[k]) { stacks[k].n++; stacks[k].uids.push(it.uid); continue; } stacks[k] = { ...it, n: 1, uids: [it.uid] }; out.push(stacks[k]); }
       else out.push({ ...it, n: 1, uids: [it.uid] });
     }
-    // порядок — по номерам из игры (по ним работают «!надеть 2», «!съесть 3»)
+
     return out.sort((a, b) => ((a.no || 1e9) - (b.no || 1e9)) || (b.wearable - a.wearable) || (RORD[a.rarity] - RORD[b.rarity]) || a.name.localeCompare(b.name, 'ru'));
   }
-  const catOf = (it) => (it.wearable ? it.slot : it.slot === 'material' ? 'mat' : it.relic || it.slot === 'relic' ? 'relic' : 'other');   // 20.10: mat — материалы заточки
-  // 20.10: для какого класса вещь — оружие по роли, щит — легионеру, броня и шлем — по типу (тяжёлое/лёгкое/ткань); остальное — всем
-  // 20.10: новые классы (Разбойник, Некромант, Паладин) — кнопка фильтра только у того, у кого есть их вещь или он сам этого класса (пока — тестеры)
-  // 25.10 (баг: в фильтре аукциона не было «Разбойника», а классы были без названий стиля): список классов — один, с сервера
-  // (/api/me → classes: деревья классов комнаты skills/<класс>.js, порядок и пометка beta); beta-класс — тому, кому новые классы открыты
-  // (hero.cb), или кто им уже играет / носит его оружие. Названия — по стилю канала (roleOf: «Котопаладин» у котиков)
+  const catOf = (it) => (it.wearable ? it.slot : it.slot === 'material' ? 'mat' : it.relic || it.slot === 'relic' ? 'relic' : 'other');
+
+
+
+
+
   const classIds = (h) => {
     const L = ME && Array.isArray(ME.classes) && ME.classes.length ? ME.classes : Object.keys((ME && ME.roles) || ROLE_BASE).filter((k) => k !== 'recruit').map((id) => ({ id }));
     return L.filter((c) => c && c.id && (!c.beta || (h && (h.cb || h.role === c.id || (h.items || []).some((x) => x.role === c.id))))).map((c) => c.id);
   };
-  const betaOpen = (h) => classIds(h).some((k) => ((ME && ME.classes) || []).some((c) => c.id === k && c.beta));   // герою видны новые классы
+  const betaOpen = (h) => classIds(h).some((k) => ((ME && ME.classes) || []).some((c) => c.id === k && c.beta));
   const GEAR_CLS = { heavy: GD.gearClasses('heavy'), light: GD.gearClasses('light'), cloth: GD.gearClasses('cloth') };
   const SHIELD_CLS = GD.classes().filter((c) => c.shield).map((c) => c.id);
-  const clsOf = (it) => (it.slot === 'weapon' && it.role ? [it.role] : it.slot === 'trinket' && it.role ? [it.role] : it.slot === 'shield' ? SHIELD_CLS : (it.slot === 'armor' || it.slot === 'helmet') && GEAR_CLS[it.gear] ? GEAR_CLS[it.gear] : null);   // null — подходит всем
+  const clsOf = (it) => (it.slot === 'weapon' && it.role ? [it.role] : it.slot === 'trinket' && it.role ? [it.role] : it.slot === 'shield' ? SHIELD_CLS : (it.slot === 'armor' || it.slot === 'helmet') && GEAR_CLS[it.gear] ? GEAR_CLS[it.gear] : null);
   const fitsCls = (it, c) => c === 'all' || !it.wearable || !clsOf(it) || clsOf(it).includes(c);
-  try { const v = localStorage.getItem('lgCls'); if (v && /^[a-z]{2,20}$/.test(v)) cls = v; } catch {}   // нет такого класса у героя — сумка сбросит на «все»
+  try { const v = localStorage.getItem('lgCls'); if (v && /^[a-z]{2,20}$/.test(v)) cls = v; } catch {}
 
-  // 19.10: длинный ник героя — в одну строку: шрифт уменьшается под ширину (не меньше 55% от обычного)
+
   function fitName(n) {
     if (!n) return;
     n.style.fontSize = ''; n.style.whiteSpace = 'nowrap';
     const w = n.clientWidth, sw = n.scrollWidth; if (!w || sw <= w) return;
     const base = parseFloat(getComputedStyle(n).fontSize) || 32, k = Math.max(0.55, (w / sw) * 0.98);
     n.style.fontSize = (base * k).toFixed(1) + 'px';
-    if (n.scrollWidth > n.clientWidth) n.style.whiteSpace = '';   // совсем длинный — пусть переносится
+    if (n.scrollWidth > n.clientWidth) n.style.whiteSpace = '';
   }
   let fitT = 0; window.addEventListener('resize', () => { clearTimeout(fitT); fitT = setTimeout(() => fitName(document.querySelector('#tab-hero .plate .nm')), 150); });
   try { document.fonts && document.fonts.ready.then(() => fitName(document.querySelector('#tab-hero .plate .nm'))); } catch {}
-  /* 23.10: кукла героя — рисунок и пять слотов вокруг. Одна на вкладку «Персонаж» и наковальню «Города» (CX.doll).
-     o: { sel — uid выбранной вещи, mood, kit, still — рисунок без анимации, forge — режим наковальни: слоты не надевают/снимают, а кладут вещь на наковальню
-          (data-ig — uid, data-igdrag — можно тащить; пустой слот — просто рамка), can(it) — можно ли точить } */
+  
+
+
   function dollHtml(h, o = {}) {
-    if (o.off) return '';   // 25.10: новая сумка (inv2) — кукла в библиотеке инвентаря
+    if (o.off) return '';
     const fg = !!o.forge;
     const slotBtn = (sl) => {
       const it = equipped(h, sl);
@@ -812,20 +812,20 @@
           ${SLOTS.map(slotBtn).join('')}
         </div>`;
   }
-  // 20.10: заточка — «Гладиус +7»; 23.10: отдельно — и для героя, пришедшего без перерисовки вкладки (его читает «Город»)
-  /* ---------- 31.10 (feat/candy-tile, стример): конфеты Хэллоуина - плитка в сетке сумки. Только показ: число - тот же счётчик ивента
-     (hero.hw.c), в сумку героя ничего не кладётся. Плитка одна (до 9999 - точно, больше - «9999+», полное число - в подсказке),
-     стоит после вещей, место не занимает (счёт «N / M», «сумка полна» и пустые ячейки - как без неё), действий нет - только подсказка ---------- */
+
+  
+
+
   const CANDY_MAX = 9999;
   const candyN = (h) => (h && h.hw ? Math.max(0, Math.floor(+h.hw.c || 0)) : null);
   const candyLabel = (n) => (n > CANDY_MAX ? CANDY_MAX + '+' : String(n));
   const candyText = (n) => `Конфеты: ${n}. Тратить - в «Ступе сладостей» в Городе; в конце ивента остаток превратится в монеты.`;
-  // рисунок - завёрнутые конфеты, как на оверлее Изнанки (hollow.js, счётчик «конфет за ночь»)
+
   const candyArt = (cls) => `<svg class="art${cls ? ' ' + cls : ''}" viewBox="-22 -22 44 44" aria-hidden="true"><g transform="translate(9 -9) rotate(28) scale(.8)"><path d="M-12 -6 L-6 -2 L-6 2 L-12 6 Z M12 -6 L6 -2 L6 2 L12 6 Z" fill="#9b5cff" stroke="#15122e" stroke-width="1.6" stroke-linejoin="round"/><ellipse rx="7" ry="5.5" fill="#ffd34d" stroke="#15122e" stroke-width="1.8"/></g><g transform="translate(-3 6) rotate(-18) scale(1.45)"><path d="M-12 -6 L-6 -2 L-6 2 L-12 6 Z M12 -6 L6 -2 L6 2 L12 6 Z" fill="#ff7a1a" stroke="#15122e" stroke-width="1.6" stroke-linejoin="round"/><ellipse rx="7" ry="5.5" fill="#ff9fb2" stroke="#15122e" stroke-width="1.8"/><path d="M-3 -5 q2 5 0 10 M2 -5 q2 5 0 10" stroke="#fff" stroke-width="1.6" fill="none" opacity=".8"/></g></svg>`;
   const candyTipHtml = (n) => `<div class="t-h"><span class="t-n">🍬 Конфеты</span><span class="muted">${n}</span></div><div class="t-s"><span class="muted">Хэллоуин</span><span class="muted">место в сумке не занимают</span></div><p class="t-desc">${esc(candyText(n))}</p>`;
-  // плитка старой сумки «Персонажа»: без data-sel / data-drag - её не выбрать, не надеть, не перетащить и не открыть меню вещи
+
   const candyCell = (h) => { const n = candyN(h); if (n == null) return ''; return `<button type="button" class="cell cnd-tile" data-r="common" data-candy="${n}" aria-label="${esc(candyText(n))}">${candyArt()}<span class="cn">Конфеты</span><span class="cnt">${candyLabel(n)}</span></button>`; };
-  // та же плитка для библиотеки инвентаря (новая сумка «Персонажа», сумка «Похода»): data.pins
+
   const candyPins = (h) => { const n = candyN(h); return n == null ? [] : [{ id: 'candy', name: 'Конфеты', label: candyLabel(n), n, art: candyArt(), aria: candyText(n) }]; };
   function candyTip(el, n) {
     if (!el || !el.isConnected || DR.active) return;
@@ -833,22 +833,22 @@
     tip.classList.remove('card', 'scroll'); tipFor = el; tip.innerHTML = candyTipHtml(n); tip.hidden = false; tip.dataset.r = 'common'; tipPlace(el);
   }
   function nameItems(h) { if (h && h.items) for (const it of h.items) { if (!it.srvName) it.srvName = it.name; it.baseName = it.baseName || it.srvName; it.name = nameOf(it) + (it.en > 0 ? ' +' + it.en : ''); } }
-  /* ---------- 25.10: новая сумка (новинка inv2 - флаг i2 у героя, inv2Public): кукла и сумка вкладки «Персонаж» - библиотека
-     инвентаря (packages/inventory: LGInventory.mount, вид 'full' на ПК и планшете, 'sheet' на телефоне, режим 'equip').
-     Всё остальное вкладки - как было: шапка, характеристики, карточка вещи справа (на телефоне - шторка) с её кнопками, фильтр по
-     классу, «Разложить». Надеть / снять / съесть - те же /api/equip, /api/unequip, /api/use (act); свой порядок - перетащить ячейку на
-     ячейку (порядок «как в сумке») или Alt+стрелки - /api/stOrder. Библиотека живёт в своём элементе: вкладка перерисовывается
-     целиком, а он только переставляется и обновляет изменившиеся ячейки. Флага нет - старая кукла и сумка, как раньше ---------- */
+  
+
+
+
+
+
   const inv2On = (h) => !!(h && h.i2 && window.LGInventory && !DOCK);
-  const mqInv = SU.media('tablet');   // 25.10: (min-width: 720px) - packages/site-ui
-  let INV2 = null;   // { host, inv, v }
-  const inv2Data = (h) => ({ hero: h, items: h.items.slice().sort((a, b) => (a.no || 1e9) - (b.no || 1e9)), stack: (h.sg && h.sg.bs) || 20, bagCap: h.sg && cls === 'all' ? h.sg.cap : null, ...(+h.ob > 0 ? { obCap: +h.ob } : {}), pins: candyPins(h) });   // 26.10: рудная сумка - своей сеткой
+  const mqInv = SU.media('tablet');
+  let INV2 = null;
+  const inv2Data = (h) => ({ hero: h, items: h.items.slice().sort((a, b) => (a.no || 1e9) - (b.no || 1e9)), stack: (h.sg && h.sg.bs) || 20, bagCap: h.sg && cls === 'all' ? h.sg.cap : null, ...(+h.ob > 0 ? { obCap: +h.ob } : {}), pins: candyPins(h) });
   const inv2Busy = () => { const h = ME && ME.hero; if (h && (h.ghost || h.busy)) { toast(h.ghost ? 'Призрак не переодевается' : BUSY_NOTE, true); return true; } return false; };
   function inv2Host(h, selUid) {
     const v = mqInv.matches ? 'full' : 'sheet';
     if (INV2 && INV2.v !== v) inv2Drop();
     if (!INV2) {
-      // 26.10 (стример): персонаж - снова в карточке героя (крупно, слоты вокруг), сетка - в «Сумке»; библиотека одна (dollEl)
+
       const host = document.createElement('div'); host.className = 'inv2-host';
       const dollEl = document.createElement('div'); dollEl.className = 'inv2-doll';
       const inv = window.LGInventory.mount(host, { variant: v, mode: 'equip', data: inv2Data(h),
@@ -866,8 +866,8 @@
           cardTip: (c, it) => cardTip(c, it, ME.hero), tipHide: () => tipHide(), pinTip: (b, p) => candyTip(b, p.n),
           canUse: (it) => (eatCd(it, ME.hero) && !(it && it.effect && it.effect.hw) ? 'Еда и зелья ещё не готовы' : true),
           extra: (c) => (c.it.no ? `<span class="no" title="Номер в сумке - для команд в чате">${c.it.no}</span>` : ''),
-          // выбор - карточка вещи сайта справа (на телефоне - шторка) с её кнопками: починить, заточить, съесть…
-          // 25.10 (решение стримера): правая кнопка - прежнее меню вещи (надеть / заменить / снять, съесть / выпить, подробнее); Shift + правая - быстро надеть / снять
+
+
           menu: (c, it, e) => { const t = TIPS[it.uid] || Object.values(TIPS).find((x) => x.uids && x.uids.includes(it.uid)) || { ...it, n: 1, uids: [it.uid] }; ctxMenu(e.clientX, e.clientY, t, ME.hero); },
           onSelect: (it) => { sel = it ? it.uid : null; sheet = !!it && !mqWide.matches; renderHero(); if (sheet) { const c = $('.detail [data-close]', $('#tab-hero')); if (c) c.focus(); } },
           say: (t) => toast(t, true),
@@ -890,21 +890,21 @@
       calm(el); return;
     }
     const viewsBar = `<div class="views filters" role="group" aria-label="Что показать"><button type="button" data-view="gear" aria-pressed="${view === 'gear'}">Снаряжение</button><button type="button" data-view="look" aria-pressed="${view === 'look'}">Облик</button>${window.LGSkills && h.sk ? `<button type="button" data-view="skills" aria-pressed="${view === 'skills'}">Навыки</button>` : ''}${window.LGAch && h.ac ? `<button type="button" data-view="ach" aria-pressed="${view === 'ach'}">Достижения</button>` : ''}<button type="button" data-view="log" aria-pressed="${view === 'log'}">Журнал</button></div>`;
-    // 20.10: «Навыки» — на всю ширину вкладки (деревья классов, skills.js); остальное — как было
-    if (view === 'skills' && !h.sk) view = 'gear';   // 20.10: навыки пока только тестерам
+
+    if (view === 'skills' && !h.sk) view = 'gear';
     if (view === 'skills' && window.LGSkills) {
-      el.innerHTML = `<div class="sk-wrap sk-tab">${viewsBar}${window.LGSkills.html(h, SKX, { tree: true })}</div>`;   // 20.10: та же доска-дерево, что у Тренера в «Городе»
+      el.innerHTML = `<div class="sk-wrap sk-tab">${viewsBar}${window.LGSkills.html(h, SKX, { tree: true })}</div>`;
       el.querySelectorAll('[data-view]').forEach((b) => b.onclick = () => { view = b.dataset.view; try { localStorage.setItem('lgView', view); } catch {} renderHero(); });
       window.LGSkills.bind(el, SKX); return;
     }
-    // 23.10: «Достижения» — на всю ширину вкладки (пока только тестерам: h.ac есть, когда открыто)
+
     if (view === 'ach' && !(h.ac && window.LGAch)) view = 'gear';
     if (view === 'ach') {
       el.innerHTML = `<div class="ac-wrap">${viewsBar}${window.LGAch.html(h, SKX)}</div>`;
       el.querySelectorAll('[data-view]').forEach((b) => b.onclick = () => { view = b.dataset.view; try { localStorage.setItem('lgView', view); } catch {} renderHero(); });
       window.LGAch.bind(el, SKX, h); return;
     }
-    // 23.10: «Журнал» — бывшая вкладка сверху, теперь вид «Персонажа» на всю ширину (а последние записи — коротко под характеристиками)
+
     if (view === 'log') {
       el.innerHTML = `<div class="jr-wrap">${viewsBar}<div id="jrFull"></div></div>`;
       el.querySelectorAll('[data-view]').forEach((b) => b.onclick = () => goView(b.dataset.view));
@@ -912,27 +912,27 @@
       return;
     }
     const s = h.stats || {}, hpMax = s.hp || 0, hpNow = h.hpNow ?? hpMax;
-    const gp = !h.ghost && h.gearPen && h.gearPen.pct > 0 ? h.gearPen : null;   // 17.10: чужое снаряжение
-    // 18.10: опыт — внутри уровня: «набрано в этом уровне / нужно до следующего»; полоска и цифра — по одним числам.
-    // Поля xpInLevel/xpToNext даёт игра; если их нет (старая версия) — считаем от порогов уровней
+    const gp = !h.ghost && h.gearPen && h.gearPen.pct > 0 ? h.gearPen : null;
+
+
     const own = h.xpInLevel != null, xin = own ? Math.max(0, +h.xpInLevel || 0) : Math.max(0, (h.xp || 0) - (h.prevXp || 0));
     const xneed = own ? (h.xpToNext == null ? null : Math.max(1, +h.xpToNext || 0)) : (h.next == null ? null : Math.max(1, h.next - (h.prevXp || 0)));
     const xpPct = xneed == null ? 100 : Math.max(0, Math.min(100, (xin / xneed) * 100));
     const hpPct = hpMax ? Math.max(0, Math.min(100, (hpNow / hpMax) * 100)) : 0;
-    const bag = bagList(h), i2 = inv2On(h);   // 25.10: i2 - кукла и сумка из библиотеки инвентаря
+    const bag = bagList(h), i2 = inv2On(h);
     const cats = [['all', 'Всё'], ...SLOTS.map((k) => [k, SLOT[k]]), ['mat', 'Материалы'], ['relic', 'Особое'], ['other', 'Расходники']].filter(([k]) => k === 'all' || bag.some((x) => catOf(x) === k));
     if (!cats.some(([k]) => k === filter)) filter = 'all';
     const ids = classIds(h), myCls = ids.includes(h.role) ? h.role : null;
     const clsBtns = bag.some((x) => x.wearable && clsOf(x)) ? [['all', 'Все классы'], ...ids.map((k) => { const l = roleOf(k, ((ME && ME.roles) || {})[k]); return [k, k === myCls ? `${l} (ты)` : l]; })] : [];
-    if (cls !== 'all' && !ids.includes(cls)) cls = 'all';   // 25.10: запомненный класс герою не виден (beta) — «все классы»
-    // 29.10: фильтр по классу - одна компактная строка «Класс: <список>» вместо 8 больших кнопок (на телефоне они занимали 4 строки)
+    if (cls !== 'all' && !ids.includes(cls)) cls = 'all';
+
     const clsBar = clsBtns.length ? `<label class="clsf${cls === 'all' ? '' : ' on'}"><span>Класс</span><select data-cls aria-label="Для какого класса">${clsBtns.map(([k, l]) => `<option value="${esc(k)}"${cls === k ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></label>` : '';
     const shown = bag.filter((x) => (filter === 'all' || catOf(x) === filter) && fitsCls(x, cls));
     const nOn = h.items.filter((x) => x.on).length;
-    // выбранная вещь: по uid (из сумки или со слота)
+
     let cur = sel && (h.items.find((x) => x.uid === sel) || bag.find((x) => x.uids.includes(sel)));
     if (cur && !cur.uids) cur = { ...cur, n: 1, uids: [cur.uid] };
-    // 18.10: без автовыбора — раньше на широком экране карточка «первой» вещи висела всегда, а крестик её не закрывал
+
     if (!cur) { sheet = false; sel = null; }
     const selUid = cur ? cur.uids[0] : null;
 
@@ -940,7 +940,7 @@
     for (const it of h.items) if (it.on) TIPS[it.uid] = { ...it, n: 1, uids: [it.uid] };
     for (const it of bag) TIPS[it.uids[0]] = it;
 
-    // 22.10: предел сумки (склад) — свободные ячейки до предела тусклыми (только во «Всё»: видно, сколько места осталось)
+
     const freeCells = (hh, all) => { const g = hh.sg; if (!g || !all) return ''; const n = Math.max(0, Math.min(60, g.cap - g.used)); return n ? '<span class="cell free" aria-hidden="true"></span>'.repeat(n) : ''; };
     const cell = (it) => {
       const dv = deltas(it, h);
@@ -949,7 +949,7 @@
         ${it.qty ? `<span class="cnt">${esc(INV.oreN ? INV.oreN(it.q) : it.q)}</span>` : it.n > 1 ? `<span class="cnt"${h.sg && !it.wearable && it.n > (h.sg.bs || 20) ? ` title="Стопка больше ${h.sg.bs || 20} — занимает ${Math.ceil(it.n / (h.sg.bs || 20))} ячейки сумки"` : ''}>×${it.n}${h.sg && !it.wearable && it.n > (h.sg.bs || 20) ? `<em class="cc"> · ${Math.ceil(it.n / (h.sg.bs || 20))} яч.</em>` : ''}</span>` : ''}${dv.better && !h.ghost ? `<span class="upg" title="Лучше надетого">${ico('up')}</span>` : ''}</button>`;
     };
 
-    // 01.11: «Облик» конфигуратором (новинка lookConfig) - ник и класс героя внутри карточки, под человечком (эскиз стримера)
+
     const lc = view === 'look' && lcOn(h);
     const plate = `<h1 class="nm">${esc(h.name)}${awb(h.aw)}</h1>${window.LGAch && h.ac ? window.LGAch.plate(h, SKX) : ''}
           <div class="role"><span class="rl">${h.ghost ? ico('ghost') + 'Призрак' : esc(roleOf(h.role, h.roleName))}</span><span class="lv">Ур. ${h.level}</span></div>`;
@@ -988,11 +988,11 @@
     </div>
     <p class="foot">Детали облика покупаются на Ярмарке во время стрима, надеть купленное можно в «Облике» · обновлено ${ME.synced ? new Date(ME.synced).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '—'}</p>`;
 
-    if (i2) { const ph = el.querySelector('[data-inv2]'); if (ph) ph.replaceWith(inv2Host(h, selUid)); const pd = el.querySelector('[data-inv2-doll]'); if (pd && INV2) pd.replaceWith(INV2.dollEl); } else inv2Drop();   // 26.10: и кукла - в карточку героя   // 25.10: новая сумка - тот же элемент
+    if (i2) { const ph = el.querySelector('[data-inv2]'); if (ph) ph.replaceWith(inv2Host(h, selUid)); const pd = el.querySelector('[data-inv2-doll]'); if (pd && INV2) pd.replaceWith(INV2.dollEl); } else inv2Drop();
     el.querySelectorAll('[data-f]').forEach((b) => b.onclick = () => { filter = b.dataset.f; renderHero(); });
     el.querySelectorAll('select[data-cls]').forEach((b) => b.onchange = () => { cls = /^[a-z]{2,20}$/.test(b.value) ? b.value : 'all'; try { localStorage.setItem('lgCls', cls); } catch {} renderHero(); });
     el.querySelectorAll('[data-empty]').forEach((b) => b.onclick = () => { filter = b.dataset.empty; sel = null; sheet = false; renderHero(); const g = $('.bag', el); if (g && !mqWide.matches) g.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
-    // 21.10: повторный клик по уже выбранной вещи — снять выбор (на ПК карточка справа исчезает; на телефоне карточка — шторка, там клик её открывает)
+
     el.querySelectorAll('[data-sel]').forEach((b) => b.onclick = () => { if (mqWide.matches && cur && cur.uids.includes(b.dataset.sel)) { sel = null; renderHero(); return; } sel = b.dataset.sel; sheet = !mqWide.matches; renderHero(); if (sheet) { const c = $('.detail [data-close]', el); if (c) c.focus(); } });
     el.querySelectorAll('[data-close]').forEach((b) => b.onclick = closeDetail);
     el.querySelectorAll('[data-view]').forEach((b) => b.onclick = () => goView(b.dataset.view));
@@ -1006,9 +1006,9 @@
     el.querySelectorAll('[data-off]').forEach((b) => b.onclick = () => act('/api/unequip', { slot: b.dataset.off }, word('off', 'Снято'), b));
     el.querySelectorAll('[data-use]').forEach((b) => b.onclick = () => { const it = TIPS[b.dataset.use]; act('/api/use', { uid: b.dataset.use }, it && eatVerb(it) === 'Выпить' ? 'Выпито' : 'Съедено', b); });
     el.querySelectorAll('[data-use]').forEach((b) => { if (b.disabled) b.title = 'Еда и зелья ещё не готовы'; });
-    el.querySelectorAll('[data-seal]').forEach((b) => b.onclick = () => sealPick(b.dataset.seal));   // 26.10: Печать Метаморфозы
+    el.querySelectorAll('[data-seal]').forEach((b) => b.onclick = () => sealPick(b.dataset.seal));
     el.querySelectorAll('[data-forge]').forEach((b) => b.onclick = () => forgeOpen(b.dataset.forge));
-    // 24.10: «Разложить» — порядок игры (свой порядок сбрасывается); Alt+стрелки на ячейке — сдвинуть на одну
+
     el.querySelectorAll('[data-bagsort]').forEach((b) => b.onclick = () => act('/api/stSort', { box: 'b' }, 'Сумка разложена', b));
     if (ordOk(h)) { const g = $('.bag .grid', el); if (g) g.onkeydown = (e) => {
       if (!e.altKey || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
@@ -1017,25 +1017,25 @@
       if (i < 0 || j < 0 || j >= cells.length) return;
       ordSave(ordMove(h, c.dataset.sel, cells[j].dataset.sel), c.dataset.sel);
     }; }
-    repBind(el);   // 22.10: починка — всем
-    // 17.10: правая кнопка по вещи (в сумке или на герое) — меню: надеть / заменить / снять, съесть / выпить, подробнее
+    repBind(el);
+
     el.oncontextmenu = (e) => {
       const t = e.target.closest('[data-sel]'); if (!t || !el.contains(t)) return;
       const it = TIPS[t.dataset.sel]; if (!it) return;
       e.preventDefault(); ctxMenu(e.clientX, e.clientY, it, h);
     };
   }
-  /* ---------- перетаскивание: из сумки на слот героя — надеть, со слота в сумку — снять ----------
-     Мышь: тянешь сразу (после сдвига на 6 px). Палец: удерживаешь ~0,3 с, потом тянешь — обычная прокрутка не ломается.
-     Клик без перетаскивания работает как раньше (открывает карточку вещи). */
+  
+
+
   const coarse = () => SU.is('touch');
-  // 24.10: свой порядок сумки — перетаскиванием ячейки на ячейку (и Alt+стрелки с клавиатуры); пока — у кого есть Склад (h.sg)
+
   const ordOk = (h) => !!(h && h.sg && !h.ghost && !h.busy);
   function dragHint(h) {
     if (ordOk(h)) return coarse() ? 'удерживай вещь и тяни: на героя - надеть, на другую ячейку - поменять порядок' : 'тяни вещь: на героя - надеть, на другую ячейку - порядок (Alt+стрелки)';
     return coarse() ? 'удерживай вещь, чтобы перетащить на героя' : 'вещи можно перетаскивать на героя и обратно';
   }
-  // новый порядок: ячейку from — на место ячейки to (как перестановка в списке); → первые uid ячеек
+
   function ordMove(h, from, to) {
     const cs = bagList(h), i = cs.findIndex((c) => c.uids.includes(from)), j = cs.findIndex((c) => c.uids.includes(to));
     if (i < 0 || j < 0 || i === j) return null;
@@ -1047,7 +1047,7 @@
     await act('/api/stOrder', { uids }, 'Порядок сохранён');
     if (focusUid) { const b = document.querySelector(`#tab-hero .bag [data-sel="${CSS.escape(focusUid)}"]`); if (b) b.focus(); }
   }
-  // у края экрана страница сама прокручивается (на телефоне сумка далеко от героя)
+
   let lastXY = [0, 0], scrollRaf = 0;
   function autoScroll() {
     scrollRaf = 0; if (!DR.active) return;
@@ -1072,10 +1072,10 @@
     const g = document.createElement('div'); g.className = 'drag-ghost'; g.dataset.r = DR.src.dataset.r || 'common';
     const a = DR.src.querySelector('.art'); g.innerHTML = a ? a.outerHTML : '';
     document.body.appendChild(g); DR.ghost = g; dragMove(x, y);
-    // куда можно бросить: подходящий слот (надеть) или сумка (снять)
+
     if (DR.mode === 'on') $$('#tab-hero .slot').forEach((sl) => sl.classList.add(sl.dataset.slot === DR.slot ? 'drop-ok' : 'drop-no'));
     else if (DR.mode !== 'mv') { const b = $('#tab-hero .bag'); if (b) b.classList.add('drop-ok'); }
-    if (DR.mode !== 'off' && ordOk(ME && ME.hero)) { const g = $('#tab-hero .bag .grid'); if (g) g.classList.add('ord-on'); }   // 24.10: ячейки сумки — цели порядка
+    if (DR.mode !== 'off' && ordOk(ME && ME.hero)) { const g = $('#tab-hero .bag .grid'); if (g) g.classList.add('ord-on'); }
     if (navigator.vibrate && coarse()) try { navigator.vibrate(12); } catch {}
   }
   function targetAt(x, y) {
@@ -1095,7 +1095,7 @@
     DR.justDragged = true; setTimeout(() => { DR.justDragged = false; }, 0);
     dragReset();
     if (!t) return;
-    if (t.matches('.cell[data-sel]')) { ordSave(ordMove(ME.hero, uid, t.dataset.sel), uid); return; }   // 24.10: на ячейку — порядок
+    if (t.matches('.cell[data-sel]')) { ordSave(ordMove(ME.hero, uid, t.dataset.sel), uid); return; }
     if (mode === 'on') act('/api/equip', { uid }, word('on', 'Надето'));
     else act('/api/unequip', { slot }, word('off', 'Снято'));
   }
@@ -1110,21 +1110,21 @@
     if (!DR.src || e.pointerId !== DR.id) return;
     if (!DR.active) {
       const moved = Math.hypot(e.clientX - DR.x0, e.clientY - DR.y0);
-      if (e.pointerType === 'touch') { if (moved > 10) dragReset(); return; }   // палец поехал раньше удержания — это прокрутка
+      if (e.pointerType === 'touch') { if (moved > 10) dragReset(); return; }
       if (moved > 6) dragStart(e.clientX, e.clientY); else return;
     }
     e.preventDefault(); dragMove(e.clientX, e.clientY);
   }, { passive: false });
-  // пока тянем пальцем — страница не прокручивается
+
   window.addEventListener('touchmove', (e) => { if (DR.active) e.preventDefault(); }, { passive: false });
   window.addEventListener('pointerup', (e) => { if (!DR.src || e.pointerId !== DR.id) return; if (DR.active) dragDrop(); else dragReset(); });
   window.addEventListener('pointercancel', () => { if (DR.src && !DR.active) dragReset(); else if (DR.active) dragReset(); });
   heroTab.addEventListener('contextmenu', (e) => { if (DR.src) e.preventDefault(); });
-  // после перетаскивания браузер шлёт «клик» по исходной ячейке — он не должен открывать карточку
+
   heroTab.addEventListener('click', (e) => { if (DR.justDragged) { e.stopPropagation(); e.preventDefault(); } }, true);
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && DR.active) dragReset(); });
 
-  /* ---------- подсказка при наведении: характеристики вещи (только мышь; с клавиатуры — при фокусе) ---------- */
+   
   const tip = document.createElement('div'); tip.className = 'tip'; tip.setAttribute('role', 'tooltip'); tip.id = 'lg-tip'; tip.hidden = true;
   document.body.appendChild(tip);
   let tipFor = null;
@@ -1136,14 +1136,14 @@
       ${eff ? `<p class="t-eff">${esc(eff[0].toUpperCase() + eff.slice(1))}</p>` : ''}${auraLine(it, 't-au')}
       <div class="d-q">${window.LG_LORE ? LG_LORE.html(it, false) : it.desc ? `<p class="t-desc">${esc(it.desc)}</p>` : ''}${dv.c ? `<p class="t-cmp">Сравнение с надетым: ${esc(dv.c.name)}</p>` : ''}${it.dur != null ? `<p class="t-dur${lowD(it) ? ' br' : ''}">${lowD(it) ? '⚠ ' + LOWT(it.dur) : `Прочность ${it.dur}% — почини у кузнеца`}</p>` : ''}</div>`;
   }
-  // 20.10: что значит характеристика (в стилях названия свои: «Царапки» = физ. урон и т. п.)
+
   const ST_HELP = {
     hp: ['Здоровье', 'Сколько урона герой выдержит. На нуле герой падает и становится призраком.'],
     atk: ['Физический урон', 'Сила ударов оружием: «удар», «выстрел». Главное для легионеров и лучников.'],
     mag: ['Магический урон', 'Сила заклинаний («магия») и лечения жреца. Главное для магов и жрецов.'],
     def: ['Броня', 'Уменьшает урон, который герой получает в боях и ловушках.'],
   };
-  // 20.10: характеристики второго ряда (видны тестерам, пока не открыты всем) и броня — с разницей «броня / сопротивление»
+
   const XS_HELP = {
     def: ['Броня', 'Режет ФИЗИЧЕСКИЕ удары: когти, клинки, стрелы, камни ловушек. В обычном бою и в ловушке каждая единица снимает 0,5 урона с удара (но не меньше 1), в бою с боссом — 0,3% (не больше 15%). От магии броня не спасает — для неё есть «Сопротивление».'],
     crit: ['Шанс крита', 'Как часто удар (и лечение) получается критическим. Основа у всех — 8%, прибавляют вещи и навыки; больше 50% не бывает. Единица на кубике — по-прежнему промах.'],
@@ -1159,8 +1159,8 @@
     const over = xs && xs[k + 'Over'] != null ? `<p class="t-cap">Набрано ${String(xs[k + 'Over']).replace('.', ',')}${XPCT[k] ? '%' : ''} — сверх потолка не считается</p>` : '';
     return `<div class="t-h"><span class="t-n">${esc(nm)}</span></div>${nm !== h[0] ? `<div class="t-s"><span class="muted">${esc(h[0])}</span></div>` : ''}<p class="t-desc">${esc(h[1])}</p>${over}`;
   }
-  // окно персонажа: блок «Боевые характеристики» (крит, уклонение…)
-  // 23.10: ремёсла героя (промысел в городах — шахта, лесопилка…). Уровни 1–20, без древа навыков; данных пока нет — все с 1-го уровня
+
+
   const CRAFTS = [['mine', 'Горное дело', 'Шахта: камень, руда, кристаллы'], ['wood', 'Лесное дело', 'Лесопилка: дерево, смола'], ['farm', 'Земледелие', 'Поля и пастбища: зерно, лён, шерсть'],
     ['herb', 'Травничество', 'Топи: травы, грибы, торф'], ['fish', 'Рыболовство', 'Море и полыньи: рыба, соль, жемчуг'], ['dig', 'Раскопки', 'Дюны и руины: глина, древности']];
   const CRAFT_MAX = 20;
@@ -1195,76 +1195,76 @@
   }
   function tipPlace(el) {
     el.setAttribute('aria-describedby', 'lg-tip');
-    tip.classList.toggle('over', !!el.closest('.cy-room, .tr-win'));   // 23.10: и окно обмена   // 22.10: в зале «Города» (аукцион) — поверх окна зала
+    tip.classList.toggle('over', !!el.closest('.cy-room, .tr-win'));
     tip.style.maxHeight = '';
     const r = el.getBoundingClientRect(), tw = tip.offsetWidth, m = 10, W = window.innerWidth, H = window.innerHeight;
-    // 24.10: открытая карточка покупки в лавке (сверху, «Купить…») — не закрываем её: подсказка ниже её края
+
     const obEl = document.querySelector('.cy-icard.on.pin'), ob = obEl && obEl.getClientRects().length ? obEl.getBoundingClientRect() : null;
     const top0 = ob && ob.bottom <= r.top ? ob.bottom + m : 8;
     let th = tip.offsetHeight;
     let x = r.right + m; if (x + tw > W - 8) x = r.left - tw - m; if (x < 8) x = Math.max(8, Math.min(W - tw - 8, r.left + r.width / 2 - tw / 2));
     let y = r.top; if (x === r.right + m || x === r.left - tw - m) { if (y + th > H - 8) y = H - th - 8; }
     else {
-      // 24.10: сверху или снизу от вещи - где больше места; не влезла - ниже ростом и листается, но саму вещь не закрывает
+
       const up = r.top - m - top0, dn = H - r.bottom - m - 8;
       if (th <= up) y = r.top - th - m; else if (th <= dn) y = r.bottom + m;
       else if (up > dn) { th = Math.max(120, up); tip.style.maxHeight = th + 'px'; y = r.top - th - m; }
       else { th = Math.max(120, dn); tip.style.maxHeight = th + 'px'; y = r.bottom + m; }
     }
     y = Math.max(8, y);
-    if (ob && x < ob.right && x + tw > ob.left && y < ob.bottom && y + th > ob.top) y = ob.bottom + m;   // налезает на карточку покупки — ниже неё
+    if (ob && x < ob.right && x + tw > ob.left && y < ob.bottom && y + th > ob.top) y = ob.bottom + m;
     tip.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
   }
   function tipHide() { if (tipFor) tipFor.removeAttribute('aria-describedby'); tipFor = null; tip.hidden = true; tip.classList.remove('card', 'scroll'); }
-  // 23.10: страховка — подсказка-карточка висит, а мышь уже не над вещью и не над подсказкой (вещь скрылась вместе с окном, pointerleave не пришёл)
+
   document.addEventListener('pointermove', (e) => {
     if (e.pointerType !== 'mouse' || !tipFor || tip.hidden || !tip.classList.contains('card')) return;
     if (!tipFor.isConnected || !tipFor.getClientRects().length || !(tipFor.matches(':hover') || tip.matches(':hover'))) tipHide();
   }, { passive: true });
   document.addEventListener('visibilitychange', () => { if (document.hidden && tipFor) tipHide(); });
-  // 23.10: нажатие в любое место мимо вещи — карточка закрывается (подсказка не ловит нажатия: pointer-events: none)
+
   document.addEventListener('pointerdown', (e) => { if (tipFor && !tip.hidden && tip.classList.contains('card') && !tipFor.contains(e.target) && !tip.contains(e.target)) tipHide(); }, { capture: true, passive: true });
-  // 23.10: подсказка-карточка для окон «Города» (наковальня, склад): заголовок и общее тело карточки (itemBody) — заточка, прочность
-  function cardTip(el, it, h, o) {   // 23.10: o — как у itemBody (окно обмена: класс оружия всегда)
+
+  function cardTip(el, it, h, o) {
     if (!el || !it || !h || DR.active) return tipHide();
-    // 23.10 (баг зрителя): окно лавки закрывается, а мышь успела навестись на товар — подсказка оставалась висеть вне здания и в других
-    // вкладках. Вещь не на экране (окно закрыто/скрыто) — не показываем
+
+
     if (!el.isConnected || !el.getClientRects().length || el.closest('[hidden]')) return tipHide();
-    if (tipFor && tipFor !== el) tipFor.removeAttribute('aria-describedby');   // 23.10: Склад — подсказка переходит с ячейки на ячейку
+    if (tipFor && tipFor !== el) tipFor.removeAttribute('aria-describedby');
     tipFor = el; tip.classList.add('card'); tip.dataset.r = it.rarity || 'common';
     tip.innerHTML = `<div class="t-h"><span class="t-n" data-r="${esc(it.rarity)}">${esc(it.name)}</span>${it.qty ? `<span class="muted">${esc(oreQty(it.q))}</span>` : it.n > 1 ? `<span class="muted">×${it.n}</span>` : ''}</div>
       <div class="t-s"><span class="rar" data-r="${esc(it.rarity)}">${RAR[it.rarity] || ''}</span><span class="muted">${SLOT[it.slot] || ''}</span>${it.on ? `<span class="on">${ico('check')}надето</span>` : ''}</div>${itemBody(it, h, { dur: true, ...(o || {}), tip: true })}`;
     tip.hidden = false; tip.scrollTop = 0; tipPlace(el);
-    tip.classList.toggle('scroll', tip.scrollHeight > tip.clientHeight + 1);   // 24.10: не влезла — листается (иначе нажатия проходят насквозь)
+    tip.classList.toggle('scroll', tip.scrollHeight > tip.clientHeight + 1);
   }
-  // 22.10: подсказки вешаются на любой контейнер — окно персонажа и зал аукциона (CX.tips): вещь (data-sel) и характеристика (data-stat)
+
   function tipOn(root) {
     if (!root || root.dataset.tips) return; root.dataset.tips = '1';
     const SEL = '.cell[data-sel], .slot.full[data-sel], [data-stat], .cell[data-candy]';
     root.addEventListener('pointerover', (e) => { if (e.pointerType !== 'mouse') return; const el = e.target.closest(SEL); if (el && el !== tipFor) tipShow(el); });
     root.addEventListener('pointerout', (e) => { if (!tipFor) return; const to = e.relatedTarget; if (!to || !tipFor.contains(to)) tipHide(); });
-    root.addEventListener('click', (e) => { const el = e.target.closest('[data-stat]'); if (el) { if (tipFor === el) tipHide(); else tipShow(el); } });   // на телефоне — по нажатию
-    // 31.10 (feat/candy-tile): плитка конфет - по нажатию та же подсказка (на телефоне наведения нет)
-    // нажатие может перерисовать сумку (плитка - новый элемент): показываем после перерисовки, на плитке, что сейчас в сетке
+    root.addEventListener('click', (e) => { const el = e.target.closest('[data-stat]'); if (el) { if (tipFor === el) tipHide(); else tipShow(el); } });
+
+
     root.addEventListener('click', (e) => { const el = e.target.closest('.cell[data-candy]'); if (!el) return; setTimeout(() => { const t = el.isConnected ? el : root.querySelector('.cell[data-candy]'); if (t) tipShow(t); }, 0); });
     root.addEventListener('focusin', (e) => { const el = e.target.closest(SEL); if (el && el.matches(':focus-visible')) tipShow(el); });
     root.addEventListener('focusout', tipHide);
-    // 31.10: нажатие на плитку конфет подсказку не гасит (она и есть ответ на нажатие)
+
     root.addEventListener('pointerdown', (e) => { if (e.target.closest && e.target.closest('.cell[data-candy]')) return; tipHide(); });
   }
   tipOn(heroTab);
   window.addEventListener('scroll', tipHide, { passive: true });
 
   function closeSheet() { if (!sheet) return; sheet = false; const d = $('.detail'), s = $('.scrim'); if (d) d.classList.remove('open'); if (s) s.classList.remove('open'); }
-  // крестик карточки: на телефоне — закрыть шторку, на широком экране — снять выбор (карточка показывает подсказку)
+
   function closeDetail() { if (!mqWide.matches) return closeSheet(); if (sel) { sel = null; renderHero(); } }
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !document.querySelector('.ctxm')) closeDetail(); });
 
-  // 17.10: броня, шлем и щит — для какого класса; в чужом — штраф к главному урону (как в игре)
+
   function gearLine(it, h) {
     try {
       const PEN = GD.GEAR_PEN; if (!PEN[it.slot]) return '';
-      // кому подходит: «легионера и паладина» (новые классы - тем, кому они открыты), «мага, жреца и некроманта»
+
       const nb = betaOpen(h), whom = (f) => { const a = GD.classes().filter((c) => f(c) && (nb || !c.beta)).map((c) => c.gen); return a.length > 1 ? a.slice(0, -1).join(', ') + ' и ' + a[a.length - 1] : a[0] || ''; };
       const g = it.slot === 'shield' ? 'heavy' : it.gear || 'any', RU = { heavy: whom((c) => c.gear === 'heavy'), light: whom((c) => c.gear === 'light'), cloth: whom((c) => c.gear === 'cloth'), any: 'всех классов' };
       const want = GD.classGear(h.role);
@@ -1273,11 +1273,11 @@
       return `<p class="d-gear${bad ? ' bad' : ''}">${it.slot === 'shield' ? `Щит — для ${whom((c) => c.shield)}` : `Снаряжение для ${RU[g] || RU.any}`}${bad ? `<br><b>Не для твоего класса: −${PEN[it.slot]}% ${st}${it.on ? '' : ', если надеть'}</b>` : ''}</p>`;
     } catch (e) { return ''; }
   }
-  /* ---------- 22.10: прочность снаряжения (legionary/durability.js). dur — 1…100 (нет — целая). 23.10: дойдёт до 0 при гибели — вещь
-     исчезнет навсегда; low — прочность ≤ 30%: красный значок и предупреждение везде ---------- */
-  const REP0 = { ...GD.repair }, RARI = GD.RARITIES;   // таблица починки по умолчанию (пока комната не прислала свою) - durability.js
+  
+
+  const REP0 = { ...GD.repair }, RARI = GD.RARITIES;
   const REP = () => ({ ...REP0, ...((ME && ME.ench && ME.ench.rep) || {}) });
-  function repPrice(it) {   // как repairPrice в durability.js; итог считает игра
+  function repPrice(it) {
     if (!it || it.dur == null) return 0; const R = REP(), lost = 100 - Math.max(0, Math.min(100, +it.dur));
     return Math.max(Math.round(R.min), Math.round((R.base[Math.max(0, RARI.indexOf(it.rarity))] || 60) * (1 + (+it.en || 0) * R.enPct / 100) * lost / 100));
   }
@@ -1296,7 +1296,7 @@
     const br = bad.filter(lowD).length, sum = bad.reduce((a, x) => a + repPrice(x), 0);
     return `<div class="repl${br ? ' br' : ''}" role="note"><span>${br ? `<b>⚠ Почти сломано (≤${REP().low}%): ${br} — дойдёт до 0, исчезнет навсегда</b>` : ''}${br && bad.length > br ? ' · ' : ''}${bad.length > br ? `повреждено: ${bad.length - br}` : ''}</span><button type="button" class="btn ghost" data-repall${h.busy || +h.debt > 0 || (+h.money || 0) < Math.min(...bad.map(repPrice)) ? ' disabled' : ''}>${ico('hammer')}Починить всё — ${money(sum)}</button></div>`;
   }
-  // у наковальни в «Городе» — для всех (даже пока заточка закрыта): что повреждено и «починить»
+
   function repBlockHtml(h) {
     const bad = h.items.filter((x) => x.wearable && x.dur != null).sort((a, b) => (b.on - a.on) || (a.dur - b.dur));
     if (!bad.length || REP().on === false) return '<p class="note">Кузнец чинит снаряжение, испорченное при гибели. Сейчас у тебя всё целое.</p>';
@@ -1306,12 +1306,12 @@
     el.querySelectorAll('[data-repair]').forEach((b) => b.onclick = () => act('/api/repair', { uid: b.dataset.repair }, 'Кузнец починил', b));
     el.querySelectorAll('[data-repall]').forEach((b) => b.onclick = () => act('/api/repair', { all: true }, 'Кузнец починил', b));
   }
-  /* 22.10: тело карточки вещи — характеристики (с подсказкой по нажатию и сравнением с надетым), эффект, описание, аура легендарки,
-     тип брони, класс оружия, заточка и её прибавки, пометка «куплено за баллы» (pts), прочность. Одно на окно персонажа и аукцион (auction.js зовёт через CX.itemBody),
-     чтобы вещь везде выглядела одинаково. Новые характеристики — только если открыты герою (h.xs), как везде на сайте.
-     o: { bonus — таблица прибавок заточки (по умолчанию — Кузни), cls — всегда писать класс оружия, dur — целой вещи писать «прочность 100%»,
-          verdict — итог сравнения «в целом лучше / слабее» по весам сумки (аукцион, PR #37) }.
-     Прочность — durLine (death-rework; 23.10: ≤30% — предупреждение «исчезнет навсегда») */
+  
+
+
+
+
+
   function itemBody(it, h, o = {}) {
     const dv = deltas(it, h), eff = effText(it);
     const roles = (ME && ME.roles) || {};
@@ -1326,13 +1326,13 @@
       gear: gearLine(it, h),
       role: (roleChange ? `<p class="d-role">С этим оружием станешь: <b>${esc(roleChange)}</b></p>` : o.cls && it.slot === 'weapon' && it.role ? `<p class="d-role">Оружие класса: <b>${esc(roleOf(it.role, roles[it.role]))}</b></p>` : '')
         + (it.slot !== 'weapon' && it.role ? `<p class="d-role">Вещь класса <b>${esc(roleOf(it.role, roles[it.role]))}</b>: бонус к навыкам — только герою этого класса${it.role === h.role ? ' (твой класс)' : ''}</p>` : ''),
-      // 29.10: заточка растит только характеристики самой вещи (боевые - на четверть); «боевые (крит, уклонение…)» читалось как прибавка ко всем статам героя
+
       en: it.en > 0 ? (() => { const xs = dv.rows.filter((r) => XST[r.k] && r.v > 0).map((r) => stLabel(r.k).toLowerCase()); return `<p class="d-en">${ico('hammer')}Заточка +${it.en}: характеристики вещи +${b}%${xs.length ? `, ${esc(xs.join(', '))} +${String(bx).replace('.', ',')}%` : ''}</p>`; })() : '',
       pts: it.pts ? '<p class="d-pts">Куплено за баллы канала — лавка Ярмарки такую вещь не берёт</p>' : '',
       dur: `${durLine(it)}` + (it.dur == null && o.dur && (it.wearable || SLOTS.includes(it.slot)) ? '<p class="d-dur ok">Прочность 100% — целая</p>' : ''),
     };
-    // 23.10 (просьба стримера): подсказка-карточка (o.tip) — главное сверху: характеристики (со сравнением), сразу за ними эффект, аура, заточка;
-    // всё остальное — описание, сравнение с надетым, класс, прочность, история — ниже, мелко и приглушённо (.d-q)
+
+
     if (o.tip) { const q = P.lore + P.cmp + P.gear + P.role + P.pts + P.dur; return P.st + P.eff + P.au + P.en + (q ? `<div class="d-q">${q}</div>` : ''); }
     return [P.st, P.eff, P.lore, P.au, P.cmp, P.gear, P.role, P.en, P.pts, P.dur].join('');
   }
@@ -1340,9 +1340,9 @@
     const dv = deltas(it, h);
     const act = h.ghost ? `<p class="note">${ico('ghost')}Призрак не переодевается — дождись воскрешения.</p>`
       : it.wearable && h.busy ? `<p class="note busyn">⚔ ${BUSY_NOTE}.</p>`
-      : it.id === 'metamorph_seal' && ME && ME.seal ? `<button type="button" class="btn primary wide" data-seal="${esc(it.uids[0])}">Применить печать</button><p class="note relicn">✦ Выбери стиль героя: печать сгорит, у героя будет свой стиль - смена стиля канала его не тронет.</p>`   // 26.10: новинка «seal»
+      : it.id === 'metamorph_seal' && ME && ME.seal ? `<button type="button" class="btn primary wide" data-seal="${esc(it.uids[0])}">Применить печать</button><p class="note relicn">✦ Выбери стиль героя: печать сгорит, у героя будет свой стиль - смена стиля канала его не тронет.</p>`
       : it.relic || it.slot === 'relic' ? `<p class="note relicn">✦ Использовать пока нельзя — печать хранится в сумке.</p>`
-      : it.mat === 'ore' ? `<p class="note use"><span>${esc(oreQty(it.q))} — добыто в шахте (100 осколков — 1 шт.). Продать — скупщику Грому в шахте: окно у прилавка. Хранить — на складе в «Городе».</span></p>`   // 26.10: руда шахты
+      : it.mat === 'ore' ? `<p class="note use"><span>${esc(oreQty(it.q))} — добыто в шахте (100 осколков — 1 шт.). Продать — скупщику Грому в шахте: окно у прилавка. Хранить — на складе в «Городе».</span></p>`
       : it.slot === 'material' ? `<p class="note use"><span>Материал заточки. Выбери оружие или снаряжение и нажми «Заточка» — или на стриме в Кузне: <b class="cmd">точить 3 ${it.mat === 'seal' ? 'печать' : it.mat === 'star' ? 'звезда' : 'сфера'}</b>${it.mat === 'seal' ? `<br>Гарантирует успех до +${+it.seal || 5}. ${EN().craftN} печати ${+it.seal || 5} куются в печать ${(+it.seal || 5) + 1} — в окне заточки.` : ''}</span></p>`
       : edible(it) ? `<button type="button" class="btn primary wide" data-use="${esc(it.uids[0])}"${eatCd(it, h) ? ' disabled' : ''}>${eatVerb(it)}</button><p class="note use">` + `<span>${useCmd(it) ? `Или на стриме: <b class="cmd">${useCmd(it)}</b>` : ''}${eatCd(it, h) ? `<br><span class="eatcd-t">⏳ Еда и зелья будут готовы через <b data-eat="${cdUntil(it, h)}">${mmss(cdUntil(it, h))}</b></span>` : ''}</span></p>`
       : !it.wearable ? `<p class="note use"><span>${useCmd(it) ? `На стриме напиши в чат: <b class="cmd">${useCmd(it)}</b>` : 'Используется на стриме командой в чате.'}${eatCd(it, h) ? `<br><span class="eatcd-t">⏳ ${it.effect && it.effect.revive ? 'Свиток можно будет прочитать' : 'Еда и зелья будут готовы'} через <b data-eat="${cdUntil(it, h)}">${mmss(cdUntil(it, h))}</b></span>` : (it.slot === 'food' || it.slot === 'potion') ? '<br><span class="muted">Съел или выпил — вся еда и зелья ждут 3 минуты.</span>' : it.effect && it.effect.revive ? '<br><span class="muted">Свиток возрождения — не чаще раза в час.</span>' : ''}</span></p>`
@@ -1356,25 +1356,25 @@
       <div class="d-a">${act}${repBtn(it, h)}${canEnch(it) && !h.ghost && h.ef ? `<button type="button" class="btn ghost wide fg-btn" data-forge="${esc(it.uids[0])}">${ico('hammer')}${it.en >= EN().max ? 'Заточка — предел' : 'Заточка'}</button>` : ''}</div>`;
   }
 
-  // 20.10: что нужно «Навыкам» (skills.js) от сайта
+
   const SKX = { api: (p, b) => api(p, b), act: (p, b, ok, btn) => act(p, b, ok, btn), esc, plural, money: (n, r) => money(n, r), roleOf: (id, fb) => roleOf(id, fb), rerender: () => { last = ''; renderHero(); } };
-  // 24.10 (баг тестера): одна запись денег везде — крупные единицы слева, через пробел: «10 серебряных рыбок 5 чешуек».
-  // 25.10: сама запись — packages/site-ui (money / moneyText / lack / bal); здесь — только монеты стиля канала
+
+
   const coins = () => part('coins');
   function money(n, ref) { return SU.money(n, ref, coins); }
   const moneyText = (n, ref) => SU.moneyText(n, ref, coins);
-  // «У тебя: … / Не хватает: …» — две строки обычным текстом (лавки, Кузня, склад, аукцион)
+
   const lackHtml = (price, have, cls = '') => SU.lack(price, have, cls, coins);
-  // 24.10: кошелёк рядом с ценой: хватает — «У тебя: …», не хватает — «У тебя / Не хватает»
+
   const balHtml = (price, have, cls = '') => SU.bal(price, have, cls, coins);
-  // сколько осталось до воскрешения: «3 д 04:12:55»
+
   function left(t) { const ms = (+t || 0) - now(); if (!t) return 'скоро'; if (ms <= 0) return 'вот-вот…'; const d = Math.floor(ms / 864e5), hh = Math.floor((ms % 864e5) / 36e5), m = Math.floor((ms % 36e5) / 6e4), sec = Math.floor((ms % 6e4) / 1e3), p = (x) => String(x).padStart(2, '0'); return (d ? d + ' д ' : '') + `${p(hh)}:${p(m)}:${p(sec)}`; }
   setInterval(() => { if (document.hidden) return; $$('.cd[data-until]').forEach((e) => { const t = left(+e.dataset.until); if (e.textContent !== t) e.textContent = t; if (+e.dataset.until && +e.dataset.until < now() - 15000 && !left.reload) { left.reload = true; last = ''; load().then(() => { left.reload = false; }); } }); }, 1000);
 
   function ctxClose() { const m = document.querySelector('.ctxm'); if (m) m.remove(); document.removeEventListener('pointerdown', ctxOut, true); window.removeEventListener('scroll', ctxClose, true); document.removeEventListener('keydown', ctxKey, true); }
   function ctxOut(e) { if (!e.target.closest('.ctxm')) ctxClose(); }
   function ctxKey(e) { if (e.key === 'Escape') ctxClose(); }
-  function ctxMenu(x, y, it, h, more) {   // 28.10: more.discard - пункт «Выбросить» (сумка вкладки «Поход»)
+  function ctxMenu(x, y, it, h, more) {
     ctxClose();
     const uid = it.uids ? it.uids[0] : it.uid, rows = [], cur = it.slot ? equipped(h, it.slot) : null;
     if (h.ghost) rows.push({ t: 'Призрак — ничего нельзя', off: true });
@@ -1383,10 +1383,10 @@
       else rows.push(h.busy ? { t: (cur ? 'Заменить' : 'Надеть') + ' — в бою нельзя', off: true } : { t: cur ? `Заменить «${cur.name}»` : 'Надеть', main: true, fn: () => act('/api/equip', { uid }, word('on', 'Надето')) });
     } else if (edible(it)) rows.push(eatCd(it, h) ? { t: `${eatVerb(it)} — ещё не готово (${mmss(cdUntil(it, h))})`, off: true } : { t: eatVerb(it), main: true, fn: () => act('/api/use', { uid }, eatVerb(it) === 'Выпить' ? 'Выпито' : 'Съедено') });
     else if (it.effect && it.effect.revive) rows.push({ t: 'Свиток — командой на стриме', off: true });
-    else if (it.id === 'metamorph_seal' && ME && ME.seal) rows.push(h.busy ? { t: 'Применить печать - в бою нельзя', off: true } : { t: 'Применить печать', main: true, fn: () => sealPick(uid) });   // 26.10: новинка «seal»
+    else if (it.id === 'metamorph_seal' && ME && ME.seal) rows.push(h.busy ? { t: 'Применить печать - в бою нельзя', off: true } : { t: 'Применить печать', main: true, fn: () => sealPick(uid) });
     else if (it.relic || it.slot === 'relic') rows.push({ t: 'Пока недоступно', off: true });
     if (canEnch(it) && !h.ghost && h.ef) rows.push({ t: 'Заточка', fn: () => forgeOpen(uid) });
-    if (it.wearable && it.dur != null) rows.push(h.busy ? { t: 'Починить — в бою нельзя', off: true } : { t: `Починить (${repPrice(it)} бронзы)`, fn: () => act('/api/repair', { uid }, 'Кузнец починил') });   // 22.10
+    if (it.wearable && it.dur != null) rows.push(h.busy ? { t: 'Починить — в бою нельзя', off: true } : { t: `Починить (${repPrice(it)} бронзы)`, fn: () => act('/api/repair', { uid }, 'Кузнец починил') });
     if (more && more.discard && !it.on) { const why = GD.discardWhy ? GD.discardWhy(it) : ''; rows.push(why ? { t: 'Выбросить - ' + why, off: true } : { t: '🗑 Выбросить…', fn: () => more.discard(uid) }); }
     rows.push({ t: 'Подробнее', fn: () => { sel = uid; sheet = !mqWide.matches; renderHero(); } });
     const m = document.createElement('div'); m.className = 'ctxm'; m.setAttribute('role', 'menu');
@@ -1402,29 +1402,29 @@
     if (busy) return; busy = true;
     if (btn) { btn.disabled = true; btn.dataset.label = btn.textContent; btn.textContent = 'Секунду…'; }
     const r = await api(p, body); busy = false;
-    // 30.10: ответ - { ok, error } (окно Склада показывает причину у себя); раньше ничего не возвращал
+
     if (!r.ok) { if (btn) { btn.disabled = false; btn.textContent = btn.dataset.label; } toast(r.error || 'Не получилось', true); return { ok: false, error: r.error || 'Не получилось' }; }
-    // съел одну из стопки — карточка остаётся на той же стопке (а не пропадает, будто съедена вся)
+
     if (p === '/api/use' && r.hero) { const was = TIPS[body.uid] || (ME.hero && ME.hero.items.find((x) => x.uid === body.uid)); const next = was && r.hero.items.find((x) => x.id === was.id && !x.on); sel = next ? next.uid : null; if (!next) sheet = false; }
-    if (r.hero) ME.hero = r.hero;   // 24.10: ответ без героя не стирает героя (иначе вкладка падала, а кнопка оставалась «Секунду…»)
+    if (r.hero) ME.hero = r.hero;
     last = ''; renderHero(); toast(ok);
-    // 19.10: вместо мигающей плашки — уведомление, и только если игра стримера долго не подтверждает (комната не в сети)
+
     clearTimeout(act.pt); if (r.hero && r.hero.pending) act.pt = setTimeout(() => { if (ME && ME.hero && ME.hero.pending) toast('Сохранено — применится, когда игра стримера будет в сети'); }, 6000);    return { ok: true };
   }
 
-  /* ---------- 20.10: Кузня — заточка вещи (+1…+15), ковка Печати Ауруса, звёзды и сферы за монеты ----------
-     Шанс и цену показываем по таблицам игры (ME.ench — их шлёт игра стримера); бросок и списание — в игре (legionary/enchant.js),
-     итог приходит в results[].x. Окно поверх страницы: Esc и крестик закрывают, фокус возвращается на кнопку. Анимация — transform/opacity */
-  const ENCH0 = { on: true, ...GD.enchant };   // таблицы заточки по умолчанию (пока комната не прислала свои) - enchant.js
+  
+
+
+  const ENCH0 = { on: true, ...GD.enchant };
   const EN = () => ({ ...ENCH0, ...((ME && ME.ench) || {}) });
   const canEnch = (it) => !!(it && it.wearable && (EN().slots || ENCH0.slots).includes(it.slot));
   const fmtPct = (x) => String(Math.round((+x || 0) * 10) / 10).replace('.', ',') + '%';
   const FG = { uid: null, way: 'plain', wait: null, sure: 0, res: null, el: null, back: null, gone: null, busyAt: 0, waitAt: 0, queued: false };
-  // 25.10 (баг-репорты «зависло "Кузнец работает…"», «занято предыдущим, но ничего не точится»): сверка с очередью шлюза (ME.fq):
-  // итог потерялся (заказа в очереди нет, итога не пришло) - снимаем ожидание; после перезагрузки страницы заказ ещё в очереди - показываем его;
-  // заказ ждёт игру стримера (комнате не отдан) - можно отменить
+
+
+
   function fgSync() {
-    const q = ME && Array.isArray(ME.fq) ? ME.fq : null; if (!q) return;   // старый шлюз - как раньше
+    const q = ME && Array.isArray(ME.fq) ? ME.fq : null; if (!q) return;
     if (FG.wait && !q.some((x) => x.id === FG.wait) && !shownRes.has(FG.wait) && Date.now() - FG.waitAt > 15000) {
       FG.wait = null; FG.queued = false; FG.res = { cls: 'err', t: 'Итог не дошёл до страницы - кузнец уже закончил: посмотри вещь в сумке' };
       try { if (window.LGCity && window.LGCity.forgeCancel) window.LGCity.forgeCancel(); } catch {}
@@ -1444,7 +1444,7 @@
     for (const it of (h && h.items) || []) { if (it.mat === 'star') m.star++; else if (it.mat === 'sphere') m.sphere++; else if (it.mat === 'seal' && it.seal) m.seals[it.seal] = (m.seals[it.seal] || 0) + 1; }
     return m;
   }
-  // что будет при заточке этим способом (как quote() в игре)
+
   function enchQuote(it, h, way) {
     const E = EN(), en = +it.en || 0, tg = en + 1, m = matsOf(h);
     const q = { en, tg, way, price: Math.max(E.priceMin, Math.round((+it.v || 0) * (E.price[tg] || 0) / 100)), chance: 0, fail: 'break', err: '' };
@@ -1462,10 +1462,10 @@
     if (!q.err && (+h.money || 0) < q.price) { q.err = 'Не хватает монет'; q.lack = 1; }
     return q;
   }
-  const enchStatsN = (base, en, bonus) => { const b = en > 0 ? (bonus || EN().bonus)[Math.min(15, en)] || 0 : 0, o = {}; for (const [k, v] of Object.entries(base || {})) o[k] = b && v > 0 ? Math.round(v * (1 + (XST[k] ? b / 4 : b) / 100)) : v; return o; };   // 20.10: крит и т. п. — вчетверо медленнее
-  // название в стиле сайта + «+N» (вещь из нового ответа сервера ещё не переименована renderHero)
+  const enchStatsN = (base, en, bonus) => { const b = en > 0 ? (bonus || EN().bonus)[Math.min(15, en)] || 0 : 0, o = {}; for (const [k, v] of Object.entries(base || {})) o[k] = b && v > 0 ? Math.round(v * (1 + (XST[k] ? b / 4 : b) / 100)) : v; return o; };
+
   const fgName = (it) => { const n = names().items, own = n && n[it.id] && n[it.id].name; return (own || it.baseName || it.srvName || String(it.name || '').replace(/ \+\d+$/, '')) + (it.en > 0 ? ' +' + it.en : ''); };
-  // 20.10: host — окно внутри панели Кузни «Города» (без затемнения страницы и ловушки фокуса)
+
   function forgeOpen(uid, host) {
     if (!ME || !ME.hero) return;
     ctxClose(); FG.uid = uid; FG.res = null; FG.sure = 0; FG.gone = null;
@@ -1491,7 +1491,7 @@
   }
   function fgKey(e) {
     if (e.key === 'Escape') { e.stopPropagation(); forgeClose(); return; }
-    if (e.key === 'Tab' && FG.el) {   // фокус не уходит из окна
+    if (e.key === 'Tab' && FG.el) {
       const f = $$('button:not([disabled]), summary', FG.el); if (!f.length) return;
       if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length - 1].focus(); } else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
     }
@@ -1502,7 +1502,7 @@
     if (!FG.el) return;
     const h = ME && ME.hero; if (!h) return forgeClose();
     const it0 = h.items.find((x) => x.uid === FG.uid);
-    // вещь сломалась — окно показывает итог с прежней вещью, пока его не закроют
+
     const it = it0 || FG.gone; if (!it) return forgeClose();
     if (it0) FG.gone = { ...it0 };
     const E = EN(), m = matsOf(h), q = enchQuote(it, h, FG.way), wait = !!FG.wait, broken = !it0;
@@ -1512,7 +1512,7 @@
     const wayLbl = (k, l) => k === 'star' ? `${l} <small>×${m.star}</small>` : k === 'sphere' ? `${l} <small>×${m.sphere}</small>` : k === 'both' ? `${l} <small>${Math.min(m.star, m.sphere) ? '' : '—'}</small>` : k === 'seal' ? `${l} <small>${sealOwn.length ? sealOwn.map((n) => n).join(', ') : '—'}</small>` : l;
     const off = h.ghost ? 'Призрак не может точить' : h.busy ? 'Идёт бой на стриме — точить можно после боя' : !E.on ? 'Заточка выключена' : '';
     const [fc, ft] = FAIL[q.fail] || FAIL.break, danger = q.fail === 'break' && FG.sure > Date.now();
-    const qd = wait && FG.queued ? `<p class="note" role="note">Заказ ждёт игру стримера: кузнец ударит, когда она будет в сети.</p><button type="button" class="btn ghost sm wide" data-fcancel>Отменить заказ</button>` : '';   // 25.10
+    const qd = wait && FG.queued ? `<p class="note" role="note">Заказ ждёт игру стримера: кузнец ударит, когда она будет в сети.</p><button type="button" class="btn ghost sm wide" data-fcancel>Отменить заказ</button>` : '';
     const go = broken ? `<button type="button" class="btn ghost wide" data-fclose>Закрыть</button>`
       : `<button type="button" class="btn primary wide${danger ? ' fg-sure' : ''}" data-fgo${off || q.err || wait ? ' disabled' : ''}>${wait ? 'Кузнец работает…' : danger ? 'Точно? Вещь может сломаться' : q.en >= E.max ? 'Предел заточки' : `${ico('hammer')}Точить до +${q.tg}`}</button>`;
     const R = FG.res;
@@ -1546,17 +1546,17 @@
           ${crafts.map((n) => `<button type="button" class="btn ghost sm wide" data-craft="${n}"${wait || h.ghost || (+h.money || 0) < E.craftCost * Math.max(1, n - E.sealMin) ? ' disabled' : ''}><span>Сковать Печать Ауруса ${n} · ${E.craftN} × печать ${n - 1} + ${money(E.craftCost * Math.max(1, n - E.sealMin))}</span></button>`).join('')}
         </details>
       </section>`;
-    if (R && R.anim) R.anim = false;   // анимация — один раз (следующая перерисовка — без неё)
+    if (R && R.anim) R.anim = false;
   }
-  // 22.10: воровская наценка — много раз ловили на краже: торговцы (и лавка сайта) продают дороже; покупка — вторым нажатием
+
   const thK = (h) => (h && +h.thK > 1 ? +h.thK : 1);
   const thPrice = (h, base) => Math.round((+base || 0) * thK(h));
   const thTxt = (k) => '×' + String(k).replace('.', ',');
   const thNote = (h) => (thK(h) > 1 ? `<p class="note thiefl" role="note">Торговцы тебя запомнили: поймали на краже ${h.thN || ''} раз — для тебя цены ${thTxt(thK(h))}.${h.thU ? ` Одна поимка забудется ${new Date(h.thU).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}.` : ''}</p>` : '');
-  // первое нажатие — показать цену для вора и ждать второго (4 с); true — можно покупать (наценки нет или подтвердили)
+
   function thArm(btn, h, base) {
     const k = thK(h); if (k <= 1) return true;
-    // 25.10: packages/site-ui (once - после подтверждения надпись не возвращаем: кнопку перерисует покупка)
+
     return SU.confirmTwice(btn, { html: `<span>Для тебя за воровство цена ${thTxt(k)}: ${money(thPrice(h, base))} — нажми ещё раз</span>`, cls: 'arm', once: true });
   }
   window.LGThief = { k: thK, price: thPrice, note: thNote, arm: thArm };
@@ -1564,11 +1564,11 @@
     FG.res = null; const r = await api(path, body);
     if (!r.ok) { if (Array.isArray(r.fq) && ME) { ME.fq = r.fq; fgSync(); } FG.res = { cls: 'err', t: r.error || 'Не получилось' }; fgRender(); return null; }
     FG.wait = r.id; FG.waitAt = Date.now(); if (r.hero) { ME.hero = r.hero; last = ''; renderHero(); }
-    // 20.10: «Город» — кузнец начинает бить (2–5 ударов по уровню), итог покажет forgeDone
+
     if (path === '/api/enchant' && window.LGCity) { const it = ME.hero && ME.hero.items.find((x) => x.uid === body.uid); try { window.LGCity.forgeStart(it, ((it && it.en) || 0) + 1); } catch {} }
     fgRender();
     const id = r.id; setTimeout(() => { if (FG.wait === id) toast('Сохранено — кузнец ударит, когда игра стримера будет в сети'); }, 9000);
-    // 25.10: итог так и не пришёл (живой канал оборвался и т. п.) - через 30 с спрашиваем заново (и ещё раз через минуту)
+
     for (const ms of [30000, 90000]) setTimeout(() => { if (FG.wait === id) load().catch(() => {}); }, ms);
     return r;
   }
@@ -1582,13 +1582,13 @@
     if (t.hasAttribute('data-fgo')) {
       const h = ME.hero, it = h && h.items.find((x) => x.uid === FG.uid); if (!it || FG.wait) return;
       const q = enchQuote(it, h, FG.way); if (q.err) return;
-      // риск сломать вещь — второе нажатие подтверждает (4 с)
+
       if (q.fail === 'break' && !(FG.sure > Date.now())) { FG.sure = Date.now() + 4000; fgRender(); const b = FG.el.querySelector('[data-fgo]'); if (b) b.focus(); setTimeout(() => { if (FG.sure && FG.sure <= Date.now()) { FG.sure = 0; fgRender(); } }, 4100); return; }
       FG.sure = 0;
       fgPost('/api/enchant', { uid: it.uid, way: FG.way, ...(q.seal ? { seal: q.seal } : {}) });
     }
   }
-  // 22.10: итог склада и аукциона (куда ушла вещь) и сообщения без действия — всплывающим
+
   function storeNote(r) {
     const x = r.x || {};
     if (!r.ok) { toast(r.error || 'Не вышло', true); return; }
@@ -1600,27 +1600,27 @@
       return;
     }
     if (x.op === 'stTake' && x.left) toast(`Забрано ${x.n}, ещё ${x.left} осталось на складе — сумка полна`);
-    // 23.10: «Положить всё» / «Взять всё» — итог строкой в окне Склада и всплывающим; «Разложить» — тихо (видно по ячейкам)
+
     if (x.op === 'stPutAll' || x.op === 'stTakeAll') { const t = `Перенесено ${x.n || 0}${x.left ? `, не влезло ${x.left}` : ''}`; toast(t); try { if (window.LGCity && window.LGCity.storeRes) window.LGCity.storeRes(x); } catch {} }
   }
-  // итог из игры (results[].x): заточка — в окне с анимацией; ковка и покупка — уведомлением
+
   function forgeDone(r) {
     const mine = r.id === FG.wait; if (mine) FG.wait = null;
     const x = r.x || {};
-    // 29.10: покупка в лавках «Города» (cityBuy) - «Куплено» уже сказал city.js; без этой ветки успех шёл в итог заточки: «Кузня: id - Не вышло - вещь цела»
+
     if (r.ok && x.op === 'cityBuy') return;
     if (!r.ok) { if (mine && FG.el) FG.res = { cls: 'err', t: r.error || 'Не вышло' }; else toast('Кузня: ' + (r.error || 'не вышло'), true); return; }
     if (x.op === 'craft') { toast(`Скована Печать Ауруса ${x.lvl}`); return; }
     if (x.op === 'buymat') { toast(x.mat === 'star' ? 'Куплена Счастливая звезда' : 'Куплена Сфера сохранения'); return; }
     const res = x.out === 'up' ? { cls: 'ok', big: `+${x.to}`, t: 'Заточка удалась!' } : x.out === 'broken' ? { cls: 'bad', big: 'Сломалось', t: `«${x.item}» не выдержала заточки на +${x.target}` }
       : x.out === 'down' ? { cls: 'save', big: x.to ? `+${x.to}` : '+0', t: 'Не вышло — сфера сберегла вещь, заточка −1' } : { cls: 'save', big: `+${x.from}`, t: 'Не вышло — вещь цела' };
-    if (window.LGCity && (x.op === 'enchant' || x.out)) { try { window.LGCity.forgeFx(x); } catch {} }   // 20.10: сцена Кузни в «Городе»
+    if (window.LGCity && (x.op === 'enchant' || x.out)) { try { window.LGCity.forgeFx(x); } catch {} }
     if (mine && FG.el && FG.uid === x.uid) { FG.res = { ...res, anim: !(reduceMQ && reduceMQ.matches) }; return; }
     toast(`Кузня: ${x.item}${x.from ? ' +' + x.from : ''} — ${res.t}`, x.out === 'broken');
   }
 
-  /* ---------- 18.10: облик (гардероб): купленные элементы стиля по полям, «как по нику», в бою — нельзя ---------- */
-  // человечек — с образом из гардероба (с ещё не применённым выбором), иначе — как пришёл с сервера
+   
+
   const heroLook = (h) => (h && h.wardrobe ? { ...h, look: h.wardrobe.cur || null } : h);
   const LOOK_FIELDS = [['shape', 'Форма', 'shapes'], ['color', 'Цвет', 'colors'], ['color2', 'Второй цвет', 'colors'], ['eyes', 'Глаза', 'eyes'], ['mouth', 'Рот', 'mouths'], ['blush', 'Румянец', null], ['hat', 'Шапка', 'hats'], ['aura', 'Аура', 'auras'], ['acc', 'Аксессуары', 'acc'], ['accColor', 'Цвет аксессуаров', 'colors'], ['capeColor', 'Цвет плаща', 'colors']];
   const sameV = (a, b) => String(a).replace(/^#/, '').toLowerCase() === String(b).replace(/^#/, '').toLowerCase();
@@ -1628,12 +1628,12 @@
     try { const C = D().CATALOG || {}, list = C[cat] || [], hex = String(v).replace(/^#?/, '#').toLowerCase(); const f = list.find(([id]) => String(id).toLowerCase() === String(v).toLowerCase() || String(id).toLowerCase() === hex); if (f) return f[1]; } catch {}
     return v === true || v === 'true' ? 'Есть' : v === false || v === 'false' ? 'Нет' : String(v);
   }
-  // 19.10: образец цвета — и hex из каталога, и hsl «по нику»
+
   const swatch = (v) => (/^#?[0-9a-f]{3,8}$/i.test(v) ? String(v).replace(/^#?/, '#') : /^hsl\([\d\s.,%]+\)$/i.test(v) ? String(v) : '#888');
-  /* 20.10: показываем только то, что реально меняет рисунок. Цвет плаща — только с надетым плащом, цвет аксессуаров —
-     с аксессуаром, который красится, «второй цвет» — только если его что-то носит (у котика это шапка: кепка, бантик, берет…;
-     с банданой и одними плащами он не виден нигде — а кнопка «Второй цвет: Синий» была). Проверка — без знаний о стилях:
-     рисуем человечка с двумя пробными цветами; рисунок не изменился — поле ни на что не влияет. Кэш — по облику и нику */
+  
+
+
+
   const LOOK_PROBE = new Map();
   function lookProbe(login, cur) {
     const d = D(); if (!d || !d.jDoodle) return null;
@@ -1646,8 +1646,8 @@
     const noAccCol = { ...base }; delete noAccCol.accColor;
     const r = {
       color2: uses('color2', base), accColor: uses('accColor', base), capeColor: uses('capeColor', base),
-      c2hat: uses('color2', { ...noAccCol, acc: [] }),   // второй цвет красит шапку
-      c2acc: !base.accColor && uses('color2', { ...noAccCol, hat: 'none' }),   // …и аксессуары, пока свой цвет аксессуаров не выбран
+      c2hat: uses('color2', { ...noAccCol, acc: [] }),
+      c2acc: !base.accColor && uses('color2', { ...noAccCol, hat: 'none' }),
     };
     if (LOOK_PROBE.size > 50) LOOK_PROBE.clear();
     LOOK_PROBE.set(key, r);
@@ -1657,27 +1657,27 @@
     const W0 = h.wardrobe || { cur: {}, own: {} }, cur = W0.cur || {}, own = W0.own || {};
     const off = h.busy;
     const accOn = Array.isArray(cur.acc) ? cur.acc : [];
-    // 19.10: первая кнопка — НАЗВАНИЕ того, что даёт ник (в стиле сайта), с пометкой «по нику»; нет сборки — как раньше
+
     let DEF = null; try { DEF = D() && D().defaultsFor ? D().defaultsFor(String(h.login || '')) : null; } catch {}
     const same = (f, a, b) => { try { if (D() && D().sameLook) return D().sameLook(f, a, b); } catch {} return a != null && b != null && sameV(a, b); };
     const PR = lookProbe(h.login || '', cur);
     const label = (f, l) => (f !== 'color2' || !PR ? l : PR.c2hat ? (PR.c2acc ? 'Цвет шапки и аксессуаров' : 'Цвет шапки') : PR.c2acc ? 'Цвет аксессуаров' : 'Цвет деталей');
-    const fixed = [];   // 20.10: выбирать нечего (только «по нику») — не отдельной строкой, а одной свёрнутой сводкой
-    // 20.10: все части облика видны всегда — купленного нет, значит пока только «по нику» (раньше без покупок показывалась одна шапка)
+    const fixed = [];
+
     const rows = LOOK_FIELDS.map(([f, label0, cat]) => {
-      if (PR && (f === 'color2' || f === 'accColor' || f === 'capeColor') && !PR[f]) return '';   // на рисунке не видно — не показываем
+      if (PR && (f === 'color2' || f === 'accColor' || f === 'capeColor') && !PR[f]) return '';
       const lbl = label(f, label0);
       const ownF = Array.isArray(own[f]) ? own[f] : [];
       const def = DEF && DEF[f];
       const isOn = (v) => (f === 'acc' ? accOn.some((x) => sameV(x, v)) : f === 'blush' ? String(!!cur.blush) === String(v) && cur.blush != null : cur[f] != null && sameV(cur[f], v));
-      // надето то же, что даёт ник (купленное «Без шапки» у ника без шапки) — горит кнопка «по нику»: она за них обеих
+
       const byNick = f === 'acc' ? !accOn.length : cur[f] == null || (!!def && same(f, cur[f], def.v));
-      // купленное, совпадающее с «по нику», отдельной кнопкой не показываем (иначе две одинаковые)
+
       const list = def ? ownF.filter((v) => !same(f, v, def.v)) : ownF;
-      // value — что уйдёт в wear: null — «как по нику»; аксессуар — добавить, а уже надетый — снять (остальные — списком)
+
       const valOf = (v) => (f === 'acc' && isOn(v) ? accOn.filter((x) => !sameV(x, v)) : f === 'blush' ? String(v) : v);
       const isColor = /color/i.test(f);
-      // 19.10: вариант всего один (только «по нику») — выбирать нечего: в сводку «по нику»
+
       if (!list.length && byNick) { fixed.push(`<span class="lk-fx">${isColor && def ? `<i class="sw" style="background:${esc(swatch(def.v))}"></i>` : ''}<b>${esc(lbl)}</b> ${esc(def ? def.name : 'как по нику')}</span>`); return ''; }
       const chip = (v, txt, on, sw, hint) => `<button type="button" data-wear="${esc(f)}" data-v="${esc(JSON.stringify(v))}" aria-pressed="${on}"${hint ? ` class="lk-nick" title="${esc(hint)}"` : ''}${off ? ' disabled' : ''}>${isColor && sw ? `<i class="sw" style="background:${esc(swatch(sw))}"></i>` : ''}${esc(txt)}${hint ? '<small>по нику</small>' : ''}</button>`;
       const first = def ? chip(null, def.name, byNick, def.v, 'Даёт ник — бесплатно, всегда доступно') : chip(null, 'как по нику', byNick);
@@ -1691,32 +1691,32 @@
         <p class="note lk-tip">Новое покупается в Шатре на Ярмарке; надевать можно в любой момент, кроме боя.</p></div>
     </div>`;
   }
-  /* ---------- 01.11 (стример, эскиз): «Облик» конфигуратором - новинка lookConfig (флаг lc у героя, site.lookConfigPublic) ----------
-     Одна карточка: в центре человечек (тот же рисунок, что в прежнем «Облике»), вокруг - строки «‹ Глаза ›» с текущим вариантом под названием.
-     Стрелки листают только то, что у игрока есть: «по нику» (бесплатно, всегда) + купленное (hero.wardrobe.own) - как кнопки прежнего вида.
-     Шапка - над головой, лицо (глаза, рот, румянец) и аура - справа от головы, форма и цвета - под ником; на узкой карточке (телефон) -
-     всё сеткой под человечком (container query, ничего не наезжает на рисунок). Аксессуаров можно несколько - они кнопками.
-     Предпросмотр: стрелка сразу перерисовывает человечка (только он, и только при смене), надевается тем же op 'wear' после паузы
-     LC_WAIT мс без нажатий - частые нажатия склеиваются в один запрос на поле. Ограничения - прежние (бой, только своё - проверяет сервер). */
+  
+
+
+
+
+
+
   const LC_WAIT = 650;
-  // где строка стоит: top - над головой, side - справа от головы, bot - под ником
+
   const LC_AT = { hat: 'top', eyes: 'side', mouth: 'side', blush: 'side', aura: 'side', shape: 'bot', color: 'bot', color2: 'bot', accColor: 'bot', capeColor: 'bot' };
-  // эти части видны всегда (как на эскизе), даже если выбрать пока нечего; остальные - только когда есть из чего выбрать
+
   const LC_CORE = new Set(['hat', 'eyes', 'mouth', 'shape', 'color']);
-  // draft - ещё не отправленное: { поле: { send - что уйдёт в wear, look - что надеть на человечка (null - по нику) } }
+
   const LC = { draft: {}, t: 0, flying: false, focus: null, focusAt: 0 };
   const lcOn = (h) => !!(h && h.lc && h.wardrobe);
-  // облик с предпросмотром: надетое (с ещё не применённым на сервере) + выбранное стрелками
+
   function lcLook(h) {
     const lk = { ...(((h && h.wardrobe) || {}).cur || {}) };
     for (const [f, d] of Object.entries(LC.draft)) { if (d.look == null || (Array.isArray(d.look) && !d.look.length)) delete lk[f]; else lk[f] = d.look; }
     return Object.keys(lk).length ? lk : null;
   }
-  // варианты каждой части: [{ v - значение облика (null - по нику), send - что уйдёт в wear, name, sw - образец цвета, nick }]
+
   function lcModel(h) {
     const W0 = h.wardrobe || { cur: {}, own: {} }, cur0 = W0.cur || {}, own = W0.own || {};
     let DEF = null; try { DEF = D() && D().defaultsFor ? D().defaultsFor(String(h.login || '')) : null; } catch (e) { DEF = null; }
-    const same = (f, a, b) => { try { if (D() && D().sameLook) return D().sameLook(f, a, b); } catch (e) { /* сборки человечков нет - сравниваем сами */ } return a != null && b != null && sameV(a, b); };
+    const same = (f, a, b) => { try { if (D() && D().sameLook) return D().sameLook(f, a, b); } catch (e) {   } return a != null && b != null && sameV(a, b); };
     const PR = lookProbe(h.login || '', cur0);
     const cur = lcLook(h) || {};
     const out = [], rest = [];
@@ -1736,7 +1736,7 @@
       const row = { f, lbl, opts, i, at: LC_AT[f] || 'bot', isColor, curName: i >= 0 ? opts[i].name : cat ? lookName(cat, cv) : lookName(null, cv), curSw: i >= 0 ? opts[i].sw : isColor ? cv : null };
       if (opts.length > 1 || LC_CORE.has(f)) out.push(row); else rest.push(row);
     }
-    // аксессуары: можно несколько - кнопками (надет / снят), как в прежнем виде
+
     const accOwn = Array.isArray(own.acc) ? own.acc : [], accOn = Array.isArray(cur.acc) ? cur.acc : [];
     const acc = accOwn.map((v) => ({ v, name: lookName('acc', v), on: accOn.some((x) => sameV(x, v)) }));
     return { rows: out, rest, acc, accOn };
@@ -1752,7 +1752,7 @@
       <button type="button" class="lc-a" data-lcs="1" aria-label="${esc(r.lbl)}: следующий вариант"${dis}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
     </div>`;
   }
-  // plate - ник, титул и класс героя (та же плашка, что под куклой); в конфигураторе - под человечком, как на эскизе
+
   function lcHtml(h, plate) {
     const M = lcModel(h), off = !!h.busy;
     const at = (k) => M.rows.filter((r) => r.at === k).map((r) => lcRowHtml(r, off)).join('');
@@ -1772,7 +1772,7 @@
       <p class="note lk-tip">Стрелки листают только то, что у тебя есть, - надевается само. Новое покупается в Шатре на Ярмарке; менять можно в любой момент, кроме боя.</p>
     </div>`;
   }
-  // человечек перерисовывается только при смене облика (новый элемент - аура и «дыхание» заводятся заново, старый уходит из LIVE сам)
+
   function lcPaint(card, h) {
     const old = card.querySelector('.lc-fig'); if (!old) return;
     const key = JSON.stringify(lcLook(h));
@@ -1787,7 +1787,7 @@
     const r = lcModel(h).rows.find((x) => x.f === f); if (!r || r.opts.length < 2) return;
     const n = r.opts.length, i = r.i < 0 ? (dir > 0 ? 0 : n - 1) : (r.i + dir + n) % n, o = r.opts[i];
     const was = (((h.wardrobe || {}).cur) || {})[f];
-    // вернулись к тому, что уже надето, - отправлять нечего
+
     const back = o.nick ? was == null : was != null && (f === 'blush' ? String(was) === String(o.v) : sameV(was, o.v));
     if (back) delete LC.draft[f]; else LC.draft[f] = { send: o.send, look: o.v };
     const row = card.querySelector(`.lc-row[data-lc="${CSS.escape(f)}"]`);
@@ -1806,11 +1806,11 @@
     const h = ME && ME.hero; if (!h || h.busy) return;
     const lk = lcLook(h) || {}, on = Array.isArray(lk.acc) ? lk.acc : [];
     const has = on.some((x) => sameV(x, v));
-    // плащ один (как wear() «Костюмерной»): надел обычный - снимается плащ первопроходца, и наоборот
+
     const capes = ['cape', 'pioneer'], other = capes.includes(v) ? capes.filter((x) => x !== v) : [];
     const next = has ? on.filter((x) => !sameV(x, v)) : [...on.filter((x) => !sameV(x, v) && !other.includes(x)), v];
-    // как прежние кнопки: одно нажатие «надеть» - одно значение (сервер добавит к надетым и сам уберёт лишнее сверх предела),
-    // снять или несколько нажатий подряд (склейка) - ровно этот список
+
+
     const single = !has && !LC.draft.acc;
     LC.draft.acc = { send: single ? v : next, look: next };
     card.querySelectorAll('[data-lcacc]').forEach((b) => b.setAttribute('aria-pressed', String(next.some((x) => sameV(x, b.dataset.lcacc)))));
@@ -1819,7 +1819,7 @@
     lcSoon();
   }
   const lcSoon = () => { clearTimeout(LC.t); LC.t = setTimeout(lcFlush, LC_WAIT); };
-  // отправка: по одному запросу на изменённое поле; пока летит - новые нажатия ждут следующего захода
+
   async function lcFlush() {
     if (LC.flying) { lcSoon(); return; }
     const todo = Object.entries(LC.draft).filter(([, d]) => !d.sent);
@@ -1829,7 +1829,7 @@
     for (const [f, d] of todo) {
       d.sent = true;
       const r = await api('/api/wear', { field: f, value: d.send });
-      // за время запроса поле снова листали - его отправит следующий заход
+
       if (LC.draft[f] === d) delete LC.draft[f];
       if (!r || !r.ok) { toast((r && r.error) || 'Не получилось', true); continue; }
       okN++;
@@ -1848,7 +1848,7 @@
       const s = e.target.closest('[data-lcs]'); if (s && !s.disabled) { const row = s.closest('[data-lc]'); if (row) lcStep(card, row.dataset.lc, +s.dataset.lcs); return; }
       const a = e.target.closest('[data-lcacc]'); if (a && !a.disabled) lcAcc(card, a.dataset.lcacc);
     });
-    // стрелки ← → по строке, на которой фокус
+
     card.addEventListener('keydown', (e) => {
       if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
       const row = e.target.closest && e.target.closest('[data-lc]'); if (!row) return;
@@ -1859,34 +1859,34 @@
       const row = b.closest('[data-lc]');
       LC.focus = row ? `.lc-row[data-lc="${CSS.escape(row.dataset.lc)}"] [data-lcs="${CSS.escape(b.dataset.lcs)}"]` : `[data-lcacc="${CSS.escape(b.dataset.lcacc)}"]`; LC.focusAt = Date.now();
     });
-    // вкладку перерисовали (ответ сервера, обновление героя), а фокус был в карточке - возвращаем на ту же стрелку
+
     const ae = document.activeElement;
     if (LC.focus && Date.now() - LC.focusAt < 15000 && (!ae || ae === document.body)) { const b = card.querySelector(LC.focus); if (b && !b.disabled) b.focus({ preventScroll: true }); }
   }
-  // 18.10: SVG-анимации человечка (искры ауры, хвосты) вместе со свечением оружия (размытие) заставляли браузер
-  // перерисовывать рисунок каждый кадр — вкладка «Персонаж» грузила процессор (замер: ~120% ядра в Chromium без видеокарты,
-  // на паузе — 0,6%). Человечек стоит неподвижно (кадр, где искры видны) и оживает, пока на него наведена мышь
-  // 18.10 (вечер): стоять столбом тоже не дело — человечек «дышит» (CSS transform всего рисунка: его двигает видеокарта,
-  // SVG не перерисовывается), раз в 3–6 с моргает и изредка поводит оружием (короткая смена класса — перерисовка
-  // на доли секунды). На паузе: вкладка скрыта, человечек вне экрана, «меньше движения» в системе
+
+
+
+
+
+
   const LIVE = new Set();
   const reduceMQ = SU.media('reduced');
   const seen = typeof IntersectionObserver === 'function'
     ? new IntersectionObserver((es) => es.forEach((e) => { e.target.classList.toggle('zz', !e.isIntersecting); auraRun(e.target); })) : null;
 
-  /* 19.10 (решение стримера): у СВОЕГО героя (вкладка «Персонаж») аура живёт всегда, а не только под мышью.
-     SMIL-анимация ауры внутри рисунка заставляла перерисовывать весь SVG (со свечением оружия) каждый кадр — ~130% ядра
-     без видеокарты. Вечером: аура «запекается» — каждая её часть (свечение, нимб, каждая искра) один раз рисуется в картинку
-     (canvas → PNG, по размеру на экране × devicePixelRatio, кэш по разметке и размеру: одинаковые искры — одна картинка),
-     а двигают картинки CSS-анимации transform/opacity (@keyframes). Их ведёт поток композиции (видеокарта): ни таймера
-     на кадр, ни перерисовки SVG, ни filter — поэтому плавно, без шагов (раньше было 4 кадра в секунду).
-     В толпе (вкладка «Облик» и т. п.) — тем же способом, но только под мышью. «Меньше движения» — аура стоит.
-     Пауза (animation-play-state: paused) — человечек вне экрана (.zz), вкладка скрыта (.zz-all), другая вкладка сайта */
-  const VBW = 120, VBH = 170;   // viewBox человечка
-  /* Плавность стоит кадров композиции: с видеокартой они почти бесплатны, а у зрителя БЕЗ ускорения (программная отрисовка:
-     SwiftShader, llvmpipe, «Microsoft Basic Render», WebGL выключен) каждый кадр — работа процессора (замер: 60 к/с ≈ 20% CPU,
-     8 к/с ≈ 9%). Таким зрителям аура идёт шагами по общим часам (AURA_SOFT_TICK): все части меняются в одни и те же моменты.
-     Проверка — один раз (маленький WebGL-контекст, сразу отпускаем). Принудительно: localStorage['lg-aura'] = 'smooth' | 'soft' */
+  
+
+
+
+
+
+
+
+  const VBW = 120, VBH = 170;
+  
+
+
+
   const AURA_SOFT_TICK = 0.125;
   let auraSoftV = null;
   function auraSoft() {
@@ -1909,16 +1909,16 @@
     try {
       if (!fig || fig.dataset.aura || reduceMQ.matches) return;
       const sv = fig.querySelector('svg.jl-doodle'); if (!sv || !sv.querySelector('.jd-aura-b, .jd-aura-f')) return;
-      fig.dataset.aura = 'wait';   // слои строим, когда человечек впервые виден (у скрытого getBBox — нули)
+      fig.dataset.aura = 'wait';
       if (own) fig.dataset.auraOwn = '1';
       auraRun(fig);
     } catch (e) { console.warn('аура', e); }
   }
-  // SMIL-значения: «a;b;c» → числа / пары «x y»
+
   const smilVals = (a) => String(a.getAttribute('values') || '').split(';').map((v) => v.trim()).filter(Boolean);
   const smilSec = (v) => { const m = /^(-?[\d.]+)(ms|s)?$/.exec(String(v || '').trim()); return m ? (+m[1]) * (m[2] === 'ms' ? 0.001 : 1) : 0; };
-  // запечённые картинки: разметка части ауры + размер в пикселях → Promise<адрес картинки>. Не вышло (старый браузер,
-  // canvas запрещён) — та же разметка как SVG-картинка: она тоже слой, который только двигают, просто без запекания
+
+
   const AURA_PX = new Map();
   function auraBake(svgText, pw, ph) {
     const key = pw + 'x' + ph + svgText;
@@ -1938,7 +1938,7 @@
     });
     AURA_PX.set(key, p); return p;
   }
-  // @keyframes для каждого своего набора кадров (одинаковые — одно правило); не вставилось — Web Animations, тоже плавно
+
   let auraSheet = null; const AURA_KF = new Map();
   function auraKf(frames) {
     const body = frames.map((k) => `${+(k.offset * 100).toFixed(3)}%{${k.transform ? `transform:${k.transform};` : ''}${k.opacity != null ? `opacity:${+k.opacity.toFixed(3)}` : ''}}`).join('');
@@ -1955,7 +1955,7 @@
     const wrap = document.createElement('div'); wrap.className = 'jd-aura-w' + (fig.dataset.auraOwn ? ' au-own' : '') + (soft ? ' au-soft' : '');
     const mk = (cls) => { const d = document.createElement('div'); d.className = 'jd-aura-l ' + cls; d.setAttribute('aria-hidden', 'true'); return d; };
     const back = mk('jd-al-b'), front = mk('jd-al-f'), NS = 'http://www.w3.org/2000/svg', waits = [];
-    // пикселей на единицу рисунка (с запасом на чёткость экрана: devicePixelRatio, не больше 3)
+
     const ppu = (sv.getBoundingClientRect().width / VBW || 2) * Math.min(3, Math.max(1, window.devicePixelRatio || 1));
     const defs = [...sv.querySelectorAll('.jd-aura-b defs, .jd-aura-f defs')].map((d) => d.outerHTML).join('');
     const grps = [[sv.querySelector('.jd-aura-b'), back], [sv.querySelector('.jd-aura-f'), front]];
@@ -1968,7 +1968,7 @@
         if (!bb || !(bb.width + bb.height)) continue;
         const pad = 6, x = bb.x - pad, y = bb.y - pad, w = bb.width + pad * 2, h = bb.height + pad * 2;
         const c = el.cloneNode(true);
-        // вложенные анимации (мерцание обводки нимба и т. п.) — застывают на первом значении
+
         c.querySelectorAll('animate, animateTransform, animateMotion, set').forEach((a) => {
           if (a.parentNode === c) { a.remove(); return; }
           const v = smilVals(a)[0], n = a.getAttribute('attributeName');
@@ -1982,23 +1982,23 @@
         img.style.cssText = `left:${(x / VBW) * 100}%;top:${(y / VBH) * 100}%;width:${(w / VBW) * 100}%;height:${(h / VBH) * 100}%`;
         waits.push(auraBake(svgText, pw, ph).then((u) => { img.src = u; return img.decode ? img.decode().catch(() => null) : null; }));
         layer.appendChild(img);
-        // анимации самого элемента: сдвиг (translate) и прозрачность — в кадры transform/opacity
+
         const base = el.getAttribute('opacity');
         let dur = 0, delay = 0, tr = null, op = null, kt = null;
         for (const a of own) {
           const vals = smilVals(a); if (vals.length < 2) continue;
-          // begin="-1.2s" — анимация идёт уже 1,2 с: в CSS это отрицательная задержка (с положительной искра до старта
-          // стояла бы видимой в своём углу)
+
+
           dur = dur || smilSec(a.getAttribute('dur')); delay = delay || smilSec(a.getAttribute('begin'));
           if (a.tagName === 'animateTransform' && (a.getAttribute('type') || 'translate') === 'translate') tr = vals.map((v) => v.split(/[\s,]+/).map(Number));
           else if (a.getAttribute('attributeName') === 'opacity') { op = vals.map(Number); kt = a.getAttribute('keyTimes'); }
         }
         if (!dur || (!tr && !op)) { if (base != null) img.style.opacity = base; continue; }
-        // кадры: прозрачность — по своим keyTimes, сдвиг — равномерно между ними (как SMIL: линейно)
+
         const kts = kt ? kt.split(';').map(Number) : null;
         const pts = new Set([0, 1]); (kts || (op || []).map((_, i, A) => i / (A.length - 1))).forEach((t) => pts.add(t)); if (tr) tr.forEach((_, i, A) => pts.add(i / (A.length - 1)));
         const at = (A, t, times) => { const T = times || A.map((_, i) => i / (A.length - 1)); let i = 0; while (i < T.length - 2 && t > T[i + 1]) i++; const f = T[i + 1] === T[i] ? 0 : Math.max(0, Math.min(1, (t - T[i]) / (T[i + 1] - T[i]))); return Array.isArray(A[i]) ? A[i].map((v, j) => v + (A[i + 1][j] - v) * f) : A[i] + (A[i + 1] - A[i]) * f; };
-        // без ускорения: длительность и задержка — кратны шагу, кадры — в каждом шаге (между ними steps(1): скачок ровно на шаге)
+
         if (soft) { dur = Math.max(2, Math.round(dur / T)) * T; delay = Math.round(delay / T) * T; pts.clear(); const n = Math.round(dur / T); for (let i = 0; i <= n; i++) pts.add(i / n); }
         const frames = [...pts].sort((a, b) => a - b).map((t) => {
           const k = { offset: t };
@@ -2008,17 +2008,17 @@
         });
         if (!op && base != null) img.style.opacity = base;
         const name = auraKf(frames);
-        if (name) Object.assign(img.style, { animationName: name, animationDuration: dur + 's', animationDelay: delay + 's' }, soft ? { animationTimingFunction: 'steps(1, end)' } : {});   // остальное (linear, infinite, пауза) — в style.css
+        if (name) Object.assign(img.style, { animationName: name, animationDuration: dur + 's', animationDelay: delay + 's' }, soft ? { animationTimingFunction: 'steps(1, end)' } : {});
         else if (typeof img.animate === 'function') { const an = img.animate(frames, { duration: dur * 1000, delay: delay * 1000, iterations: Infinity, ...(soft ? { easing: `steps(${Math.round(dur / T)})` } : {}) }); (fig._aura = fig._aura || []).push(an); }
       }
     }
-    // картинки готовы — подменяем разом (до этого аура остаётся в рисунке, мигания нет)
+
     await Promise.all(waits);
     if (!sv.isConnected) return;
-    for (const [grp] of grps) if (grp) grp.remove();   // в самом рисунке ауры больше нет — его SMIL (хвосты и т. п.) по-прежнему только под мышью
+    for (const [grp] of grps) if (grp) grp.remove();
     sv.replaceWith(wrap); wrap.append(back, sv, front);
   }
-  // запустить / поставить на паузу ауру: свой герой — пока виден, в толпе — пока под мышью
+
   function auraRun(fig) {
     try {
       if (!fig || !fig.dataset.aura || fig.dataset.aura === 'off') return;
@@ -2042,15 +2042,15 @@
       fig.dataset.calm = '1'; fig.classList.add('alive');
       LIVE.add(fig); try { if (seen) seen.observe(fig); } catch {}
       if (reduce) return;
-      // под мышью: хвосты и прочий SMIL рисунка оживают, аура (если есть) — запечёнными слоями, как у своего героя
+
       fig.addEventListener('pointerenter', (e) => { if (e.pointerType !== 'mouse') return; try { sv.unpauseAnimations(); } catch {} fig._hov = true; auraLive(fig); auraRun(fig); });
       fig.addEventListener('pointerleave', () => { try { sv.pauseAnimations(); } catch {} fig._hov = false; auraRun(fig); });
     });
-    // убранные со страницы (перерисовка вкладки) — забываем
+
     for (const f of LIVE) if (!f.isConnected) { LIVE.delete(f); try { if (seen) seen.unobserve(f); for (const a of f._aura || []) a.cancel(); } catch {} }
     lifeTick();
   }
-  // один таймер на всех: моргнуть (180 мс) и изредка повести оружием (1,6 с) у видимых человечков
+
   let lifeT = 0;
   function lifeTick() {
     clearTimeout(lifeT); lifeT = 0;
@@ -2059,7 +2059,7 @@
       lifeT = 0;
       try {
         for (const f of LIVE) {
-          if (!f.isConnected || f.classList.contains('zz') || !f.offsetParent) continue;   // нет на экране / вкладка не та
+          if (!f.isConnected || f.classList.contains('zz') || !f.offsetParent) continue;
           const sv = f.querySelector('svg.jl-doodle'); if (!sv || sv.classList.contains('jd-ghost')) continue;
           if (Math.random() < 0.8) { sv.classList.add('blink'); setTimeout(() => sv.classList.remove('blink'), 200); }
           if (Math.random() < 0.2 && sv.querySelector('.jd-weapon')) { sv.classList.add('sway'); setTimeout(() => sv.classList.remove('sway'), 1700); }
@@ -2069,7 +2069,7 @@
     }, 3000 + Math.random() * 3000);
   }
   document.addEventListener('visibilitychange', () => { document.documentElement.classList.toggle('zz-all', document.hidden); lifeTick(); for (const f of LIVE) auraRun(f); });
-  try { reduceMQ.addEventListener('change', () => { lifeTick(); for (const f of LIVE) auraRun(f); }); } catch {}   // «меньше движения» включили — аура встаёт
+  try { reduceMQ.addEventListener('change', () => { lifeTick(); for (const f of LIVE) auraRun(f); }); } catch {}
 
   function renderHello(el) {
     const names = ['центурион', 'лучница', 'жрец', 'маг', 'новобранец'];
@@ -2078,8 +2078,8 @@
     calm(el);
   }
 
-  /* ---------- Легион ---------- */
-  /* 23.10: вкладка «Легион (рейтинг)» — два вида: «Состав» (кто в Легионе) и «Соц. рейтинг» (была отдельная вкладка) */
+   
+   
   let lgv = 'roster'; try { if (localStorage.getItem('lgLegView') === 'soc') lgv = 'soc'; } catch {}
   function legOpen() {
     const T = $('#tab-legion');
@@ -2097,7 +2097,7 @@
     if (!el.innerHTML) el.innerHTML = '<p class="empty">Собираю Легион…</p>';
     const r = await api('/api/legion');
     if (!r.ok) { if (!el.querySelector('.legion')) el.innerHTML = '<div class="panel"><p class="empty">Не удалось загрузить Легион. Обнови страницу чуть позже.</p></div>'; return; }
-    const lk = sty() + JSON.stringify(r); if (lk === legAt && el.querySelector('.legion')) return; legAt = lk;   // ничего не поменялось — 120 человечков не перерисовываем
+    const lk = sty() + JSON.stringify(r); if (lk === legAt && el.querySelector('.legion')) return; legAt = lk;
     const T = r.total, tot = Math.max(1, T.heroes);
     const roleLines = (g) => g.roles.filter((k) => r.roles[k] && r.roles[k].n).map((k) => `${esc(roleOf(k, r.roles[k].name))} ${r.roles[k].n}`).join(' · ');
     const gName = (g) => SU.styleText(sty(), 'groups', g.id) || g.name;
@@ -2115,12 +2115,12 @@
         ${r.groups.filter((g) => (byGroup[g.id] || []).length).map((g) => `<div class="row" data-g="${g.id}"><h3 class="rh"><i class="sw" aria-hidden="true"></i>${esc(gName(g))}</h3><ul class="rlist">${byGroup[g.id].map(fig).join('')}</ul></div>`).join('')}</section>` : ''}
       <p class="foot">Роль зависит от оружия в руках: меч — легионер, лук — лучник, посох — маг, кадило — жрец. Без оружия — новобранец. · обновлено ${r.at ? new Date(r.at).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : '—'}</p>
     </div>`;
-    // 17.10: в строю до 120 человечков, у котиков и обезьян в каждом шевелятся хвосты, уши, глаза (SVG-анимации) —
-    // браузер перерисовывал всю страницу каждый кадр и «съедал» ресурсы. В строю человечки стоят спокойно.
+
+
     try { el.querySelectorAll('.rd svg').forEach((sv) => { try { sv.pauseAnimations(); sv.setCurrentTime(0); } catch (e) {} sv.querySelectorAll('animate,animateTransform,animateMotion,set').forEach((a) => a.remove()); }); } catch (e) {}
   }
 
-  /* ---------- 17.10: Соц. рейтинг — топ-100 Легиона и твоё место ---------- */
+   
   let socAt = '';
   async function loadSoc() {
     const el = $('#lgSoc'); if (!el) return;
@@ -2132,8 +2132,8 @@
     const me = r.me, inTop = me && (r.top || []).some((x) => x.login === me.login);
     const row = (x, i, mine) => { const q = rk(x.rank); return `<li class="sr${mine ? ' me' : ''}${q.bad ? ' bad' : ''}${i < 3 ? ' p' + (i + 1) : ''}"><span class="sp">${i + 1}</span><span class="sn">${esc(x.name)}${awb((r.aw || {})[x.login])}</span><span class="sk"><i aria-hidden="true">${esc(q.icon)}</i>${esc(q.name)}</span><b class="ss">${x.score}</b></li>`; };
     if (!(r.top || []).length) { el.innerHTML = '<div class="panel"><p class="empty">Рейтинг появится после синхронизации со стримом.</p></div>'; return; }
-    // 21.10: под топом — кто рядом с тобой (по 5 мест выше и ниже); в топе — только те соседи, что ниже 100-го места.
-    // Соседей ещё нет (игра пришлёт со следующей синхронизацией) — как раньше, только твоя строка
+
+
     const T = r.top.length, nb = (Array.isArray(r.near) ? r.near : []).filter((x) => x.place > T);
     const nbRows = (xs) => `${inTop ? '' : '<h3 class="h3 soc-nh">Рядом с тобой</h3>'}<ol class="srl tail${inTop ? '' : ' nh'}" start="${xs[0].place}" aria-label="Рядом с тобой">${xs.map((x) => row(x, x.place - 1, me && x.login === me.login)).join('')}</ol>`;
     const tail = nb.length && me && me.place ? nbRows(nb) : me && !inTop && me.place ? `<ol class="srl tail" start="${me.place}">${row({ ...me, name: me.name }, me.place - 1, true)}</ol>` : '';
@@ -2146,17 +2146,17 @@
       </section></div>`;
   }
 
-  /* ---------- 17.10: Журнал — что герой делал в игре и чем кончилось (бои, кости, ловушки, покупки, добыча…) ---------- */
-  const JK = [['all', 'Всё'], ['fight', 'Бой'], ['boss', 'Закхуэль'], ['dice', 'Кости'], ['event', 'Событие'], ['trap', 'Ловушка'], ['shop', 'Покупка'], ['ench', 'Заточка'], ['auc', 'Аукцион'], ['look', 'Облик'], ['loot', 'Вещь'], ['find', 'Находка'], ['coins', 'Монеты'], ['hero', 'Герой'], ['award', 'Награда'], ['store', 'Склад'], ['ach', 'Достижение'], ['trade', 'Обмен'], ['bug', 'Репорт']];   // 24.10: репорт зрителя одобрен (src/site/bugreports.ts)   // 23.10: + склад, достижения, обмен между игроками
+   
+  const JK = [['all', 'Всё'], ['fight', 'Бой'], ['boss', 'Закхуэль'], ['dice', 'Кости'], ['event', 'Событие'], ['trap', 'Ловушка'], ['shop', 'Покупка'], ['ench', 'Заточка'], ['auc', 'Аукцион'], ['look', 'Облик'], ['loot', 'Вещь'], ['find', 'Находка'], ['coins', 'Монеты'], ['hero', 'Герой'], ['award', 'Награда'], ['store', 'Склад'], ['ach', 'Достижение'], ['trade', 'Обмен'], ['bug', 'Репорт']];
   const JKN = Object.fromEntries(JK);
-  // 18.10: вкладки журнала (виды записей — как JTABS на сервере)
-  const JT = [['all', 'Все', null], ['fight', 'Бой', ['fight', 'boss', 'trap', 'hero']], ['shop', 'Покупки', ['shop', 'look', 'ench', 'auc', 'store', 'trade']], ['find', 'Находки', ['loot', 'find']], ['coins', 'Монеты', ['coins', 'dice', 'event', 'auc', 'trade']], ['ach', 'Достижения', ['ach']]];   // 23.10: + склад, вкладка «Достижения»
+
+  const JT = [['all', 'Все', null], ['fight', 'Бой', ['fight', 'boss', 'trap', 'hero']], ['shop', 'Покупки', ['shop', 'look', 'ench', 'auc', 'store', 'trade']], ['find', 'Находки', ['loot', 'find']], ['coins', 'Монеты', ['coins', 'dice', 'event', 'auc', 'trade']], ['ach', 'Достижения', ['ach']]];
   const JTK = Object.fromEntries(JT.map(([k, , ks]) => [k, ks]));
   const JR = { win: 'Победа', lose: 'Неудача', tie: 'Ничья' };
-  const JRK = { dice: { win: 'Выиграл', lose: 'Проиграл', tie: 'Ничья' }, fight: { win: 'Победа', lose: 'Поражение' }, boss: { win: 'Победа', lose: 'Поражение' }, trap: { win: 'Справился', lose: 'Пострадал' }, shop: { win: 'Готово', lose: 'Не вышло' }, hero: { win: '', lose: '' }, ach: { win: 'Открыто' }, store: { win: '', lose: '' } };   // 23.10
-  let jf = 'all', JL = null, jAt = '', JITEMS = {}, jSeq = 0, jNext = null, jCap = 300, jMoreP = null;   // 25.10: jNext - курсор следующей (более старой) страницы журнала
+  const JRK = { dice: { win: 'Выиграл', lose: 'Проиграл', tie: 'Ничья' }, fight: { win: 'Победа', lose: 'Поражение' }, boss: { win: 'Победа', lose: 'Поражение' }, trap: { win: 'Справился', lose: 'Пострадал' }, shop: { win: 'Готово', lose: 'Не вышло' }, hero: { win: '', lose: '' }, ach: { win: 'Открыто' }, store: { win: '', lose: '' } };
+  let jf = 'all', JL = null, jAt = '', JITEMS = {}, jSeq = 0, jNext = null, jCap = 300, jMoreP = null;
   try { const v = localStorage.getItem('lgJf'); if (v && JTK[v] !== undefined) jf = v; } catch {}
-  // 23.10: вид «Персонажа» (view) — сменить и запомнить; «Весь журнал» из короткого списка — сразу наверх, к журналу
+
   function goView(v) { view = v; try { localStorage.setItem('lgView', view); } catch {} renderHero(); if (v === 'log') { const t = $('#tab-hero'); if (t && t.getBoundingClientRect().top < 0) t.scrollIntoView({ block: 'start' }); } }
   const logOn = () => view === 'log' && $('#tab-hero').classList.contains('on') && !!$('#jrFull');
   async function loadLog() {
@@ -2165,13 +2165,13 @@
     if (!JL) el.innerHTML = '<p class="empty">Открываю журнал…</p>';
     const want = jf, seq = ++jSeq;
     const r = await api('/api/journal?tab=' + encodeURIComponent(want));
-    if (seq !== jSeq || !$('#jrFull')) return;   // пока ждали — переключили вкладку журнала или ушли из него
+    if (seq !== jSeq || !$('#jrFull')) return;
     if (!r || !r.ok) { if (!JL) el.innerHTML = '<div class="panel"><p class="empty">Журнал пока не загрузился. Обнови страницу чуть позже.</p></div>'; return; }
     if (r.items) JITEMS = r.items;
     const k = want + JSON.stringify(r.list || []); if (JL && k === jAt) return; jAt = k;
     JL = r.list || []; jNext = r.next || null; jCap = 300; renderLog();
   }
-  // 25.10: «Показать ещё» - следующая страница журнала (старые записи), к уже показанным
+
   async function moreLog() {
     if (!jNext || jMoreP) return;
     const want = jf, seq = jSeq;
@@ -2184,15 +2184,15 @@
     jCap = JL.length; jNext = r.next || null; jAt = '';
     renderLog();
   }
-  // 18.10: живые записи (SSE) — сразу в начало списка, если подходят под вкладку
-  // 23.10: короткий журнал на «Персонаже» — последние записи (все виды), под характеристиками
+
+
   let JA = null, jaP = null, jaFail = 0;
   const JMINI = 5;
   function loadMini(force) {
     if (jaP || !ME || !ME.user || (!force && Date.now() - jaFail < 60000)) return;
     jaP = api('/api/journal?tab=all').then((r) => { if (r && r.ok) { if (r.items) JITEMS = r.items; JA = r.list || []; miniPatch(); if (window.LGQuest && window.LGQuest.hero) window.LGQuest.hero(); } else jaFail = Date.now(); }, () => { jaFail = Date.now(); }).finally(() => { jaP = null; });
   }
-  function jrMini(n = JMINI) {   // 26.10: n - сколько строк (вкладка «Поход»: журнал - своё окно, строк больше)
+  function jrMini(n = JMINI) {
     if (!JA) loadMini();
     const head = `<div class="jr-mh"><h2 class="h3">Журнал</h2>${JA && JA.length ? '<button type="button" class="jr-more" data-view="log">Весь журнал</button>' : ''}</div>`;
     if (!JA) return `<div class="jr-mini">${head}<p class="muted">Открываю…</p></div>`;
@@ -2218,7 +2218,7 @@
     jAt = '';
     if ((n || list.length) && logOn()) renderLog();
   }
-  // 18.10: в тексте — название вещи того стиля, что был включён при записи; показываем название стиля сайта
+
   let nameMap = null, nameMapFor = '';
   function itemText(t) {
     try {
@@ -2239,9 +2239,9 @@
     return diff === 0 ? 'Сегодня' : diff === 1 ? 'Вчера' : d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }); };
   const hm = (t) => new Date(t).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
   const coinsTxt = (c) => (c ? `<span class="jr-c ${c > 0 ? 'up' : 'dn'}">${c > 0 ? '+' : '−'}${money(Math.abs(c))}</span>` : '');
-  /* 31.10 (feat/hw-pass-claim, решение стримера 00:20): запись журнала с наградой, ждущей кнопки (e.cl - общий механизм: ивенты досылают
-     незабранное). Кнопка «Забрать» → /api/jClaim → ответ комнаты (results, op jClaim): запись обновляется (текст, cl). cl.pick - сначала выбор
-     оружия (окно выбора из hwnpc.js, тот же pickBox) */
+  
+
+
   const JCL_PEND = new Set();
   const jClaimBtn = (e) => (e.cl && !e.cl.done ? `<button type="button" class="btn jr-cl" data-jclaim="${esc(e.id)}"${JCL_PEND.has(e.id) ? ' disabled' : ''}>${esc(e.cl.go || 'Забрать')}</button>` : '');
   const jEntry = (id) => (JL || []).find((x) => x.id === id) || (JA || []).find((x) => x.id === id) || null;
@@ -2262,7 +2262,7 @@
     }
     jClaimSend(e.id, e.cl.o).catch(() => null);
   }
-  // ответ комнаты: обновить запись (текст, что ещё ждёт) и сказать, что вышло
+
   function jClaimDone(x) {
     const r = x.x || {}, id = r.jid; JCL_PEND.delete(id);
     for (const L of [JL, JA]) { const e = L && L.find((y) => y.id === id); if (!e) continue; if (r.t) e.t = r.t; if (r.cl) e.cl = r.cl; else if (r.closed) e.cl = { ...(e.cl || {}), done: 1 }; }
@@ -2272,7 +2272,7 @@
   function renderLog() {
     const el = $('#jrFull'), all = JL || []; if (!el) return;
     const list = all;
-    // итог по выбранной вкладке: побед / неудач, сумма монет и опыта
+
     const W = list.filter((e) => e.r === 'win').length, Ls = list.filter((e) => e.r === 'lose').length, Ti = list.filter((e) => e.r === 'tie').length;
     const C = list.reduce((a, e) => a + (+e.c || 0), 0), X = list.reduce((a, e) => a + (+e.x || 0), 0);
     const PW = jf === 'fight' ? [['победа', 'победы', 'побед'], ['поражение', 'поражения', 'поражений']] : [['удача', 'удачи', 'удач'], ['неудача', 'неудачи', 'неудач']];
@@ -2299,32 +2299,32 @@
     el.querySelectorAll('[data-jf]').forEach((b) => b.onclick = () => { if (jf === b.dataset.jf) return; jf = b.dataset.jf; try { localStorage.setItem('lgJf', jf); } catch {} JL = null; jAt = ''; jNext = null; jCap = 300; loadLog(); });
   }
 
-  /* ---------- 22.10: вкладка «Поход» и плашка похода (quest.js; пока только тестерам — флаг qt у героя) ----------
-     Данные — событие «q» живого канала (или ql в /api/me): что сейчас в походе, только своё и общее. Файлы грузятся,
-     когда пришёл первый вид похода, — пока похода нет, сайт их не качает. */
+  
+
+
   let questLoading = null, questOn = false, questPend = null, questParty = '';
-  // 23.10: герой вступил в поход (в отряде, пока идёт поход на стриме) — вкладка «Город» видна, но не открывается
-  // вход в город округа с кнопки на «Походе» (townEntry) — исключение: отряд стоит в городе, в него можно
+
+
   const cityLocked = () => questOn && questParty === 'in' && !townEntry;
   const questOk = () => !!(ME && ME.hero && ME.hero.qt);
   function questFiles() {
     if (questLoading) return questLoading;
     const V = window.LG_QV || {};
     if (!document.getElementById('questCss')) { const l = document.createElement('link'); l.id = 'questCss'; l.rel = 'stylesheet'; l.href = `/site/quest.css?v=${V.css || ''}`; document.head.appendChild(l); }
-    questLoading = loadJs(`/site/q/crowdcam.js?v=${V.cc || ''}`).then(() => loadJs(`/site/q/battlecrowd.js?v=${V.bc || ''}`)).then(() => loadJs(`/site/q/shelf.js?v=${V.sh || ''}`))   // shelf.js - полки прилавка, как на оверлее (26.10)
+    questLoading = loadJs(`/site/q/crowdcam.js?v=${V.cc || ''}`).then(() => loadJs(`/site/q/battlecrowd.js?v=${V.bc || ''}`)).then(() => loadJs(`/site/q/shelf.js?v=${V.sh || ''}`))
       .then(() => loadJs(`/site/quest.js?v=${V.js || ''}`))
       .then(() => { window.LGQuest.init(QX); }).catch((e) => { questLoading = null; throw e; });
     return questLoading;
   }
   const QX = {
-    // 26.10 (стример): журнал на вкладке «Поход» - те же записи, что «Журнал» на «Персонаже» (награды за места, находки, покупки)
+
     jrHtml: (n) => jrMini(n), jrAll: () => { tab('hero'); goView('log'); },
-    // 26.10 (стример): вкладка «Поход» - кукла (слоты вокруг) и сумка: библиотека инвентаря с теми же действиями, что «Персонаж» (inv2Host):
-    // двойной клик - надеть / съесть, ПКМ - меню вещи, перетаскивание на слот; монтирует quest.js один раз, дальше - invData
+
+
     invData: () => { const h = ME && ME.hero; return h ? { hero: h, items: (h.items || []).slice().sort((a, b) => (a.no || 1e9) - (b.no || 1e9)), stack: (h.sg && h.sg.bs) || 20, bagCap: h.sg ? h.sg.cap : null, ...(+h.ob > 0 ? { obCap: +h.ob } : {}), pins: candyPins(h) } : null; },
     invMount: (host, dollEl, root) => {
       const d = QX.invData(); if (!d || !window.LGInventory) return null;
-      // 28.10 (bag-trash, стример): слот «Выбросить» под сумкой - только во вкладке «Поход» (у «Персонажа» нет); меню вещи - и там «Выбросить…»
+
       const trash = (uid) => { if (inv) inv.discard(uid); };
       const inv = window.LGInventory.mount(host, { variant: 'compact', mode: 'equip', data: d,
         actions: {
@@ -2354,23 +2354,23 @@
     showing: () => document.getElementById('tab-quest').classList.contains('on'),
     onOff: (on, party) => { const p = on ? String(party || '') : ''; if (questOn === !!on && questParty === p) return; questOn = !!on; questParty = p; questVis(); cityVis(); try { if (window.LGCity && window.LGCity.questChanged) window.LGCity.questChanged(); } catch {} },
     foes: () => questFoes(),
-    // 23.10: прилавок лавки похода — рисунок вещи и та же подсказка-карточка, что у товара лавок «Города» (cardTip: характеристики, эффект, описание)
+
     art: (it) => art(it),
     goodTip: (el, it) => cardTip(el, { ...it, stats: it.stats || {}, wearable: SLOTS.includes(it.slot), on: false, uids: [] }, (ME && ME.hero) || null),
     tipHide: () => tipHide(), tipFor: () => tipFor,
-    cardTip: (el, it) => cardTip(el, it, (ME && ME.hero) || null),   // 25.10: сумка вкладки «Поход» (библиотека инвентаря, флаг i2) - та же карточка вещи, что в «Персонаже»
-    // 23.10: данж — рисунок комнат стиля канала (грузится, только когда отряд в данже) и голос кликом по проходу (как цифра в чате)
+    cardTip: (el, it) => cardTip(el, it, (ME && ME.hero) || null),
+
     dungeon: () => questDungeon(),
     vote: (vid, n) => api('/api/qvote', { vid, n }), toast: (t, bad) => toast(t, bad),
-    // 25.10: кнопки похода (тестерам — флаг qa у героя): действие — та же команда чата (комната: quest/siteact.js); еда и зелья — как в «Персонаже»
-    act: (p) => api('/api/qact', p), say: (line) => api('/api/qsay', { line }),   // 26.10: строка «Команда в поход»
-    eat: (uid, btn) => { const it = ME && ME.hero && (ME.hero.items || []).find((x) => x.uid === uid); return act('/api/use', { uid }, it && eatVerb(it) === 'Выпить' ? 'Выпито' : 'Съедено', btn); },   // 25.10: return - сумка вкладки «Поход» ждёт ответа
-    // 23.10: «Войти в город N» (отряд стоит в округе ★1–2): «Город» открывается сразу в городе округа (city.js LGCity.town).
-    // townEntry — когда вошли так: блокировка «Города» на время похода (если она есть) должна пропускать этот вход
+
+    act: (p) => api('/api/qact', p), say: (line) => api('/api/qsay', { line }),
+    eat: (uid, btn) => { const it = ME && ME.hero && (ME.hero.items || []).find((x) => x.uid === uid); return act('/api/use', { uid }, it && eatVerb(it) === 'Выпить' ? 'Выпито' : 'Съедено', btn); },
+
+
     openTown: (id) => { townEntry = Date.now(); cityFiles().then(() => { if (window.LGCity && window.LGCity.town) window.LGCity.town(id); tab('city'); }).catch(() => toast('Город не загрузился — проверь связь', true)); },
   };
   let townEntry = 0;
-  // 22.10: рисунки врагов для вкладки «Поход» (как в оверлее): artkit + враги стиля + client/battle.js — только когда открыли бой
+
   let questFoesP = null;
   function questFoes() {
     if (window.QBattle && window.QBattle.foe) return Promise.resolve();
@@ -2404,8 +2404,8 @@
   }
   function questTab(on) { if (window.LGQuest) window.LGQuest.show(on); }
 
-  /* ---------- 23.10: «Карта мира» — мир сезона (worldmap.js; пока только тестерам — флаг wt у героя, worldTabPublic) ----------
-     Файлы карты (код, стили, геометрия мира) грузятся, только когда вкладку открыли; данные — при открытии и раз в минуту, пока видна. */
+  
+
   let worldWant = false, worldLoading = null;
   const worldOk = () => !!(ME && ME.hero && ME.hero.wt);
   function worldVis() {
@@ -2424,20 +2424,20 @@
   }
   const WX = {
     api: (p) => api(p), now: () => now(), toast: (t, bad) => toast(t, bad),
-    // «Войти в город» из карточки округа: тот же вход, что с «Похода» (openTown). Блокировку «Города» на время похода
-    // пропускает только вход участника отряда в город, где стоит отряд (why = party) — как кнопка во вкладке «Поход»
+
+
     openTown: (id, why) => { if (cityLocked() && why !== 'party') { toast('Вы сейчас в походе — в город после похода', true); return; } QX.openTown(id); },
   };
   async function openWorld() {
     const el = $('#tab-world');
     if (!worldOk()) { el.innerHTML = SU.note('Карта мира пока закрыта.'); return; }
-    if (!window.LGWorld && !(await SU.loadInto(el, worldFiles, 'Карта мира разворачивается…', 'Карта мира не загрузилась — проверь связь и открой вкладку ещё раз.'))) return;   // 25.10: packages/site-ui
+    if (!window.LGWorld && !(await SU.loadInto(el, worldFiles, 'Карта мира разворачивается…', 'Карта мира не загрузилась — проверь связь и открой вкладку ещё раз.'))) return;
     if (!$('#tab-world').classList.contains('on') || !window.LGWorld) return;
     window.LGWorld.open(el, WX);
   }
 
-  /* ---------- 20.10: «Город» — Ярмарка канала, где гуляют герои (city.js; пока только тестерам — флаг cy у героя) ----------
-     Файлы «Города» (Ярмарка стиля, карта, рисунок квартала, сам город) грузятся, только когда вкладку открыли. */
+  
+
   let cityWant = false, cityLoading = null;
   function cityVis() {
     const ok = !!(ME && ME.hero && (ME.hero.cy || ME.jail)), b = $('.tabs button[data-tab="city"]');
@@ -2451,10 +2451,10 @@
     if (ok && !lock && cityWant) { cityWant = false; tab('city'); }
   }
   const loadJs = (src) => new Promise((ok, no) => { const sc = document.createElement('script'); sc.src = src; sc.onload = ok; sc.onerror = no; document.head.appendChild(sc); });
-  // 30.10 (D1): citystore.js - окно Склада, файл модуля «Город» (fair/client), - до city.js: city.js подключает его при запуске
-  // 31.10 (D1): и окна зданий модуля «Город» - общее cityshop.js и здания b-<здание>.js (V.bl; друг друга не ждут), тоже до city.js
+
+
   const cityWin = (V) => Promise.all(['cityshop', ...(V.bl || []).map((b) => 'b-' + b)].map((f) => loadJs(`/site/${f}.js?v=${V.bw || ''}`)));
-  // стили окон (V.bc: общее, Склад, здания) - сразу за city.css и в том же порядке: каскад как был, когда всё лежало в city.css
+
   function cityWinCss(V) {
     let at = document.getElementById('cityCss');
     for (const f of V.bc || []) {
@@ -2472,44 +2472,44 @@
       .catch((e) => { cityLoading = null; throw e; });
     return cityLoading;
   }
-  // что нужно городу от сайта
+
   const CX = {
-    // 30.10 (тюрьма): я - заключённый (причина, срок) или null
+
     jail: () => (ME && ME.jail) || null,
-    // 30.10: тюрьма открыта этому зрителю (здание и клетка в Ярмарке)
+
     jailOn: () => !!(ME && (ME.jail || ME.jl)),
     hero: () => (ME && ME.hero) || null, login: () => (ME && ME.user ? String(ME.user.login).toLowerCase() : ''), style: () => sty(),
     doodle: (l, h, mood, k) => doodle(l, h, mood, k), fig: (l, v, o) => figSvg(l, v, o), heroLook: (h) => heroLook(h), still: (svg) => still(svg), awb: (aw) => awb(aw), awPop: (a, r, k) => awPop(a, r, k), awHide: (pre) => awHide(pre), ico: (k) => ico(k),
     api: (p, b) => api(p, b), act: (p, b, ok, btn) => act(p, b, ok, btn), money: (n, r) => money(n, r), moneyText: (n, r) => moneyText(n, r), lack: (p, hv, c) => lackHtml(p, hv, c), bal: (p, hv, c) => balHtml(p, hv, c), art: (it) => art(it),
     itemName: (id) => { const n = names().items; return (n && n[id] && n[id].name) || ''; }, eff: (it) => effText(it),
-    inQuest: () => questOn && questParty === 'in',   // 25.10: в отряде идущего похода - выбор городов скрыт (только город отряда)
+    inQuest: () => questOn && questParty === 'in',
     ench: () => EN(), mats: (h) => matsOf(h), canEnch: (it) => canEnch(it) && !it.mat, forgeOpen: (uid, host) => forgeOpen(uid, host), forgeClose: () => { if (FG.host) forgeClose(); },
-    repBlock: (h) => repBlockHtml(h), repBind: (el) => repBind(el), durLow: () => REP().low,   // 22.10: починка у наковальни — всем
-    skx: (re) => ({ ...SKX, act: (p, b, ok, btn) => act(p, b, ok, btn).then(() => { if (btn && btn.isConnected && btn.textContent === 'Секунду…' && !busy) re(); }), rerender: () => { last = ''; renderHero(); re(); } }), live: () => esOk, tab: (id) => tab(id),   // 23.10: в Городе (Тренер) окно — своё, renderHero его не трогает: перерисовываем сами, иначе кнопка навсегда «Секунду…»
-    // 22.10: карточка вещи для аукциона — те же функции, что у окна персонажа (характеристики, подсказки, аура, класс, заточка, прочность)
+    repBlock: (h) => repBlockHtml(h), repBind: (el) => repBind(el), durLow: () => REP().low,
+    skx: (re) => ({ ...SKX, act: (p, b, ok, btn) => act(p, b, ok, btn).then(() => { if (btn && btn.isConnected && btn.textContent === 'Секунду…' && !busy) re(); }), rerender: () => { last = ''; renderHero(); re(); } }), live: () => esOk, tab: (id) => tab(id),
+
     itemBody: (it, h, o) => itemBody(it, h, o), enchStats: (base, en, bonus) => enchStatsN(base, en, bonus), lgx: (it) => lgx(it), tips: (el) => tipOn(el),
     stOk: (k, h) => stOk(k, h), stLabel: (k) => stLabel(k), stNum: (k, v) => stNum(k, v), xst: () => Object.keys(XST), st: () => Object.keys(ST),
-    clsOf: (it) => clsOf(it), roleOf: (id) => roleOf(id, ((ME && ME.roles) || {})[id]), classes: () => classIds(ME && ME.hero),   // 25.10: классы для фильтров (аукцион) — тот же список, что у сумки
-    // 23.10: наковальня — кукла героя (та же, что во вкладке «Персонаж») и подсказка-карточка вещи
+    clsOf: (it) => clsOf(it), roleOf: (id) => roleOf(id, ((ME && ME.roles) || {})[id]), classes: () => classIds(ME && ME.hero),
+
     doll: (h, o) => dollHtml(h, o), cardTip: (el, it, h, o) => cardTip(el, it, h, o), tipHide: () => tipHide(), tipFor: () => tipFor,
-    toast: (t, bad) => toast(t, bad),   // 23.10: обмен между игроками (trade.js) — приглашения, итог
-    mineFiles: () => mineFiles(),   // 24.10: Ратуша — цвета ресурсов склада (craftworld.js)
-    // 24.10: шахты городов — портал «ШАХТА» в «Городе» (c — id шахты: округ или home — Ярмарка); без c — выбор
-    // 30.10: ids - выбор только из этих шахт (Ярмарка: домашняя и «Новая шахта (тест)»)
+    toast: (t, bad) => toast(t, bad),
+    mineFiles: () => mineFiles(),
+
+
     openMine: (c, ids) => (c ? openMine(c) : openMines(ids)),
     openMineBoard: async () => { try { await mineFiles(); } catch { toast('Не загрузилось — проверь связь', true); return; } window.LGMine.board({ api: (p, b) => api(p, b), login: () => (ME && ME.user ? String(ME.user.login).toLowerCase() : ''), mines: () => mineList() }); },
   };
-  /* ---------- 23.10: шахта (промысел города): mine.js + craftworld.js, грузятся при первом входе ---------- */
+   
   let mineLoading = null;
   function mineFiles() {
     if (mineLoading) return mineLoading;
     const V = window.LG_CITYV || {};
     if (!document.getElementById('mineCss')) { const l = document.createElement('link'); l.id = 'mineCss'; l.rel = 'stylesheet'; l.href = `/site/mine.css?v=${V.mc || ''}`; document.head.appendChild(l); }
-    // 25.10: mine-art.js - новые рисунки шахты (обновление mine2; без флага не используется)
+
     mineLoading = loadJs(`/site/craftworld.js?v=${V.mw || ''}`).then(() => loadJs(`/site/mine-art.js?v=${V.ma || ''}`)).then(() => loadJs(`/site/mine.js?v=${V.mj || ''}`)).then(() => (window.LGItems ? null : loadJs(`/site/itemgrid.js?v=${V.ig || ''}`).catch(() => null))).then(() => (window.LGChat ? null : loadJs(`/lib/site-chat.js?v=${V.sc || ''}`).catch(() => null))).catch((e) => { mineLoading = null; throw e; });
     return mineLoading;
   }
-  // 24.10: шахты канала — домашняя и шахты городов своих округов (★ — опасность округа, природа — вид и самоцвет)
+
   const BIO_RU = { mount: 'горы', ash: 'пепел', forest: 'лес', taiga: 'тайга', ice: 'лёд', meadow: 'луга', swamp: 'болото', blight: 'порча', coast: 'побережье', desert: 'пустыня', ruin: 'руины' };
   const GEM_RU = { adamant: 'адамантит', fire_opal: 'огненный опал', emerald: 'изумруд', sapphire: 'сапфир', topaz: 'топаз', malachite: 'малахит', morion: 'морион', aquamarine: 'аквамарин', ruby: 'рубин', runestone: 'рунный камень' };
   const mineList = () => Object.entries((ME && ME.hero && ME.hero.mn) || {}).map(([id, m]) => ({ id, nm: (m && m.nm) || 'Шахта', dist: (m && m.dist) || '', bi: (m && m.bi) || 'mount', dg: (m && m.dg) || 1, gem: (m && m.gem) || null, busy: !!(m && m.i >= 0) }))
@@ -2521,8 +2521,8 @@
     if (list.length === 1) { openMine(list[0].id); return; }
     const d = document.createElement('div'); d.className = 'mn-board-w'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-label', 'Шахты наших городов');
     d.innerHTML = `<div class="mn-board panel mn-go"><h3 class="h3">${v3t ? 'Шахты Ярмарки' : 'Шахты наших городов'}</h3><p class="muted">${v3t ? 'Шахта Города - как всегда. Новая шахта (тест) - Шахта 3.0 для тестеров: сумки, мастерство и лимит суток - общие, итогов и наград недели нет.' : 'Шахта есть в каждом городе ваших округов. Чем опаснее округ (★), тем богаче руда; у каждой природы — свой самоцвет.'}</p><ul>${list.map((m) => `<li><button type="button" class="btn ghost" data-go="${esc(m.id)}"><span aria-hidden="true">⛏</span><b>${esc(m.id === 'home' ? (v3t ? 'Шахта Города' : 'Домашняя шахта') : m.nm)} ${'★'.repeat(Math.max(1, Math.min(5, m.dg)))}</b><small>${esc([m.dist, BIO_RU[m.bi]].filter(Boolean).join(' · '))}${m.gem ? ` · самоцвет: ${esc(GEM_RU[m.gem] || m.gem)}` : ''}</small>${m.busy ? '<em>твой герой копает здесь</em>' : ''}</button></li>`).join('')}</ul><button type="button" class="btn primary" data-x>Закрыть</button></div>`;
-    // 25.10: окно поверх страницы (Esc и нажатие мимо закрывают) - packages/site-ui; кладётся в полноэкранный элемент, если он есть
-    const shut = SU.layer(d);   // 24.10: «Город» во весь экран — окно внутри него, иначе не видно
+
+    const shut = SU.layer(d);
     d.querySelector('[data-x]').onclick = shut;
     d.querySelectorAll('[data-go]').forEach((b) => { b.onclick = () => { shut(); openMine(b.dataset.go); }; });
     try { d.querySelector('[data-go]').focus({ preventScroll: true }); } catch {}
@@ -2530,20 +2530,20 @@
   async function openMine(c = 'home') {
     if (!ME || !ME.hero || !ME.hero.mn || !ME.hero.mn[c]) { toast('Эта шахта закрыта', true); return; }
     try { await mineFiles(); } catch { toast('Шахта не загрузилась — проверь связь', true); return; }
-    // 26.10 (iPhone: вкладка падала по памяти): пока открыта шахта, «Город» отпускает сцену (city.js sleep), «В город» - собирает заново
+
     const C = window.LGCity; try { if (C && C.sleep) C.sleep(); } catch (e) { console.warn('[город] sleep', e); }
     window.LGMine.open({ login: () => (ME && ME.user ? String(ME.user.login).toLowerCase() : ''), hero: () => (ME && ME.hero) || null, doodle: (l, h, mood, k) => doodle(l, h, mood, k), fig: (l, v, o) => figSvg(l, v, o), heroLook: (h) => heroLook(h),
       api: (p, b) => api(p, b), money: (n) => money(n), toast: (t, bad) => toast(t, bad), live: () => esOk, close: () => { try { if (C && C.wake) C.wake(); } catch (e) { console.warn('[город] wake', e); } },
-      mines: () => mineList(),   // 25.10: доска «Итоги шахты» — и из самой шахты (кнопка «Итоги»)
-      // 25.10: сумка шахты (обновление mine2) — та же кукла, рисунки вещей и карточка с сравнением, что во вкладке «Персонаж»
+      mines: () => mineList(),
+
       art: (it) => art(it), doll: (h, o) => dollHtml(h, o), cardTip: (el, it, h, o) => cardTip(el, it, h, o), tipHide: () => tipHide(),
-      // 23.10: сумка в шахте — надеть / снять (как во вкладке «Персонаж»: снимок героя сразу, игра применит через пару секунд)
+
       equip: async (uid) => { const r = await api('/api/equip', { uid }); if (r && r.ok && r.hero) { ME.hero = r.hero; last = ''; renderHero(); } return r; },
       unequip: async (slot) => { const r = await api('/api/unequip', { slot }); if (r && r.ok && r.hero) { ME.hero = r.hero; last = ''; renderHero(); } return r; } }, c);
   }
-  /* ---------- 30.10 (тюрьма, флаг legionary.jailPublic): забаненный заходит на сайт, но сидит в клетке у Тюрьмы ----------
-     Только вкладка «Город» (остальные скрыты, шапка без друзей, лички и чатов - CSS html.jailed), плашка «Ты в тюрьме канала» с причиной
-     и сроком; ходить и открывать здания нельзя (city.js), чат - только читать. Выпустили - всё на месте без перезагрузки страницы. */
+  
+
+
   function inJail() { return !!(ME && ME.jail); }
   let jailWas = false;
   function jailUi() {
@@ -2556,23 +2556,23 @@
       bar.innerHTML = `<b>Ты в тюрьме канала</b>${j.reason ? `<span>Причина: ${esc(j.reason)}</span>` : ''}<span>${j.until ? 'Выйдешь: ' + esc(String(j.untilText || '').replace(/^до /, '')) : 'Срок: бессрочно'}</span>`;
       if (!$('#tab-city').classList.contains('on')) tab('city');
     } else if (bar) bar.remove();
-    // выпустили: «Город» - заново, уже без клетки (режим зрителя)
+
     if (jailWas && !on && window.LGCity && $('#tab-city').classList.contains('on')) { window.LGCity.close(); openCity(); }
     jailWas = on;
   }
   async function openCity() {
     const el = $('#tab-city');
     if (!ME || !ME.hero || !(ME.hero.cy || ME.jail)) { el.innerHTML = SU.note('Город пока закрыт.'); return; }
-    if (!window.LGCity && !(await SU.loadInto(el, cityFiles, 'Город строится на глазах…', 'Город не загрузился — проверь связь и открой вкладку ещё раз.'))) return;   // 25.10: packages/site-ui
+    if (!window.LGCity && !(await SU.loadInto(el, cityFiles, 'Город строится на глазах…', 'Город не загрузился — проверь связь и открой вкладку ещё раз.'))) return;
     if (!$('#tab-city').classList.contains('on') || !window.LGCity) return;
     window.LGCity.open(el, CX);
   }
 
-  /* ---------- 24.10: «Отправить баг» — маленькая кнопка внизу справа (только вошедшим); форма (bugreport.js) — по первому нажатию ----------
-     Кнопка не мешает: если в её углу нижняя панель, окно, затемнение, чат или кнопки «Города», кнопки карты, переключатель стиля —
-     она поднимается над ними, а места нет — прячется; пока набирают текст (поле в фокусе, клавиатура телефона) — тоже прячется.
-     Проверка — по событиям (прокрутка, размер окна, клики, фокус, изменения страницы; не чаще раза в 150 мс), не каждый кадр.
-     «×» — свернуть в язычок у края экрана (помнится в браузере), нажатие на язычок — развернуть. */
+  
+
+
+
+
   const BF = { el: null, up: 0, t: 0, min: false, loading: null };
   try { BF.min = localStorage.getItem('lgBugMin') === '1'; } catch {}
   const bfWant = () => !DOCK && !!(ME && ME.user) && !$('#tab-streamer').classList.contains('on');
@@ -2591,7 +2591,7 @@
     if (window.visualViewport) window.visualViewport.addEventListener('resize', kick);
     document.addEventListener('focusin', kick);
     document.addEventListener('focusout', () => setTimeout(bfSoon, 60));
-    document.addEventListener('click', () => { bfSoon(); setTimeout(bfSoon, 400); }, true);   // открылась панель с анимацией — ещё раз, когда доехала
+    document.addEventListener('click', () => { bfSoon(); setTimeout(bfSoon, 400); }, true);
     document.addEventListener('transitionend', kick, true);
     try { new MutationObserver((ms) => { for (const m of ms) if (!d.contains(m.target)) { bfSoon(); return; } }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'hidden', 'open'] }); } catch {}
   }
@@ -2602,19 +2602,19 @@
   }
   function bfSoon() { if (BF.t || !BF.el) return; BF.t = setTimeout(() => { BF.t = 0; bfPlace(); }, 150); }
   const BF_IA = 'button, a[href], input, textarea, select, label, summary, [role="button"], [role="tab"], [role="slider"], [contenteditable]:not([contenteditable="false"]), [tabindex]:not([tabindex="-1"])';
-  // что под точкой мешает кнопке: слой поверх страницы (position: fixed — нижняя панель, окно, затемнение, комната «Города»)
-  // или кнопка/поле поверх карты (у неё или предка position: absolute; в «Городе» — его чат, полоса зданий, стрелки).
-  // Обычные кнопки страницы прокручиваются вместе с ней — их не считаем (внизу страницы под кнопку оставлен запас)
+
+
+
   function bfBlock(e) {
     if (!e || e === document.documentElement || e === document.body) return null;
-    // строка «Команда в поход» вкладки «Поход» - sticky, а не fixed: жук поднимается над ней
+
     const sy = e.closest('.q-say:not([hidden])'); if (sy) return sy;
     for (let n = e; n && n !== document.body; n = n.parentElement) if (getComputedStyle(n).position === 'fixed') return n;
-    // 30.10 (сборка 2, fix/chat-tabs-size): открытое окно чата «Города» теперь одной высоты (280-340 px) - мешает всё окно, не только его кнопки
+
     const cho = e.closest('.cy .cy-chat.open'); if (cho) return cho;
     const ia = e.closest(BF_IA); if (!ia) return null;
     const ir = ia.getBoundingClientRect();
-    if (ir.width * ir.height > window.innerWidth * window.innerHeight * 0.25) return null;   // сама карта (tabindex для клавиатуры) — не кнопка
+    if (ir.width * ir.height > window.innerWidth * window.innerHeight * 0.25) return null;
     if (ia.closest('.cy'))return ia.closest('.cy-chat, .cy-bar') || ia;
     for (let n = ia; n && n !== document.body; n = n.parentElement) if (getComputedStyle(n).position === 'absolute') return n;
     return null;
@@ -2637,13 +2637,13 @@
     const typing = ae && ae !== document.body && !el.contains(ae) && ae.matches && ae.matches('input:not([type=button]):not([type=submit]):not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]), textarea, select, [contenteditable]:not([contenteditable="false"])');
     const vv = window.visualViewport, kb = !!vv && window.innerHeight - vv.height > 150;
     if (typing || kb || document.querySelector('.bugm')) { el.classList.add('off'); return; }
-    // где кнопка стоит без подъёма (сейчас она может быть уже поднята или ещё доезжать — вычитаем текущий сдвиг)
+
     let dy = 0; try { dy = new DOMMatrixReadOnly(getComputedStyle(el).transform).m42; } catch {}
     const r = el.getBoundingClientRect(), top0 = r.top - dy, vh = window.innerHeight, maxUp = vh * 0.55;
     for (let up = 0, n = 0; up <= maxUp && n < 12; n++) {
       const b = bfHit(r.left, top0 - up, r.width, r.height);
       if (!b) { el.classList.remove('off'); if (up !== BF.up) { BF.up = up; el.style.setProperty('--bf-up', up + 'px'); } return; }
-      up = Math.max(up + 16, Math.ceil(top0 + r.height + 10 - b.top));   // над мешающим
+      up = Math.max(up + 16, Math.ceil(top0 + r.height + 10 - b.top));
     }
     el.classList.add('off');
   }
@@ -2656,7 +2656,7 @@
     BF.el.classList.add('busy');
     BF.loading.then(() => { if (window.LGBug) { window.LGBug.open(bugCtx()); bfPlace(); } }, () => toast('Форма не загрузилась - проверь связь', true)).finally(() => { if (BF.el) BF.el.classList.remove('busy'); });
   }
-  // что приложим к репорту: раздел сайта, канал, оформление, версия сайта (браузер и экран форма добавит сама)
+
   function bugCtx() {
     const t = $('.tab.on'), id = t ? t.id.replace(/^tab-/, '') : '', tb = id && $(`.tabs button[data-tab="${id}"]`);
     const VN = { gear: 'Снаряжение', look: 'Облик', skills: 'Навыки', ach: 'Достижения', log: 'Журнал' };
@@ -2665,9 +2665,9 @@
       onClose: () => { bfSoon(); const b = BF.el && BF.el.querySelector('.bugfab-b'); if (b && BF.el.contains(document.activeElement) === false) try { b.focus({ preventScroll: true }); } catch {} } };
   }
 
-  /* ---------- загрузка ---------- */
-  // 30.10: режим «Технические работы» - плашка на весь экран поверх страницы (сервер кладёт maintenance: { text } в /api/me; админу игры и тестерам - нет).
-  // Пока плашка висит, раз в 30 с спрашиваем /api/me: работы закончились - плашка уходит сама.
+   
+
+
   let mtEl = null, mtT = 0;
   function maintShow(m) {
     if (!m) {
@@ -2691,9 +2691,9 @@
     if (!r || r.ok === false) return;
     maintShow(r.maintenance || null);
     apply(r, true);
-    if (r.ql) questData(r.ql, r.now);   // 22.10: вкладка «Поход» без живого канала — по опросу
+    if (r.ql) questData(r.ql, r.now);
   }
-  // данные героя пришли (запросом или по живому каналу) — перерисовываем, только если что-то поменялось
+
   let laterT = 0;
   function apply(r, full) {
     const wasUser = !!(ME && ME.user);
@@ -2702,45 +2702,45 @@
     ME = next; nameItems(ME && ME.hero);
     for (const x of (ME && ME.results) || []) {
       if (shownRes.has(x.id)) continue;
-      if (x.x && x.x.op === 'qact') { shownRes.add(x.id); if (window.LGQuest && window.LGQuest.result) window.LGQuest.result(x); else if (!x.ok) toast(x.error || 'Не вышло', true); continue; }   // 25.10: ответ игры на кнопку похода
-      if (x.x && x.x.op === 'hwSwap') { shownRes.add(x.id); try { window.LGHwNpc && window.LGHwNpc.result && window.LGHwNpc.result(x); } catch (e) { /* окно уже закрыто */ } toast(x.ok ? (x.x.coins != null ? `Обменяно ${x.x.n} конфет на монеты: +${x.x.coins}` : 'Конфеты обменяны на монеты') : 'Обмен не вышел: ' + (x.error || 'попробуй ещё раз'), !x.ok); continue; }   // 29.10: «Ступа сладостей» - обмен конфет на монеты
-      // 31.10 (feat/hw-coin-npc): «Ступа сладостей» - обмен монет на конфеты
-      if (x.x && x.x.op === 'hwBack') { shownRes.add(x.id); try { window.LGHwNpc && window.LGHwNpc.result && window.LGHwNpc.result(x); } catch (e) { /* окно уже закрыто */ } toast(x.ok ? (x.x.test ? 'Тест: ничего не списано' : `Обменяно ${x.x.coins} монет на конфеты: +${x.x.n}`) : 'Обмен не вышел: ' + (x.error || 'попробуй ещё раз'), !x.ok); continue; }
-      if (x.x && x.x.op === 'hwBuy') { shownRes.add(x.id); try { window.LGHwNpc && window.LGHwNpc.result && window.LGHwNpc.result(x); } catch (e) { /* окно уже закрыто */ } toast(x.ok ? (x.x.test ? `Тест: «${x.x.got || 'вещь'}» - ничего не списано` : `Обмен готов: «${x.x.got || 'вещь'}» - за ${x.x.price} конфет`) : 'Обмен не вышел: ' + (x.error || 'попробуй ещё раз'), !x.ok); continue; }   // 29.10: покупка в «Ступе сладостей» кнопкой
-      // 31.10 (feat/hw-pass20): «Получить» в окне Призрачного Фонарщика; feat/hw-pass-claim: all - «Получить всё»
-      if (x.x && x.x.op === 'hwPick') { shownRes.add(x.id); try { window.LGHwNpc && window.LGHwNpc.result && window.LGHwNpc.result(x); } catch (e) { /* окно уже закрыто */ } toast(x.ok ? (x.x.test ? `Тест: «${x.x.got || 'награда'}» - ничего не выдано` : x.x.all ? `Награды пасса получены: ${x.x.got || (x.x.lvs || []).length}` : `Награда пасса получена: «${x.x.got || 'награда'}»`) : 'Получить не вышло: ' + (x.error || 'попробуй ещё раз'), !x.ok); continue; }
-      // 31.10 (feat/hw-pass-claim): «Забрать» у записи журнала
+      if (x.x && x.x.op === 'qact') { shownRes.add(x.id); if (window.LGQuest && window.LGQuest.result) window.LGQuest.result(x); else if (!x.ok) toast(x.error || 'Не вышло', true); continue; }
+      if (x.x && x.x.op === 'hwSwap') { shownRes.add(x.id); try { window.LGHwNpc && window.LGHwNpc.result && window.LGHwNpc.result(x); } catch (e) {   } toast(x.ok ? (x.x.coins != null ? `Обменяно ${x.x.n} конфет на монеты: +${x.x.coins}` : 'Конфеты обменяны на монеты') : 'Обмен не вышел: ' + (x.error || 'попробуй ещё раз'), !x.ok); continue; }
+
+      if (x.x && x.x.op === 'hwBack') { shownRes.add(x.id); try { window.LGHwNpc && window.LGHwNpc.result && window.LGHwNpc.result(x); } catch (e) {   } toast(x.ok ? (x.x.test ? 'Тест: ничего не списано' : `Обменяно ${x.x.coins} монет на конфеты: +${x.x.n}`) : 'Обмен не вышел: ' + (x.error || 'попробуй ещё раз'), !x.ok); continue; }
+      if (x.x && x.x.op === 'hwBuy') { shownRes.add(x.id); try { window.LGHwNpc && window.LGHwNpc.result && window.LGHwNpc.result(x); } catch (e) {   } toast(x.ok ? (x.x.test ? `Тест: «${x.x.got || 'вещь'}» - ничего не списано` : `Обмен готов: «${x.x.got || 'вещь'}» - за ${x.x.price} конфет`) : 'Обмен не вышел: ' + (x.error || 'попробуй ещё раз'), !x.ok); continue; }
+
+      if (x.x && x.x.op === 'hwPick') { shownRes.add(x.id); try { window.LGHwNpc && window.LGHwNpc.result && window.LGHwNpc.result(x); } catch (e) {   } toast(x.ok ? (x.x.test ? `Тест: «${x.x.got || 'награда'}» - ничего не выдано` : x.x.all ? `Награды пасса получены: ${x.x.got || (x.x.lvs || []).length}` : `Награда пасса получена: «${x.x.got || 'награда'}»`) : 'Получить не вышло: ' + (x.error || 'попробуй ещё раз'), !x.ok); continue; }
+
       if (x.x && x.x.op === 'jClaim') { shownRes.add(x.id); jClaimDone(x); continue; }
-      if (x.x && x.x.op === 'fcoin') { shownRes.add(x.id); if (window.LGFriends && window.LGFriends.coinDone) window.LGFriends.coinDone(x); else toast(x.ok ? 'Монета дня подарена' : 'Монета дня: ' + (x.error || 'не вышло'), !x.ok); continue; }   // 29.10: монета дня друзьям
-      if (x.x && x.x.op === 'seal') { shownRes.add(x.id); toast('Печать применена: у героя теперь свой стиль'); continue; }   // 26.10: Печать Метаморфозы
+      if (x.x && x.x.op === 'fcoin') { shownRes.add(x.id); if (window.LGFriends && window.LGFriends.coinDone) window.LGFriends.coinDone(x); else toast(x.ok ? 'Монета дня подарена' : 'Монета дня: ' + (x.error || 'не вышло'), !x.ok); continue; }
+      if (x.x && x.x.op === 'seal') { shownRes.add(x.id); toast('Печать применена: у героя теперь свой стиль'); continue; }
       if (x.x && /^(st|auc|note)/.test(x.x.op || '')) { shownRes.add(x.id); storeNote(x); continue; }
-      if (x.x && /^mine/.test(x.x.op || '')) { shownRes.add(x.id); if (window.LGMine && window.LGMine.result) window.LGMine.result(x); else if (!x.ok) toast(x.error || 'Не вышло', true); continue; }   // 26.10: шахта (окно скупщика) — не в окно Кузни   // 22.10: склад, аукцион (вещь ушла на склад), сообщение без действия
-      if (x.x || x.id === FG.wait) { shownRes.add(x.id); forgeDone(x); continue; }   // 20.10: заточка, ковка, покупка — итог в окне Кузни
+      if (x.x && /^mine/.test(x.x.op || '')) { shownRes.add(x.id); if (window.LGMine && window.LGMine.result) window.LGMine.result(x); else if (!x.ok) toast(x.error || 'Не вышло', true); continue; }
+      if (x.x || x.id === FG.wait) { shownRes.add(x.id); forgeDone(x); continue; }
       if (!x.ok) { shownRes.add(x.id); toast('Игра не применила изменение: ' + (x.error || 'вещи больше нет'), true); }
     }
-    fgSync();   // 25.10: «кузнец работает» - по очереди шлюза
+    fgSync();
     if (FG.el) fgRender();
-    if (k === last) return; last = k;   // ничего не поменялось — не перерисовываем (не сбиваем прокрутку)
-    // пока тянут вещь или открыто меню — перерисуем чуть позже
+    if (k === last) return; last = k;
+
     if (DR.active || DR.src || document.querySelector('.ctxm') || busy) { clearTimeout(laterT); laterT = setTimeout(() => { last = ''; apply(ME, true); }, 700); return; }
     renderUser(); renderHero(); smVis(); cityVis(); questVis(); worldVis(); jailUi();
-    if (window.LGQuest && window.LGQuest.hero) window.LGQuest.hero();   // 25.10: панель героя во вкладке «Поход» (здоровье, еда, баффы)
-    if (window.LGMine && window.LGMine.on && window.LGMine.hero) window.LGMine.hero();   // 27.10: сумка в шахте - сразу новые кучки и осколки (раньше рисовалась только при открытии)
-    if (ME && ME.user) bfInit(); bfSoon();   // 24.10: «Отправить баг»
+    if (window.LGQuest && window.LGQuest.hero) window.LGQuest.hero();
+    if (window.LGMine && window.LGMine.on && window.LGMine.hero) window.LGMine.hero();
+    if (ME && ME.user) bfInit(); bfSoon();
     if (window.LGCity && $('#tab-city').classList.contains('on')) window.LGCity.heroChanged();
-    // 29.10: личка страницы (LGDm) - живёт вне «Города» и шахты
+
     if (ME && ME.user && ME.hero && ME.hero.cd && !inJail()) dmLoad().catch(() => null);
-    // 29.10: единый чат страницы
+
     if (ME && ME.user && ME.hero && ME.hero.c1 && !inJail()) oneLoad().catch(() => null); else if (window.LGChatOne && ME && ME.hero) window.LGChatOne.init(oneCtx());
-    // флаг включили на лету - окно лички сразу уходит во вкладку чата (выключили - возвращается)
+
     if (window.LGDm) window.LGDm.place();
     if (!wasUser && ME.user) { if (logOn()) loadLog(); live(); }
   }
 
-  /* ---------- 18.10: живые обновления: свой герой и свои записи журнала приходят сами (SSE), без опроса ----------
-     Вкладка в фоне дольше минуты — соединение закрываем (вернулся — открываем и разом догоняем). Нет SSE — опрос раз в 30 с с ETag. */
-  // 18.10: стримеру (вкладка «Режим стримера» или док OBS) — в том же канале событие «sm»: разделы, «Готовность», стиль канала
-  // поменялись — док обновляется сам. Док OBS никогда не «прячется» — его канал не закрываем; героя ему не шлют (only=sm)
+  
+
+
+
   let ES = null, esOk = false, esFails = 0, hideT = 0, smEs = false, smOpen = 0;
   function live() {
     if (DEMO || ES || !window.EventSource) return;
@@ -2750,21 +2750,21 @@
     if (!DOCK) {
       ES.addEventListener('me', (e) => { esOk = true; esFails = 0; try { const d = JSON.parse(e.data); if (d.now) clock(d.now); apply(d, false); } catch {} });
       ES.addEventListener('j', (e) => { try { logAdd(JSON.parse(e.data)); } catch {} });
-      // 20.10: «Город»
+
       ES.addEventListener('city', (e) => { try { const d = JSON.parse(e.data); if (window.LGChatOne && window.LGChatOne.on() && (d.chat || d.chatDel || d.chatMe)) window.LGChatOne.onFeed('city', d); if (window.LGCity) window.LGCity.onEvent(d); } catch (er) { console.error('[сайт] событие «city»', er); } });
-      // 23.10: шахта; 29.10: лента шахты - единому чату
+
       ES.addEventListener('mine', (e) => { try { const d = JSON.parse(e.data); if (d.chatRoom === 'mine' && window.LGChatOne && window.LGChatOne.on()) { window.LGChatOne.onFeed('mine', d); return; } if (window.LGMine && window.LGMine.on) window.LGMine.onEvent(d); } catch (er) { console.error('[сайт] событие «mine»', er); } });
-      ES.addEventListener('dm', (e) => { let d = null; try { d = JSON.parse(e.data); } catch {} if (!d) return; if (window.LGDm) window.LGDm.onEvent(d); else if (d.m) dmLoad().then(() => window.LGDm && window.LGDm.onEvent(d)).catch(() => null); });   // 29.10: личные
-      ES.addEventListener('fr', (e) => { try { if (window.LGFriends) window.LGFriends.onEvent(JSON.parse(e.data)); } catch {} });   // 29.10: заявка в друзья, «принял»
-      ES.addEventListener('q', (e) => { try { const d = JSON.parse(e.data); questData(d, d.now); } catch {} });   // 22.10: вкладка «Поход»
-      // 30.10 (тюрьма): список заключённых изменился - клетке в «Городе»; посадили / выпустили меня - перечитать /api/me (режим страницы)
+      ES.addEventListener('dm', (e) => { let d = null; try { d = JSON.parse(e.data); } catch {} if (!d) return; if (window.LGDm) window.LGDm.onEvent(d); else if (d.m) dmLoad().then(() => window.LGDm && window.LGDm.onEvent(d)).catch(() => null); });
+      ES.addEventListener('fr', (e) => { try { if (window.LGFriends) window.LGFriends.onEvent(JSON.parse(e.data)); } catch {} });
+      ES.addEventListener('q', (e) => { try { const d = JSON.parse(e.data); questData(d, d.now); } catch {} });
+
       ES.addEventListener('jail', (e) => { let d = null; try { d = JSON.parse(e.data); } catch (x) { d = null; } if (!d) return; if (window.LGCity && window.LGCity.jail) window.LGCity.jail(d); const me = CX.login(), inn = (d.list || []).some((x) => x.l === me); if (me && inn !== inJail()) load(); });
     }
-    ES.addEventListener('style', (e) => { let d = {}; try { d = JSON.parse(e.data) || {}; } catch {} styleEvent(String(d.style || '')); });   // 28.10 (fix/style-live)
+    ES.addEventListener('style', (e) => { let d = {}; try { d = JSON.parse(e.data) || {}; } catch {} styleEvent(String(d.style || '')); });
     ES.addEventListener('sm', (e) => { let d = {}; try { d = JSON.parse(e.data) || {}; } catch {} if ((d.why || []).includes('mods')) { smStale = true; smStaleCheck(); } smRefresh(true, d.style); smTell(d.why); });
-    ES.onopen = () => { smEs = !!q; if (DOCK) esFails = 0; if (q && smOpen++ && SM.data) smRefresh(true); };   // переподключились — что-то могли пропустить
+    ES.onopen = () => { smEs = !!q; if (DOCK) esFails = 0; if (q && smOpen++ && SM.data) smRefresh(true); };
     ES.addEventListener('busy', () => { stopLive(); esFails = 99; });
-    ES.onerror = () => { esOk = false; smEs = false; if (++esFails > 5) stopLive(); };   // браузер переподключается сам; совсем не выходит — опрос
+    ES.onerror = () => { esOk = false; smEs = false; if (++esFails > 5) stopLive(); };
   }
   function stopLive() { if (ES) { try { ES.close(); } catch {} ES = null; } esOk = false; smEs = false; }
   document.addEventListener('visibilitychange', () => {
@@ -2776,12 +2776,12 @@
   const shownRes = new Set();
   mqWide.addEventListener && mqWide.addEventListener('change', () => { sheet = false; renderHero(); });
   window.LG = { restyle: (st) => siteRestyle(st), rerender: (keepSm) => { last = ''; INV.artReset(); applyStyle(); if (SM.data && !keepSm) { smDrop(); if ($('#tab-streamer').classList.contains('on')) openStreamer(); } load(); if ($('#tab-legion').classList.contains('on')) legOpen(); if (logOn()) { jAt = ''; loadLog(); } } };
-  /* ---------- ВРЕМЕННО: переключатель стиля сайта (для каждого зрителя свой, запоминается в браузере) ----------
-     Убрать: TEMP_STYLE_SWITCH = false. Без выбора сайт берёт стиль, включённый у стримера в MultiDonate. */
+  
+
   const TEMP_STYLE_SWITCH = true;
-  const STYLE_LIST = SU.STYLES;   // 28.10: все 7 стилей (packages/site-ui)
+  const STYLE_LIST = SU.STYLES;
   const BASE_STYLE = sty();
-  // 18.10: стили, открытые зрителям канала (сервер: LG_STYLES; сейчас — только стиль канала). Один — выбора нет, кнопки не нужны
+
   const OPEN = Array.isArray(window.LG_STYLES) ? window.LG_STYLES : STYLE_LIST.map(([k]) => k);
   const canSwitch = STYLE_LIST.filter(([k]) => OPEN.includes(k) && D() && D().styles && D().styles[k]).length > 1;
   if (!canSwitch) try { localStorage.removeItem('lgStyle'); } catch {}
@@ -2799,25 +2799,25 @@
     paint(); document.body.appendChild(box);
   }
   applyStyle();
-  // док-панель OBS: только режим стримера (права уже проверил сервер) — героя, журнал и живой канал не грузим
+
   if (DOCK) { document.documentElement.classList.add('dock'); $('.tabs button[data-tab="streamer"]').hidden = false; tab('streamer'); live(); return; }
   chswInit();
   let t0 = 'hero'; try { t0 = localStorage.getItem('lgTab') || 'hero'; } catch {}
-  // 18.10: ссылка «Режим стримера» из «Моих каналов» — /c/<канал>/#streamer
+
   if (location.hash === '#streamer') { t0 = 'streamer'; try { history.replaceState(history.state, '', location.pathname + location.search); } catch {} }
-  // 25.10: из закрытой «Песочницы» перенаправляют на «Город» канала владельца - /c/<канал>/#city
+
   if (location.hash === '#city') { t0 = 'city'; try { history.replaceState(history.state, '', location.pathname + location.search); } catch {} }
   window.addEventListener('hashchange', () => { if (location.hash === '#streamer') { try { history.replaceState(history.state, '', location.pathname + location.search); } catch {} if (smOk()) tab('streamer'); else smWant = true; } });
   if (t0 === 'streamer') smWant = true;
-  if (t0 === 'world') worldWant = true;   // 23.10: «Карта мира» — когда придёт герой с доступом
-  if (t0 === 'city') cityWant = true;   // 20.10: «Город» — когда придёт герой с доступом
-  if (t0 === 'log') { view = 'log'; t0 = 'hero'; }   // 23.10: вкладки «Журнал» больше нет — он внутри «Персонажа»
-  if (t0 === 'soc') { lgv = 'soc'; t0 = 'legion'; }   // 23.10: вкладки «Соц. рейтинг» больше нет — она в «Легионе»
+  if (t0 === 'world') worldWant = true;
+  if (t0 === 'city') cityWant = true;
+  if (t0 === 'log') { view = 'log'; t0 = 'hero'; }
+  if (t0 === 'soc') { lgv = 'soc'; t0 = 'legion'; }
   tab(t0 === 'legion' || t0 === 'news' ? t0 : 'hero');
   load().then(live);
-  // без живого канала — опрос (ответ без изменений — 304, почти без трафика); героя создают — чаще, пока не появится
+
   setInterval(() => { if (document.visibilityState === 'visible' && !busy && !DEMO && !esOk) load(); }, 30000);
   setInterval(() => { if (document.visibilityState === 'visible' && !busy && !DEMO && !esOk && ME && ME.user && !ME.hero) load(); }, 5000);
-  // Легион и рейтинг меняются медленно — раз в минуту, только если вкладка открыта и видна
+
   setInterval(() => { if (document.hidden || DEMO) return; if ($('#tab-legion').classList.contains('on')) legOpen(); }, 60000);
 })();

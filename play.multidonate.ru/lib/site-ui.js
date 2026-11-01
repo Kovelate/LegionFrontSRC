@@ -1,21 +1,21 @@
-// Общие части сайта игры (25.10, этап 2 дорожной карты) - то, что страницы сайта (app.js, «Город», шахта, аукцион, обмен,
-// «Новости», «Навыки», «Поход»...) раньше писали каждая у себя. Без сборки и без зависимостей, кроме ui-kit (текст, склонения,
-// всплывающая надпись - их не дублируем, берём оттуда). В браузере - window.LGSiteUi (страница грузит /lib/ui-kit.js и
-// /lib/site-ui.js до своих файлов), в Node - module.exports (чистые части проверяет test/site-ui.test.ts).
-//
-//   текст:     esc(s), plural(n, one, few, many), pluralN(...), timeAgo(ts) - из ui-kit;
-//   деньги:    money(n, ref, coins) - «<span class="m"><b class="ms">10</b> серебряных рыбок <b class="mb">5</b> чешуек</span>»,
-//              moneyText(n, ref, coins), moneyParts(n, ref, coins) → [[g|s|b, число, слово]], lack(price, have, cls, coins),
-//              bal(price, have, cls, coins). coins - монеты стиля (MDDoodle.part('coins'): { g|s|b: { forms: [1, 2, 5] } }) или
-//              функция, которая их вернёт; нет - «зол. / сер. / мед.»;
-//   надпись:   toast(text, bad, o) - всплывающая надпись сайта (#toast, вид - style.css); o.ms - сколько держать (2800);
-//   «Точно?»:  confirmTwice(btn, o) - первое нажатие: надпись «Точно…?», второе в течение o.ms (4000) - true;
-//   экран:     MQ (телефон, широкий, палец, мышь, меньше движения...), media(имя | запрос), is(имя | запрос);
-//   окна:      layer(el, o) - окно поверх страницы: Esc и нажатие мимо закрывают; clampXY(el, x, y, pad) - не за край экрана;
-//   состояния: note(text, cls) - «<p class="empty">…</p>» (загрузка, ошибка, пусто); loadInto(el, load, wait, fail) - вкладка,
-//              чей код грузится по требованию: «грузится…», не вышло - «не загрузилось» (true - загрузился).
-// Чат сайта (чат «Города» и шахты, прежний sitechat.js) - отдельный файл библиотеки: chat.js (/lib/site-chat.js), грузится по
-// требованию. Адресов игры, ников и модулей здесь нет - только вид и поведение.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 (function (root, factory) {
   const UI = typeof module === 'object' && module.exports ? require('../ui-kit') : root.LGUi;
   const api = factory(root, UI);
@@ -26,9 +26,9 @@
   if (!UI) throw new Error('site-ui: нужен ui-kit (/lib/ui-kit.js) до /lib/site-ui.js');
   const { esc, plural, pluralN, timeAgo } = UI;
 
-  /* ---------- деньги: крупные единицы слева, через пробел - «10 серебряных рыбок 5 чешуек» (24.10, баг тестера) ---------- */
-  // 1 золотая = 100 серебряных = 10000 медных. ref - сумма, с которой сравниваем (цена): ноль пишем в её крупной единице -
-  // «0 серебряных рыбок», а не «0 чешуек»
+   
+
+
   const MUNIT = (n) => (n >= 10000 ? 'g' : n >= 100 ? 's' : 'b');
   const FB = { g: 'зол.', s: 'сер.', b: 'мед.' };
   function moneyParts(n, ref, coins) {
@@ -42,29 +42,29 @@
   }
   const money = (n, ref, coins) => `<span class="m">${moneyParts(n, ref, coins).map(([k, v, t]) => `<b class="m${k}">${v}</b> ${t}`).join(' ')}</span>`;
   const moneyText = (n, ref, coins) => moneyParts(n, ref, coins).map(([, v, t]) => `${v} ${t}`).join(' ');
-  // «У тебя: … / Не хватает: …» - две строки обычным текстом (лавки, Кузня, склад, аукцион)
+
   function lack(price, have, cls = '', coins) {
     price = Math.max(0, Math.floor(+price || 0)); have = Math.max(0, Math.floor(+have || 0));
     return `<p class="note lack${cls ? ' ' + cls : ''}">У тебя: ${money(have, price, coins)}<br>Не хватает: ${money(price - have, price, coins)}</p>`;
   }
-  // кошелёк рядом с ценой: хватает - «У тебя: …», не хватает - «У тебя / Не хватает»
+
   const bal = (price, have, cls = '', coins) => ((+have || 0) < (+price || 0) ? lack(price, have, cls, coins)
     : `<p class="note bal${cls ? ' ' + cls : ''}">У тебя: ${money(Math.max(0, +have || 0), price, coins)}</p>`);
 
-  /* ---------- всплывающая надпись сайта (#toast в index.html, вид - .toast / .toast.on / .toast.err в style.css) ---------- */
-  // Одна на страницу: ui-kit.toast в режиме «свой элемент» (o.el) - один таймер, новая надпись продлевает показ.
-  // (o.key - отдельный таймер; до 25.10 у app.js, «Новостей» и правки новостей были свои, и таймер прежней надписи
-  // прятал новую раньше срока - не используем)
+   
+
+
+
   function toast(text, bad, o = {}) {
     if (typeof document === 'undefined') return;
     const el = o.el || document.getElementById('toast'); if (!el) return;
     UI.toast(text, { el, cls: 'toast', err: !!bad, ms: o.ms || 2800, key: o.key });
   }
 
-  /* ---------- «Точно?»: защита от случайного нажатия - второе нажатие в течение ms ---------- */
-  // o: text (или html) - надпись после первого нажатия; cls - класс на это время; mark - data-атрибут на это время (стили
-  // «Новостей» красят [data-armed]); ms - 4000. Через ms (если кнопка ещё на странице) - прежняя надпись. true - подтвердили.
-  // o.once - подтверждение снимает «Точно?» сразу (без возврата надписи; кнопку перерисует страница).
+   
+
+
+
   const ARM = typeof WeakMap === 'function' ? new WeakMap() : null;
   function confirmTwice(btn, o = {}) {
     const st = ARM.get(btn), now = Date.now();
@@ -81,14 +81,14 @@
   function restore(btn, s) { btn.innerHTML = s.was; if (s.cls) btn.classList.remove(s.cls); if (s.mark) delete btn.dataset[s.mark]; }
   const armed = (btn) => { const st = ARM.get(btn); return !!(st && st.until > Date.now()); };
 
-  /* ---------- экран: одни и те же запросы везде (телефон - до 720 px, широкий ПК - от 1100 px) ---------- */
+   
   const MQ = {
-    phone: '(max-width: 720px)',        // телефон: чат снизу, шахта на весь экран
-    tablet: '(min-width: 720px)',       // от планшета: сумка «Персонажа» вида full
-    wide: '(min-width: 1100px)',        // широкий ПК: карточка вещи справа, а не шторкой
+    phone: '(max-width: 720px)',
+    tablet: '(min-width: 720px)',
+    wide: '(min-width: 1100px)',
     narrow: '(max-width: 1099px)',
-    touch: '(pointer: coarse)',         // палец
-    hover: '(hover: hover)',            // мышь (есть наведение)
+    touch: '(pointer: coarse)',
+    hover: '(hover: hover)',
     nohover: '(hover: none)',
     reduced: '(prefers-reduced-motion: reduce)',
   };
@@ -100,9 +100,9 @@
   }
   const is = (q) => !!media(q).matches;
 
-  /* ---------- окна ---------- */
-  // Окно поверх страницы (el - подложка с окном внутри): в host (нет - полноэкранный элемент или body), Esc и нажатие на
-  // подложку закрывают. Вернёт shut() - закрыть (onClose зовётся один раз).
+   
+
+
   function layer(el, o = {}) {
     let open = true;
     const shut = () => { if (!open) return; open = false; el.remove(); document.removeEventListener('keydown', key); if (o.onClose) o.onClose(); };
@@ -112,24 +112,24 @@
     if (!el.isConnected) (o.host || document.fullscreenElement || document.body).appendChild(el);
     return shut;
   }
-  // Поставить el в точку (x, y) так, чтобы он не уходил за край окна (pad от края); вернёт [x, y]
+
   function clampXY(el, x, y, pad = 8) {
     const r = el.getBoundingClientRect(), W = root.innerWidth, H = root.innerHeight;
     return [Math.max(pad, Math.min(W - r.width - pad, x)), Math.max(pad, Math.min(H - r.height - pad, y))];
   }
 
-  /* ---------- состояния: загрузка, ошибка, пусто ---------- */
+   
   const note = (text, cls = 'empty') => `<p class="${cls}">${esc(text)}</p>`;
-  // Вкладка, чей код грузится по требованию: пока грузится - wait, не загрузился - fail (оба - простым текстом). true - загрузился
+
   async function loadInto(el, load, wait, fail) {
     el.innerHTML = note(wait);
     try { await load(); return true; } catch { el.innerHTML = note(fail); return false; }
   }
 
-  /* ---------- 28.10: оформление и тексты сайта по стилю человечков (одна таблица - и для сервера, и для страницы) ----------
-     STYLES - стили по порядку (переключатель тестеров), SKINS - оформления (html[data-skin], legacy/site/public/style.css,
-     public/platform/skin.css и done.css), STYLE_SKIN - стиль → оформление; нет стиля - «Арсенал» (forge).
-     STYLE_TEXT - тексты сайта в голосе стиля: groups - группы Легиона (вкладка «Легион»), copy - сумка и кнопки «Персонажа». */
+  
+
+
+
   const STYLES = [['legion', 'Легион'], ['cats', 'Котики'], ['monkeys', 'Обезьяны'], ['veggies', 'Овощи'], ['42brothers', '42 Братухи'], ['cherts', 'Чертики'], ['ugabugi', 'Уга-Буги']];
   const SKINS = { forge: 'Арсенал', den: 'Лежанка', rage: 'Ярость', garden: 'Грядка', club: 'VIP-зона', inferno: 'Пекло', cave: 'Пещера' };
   const STYLE_SKIN = { legion: 'forge', cats: 'den', monkeys: 'rage', veggies: 'garden', '42brothers': 'club', cherts: 'inferno', ugabugi: 'cave' };

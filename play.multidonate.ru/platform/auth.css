@@ -1,4 +1,4 @@
-/* Вход в пульт (док-панель OBS) и подтверждение входа (/link). Цвета — как у пульта (legacy/md/public/panel/panel.css). */
+ 
 :root {
   --bg: #0f1115; --panel: #171a21; --card: #1d2129; --line: #2a2f3a; --text: #e8eaf0; --muted: #8b93a7;
   --accent: #ffcc33; --accent-ink: #1a1400; --ok: #3ddc84; --warn: #ffb020; --err: #ff5d5d;

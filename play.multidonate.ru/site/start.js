@@ -1,12 +1,12 @@
-/* 26.10 (ТЗ «старт игры для стримера и зрителя», docs/reports/streamer-start.md): шапка сайта канала.
-   - Переключатель «Зритель / Стример» (новинка «roles»): «Стример» - режим стримера СВОЕГО канала (канал = логин Twitch).
-     Права проверяет сервер (/api/streamer, пульты ?embed=1); здесь - только вид и переходы. Режим помнится в браузере.
-   - Поиск стримера и свой список каналов (новинка «find»): вместо общего списка «Стримеры» под кнопкой выбора канала.
-     Подсказки - после паузы в наборе (debounce), сервер ограничивает частоту; без запроса никого не показываем.
-   Файл грузится, только когда сервер открыл этому входу хоть одну из новинок (app.js → startSync). */
+
+
+
+
+
+
 (function () {
   'use strict';
-  let H = null;   // крючки app.js: me(), tab(id), smOk(), api(), toast(), esc(), ch, curTab()
+  let H = null;
   const $ = (s, r = document) => r.querySelector(s);
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const ls = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
@@ -16,7 +16,7 @@
   const curLogin = () => (H && H.ch ? String(H.ch.login).toLowerCase() : '');
   const ownLogin = () => { const m = me(); return m && m.own ? String(m.own.login).toLowerCase() : ''; };
 
-  /* ---------- переключатель «Зритель / Стример» ---------- */
+   
   let swEl = null, lastViewerTab = 'hero';
   function swRender() {
     const m = me();
@@ -24,7 +24,7 @@
     if (!swEl) return;
     const on = !!(m && m.user && m.roleSw);
     swEl.hidden = !on;
-    // вкладка «Режим стримера» в ленте не нужна - её место занял переключатель
+
     const tb = $('.tabs button[data-tab="streamer"]'); if (tb && on) tb.hidden = true;
     document.documentElement.classList.toggle('has-roles', on);
     if (!on) { swEl.innerHTML = ''; return; }
@@ -45,19 +45,19 @@
     const own = ownLogin();
     if (!own) {
       const m = me();
-      // 27.10: своего канала нет, сервер разрешил создать (ownNew: спящие каналы включены) - создаём и идём в режим стримера (там мастер).
-      // Права и лимиты - на сервере (POST /api/ownchannel); выключено - как раньше, только надпись
+
+
       if (!(m && m.ownNew)) { swNote('Твой канал ещё не подключён к игре. Как только он появится, здесь откроется режим стримера.'); return; }
-      // 27.10 (решение стримера): создание канала - только после подтверждения в окне (Esc / × / «Отмена» - ничего не создаём)
+
       if (!toStreamer.busy) ownConfirm(m.user && (m.user.name || m.user.login) || '');
       return;
     }
     ls.set('lgRole', 'streamer');
     if (own !== curLogin()) { location.href = chUrl(own) + '#streamer'; return; }
     if (!H.smOk()) { swNote('Режим стримера сейчас недоступен - обнови страницу через минуту.'); return; }
-    H.tab('streamer');   // мастер при первом переходе - tabChanged
+    H.tab('streamer');
   }
-  // окно «Создать свой канал?»: фокус - на «Создать», Tab не уходит из окна, Esc / × / «Отмена» / клик мимо - закрыть
+
   function ownConfirm(nick) {
     if (document.getElementById('ownNewDlg')) return;
     const M = modal('wz-own', 'Создать свой канал');
@@ -101,7 +101,7 @@
     if (b.dataset.role === 'streamer') toStreamer(); else toViewer();
   });
 
-  /* ---------- поиск стримера и свой список ---------- */
+   
   const F = { el: null, from: null, q: '', res: null, busy: false, err: '', list: null, listErr: '', t: 0, ctl: null, cache: new Map() };
   function findOpen(btn) {
     findClose(false);
@@ -139,7 +139,7 @@
     el.style.top = Math.round(r.bottom + 8) + 'px';
     el.style.maxHeight = Math.max(220, window.innerHeight - r.bottom - 24) + 'px';
   }
-  // набор: пауза 300 мс, предыдущий запрос - отменяем; одинаковый запрос - из памяти
+
   function findInput(v) {
     const q = String(v || '').trim().toLowerCase().replace(/^@/, '');
     F.q = v; clearTimeout(F.t);
@@ -204,7 +204,7 @@
           <button type="button" class="sf-b sf-x" data-act="remove" data-ch="${esc(c.login)}" title="Убрать из списка (герой и вещи на канале останутся)" aria-label="Убрать из списка: ${esc(c.name)}">${SVG.x}</button></span></li>`;
       }).join('')}</ul>`;
     }
-    // свои каналы (владелец / админ) - как раньше в «Моих каналах»
+
     const mine = (m && m.mine) || [];
     if (mine.length) h += `<hr class="pop-sep"><p class="pop-h">Мои каналы</p><ul class="pop-l">${mine.map((c) => `<li><a class="pop-ch" href="${chUrl(c.login)}"${c.login.toLowerCase() === cur ? ' aria-current="page"' : ''}><span class="pop-n">${esc(c.name)}</span></a></li>`).join('')}</ul>`;
     my.innerHTML = h;
@@ -223,7 +223,7 @@
     if (b) { listAct(b.dataset.act, b.dataset.ch); return; }
     const a = q('a[data-open]');
     if (a && me() && me().user) {
-      // выбрал в поиске - канал сразу в список (на случай, если он закроет вкладку до загрузки)
+
       e.preventDefault();
       const go = () => { location.href = a.href; };
       H.api('/api/mylist', { act: 'open', ch: a.dataset.open }).then(go, go);
@@ -232,7 +232,7 @@
   document.addEventListener('click', (e) => { if (F.el && !F.el.contains(e.target) && !(F.from && F.from.contains(e.target))) findClose(false); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && F.el) findClose(true); });
   window.addEventListener('resize', () => findPlace());
-  // открыл канал по ссылке - в свой список (раз за сессию браузера на канал)
+
   function markOpen() {
     const m = me(), c = curLogin();
     if (!m || !m.user || !m.find || !c || ss.get('lgOpen:' + c)) return;
@@ -240,7 +240,7 @@
     H.api('/api/mylist', { act: 'open', ch: c });
   }
 
-  /* ---------- общее: цвета темы для фрейма выбора стиля, копирование, окно ---------- */
+   
   function cssHex(v) {
     const p = document.createElement('span'); p.style.color = v; p.style.display = 'none'; document.body.appendChild(p);
     const c = getComputedStyle(p).color; p.remove();
@@ -252,7 +252,7 @@
     const old = () => { const t = document.createElement('textarea'); t.value = text; t.setAttribute('readonly', ''); t.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0'; document.body.append(t); t.select(); let ok = false; try { ok = document.execCommand('copy'); } catch {} t.remove(); if (ok) done(); else H.toast('Не удалось скопировать - выдели текст и скопируй вручную', true); };
     try { navigator.clipboard.writeText(text).then(done, old); } catch { old(); }
   }
-  // фрейм с 7 стилями (превью героев): выбор приходит сообщением { lg: 'stylepick', id }
+
   function pickFrame(sel, onPick) {
     const f = document.createElement('iframe');
     f.className = 'wz-pick'; f.title = 'Выбор стиля'; f.setAttribute('loading', 'lazy');
@@ -268,7 +268,7 @@
     f._off = () => window.removeEventListener('message', on);
     return f;
   }
-  // окно поверх сайта (мастер, выбор стиля печати): Escape и «×» закрывают, фокус - внутри
+
   function modal(cls, label) {
     const back = document.createElement('div');
     back.className = 'wz-back'; back.innerHTML = `<div class="wz ${cls}" role="dialog" aria-modal="true" aria-label="${esc(label)}"></div>`;
@@ -281,7 +281,7 @@
     return { back, box, close };
   }
 
-  /* ---------- Печать Метаморфозы: выбор личного стиля героя (новинка «seal») ---------- */
+   
   function stylePick(o) {
     const M = modal('wz-seal', o.title || 'Выбор стиля');
     let sel = '', armed = 0;
@@ -302,7 +302,7 @@
     setTimeout(() => { try { M.box.querySelector('[data-x]').focus(); } catch {} }, 0);
   }
 
-  /* ---------- мастер первого запуска стримера (часть 3): 5 шагов, можно пропустить, снова - «? Как играть» ---------- */
+   
   const wizKey = () => 'lgWiz:' + (ownLogin() || curLogin());
   const wizSeen = () => ls.get(wizKey()) === '1';
   const W = { m: null, step: 0, style: null, styleSel: '', mode: 'self', busy: false, saved: '', err: '' };
@@ -317,7 +317,7 @@
     W.m.box.addEventListener('click', wizClick);
     W.m.box.addEventListener('wz-esc', () => wizEnd(false));
     wizRender();
-    // стиль канала и замок - сразу, к шагу 4 уже будет
+
     H.api('/api/style').then((r) => { if (r && r.ok) { W.style = r; if (!W.styleSel) W.styleSel = r.active || 'legion'; W.mode = r.lock && r.lock.vote ? 'chat' : 'self'; if (W.step === 3) wizRender(); } });
   }
   function wizEnd(done) {
@@ -347,8 +347,8 @@
         const st = W.style, L = st && st.lock;
         if (!st) return `<h2>Стиль канала</h2><p class="wz-t">Загружаем стили…</p>`;
         const name = (id) => ((st.styles || []).find((x) => x.id === id) || {}).name || id;
-        const bn = st.bn || { g: 'Закхуэля', i: 'Закхуэлем' };   // 28.10: имя босса Пролога канала (сервер, /api/style)
-        // 28.10 (fix/style-live): стиль сохранён - явное подтверждение с превью (человечек в этом стиле); замок - тот же вид
+        const bn = st.bn || { g: 'Закхуэля', i: 'Закхуэлем' };
+
         if (W.saved || (L && !L.canChange && !st.admin)) return `<h2>Стиль канала</h2>
           ${styleCard(st.active, name(st.active))}
           <p class="wz-t">${W.saved ? 'Оверлей, окно игры и сайт у зрителей перерисуются сами - перезагружать ничего не нужно.' : ''} ${L && L.changed ? 'Смена стиля уже использована.' : `Сменить его можно будет один раз - после победы над ${bn.i} (конец пролога).`}</p>
@@ -385,13 +385,13 @@
     if (pb && !pb.hidden) pb.appendChild(pickFrame(W.styleSel || 'legion', (id) => { if (!id) return; W.styleSel = id; const b = W.m && W.m.box.querySelector('[data-stylesave]'); if (b) { const st = W.style; b.textContent = `Выбрать «${((st && st.styles) || []).find((x) => x.id === id)?.name || id}»`; } }));
     setTimeout(() => { try { const f = W.m && (W.m.box.querySelector('[data-next], [data-done]')); if (f) f.focus({ preventScroll: true }); } catch {} }, 0);
   }
-  // 28.10 (fix/style-live): карточка «Стиль канала - X» с человечком в этом стиле (сайт уже перерисован в стиль канала - window.LG.restyle)
+
   function styleCard(id, nm) {
     let pic = '';
     try { const D = window.MDDoodle; if (D && D.active === id) pic = D.jDoodle(D.jhash('wz:' + (ownLogin() || curLogin())), ''); } catch { pic = ''; }
     return `<div class="wz-stok" role="status" data-style-ok="${esc(id)}"><div class="wz-stpic" aria-hidden="true">${pic}</div><div><b>Стиль канала - ${esc(nm)}</b><span>Герои зрителей, лагерь «Перепутье» и оверлей - в этом стиле.</span></div></div>`;
   }
-  // почему не сохранилось - понятными словами (замок, нет прав, нет связи), а не тихий откат
+
   const STYLE_ERR = { roles_closed: 'режим стримера этого канала тебе пока закрыт (нет прав)', streamer_only: 'стиль меняет только стример - владелец этого канала (нет прав)', login_required: 'ты не вошёл - войди через Twitch и повтори', rate_limited: 'слишком часто - подожди минуту и повтори', no_channel: 'канал не найден', bad_origin: 'страница открыта не с адреса сайта - обнови её и повтори' };
   function styleErr(r) {
     const e = String((r && r.error) || '');
@@ -409,7 +409,7 @@
     if (r && r.ok) {
       W.style = { ...st, ...r };
       if (W.mode === 'chat') { H.toast('Стиль выберет чат после «Начать сюжет»'); W.step = 4; wizRender(); return; }
-      // сайт - сразу в новом стиле (остальным страницам и оверлею - событием сервера), потом подтверждение с превью
+
       W.saved = r.active || body.id;
       try { if (window.LG && window.LG.restyle) await window.LG.restyle(W.saved); } catch {}
       try { if (H.styleLine) H.styleLine(); } catch {}
@@ -418,7 +418,7 @@
     wizRender();
   }
   function wizClick(e) {
-    // только кнопки внутри окна мастера (у <html> свои data-атрибуты: data-style, data-skin…)
+
     const box = W.m && W.m.box, q = (sel) => { const x = e.target.closest(sel); return x && box && box.contains(x) ? x : null; };
     if (q('[data-skip]')) { wizEnd(false); return; }
     if (q('[data-next]')) { W.step++; wizRender(); return; }
@@ -436,7 +436,7 @@
     if (cp) { const k = cp.dataset.copy; copyText(k === 'link' ? myLink() : k === 'desc' ? descText() : botText(), k === 'link' ? 'Ссылка скопирована' : 'Текст скопирован'); }
   }
 
-  /* ---------- тур по пульту: подсказки поверх настоящего пульта (вкладка «Игра» во фрейме того же сайта) ---------- */
+   
   const TOUR = [
     { k: 'status', sel: '[data-tour="status"], #sgSt', t: 'Статус', d: 'Игра на связи, OBS видит игру, идёт ли эфир. Всё зелёное - можно начинать.' },
     { k: 'stages', sel: '[data-tour="stages"], .sg-path', t: 'Этапы', d: 'Подготовка → Сбор → Поход → Бой → Итог. Текущий этап подсвечен.' },
@@ -494,7 +494,7 @@
   window.addEventListener('resize', () => { if (TR && TR.el) { const hit = tourFind(); if (hit) tourDraw(hit); } });
   document.addEventListener('keydown', (e) => { if (TR && e.key === 'Escape') tourEnd(); });
   const wizOpen = (step) => wizOpenImpl(step);
-  // первый переход в «Стример» своего канала (переключателем или по ссылке #streamer) - мастер, один раз в этом браузере
+
   let wizT = 0;
   function wizMaybe() {
     const m = me();
@@ -502,7 +502,7 @@
     wizT = setTimeout(() => { wizT = 0; if (H.curTab() === 'streamer' && !W.m && !TR && !wizSeen()) wizOpen(0); }, 600);
   }
 
-  // стиль канала сменился (событие сервера «style» - сайт перерисован): подтверждение в мастере - с человечком уже в новом стиле
+
   document.addEventListener('lg-style', () => { if (W.m && W.step === 3 && W.saved) wizRender(); });
   window.LGStart = {
     init(h) { H = h; },

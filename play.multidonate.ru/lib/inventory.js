@@ -1,39 +1,39 @@
-// Библиотека инвентаря (25.10) - ОДНА на все места игры, где показываются вещи: сумка шахты, вкладка «Персонаж», Склад «Города»,
-// окна выбора вещи (заточка, аукцион, продажа, обмен), карточка расширения Twitch, блок вкладки «Поход».
-// Без сборки и без зависимостей: в браузере - window.LGInventory (и прежнее window.LGItems - ячейки и перетаскивание),
-// в Node - module.exports (чистые части: cells, grid, sortCells, vitals). Шлюз отдаёт её по адресу /lib/inventory.js,
-// стили - /lib/inventory.css. Сети внутри нет: библиотека берёт простые данные и зовёт действия, запросы делает страница.
-//
-//   const inv = LGInventory.mount(el, { variant, mode, data, actions, options });
-//   inv.update(data)  - новые данные: перерисовываются только изменившиеся ячейки, слоты, полоски;
-//   inv.set(options)  - поменять настройки (перерисовка целиком);
-//   inv.select(uid)   - выбрать вещь; inv.state() - { f, sort, sel }; inv.destroy() - снять всё.
-//
-// variant: 'full' (большой ПК: кукла, крупные ячейки, карточка вещи справа), 'compact' (карточка сбоку ~276 px: шахта, Twitch),
-//          'sheet' (телефон: снизу на ~60% высоты), 'inline' (маленький блок без куклы, например только еда и зелья).
-// mode:    'equip' (надеть / снять / съесть), 'storage' (две сетки и перенос, как Склад), 'pick' (выбрать вещь: нажатие = actions.pick),
-//          'view' (только смотреть: чужой герой, расширение).
-// data:    { hero, items } - герой в виде сайта (level, money, stats.hp, hpNow, xpInLevel/xpToNext или xp/prevXp/next) и вещи
-//          [{ uid, id, name, slot, rarity, wearable, on, en, dur, stats, effect }]; или { equipped: { слот: вещь }, bag: [...] };
-//          storage-режим: ещё storage: [...], bagCap, storageCap; stack - сколько расходников в стопке (20).
-// actions: equip(uid, it), unequip(slot, it), use(uid, it), move(uid, from, to, n, cell), pick(it), close() - могут вернуть Promise.
-//          Сообщения об итоге (Надето / ошибка) показывает страница: библиотека только блокирует повторное нажатие, пока ждёт.
-// options: title, art(it), figure(hero) - рисунок человечка (строка SVG), money(n) - монеты (HTML), cardTip(el, it, hero) / tipHide() -
-//          своя карточка вещи (иначе встроенная: характеристики и сравнение с надетым), say(text) - короткое сообщение,
-//          only(it) - какие вещи показывать, filters - список ключей фильтра (false - без фильтра), sort (false - без порядка),
-//          canUse(it) / can(it) - true или причина (строкой), storeKey - ключ localStorage для фильтра и порядка, esc (false - Esc
-//          не закрывает), equipped (inline: ряд надетого, false - нет), hint (false - без строки подсказки), labels - свои тексты,
-//          statLabel(k), effText(it), role, cap (пустые ячейки до вместимости), header (false - без шапки), detail (false - вид 'full'
-//          без своей карточки справа: её рисует страница), onSelect(it | null) - выбрали вещь (нажатием), extra(cell) - своя разметка в ячейке,
-//          dragRoot / dropSel / dropOk(it, цель) + actions.drop(it, цель) - режим 'pick': ещё и перетащить вещь на цель страницы;
-//          menu(cellEl, it, e) - правая кнопка: меню вещи страницы (нет - встроенная карточка); Shift + правая - быстро надеть / снять;
-//          dollEl - кукла (слоты и человечек) в отдельном элементе страницы (тогда нужен dragRoot - общий предок с el);
-//          slots (режим storage) - в шапке сетки «Сумка» / «Склад» место [data-lgi="gx-bag" | "gx-st"] и между столбцами колонка [data-lgi="mid"] под кнопки страницы,
-//          label - подпись сетки для экранного диктора, onDragEnd() - перетаскивание кончилось (страница дорисует отложенное), sortDefault. actions.reorder(fromUid, toUid) - свой порядок сумки: ячейку на ячейку
-//          (порядок «как в сумке», фильтр «Все») и Alt+стрелки.
-//          31.10: data.pins - плитки «не вещей» в конце сетки сумки (конфеты ивента): [{ id, name, label, art, tip, aria }]. Это не вещь:
-//          места не занимают (не в счёте «N / M», пустые ячейки не съедают), их нельзя выбрать, надеть, съесть, перетащить, выбросить
-//          или перенести; наведение / нажатие - подсказка (options.pinTip(el, pin) или встроенная с pin.tip). Только фильтр «Все».
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 (function (root, factory) {
   const api = factory(root);
   if (typeof module === 'object' && module.exports) module.exports = api;
@@ -43,20 +43,20 @@
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const RORD = { legendary: 0, epic: 1, rare: 2, uncommon: 3, common: 4 };
 
-  /* ==================== 1. ячейки, сетка, перетаскивание, меню ячейки (до 25.10 - legacy/site/public/itemgrid.js) ====================
-     Ячейки - тот же вид, что у Склада (.cy-grid / .cy-sc в city.css): рамка по редкости, стопки, «+N» заточки, прочность.
-     Перетаскивание - pointer events: мышь - после сдвига на 6 px, палец - удержание ~0,3 с (прокрутка не ломается).
-     Без циклов по кадрам: призрак двигается transform'ом только на pointermove, подсветка цели - классом.
-     Клик / нажатие без перетаскивания - o.tap (путь без перетаскивания остаётся всегда). */
-  // ячейки: снаряжение — по одной, одинаковые расходники — стопками по stack (как у Склада игры); надетое — не в сумке.
-  // o.keep — порядок как в списке (Склад: «Разложить» хранит порядок в игре), иначе — редкость, потом название
+  
+
+
+
+
+
+
   function cells(list, stack, o = {}) {
     const out = [], by = new Map(), byQ = new Map(), k = Math.max(1, +stack || 20);
     for (const it of list || []) {
       if (!it || it.on) continue;
-      // 26.10: руда шахты — кучка (q осколков в одной вещи): одна ячейка на вид, число на ячейке — штуки с долями (oreQty)
+
       if (it.qty) { let c = byQ.get(it.id); if (!c) { c = { it: { ...it, q: +it.q || 0 }, n: 1, uids: [it.uid], q: 1 }; byQ.set(it.id, c); out.push(c); } else { c.it.q += +it.q || 0; c.uids.push(it.uid); c.n = c.uids.length; } continue; }
-      if (it.event && !it.wearable) { out.push({ it, n: 1, uids: [it.uid], ev: true }); continue; }   // угощение ивента — места не занимает
+      if (it.event && !it.wearable) { out.push({ it, n: 1, uids: [it.uid], ev: true }); continue; }
       if (it.wearable) { out.push({ it, n: 1, uids: [it.uid] }); continue; }
       let c = by.get(it.id); if (!c || c.n >= k) { c = { it, n: 0, uids: [] }; by.set(it.id, c); out.push(c); }
       c.n++; c.uids.push(it.uid);
@@ -65,9 +65,9 @@
     return out.sort((a, b) => (RORD[a.it.rarity] ?? 5) - (RORD[b.it.rarity] ?? 5) || String(a.it.name).localeCompare(String(b.it.name), 'ru'));
   }
 
-  /* одна ячейка. o: { art(it) — рисунок вещи (обязателен), on — выбрана, drag — можно тащить, off — тусклая (не подходит),
-     attr — свои атрибуты (строка), low(it) — прочность низкая, extra(c) — 25.10: своя разметка внутри ячейки (номер в сумке) } */
-  // 26.10: руда шахты: осколки → «4,37» (штуки с долями, 100 осколков = 1 шт.) и «4 шт. + 37 оск.»
+  
+
+
   const oreN = (q) => { q = Math.max(0, Math.floor(+q || 0)); const n = Math.floor(q / 100), p = q % 100; return p ? `${n},${String(p).padStart(2, '0')}` : String(n); };
   const oreQty = (q) => { q = Math.max(0, Math.floor(+q || 0)); const n = Math.floor(q / 100), p = q % 100; return n && p ? `${n} шт. + ${p} оск.` : n ? `${n} шт.` : `${p} оск.`; };
   function cell(c, o = {}) {
@@ -78,16 +78,16 @@
       + `${it.dur != null ? `<i class="du${low ? ' br' : ''}">${low ? '⚠' : ''}${+it.dur}%</i>` : ''}${o.extra ? o.extra(c) : ''}</button>`;
   }
 
-  /* 31.10 (feat/candy-tile): плитка «не вещи» (конфеты ивента): p = { id, name, label, art, aria }. Нарочно без data-ig / data-igdrag /
-     data-igdrop: её не выбрать, не надеть, не перетащить, не выбросить и не перенести - только подсказка (data-lgi-pin) */
+  
+
   function pinCell(p) {
     p = p || {};
     return `<button type="button" class="cy-sc lgi-pin" data-r="common" data-lgi-pin="${esc(p.id)}" aria-label="${esc(p.aria || p.name || '')}"><span class="cy-gi">${p.art || ''}</span>${p.label != null && p.label !== '' ? `<i class="n">${esc(p.label)}</i>` : ''}</button>`;
   }
 
-  /* сетка: cs — ячейки (cells), o: { cap — сколько ячеек всего (пустые — пунктиром), label — подпись для экранного диктора,
-     gattr — свои атрибуты сетки (строка, например цель перетаскивания data-igdrop), ...и всё, что понимает cell;
-     on(c) / drag(c) / off(c) / attr(c) — функции по ячейке } */
+  
+
+
   function grid(cs, o = {}) {
     const f = (v, c) => (typeof v === 'function' ? v(c) : v);
     const body = cs.map((c) => cell(c, { ...o, on: f(o.on, c), drag: f(o.drag, c), off: f(o.off, c), attr: f(o.attr, c) })).join('');
@@ -95,23 +95,23 @@
     return `<div class="cy-grid ig-grid" role="group"${o.label ? ` aria-label="${esc(o.label)}"` : ''}${o.gattr ? ' ' + o.gattr : ''}>${body}${'<span class="cy-sc e" aria-hidden="true"></span>'.repeat(empty)}</div>`;
   }
 
-  /* перетаскивание внутри root. o: {
-       src — селектор того, что можно тащить (по умолчанию [data-igdrag]),
-       drop — селектор целей (по умолчанию [data-igdrop]),
-       ok(src, target) — можно ли бросить сюда (по умолчанию — да),
-       onDrop(src, target), tap(src, e) — клик / нажатие без перетаскивания (на всё [data-ig], а не только [data-igdrag]),
-       hold(src) — 24.10: палец удержали и отпустили на месте (без перетаскивания) — например, открыть меню вещи,
-       onStart(src), onEnd(),
-       reject(src, target) — бросили на цель, куда нельзя (ok — нет): короткое сообщение (Склад: «нет места», «идёт бой»),
-       quick(src, e) — 25.10: быстрое действие, как в играх: Shift + правая кнопка мыши по ячейке,
-       menu(src, e) — 25.10: правая кнопка без Shift — меню вещи (или её карточка); меню браузера убирается только внутри root и только
-                если quick / menu заданы; долгое нажатие пальцем — по-прежнему перетаскивание / hold,
-       shift(src, e) — Shift + левая кнопка (Склад: вся стопка); без shift — обычное нажатие (tap),
-       snap — не туда / нельзя: призрак плавно возвращается на место (transform), потом исчезает,
-       scroll — окно с прокруткой (Склад на телефоне): палец у верхнего / нижнего края — окно прокручивается само;
-                'page' — 26.10: и сама страница, если окна с прокруткой нет («Персонаж»: из сумки внизу на куклу вверху)
-                (таймер только пока тянут у края, без кадров по кругу) }
-     Возвращает { off() — снять обработчики, active() — тащат ли сейчас } */
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   function drag(root, o = {}) {
     const SRC = o.src || '[data-igdrag]', DROP = o.drop || '[data-igdrop]', TAP = o.tapSel || '[data-ig]';
     const D = { src: null, id: null, x0: 0, y0: 0, timer: 0, ghost: null, over: null, bad: null, active: false, just: false, touch: false, sc: null, st: 0, vy: 0, px: 0, py: 0 };
@@ -134,16 +134,16 @@
       const a = D.src.querySelector('.cy-gi, .art'); g.innerHTML = a ? a.outerHTML : '';
       document.body.appendChild(g); D.ghost = g;
       targets().forEach((t) => { if (!o.ok || o.ok(D.src, t)) t.classList.add('ig-ok'); });
-      // 30.10: склад в два столбца - прокручивается тот столбец, из которого тащат
+
       const col = o.scroll && D.src.closest('.lgi-col'), cy = col ? getComputedStyle(col).overflowY : '';
       if (col && (cy === 'auto' || cy === 'scroll') && col.scrollHeight > col.clientHeight + 4) D.sc = col;
       if (o.scroll && !D.sc) for (let el = root; el && el !== document.body; el = el.parentElement) { const oy = getComputedStyle(el).overflowY; if ((oy === 'auto' || oy === 'scroll') && el.scrollHeight > el.clientHeight + 4) { D.sc = el; break; } }
-      if (o.scroll === 'page' && !D.sc) { const se = document.scrollingElement; if (se && se.scrollHeight > window.innerHeight + 4) D.sc = se; }   // 26.10: окна с прокруткой нет - прокручивается сама страница («Персонаж»: из сумки внизу на куклу вверху)
+      if (o.scroll === 'page' && !D.sc) { const se = document.scrollingElement; if (se && se.scrollHeight > window.innerHeight + 4) D.sc = se; }
       if (o.onStart) try { o.onStart(D.src); } catch (e) { console.warn('[перетаскивание]', e); }
       if (D.touch && navigator.vibrate) try { navigator.vibrate(12); } catch {}
       move(x, y);
     }
-    // цель под пальцем: можно (ok) — в D.over, нельзя — в D.bad (подсветка «нельзя», при броске — reject)
+
     function targetAt(x, y) {
       const e = document.elementFromPoint(x, y), t = e && e.closest(DROP);
       if (!t || !root.contains(t)) return [null, null];
@@ -155,7 +155,7 @@
       const [t, bad] = targetAt(x, y);
       if (t !== D.over) { if (D.over) D.over.classList.remove('ig-hover'); if (t) t.classList.add('ig-hover'); D.over = t; }
       if (bad !== D.bad) { if (D.bad) D.bad.classList.remove('ig-no'); if (bad && bad !== D.src.closest(DROP)) bad.classList.add('ig-no'); D.bad = bad; }
-      if (D.sc) {   // у края прокручиваемого окна — прокрутка (шаг — по таймеру, пока палец там)
+      if (D.sc) {
         const r = D.sc === document.scrollingElement ? { top: 0, bottom: window.innerHeight } : D.sc.getBoundingClientRect(), E = 56;
         D.vy = y < r.top + E ? -Math.min(18, Math.ceil((r.top + E - y) / 3)) : y > r.bottom - E ? Math.min(18, Math.ceil((y - r.bottom + E) / 3)) : 0;
         if (D.vy && !D.st) D.st = setTimeout(scrollStep, 30);
@@ -166,7 +166,7 @@
       const before = D.sc.scrollTop; D.sc.scrollTop += D.vy;
       if (D.sc.scrollTop !== before) move(D.px, D.py);
     }
-    // не туда / нельзя — призрак возвращается к ячейке и исчезает (только transform)
+
     function snapBack(g, s) {
       if (!g) return;
       const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches, r = s && s.isConnected && s.getBoundingClientRect();
@@ -185,7 +185,7 @@
       if (!D.src || e.pointerId !== D.id) return;
       if (!D.active) {
         const d = Math.hypot(e.clientX - D.x0, e.clientY - D.y0);
-        if (D.touch) { if (d > 10) reset(); return; }   // палец поехал раньше удержания — это прокрутка
+        if (D.touch) { if (d > 10) reset(); return; }
         if (d > 6) start(e.clientX, e.clientY); else return;
       }
       e.preventDefault(); move(e.clientX, e.clientY);
@@ -194,7 +194,7 @@
       if (!D.src || e.pointerId !== D.id) return;
       if (!D.active) return reset();
       const t = D.over, bad = D.bad, s = D.src; D.just = true; setTimeout(() => { D.just = false; }, 0);
-      // 24.10: палец подержали и отпустили на месте (не тащили) — o.hold (Склад: меню «1 / половина / всё / N…»)
+
       if (D.touch && o.hold && Math.hypot(e.clientX - D.x0, e.clientY - D.y0) < 12 && (!t || t === s.closest(DROP))) { if (D.ghost) D.ghost.remove(); D.ghost = null; reset(); o.hold(s); return; }
       if (!t && o.snap) { snapBack(D.ghost, s); D.ghost = null; }
       reset();
@@ -202,21 +202,21 @@
       else if (bad && o.reject) o.reject(s, bad);
     }
     const onCancel = () => { if (!D.src) return; if (D.active && o.snap) { snapBack(D.ghost, D.src); D.ghost = null; } reset(); };
-    const onTouch = (e) => { if (D.active) e.preventDefault(); };   // пока тянем пальцем — страница не прокручивается
+    const onTouch = (e) => { if (D.active) e.preventDefault(); };
     const onCtx = (e) => {
-      if (D.src) { e.preventDefault(); return; }   // долгое нажатие — не меню браузера
-      // 25.10 (решение стримера): Shift + правая кнопка — быстрое действие (quick), правая кнопка — меню вещи (menu); без меню браузера
+      if (D.src) { e.preventDefault(); return; }
+
       if (D.lastTouch || (!o.quick && !o.menu)) return;
       const s = e.target.closest(TAP); if (!s || !root.contains(s)) return;
       if (e.shiftKey && o.quick) { e.preventDefault(); o.quick(s, e); return; }
       if (o.menu) { e.preventDefault(); o.menu(s, e); }
     };
     const onKey = (e) => { if (e.key === 'Escape' && D.active) { if (o.snap) { snapBack(D.ghost, D.src); D.ghost = null; } reset(); } };
-    // после перетаскивания браузер шлёт «клик» по исходной ячейке — это не выбор
+
     const onClick = (e) => {
       if (D.just) { e.stopPropagation(); e.preventDefault(); return; }
       const s = e.target.closest(TAP); if (!s || !root.contains(s)) return;
-      if (e.shiftKey && o.shift) { e.preventDefault(); o.shift(s, e); return; }   // 25.10: Shift+клик — своё у окна (Склад: вся стопка)
+      if (e.shiftKey && o.shift) { e.preventDefault(); o.shift(s, e); return; }
       if (o.tap) o.tap(s, e);
     };
     root.addEventListener('pointerdown', onDown);
@@ -229,7 +229,7 @@
     document.addEventListener('keydown', onKey);
     return {
       active: () => D.active || !!D.src,
-      dragging: () => D.active,   // 23.10: именно тащат (не просто нажали)
+      dragging: () => D.active,
       off() {
         reset();
         root.removeEventListener('pointerdown', onDown); window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp);
@@ -240,9 +240,9 @@
     };
   }
 
-  /* 24.10: маленькое меню у ячейки (Склад: «1 / половина / всё / N…»). at — элемент или { x, y }; items — [{ t, v, aria? }],
-     v: число — выбрать сразу, 'n' — поле «сколько» (max — o.max); pick(v) — выбрали. Одно меню на странице: новое закрывает старое.
-     Клавиатура: фокус на первой кнопке, стрелки — по кнопкам, Esc — закрыть (фокус — обратно на ячейку). Без циклов по кадрам. */
+  
+
+
   let MENU = null;
   function menuClose(back) {
     if (!MENU) return; const m = MENU; MENU = null;
@@ -290,9 +290,9 @@
   }
   const items = { esc, cells, cell, grid, drag, menu, menuClose };
 
-  /* ==================== 2. рисунки вещей (до 25.10 - app.js сайта): из того же движка, что человечки на стриме ====================
-     Движок - window.MDDoodle (сборка /doodle.js), части стиля (товары, легендарки) - engine().part(имя). Страница может
-     подставить свои: LGInventory.configure({ engine: () => движок, part: (имя) => часть }); смена стиля - LGInventory.artReset(). */
+  
+
+
   let ENGF = () => root.MDDoodle, PARTF = null;
   const PC = {};
   const ENG = () => { try { return ENGF(); } catch (e) { return null; } };
@@ -319,18 +319,18 @@
   };
   const FOOD_ID = { apple: ['apple'], pear: ['apple', '#9fe39a'], bread: ['bread'], pretzel: ['pretzel'], cheese: ['cheese'], pie: ['pie'], ham: ['ham'], roast: ['ham'], kvass: ['mug'], honey_cake: ['cake'], sage_tea: ['cup'], spicy_stew: ['bowl'] };
   let HATS = null, artN = 0;
-  /* 26.10: руда шахты — горка самородков цвета ресурса (порода — серые глыбы), самоцвет природы — гранёный камень с бликом.
-     Цвета — как у руды в шахте (craftworld.js RES). */
+  
+
   const ORE_C = { stone: ['#a39a8e', '#6f675d'], basalt: ['#5b5560', '#36323a'], frost_stone: ['#cfe3ee', '#7fa3b8'], limestone: ['#e6dcc0', '#b3a37c'], sandstone: ['#e2b77a', '#a8783f'], rubble: ['#b0a596', '#776b5c'],
     coal: ['#4a4a52', '#1d1d22'], iron: ['#c9a28a', '#8a5a44'], copper: ['#e3925a', '#a3542a'], sulfur: ['#f2df4a', '#b19a17'], peat: ['#7a5a3a', '#4a331d'], bone_dust: ['#efe6d2', '#b7a98a'], salt: ['#f4f2ee', '#bdb6aa'],
     silver: ['#e6ecf2', '#9aa7b4'], relic: ['#d6b56a', '#8a6a2a'], gold: ['#ffd84a', '#c48a12'], crystal: ['#b7f0ff', '#4aa9d6'],
     adamant: ['#9fb6ff', '#3a4fb8'], fire_opal: ['#ff8a4a', '#c0341c'], emerald: ['#5ee08a', '#1a8a4a'], amber: ['#ffc24a', '#c47a12'], sapphire: ['#5a8cff', '#1c3aa8'], topaz: ['#ffd27a', '#d08a1a'],
     malachite: ['#3ad0a0', '#11735a'], morion: ['#6a5a7a', '#2a1f36'], aquamarine: ['#8af0e8', '#2aa8b0'], ruby: ['#ff4a6a', '#a8142e'], runestone: ['#9aa0b8', '#4a5070'] };
   function oreArt(it, q) {
-    // 26.10 (art/ore-icons): свой значок у каждого из 28 видов - legacy/site/public/ore-art.js (window.LGOreArt), если страница его загрузила;
-    // иначе (расширение Twitch и т. п.) - простая горка ниже
+
+
     const res = it.res || String(it.id || '').replace(/^ore_/, '');
-    if (root.LGOreArt) { try { const s = root.LGOreArt.inner(res, it.ore, q); if (s) return s; } catch (e) { /* рисунка нет */ } }
+    if (root.LGOreArt) { try { const s = root.LGOreArt.inner(res, it.ore, q); if (s) return s; } catch (e) {   } }
     const [c1, c2] = ORE_C[res] || ['#b0a596', '#776b5c'], L = 'stroke="#2a2018" stroke-width="2.5" stroke-linejoin="round"';
     if (it.ore === 'gem') return `<defs><linearGradient id="${q}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".9"/><stop offset=".35" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient></defs>`
       + `<path d="M-18-30L-8-42H8L18-30 0-4Z" fill="url(#${q})" ${L}/><path d="M-18-30H18M-8-42L-4-30 0-4 4-30 8-42" fill="none" stroke="#fff" stroke-width="1.6" opacity=".6"/><path d="M22-46l1.4 3.2 3.2 1.4-3.2 1.4-1.4 3.2-1.4-3.2-3.2-1.4 3.2-1.4Z" fill="#fff"/>`;
@@ -346,7 +346,7 @@
       if (it.slot === 'shield') return d.shieldArt ? d.shieldArt(lk.shield || 'round', r) : '';
       if (it.slot === 'armor') { const kind = lk.armor || (it.id === 'robe' || /мант/i.test(it.name || '') ? 'robe' : 'lorica'); return d.armorArt ? d.armorArt(kind, r) : ''; }
       if (it.slot === 'helmet') { HATS = HATS || d.jHats({ top: 0, hw: 22, square: false, eyeY: 30 }, '#ff9fb2', '#4ab0ff'); return HATS[(lk.hat || 'legion') + '@' + r] || HATS[lk.hat || 'legion'] || HATS.legion || ''; }
-      if (it.slot === 'trinket' && lk.charm && d.charmArt) return d.charmArt(lk.charm, r);   // 23.10: амулет класса
+      if (it.slot === 'trinket' && lk.charm && d.charmArt) return d.charmArt(lk.charm, r);
       if (it.slot === 'trinket') {
         const [g1, g2] = AURA[lk.aura] || AURA.sparks, gid = 'tg' + (lk.aura || 's') + (++artN);
         return `<defs><radialGradient id="${gid}" cx=".38" cy=".35" r=".7"><stop offset="0" stop-color="${g1}"/><stop offset="1" stop-color="${g2}"/></radialGradient></defs>`
@@ -354,10 +354,10 @@
           + (lk.aura === 'halo' ? `<ellipse cy="-30" rx="17" ry="6" fill="none" stroke="#ffd76a" stroke-width="4"/>` : '')
           + `<path d="M0-24L14-10 0 6-14-10Z" fill="url(#${gid})" ${LINE}/><path d="M-5-12L0-18 5-12" stroke="#fff" stroke-width="2" fill="none" opacity=".7"/>`;
       }
-      // 17.10: Печать Метаморфозы — магическая печать: сияние, кольцо рун, в центре — знак перемены облика (две стрелки по кругу)
+
       if (it.slot === 'relic') {
-        // 18.10: свои id градиентов у каждого рисунка — одинаковые id в нескольких SVG (сумка, карточка, подсказка) на телефоне
-        // давали мерцание рамки: ссылка url(#…) прыгала на рисунок, который в этот момент скрыт или перерисовывается
+
+
         const q = 's' + (++artN);
         const rays = [0, 45, 90, 135, 180, 225, 270, 315].map((a) => { const c = Math.cos(a * Math.PI / 180), s2 = Math.sin(a * Math.PI / 180), r1 = a % 90 ? 31 : 29, r2 = a % 90 ? 36 : 42; return `<path d="M${(c * r1).toFixed(1)} ${(-26 + s2 * r1).toFixed(1)}L${(c * r2).toFixed(1)} ${(-26 + s2 * r2).toFixed(1)}" stroke="#e7c8ff" stroke-width="${a % 90 ? 2 : 3}" stroke-linecap="round" opacity=".85"/>`; }).join('');
         const runes = Array.from({ length: 12 }, (_, i) => { const a = (i * 30 + 15) * Math.PI / 180, x = Math.cos(a) * 20.5, y = -26 + Math.sin(a) * 20.5; return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${i % 3 ? 1.4 : 2.2}" fill="#fff3c4"/>`; }).join('');
@@ -371,10 +371,10 @@
           + `<path d="M0-30.5L1.6-27.6 4.6-26 1.6-24.4 0-21.5-1.6-24.4-4.6-26-1.6-27.6Z" fill="#fff3c4"/>`
           + `<path d="M-30-50l1.5 3.5 3.5 1.5-3.5 1.5-1.5 3.5-1.5-3.5-3.5-1.5 3.5-1.5Z" fill="#fff" opacity=".9"/><path d="M28-8l1 2.4 2.4 1-2.4 1-1 2.4-1-2.4-2.4-1 2.4-1Z" fill="#7fe7ff"/><circle cx="33" cy="-46" r="1.8" fill="#ff9be6"/>`;
       }
-      // 20.10: материалы заточки — Счастливая звезда, Сфера сохранения, Печать Ауруса N (номер на печати)
+
       if (it.slot === 'material') {
         const q = 'm' + (++artN);
-        if (it.mat === 'ore') return oreArt(it, q);   // 26.10: руда, порода и самоцветы шахты
+        if (it.mat === 'ore') return oreArt(it, q);
         if (it.mat === 'star') return `<defs><radialGradient id="${q}" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#fff6c8"/><stop offset=".6" stop-color="#ffd23f"/><stop offset="1" stop-color="#e89a1c"/></radialGradient></defs>`
           + `<path d="M0-46L8.8-28.1 28.5-25.3 14.3-11.4 17.6 8.2 0-1.1-17.6 8.2-14.3-11.4-28.5-25.3-8.8-28.1Z" fill="url(#${q})" ${LINE}/><path d="M-6-28l3-6M6-30l2 3" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity=".8"/><path d="M26-44l1.4 3.2 3.2 1.4-3.2 1.4-1.4 3.2-1.4-3.2-3.2-1.4 3.2-1.4Z" fill="#fff6c8"/>`;
         if (it.mat === 'sphere') return `<defs><radialGradient id="${q}" cx=".36" cy=".3" r=".75"><stop offset="0" stop-color="#e8fbff"/><stop offset=".45" stop-color="#7fd6e6"/><stop offset="1" stop-color="#2a5f9e"/></radialGradient></defs>`
@@ -384,7 +384,7 @@
           + `<path d="M-9-2l-7 14 7-3 4 6 3-17ZM9-2l7 14-7-3-4 6-3-17Z" fill="${n >= 10 ? '#e8455c' : '#8b5cf6'}" ${LINE}/><circle cy="-24" r="23" fill="url(#${q})" ${LINE}/><circle cy="-24" r="16.5" fill="none" stroke="#fff3c4" stroke-width="1.6" stroke-dasharray="2.5 3.2" opacity=".85"/>`
           + `<text y="-16.5" text-anchor="middle" font-family="Georgia, serif" font-weight="700" font-size="${n >= 10 ? 19 : 22}" fill="#4a2c06">${n}</text>`;
       }
-      // еда, зелья и свитки — из стиля (часть 'goods' в MultiDonate): тот же рисунок, что в лавке Похода, и совпадает с названием
+
       if (it.slot === 'food' || it.slot === 'potion' || it.slot === 'scroll') {
         const G = d.part && PART('goods');
         if (G) { if (it.slot === 'food' && G.food && G.food[it.id]) return G.food[it.id](it); if (it.slot === 'potion' && G.potion) return G.potion(it); if (it.slot === 'scroll' && G.scroll) return G.scroll(it); }
@@ -395,7 +395,7 @@
     } catch (e) { console.warn('рисунок вещи', it.id, e); }
     return `<rect x="-16" y="-30" width="32" height="28" rx="6" fill="#a0703a" ${LINE}/>`;
   }
-  // подгоняем рамку под рисунок один раз на вид вещи (getBBox на невидимом холсте)
+
   const VB = new Map();
   let probe = null;
   function viewBoxFor(key, inner) {
@@ -409,14 +409,14 @@
     } catch {}
     VB.set(key, vb); return vb;
   }
-  // 18.10: SVG-анимации (лучи вращаются, искры мерцают, под ними — размытие) заставляли браузер перерисовывать
-  // рисунок каждый кадр: вкладка «Персонаж» с легендаркой грузила процессор на 25%. На сайте рисунок неподвижный,
-  // а «живость» легендарке даёт золотое сияние ячейки (CSS: только прозрачность — без перерисовки)
+
+
+
   const still = (svg) => String(svg).replace(/<(animate|animateTransform|animateMotion|set)\b[^>]*?(\/>|>[\s\S]*?<\/\1>)/g, '').replace(/<g opacity="0">/g, '<g opacity=".8">');
   function art(it, cls = '') {
     const lk = it.look || {}, key = [it.slot, it.id, lk.weapon, lk.shield, lk.hat, lk.aura, it.rarity].join('|');
     const inner = artInner(it);
-    // легендарка с босса — с эмблемой своей ауры, лучами и искрами (тот же рисунок, что в Походе: часть 'legend')
+
     if (it.boss && it.aura) {
       const L = PART('legend');
       if (L && L.wrap) try {
@@ -426,14 +426,14 @@
     }
     return `<svg class="art ${cls}" viewBox="${viewBoxFor(key, inner)}" aria-hidden="true">${inner}</svg>`;
   }
-  // золотое сияние вокруг ячейки легендарки (отдельный элемент — у оформлений свои ::before/::after)
+
   const lgx = (it) => (it && it.rarity === 'legendary' ? '<i class="lgx" aria-hidden="true"></i>' : '');
-  // силуэты пустых слотов и значки фильтра - те же рисунки, что у пустых слотов «Персонажа»
+
   const EMPTY = { weapon: { slot: 'weapon', id: '_w', look: { weapon: 'sword' } }, armor: { slot: 'armor', id: 'lorica' }, shield: { slot: 'shield', id: '_s', look: { shield: 'scutum' } }, helmet: { slot: 'helmet', id: '_h', look: { hat: 'legion' } }, trinket: { slot: 'trinket', id: '_t', look: { aura: 'gold' } } };
   function configure(o = {}) { if (o.engine) ENGF = o.engine; if (o.part) PARTF = o.part; }
   function artReset() { VB.clear(); HATS = null; for (const k of Object.keys(PC)) delete PC[k]; }
 
-  /* ==================== 3. инвентарь: LGInventory.mount ==================== */
+   
   const VARIANTS = ['full', 'compact', 'sheet', 'inline'], MODES = ['equip', 'storage', 'pick', 'view'];
   const SLOTS5 = ['helmet', 'weapon', 'armor', 'shield', 'trinket'], LEFT = ['helmet', 'armor', 'trinket'], RIGHT = ['weapon', 'shield'];
   const SLOT_RU = { weapon: 'оружие', shield: 'щит', armor: 'доспех', helmet: 'шлем', trinket: 'амулет', food: 'еда', potion: 'зелье', scroll: 'свиток', material: 'материал заточки', relic: 'особая вещь' };
@@ -453,9 +453,9 @@
   };
   const RAR_LOW = { epic: 'эпическая', legendary: 'легендарная' };
 
-  /* 28.10 (bag-trash): окно «Выбросить?» - подтверждение (необратимо). o: { title, name, rarity, n - сколько в стопке (больше 1 - выбор
-     «1 / все»), ore - кучка руды (только целиком), yes(k) - выбросить k }. Esc, «Отмена» и щелчок мимо - отмена; фокус - на «Отмена»
-     (Enter не выбросит случайно), по закрытии - обратно. Одно окно на странице. Без анимации по кадрам. */
+  
+
+
   let DLG = null;
   function dlgClose() {
     if (!DLG) return; const d = DLG; DLG = null;
@@ -480,7 +480,7 @@
     el.addEventListener('click', (e) => { const b = e.target.closest('[data-dlg]'); if (b) { done(b.dataset.dlg === 'yes'); return; } if (e.target === el) done(false); });
     const key = (e) => {
       if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(false); return; }
-      if (e.key === 'Tab') {   // фокус - только внутри окна
+      if (e.key === 'Tab') {
         const f = Array.from(el.querySelectorAll('button, input')).filter((x) => !x.disabled); if (!f.length) return;
         const i = f.indexOf(document.activeElement); if (!el.contains(document.activeElement) || (e.shiftKey && i <= 0) || (!e.shiftKey && i === f.length - 1)) { e.preventDefault(); f[e.shiftKey ? f.length - 1 : 0].focus(); }
       }
@@ -491,7 +491,7 @@
     return { close: () => dlgClose(), el };
   }
 
-  // здоровье, опыт, уровень, монеты - из героя сайта (опыт внутри уровня: xpInLevel / xpToNext, у старой игры - от порогов)
+
   function vitals(h) {
     h = h || {};
     const st = h.stats || {}, hpMax = +(h.hpMax != null ? h.hpMax : st.hp) || 0, hpNow = h.hpNow != null ? +h.hpNow : hpMax;
@@ -500,7 +500,7 @@
     return { hpMax, hpNow, xin, xneed, lv: +h.level || 1, money: Math.max(0, Math.floor(+h.money || 0)) };
   }
   const pct = (a, b) => (b ? Math.max(0, Math.min(100, a / b * 100)) : 100).toFixed(1);
-  // порядок ячеек: редкость, тип, название или как в сумке (как пришло от игры)
+
   function sortCells(cs, how) {
     const nm = (a, b) => String(a.it.name).localeCompare(String(b.it.name), 'ru');
     const cmp = { rar: (a, b) => (RORD[a.it.rarity] ?? 5) - (RORD[b.it.rarity] ?? 5) || nm(a, b), name: nm, slot: (a, b) => (SLOTS5.indexOf(a.it.slot) + 1 || 9) - (SLOTS5.indexOf(b.it.slot) + 1 || 9) || nm(a, b) }[how];
@@ -511,12 +511,12 @@
     const hero = d.hero || {};
     let list = d.items || hero.items || [];
     if (d.equipped || d.bag) list = [...Object.entries(d.equipped || {}).filter(([, x]) => x).map(([sl, x]) => ({ ...x, slot: x.slot || sl, on: true })), ...(d.bag || []).map((x) => ({ ...x, on: false }))];
-    return { hero, items: list, storage: d.storage || null, bagCap: d.bagCap != null ? +d.bagCap : null, storageCap: d.storageCap != null ? +d.storageCap : null, stack: +d.stack || 20, storageStack: +d.storageStack || +d.stack || 20, obCap: +d.obCap > 0 ? +d.obCap : 0, pins: Array.isArray(d.pins) ? d.pins.filter((p) => p && p.id) : [] };   // 26.10: obCap - рудная сумка (ячеек), руда с it.ob - в ней
+    return { hero, items: list, storage: d.storage || null, bagCap: d.bagCap != null ? +d.bagCap : null, storageCap: d.storageCap != null ? +d.storageCap : null, stack: +d.stack || 20, storageStack: +d.storageStack || +d.stack || 20, obCap: +d.obCap > 0 ? +d.obCap : 0, pins: Array.isArray(d.pins) ? d.pins.filter((p) => p && p.id) : [] };
   }
   const coarse = () => { try { return 'ontouchstart' in root && !(root.matchMedia && root.matchMedia('(pointer: fine)').matches); } catch (e) { return false; } };
   const fallbackArt = (it) => `<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="16" fill="#3b2d44" stroke="#ffe27a" stroke-width="2"/><text x="20" y="26" text-anchor="middle" font-size="16" font-weight="800" fill="#ffe27a">${esc(String(it.name || '?').slice(0, 1))}</text></svg>`;
 
-  /* ---------- встроенная карточка вещи (если страница не дала свою): название, редкость, характеристики и сравнение с надетым ---------- */
+   
   let TIP = null, TIPFOR = null;
   function effText(it) {
     const e = it.effect; if (!e) return '';
@@ -555,10 +555,10 @@
   function tipHide() { if (!TIP) return; if (TIPFOR) TIPFOR.removeAttribute('aria-describedby'); TIPFOR = null; TIP.hidden = true; }
 
   let MOUNTS = 0;
-  // 30.10: «Рудная сумка» сворачивается (кнопка-заголовок); одно значение на все места (склад, «Персонаж», сумка шахты) - localStorage lgOreBagFold
+
   const FOLD_KEY = 'lgOreBagFold', FOLDS = new Set();
-  function foldGet() { try { return root.localStorage.getItem(FOLD_KEY) === '1'; } catch (e) { /* хранилища нет (приватный режим) - по умолчанию развёрнута */ return false; } }
-  function foldPut(on) { try { root.localStorage.setItem(FOLD_KEY, on ? '1' : '0'); } catch (e) { /* не сохранилось - останется до закрытия окна */ } }
+  function foldGet() { try { return root.localStorage.getItem(FOLD_KEY) === '1'; } catch (e) {   return false; } }
+  function foldPut(on) { try { root.localStorage.setItem(FOLD_KEY, on ? '1' : '0'); } catch (e) {   } }
   function mount(el, cfg = {}) {
     if (!el || el.nodeType !== 1) throw new Error('LGInventory.mount: нужен элемент');
     if (el.__lgi) el.__lgi.destroy();
@@ -567,32 +567,32 @@
     const ID = String(++MOUNTS); el.dataset.lgiId = ID;
     const S = { f: 'all', sort: SORTS.some(([k]) => k === O.sortDefault) ? O.sortDefault : 'rar', sel: O.sel || '', busy: false, k: {}, drag: null, dead: false, tip: false, fold: foldGet() };
     const T = () => ({ ...TXT, ...(O.labels || {}) });
-    if (O.storeKey) try { const p = JSON.parse(root.localStorage.getItem(O.storeKey) || '{}'); if (typeof p.f === 'string') S.f = p.f; if (SORTS.some(([k]) => k === p.sort)) S.sort = p.sort; } catch (e) { /* без хранилища - по умолчанию */ }
-    const save = () => { if (O.storeKey) try { root.localStorage.setItem(O.storeKey, JSON.stringify({ f: S.f, sort: S.sort })); } catch (e) { /* приватный режим */ } };
+    if (O.storeKey) try { const p = JSON.parse(root.localStorage.getItem(O.storeKey) || '{}'); if (typeof p.f === 'string') S.f = p.f; if (SORTS.some(([k]) => k === p.sort)) S.sort = p.sort; } catch (e) {   }
+    const save = () => { if (O.storeKey) try { root.localStorage.setItem(O.storeKey, JSON.stringify({ f: S.f, sort: S.sort })); } catch (e) {   } };
     const filters = () => (O.filters === false || v === 'inline' ? null : Array.isArray(O.filters) ? O.filters : FILTERS);
     if (!filters() || !filters().includes(S.f)) S.f = 'all';
     const doll = () => v !== 'inline' && mode !== 'storage' && O.doll !== false;
-    // свой порядок: только в режиме 'equip', порядок «как в сумке» и фильтр «Все» (иначе соседи на экране - не соседи в сумке)
+
     const reorderOn = () => mode === 'equip' && !!A.reorder && S.sort === 'new' && S.f === 'all';
     const eqRow = () => v === 'inline' && mode !== 'storage' && O.equipped !== false;
-    // 28.10 (bag-trash): выбросить - режим 'equip' и actions.discard(uids, it, n); options.trashWhy(it) - '' или почему нельзя (вещь события…)
+
     const trashOn = () => mode === 'equip' && v !== 'inline' && !!A.discard;
     const up1 = (s) => (s ? String(s)[0].toUpperCase() + String(s).slice(1) : '');
     const trashWhy = (it) => { if (!it) return 'Такой вещи нет'; if (it.on) return T().trashOn; let r = ''; try { r = O.trashWhy ? O.trashWhy(it) || '' : ''; } catch (e) { r = 'Нельзя'; } return up1(r); };
-    const artOf = (it) => { try { const a = O.art ? O.art(it) : art(it); if (a) return a; } catch (e) { /* рисунка нет */ } return fallbackArt(it); };
+    const artOf = (it) => { try { const a = O.art ? O.art(it) : art(it); if (a) return a; } catch (e) {   } return fallbackArt(it); };
     const all = () => D.items.concat(D.storage || []);
     const itemBy = (uid) => all().find((x) => x.uid === uid) || null;
     const fromOf = (uid) => (D.storage && D.storage.some((x) => x.uid === uid) ? 'st' : obOn() && D.items.some((x) => x.uid === uid && x.ob) ? 'ob' : 'bag');
-    // 26.10 (mine/pickaxe): рудная сумка - своя сетка «Рудная сумка» под сумкой (вкладка «Персонаж», сумка шахты, Склад): руда с it.ob
-    // лежит в ней и не занимает ячеек сумки. Режим 'pick' (окно скупщика) - одной сеткой, как раньше
+
+
     const obOn = () => D.obCap > 0 && (mode === 'equip' || mode === 'storage');
     const srcOf = (from) => (from === 'st' ? D.storage || [] : from === 'ob' ? D.items.filter((x) => x.ob) : obOn() ? D.items.filter((x) => !x.ob) : D.items);
     const kindOf = (it) => (it.wearable && SIL_NAME[it.slot] ? it.slot : USE.has(it.slot) && (filters() || []).includes('use') ? 'use' : 'other');
     const shown = (it) => !O.only || O.only(it);
     const okOf = (fn, it) => { if (!fn) return true; try { const r = fn(it); return r === undefined ? true : r; } catch (e) { return false; } };
-    const say = (t) => { if (!t) return; if (O.say) { try { O.say(t); } catch (e) { /* страница молчит */ } return; } const f = q('a'); if (f) { const p = document.createElement('p'); p.className = 'lgi-say'; p.setAttribute('role', 'status'); p.textContent = t; f.innerHTML = ''; f.appendChild(p); S.k.a = null; clearTimeout(S.sayT); S.sayT = setTimeout(() => foot(), 3500); } };
-    // 26.10: кукла может жить в своём элементе страницы (options.dollEl - карточка героя «Персонажа»), сетка - в el; библиотека одна:
-    // одно состояние, одно перетаскивание (корень - options.dragRoot, общий предок обоих), выбор и подсказки - в обоих местах
+    const say = (t) => { if (!t) return; if (O.say) { try { O.say(t); } catch (e) {   } return; } const f = q('a'); if (f) { const p = document.createElement('p'); p.className = 'lgi-say'; p.setAttribute('role', 'status'); p.textContent = t; f.innerHTML = ''; f.appendChild(p); S.k.a = null; clearTimeout(S.sayT); S.sayT = setTimeout(() => foot(), 3500); } };
+
+
     const PE = O.dollEl && O.dollEl.nodeType === 1 ? O.dollEl : null;
     const roots = () => (PE ? [el, PE] : [el]);
     const q = (n) => el.querySelector(`[data-lgi="${n}"]`) || (PE && PE.querySelector(`[data-lgi="${n}"]`));
@@ -601,11 +601,11 @@
       const src = srcOf(from), stack = from === 'st' ? D.storageStack : D.stack;
       const list = src.filter((it) => shown(it) && (from === 'ob' || S.f === 'all' || kindOf(it) === S.f));
       const cs = cells(list, stack, { keep: true });
-      if (from === 'st') for (const c of cs) c.st = 1;   // на складе надетого нет: всё, что пришло, лежит там
+      if (from === 'st') for (const c of cs) c.st = 1;
       return sortCells(cs, filters() || O.sort !== false ? S.sort : 'new');
     }
 
-    /* ---------- разметка: каркас один раз, дальше - только изменившиеся части ---------- */
+     
     function skeleton() {
       const t = T(), title = O.title || (mode === 'storage' ? t.storage : t.bag), canClose = !!A.close;
       el.classList.add('lgi', 'lgi--' + v, 'lgi-m-' + mode);
@@ -617,24 +617,24 @@
       const row = eqRow() ? `<div class="lgi-eqrow" role="group" aria-label="${esc(t.equipped)}" data-lgi="eqrow"></div>` : '';
       const vit = doll() && O.vitals !== false ? '<div class="lgi-vit" data-lgi="vit"></div>' : '';
       const fl = filters() || O.sort !== false && v !== 'inline' ? `<div class="lgi-f" role="group" aria-label="Тип вещей" data-lgi="f"></div>` : '';
-      // цель броска - вся область сетки (и пустое место под ячейками), а не только ряды ячеек
-      // 30.10 (окно Склада): options.slots - в шапке каждой сетки место под кнопки страницы (gx-bag / gx-st), а между столбцами - узкая колонка (mid); наполняет страница
+
+
       const slotsOn = mode === 'storage' && !!O.slots;
       const g = (from, label) => `<div class="lgi-g" data-lgi="g-${from}"${mode === 'equip' || mode === 'storage' ? ` data-igdrop="${from}"` : ''}>${mode === 'storage' ? `<div class="lgi-gh${slotsOn && from !== 'ob' ? ' lgi-gh2' : ''}"><b>${esc(label)}</b><span data-lgi="cap-${from}"></span>${slotsOn && from !== 'ob' ? `<span class="lgi-gx" data-lgi="gx-${from}"></span>` : ''}</div>` : ''}<div class="cy-grid ig-grid" role="group" aria-label="${esc(label)}" data-lgi="grid-${from}"></div><p class="lgi-empty muted" data-lgi="empty-${from}" hidden>${esc(t.empty)}</p></div>`;
-      // 30.10 (склад в два столбца): заголовок рудной сумки - кнопка «свернуть / развернуть» (aria-expanded), выбор помним (lgOreBagFold)
+
       const obT = esc(t.oreBag || 'Рудная сумка');
       const obG = obOn() ? `<div class="lgi-g lgi-ob${S.fold ? ' lgi-fold' : ''}" data-lgi="g-ob"${mode === 'storage' ? ' data-igdrop="ob"' : ''}><button type="button" class="lgi-gh lgi-foldbt" data-lgi-fold aria-expanded="${!S.fold}" aria-controls="lgi-ob-${ID}" title="${esc(S.fold ? t.obOpen || 'Развернуть' : t.obShut || 'Свернуть')}"><b>${obT}</b><span data-lgi="cap-ob"></span><i class="lgi-chev" aria-hidden="true"></i></button><div class="cy-grid ig-grid" id="lgi-ob-${ID}" role="group" aria-label="${obT}" data-lgi="grid-ob"></div></div>` : '';
-      // 28.10 (bag-trash): слот «Выбросить» под сеткой - только если страница дала actions.discard (вкладка «Поход»)
+
       const tr = trashOn() ? `<button type="button" class="lgi-trash" data-lgi="trash" data-igdrop="trash" aria-label="${esc(t.trash)}: ${esc(t.trashPick)}" title="${esc(t.trashPick)}"><span class="lgi-tri" aria-hidden="true">🗑</span><b>${esc(t.trash)}</b><small>${esc(t.trashSub)}</small></button>` : '';
-      // 30.10: склад - два столбца-обёртки (слева сумка и рудная сумка, справа склад); без места (телефон) обёртки «прозрачны» и сетки идут столбиком, как раньше
+
       const grids = (mode === 'storage' ? `<div class="lgi-cols"><div class="lgi-col lgi-col-l">${g('bag', t.bag)}${obG}</div>${slotsOn ? '<div class="lgi-mid" data-lgi="mid"></div>' : ''}<div class="lgi-col lgi-col-r">${g('st', t.storage)}</div></div>` : g('bag', O.gridLabel || t.bag) + obG) + tr;
-      S.ob = obOn(); el.classList.toggle('lgi-wob', S.ob && (v === 'compact' || v === 'sheet'));   // 28.10 (mine-orebag-scroll): с рудной сумкой прокручивается вся карточка - иначе блок руды обрезан (телефон) или не доскроллить из сумки (ПК)
+      S.ob = obOn(); el.classList.toggle('lgi-wob', S.ob && (v === 'compact' || v === 'sheet'));
       const foot = '<footer class="lgi-a" data-lgi="a"></footer>';
       const hd = O.header === false ? '' : head, det = O.detail === false ? '' : '<aside class="lgi-det" data-lgi="det" aria-live="polite"></aside>';
       el.classList.toggle('lgi-nodet', O.detail === false);
       let st0 = stage;
       if (PE) { PE.classList.add('lgi', 'lgi--' + v, 'lgi-dollx'); PE.dataset.lgiId = ID; PE.innerHTML = stage; st0 = ''; el.classList.toggle('lgi-nodoll', !!stage); }
-      // 'full': сетка внутри своей обёртки - раскладка меняется по ширине самой сумки (container query), а не окна
+
       el.innerHTML = v === 'full'
         ? `<div class="lgi-in"><div class="lgi-side">${hd}${st0}${vit}</div><div class="lgi-main">${fl}${grids}</div>${det}${foot}</div>`
         : hd + st0 + row + vit + fl + grids + foot;
@@ -643,15 +643,15 @@
     function slotHtml(sl, small) {
       const it = D.items.find((x) => x.on && x.slot === sl) || null, nm = SIL_NAME[sl];
       const edit = mode === 'equip' && !small, pick = mode === 'pick' && !small;
-      const big = !!PE && !small;   // кукла в чужой карточке (dollEl): крупные слоты, как до inv2 - картинка, подпись слота и название вещи
+      const big = !!PE && !small;
       if (it) {
         const off = pick && okOf(O.can, it) !== true;
         return `<button type="button" class="cy-sc ig-c lgi-slot${off ? ' off' : ''}" data-slot="${sl}" data-r="${esc(it.rarity || 'common')}" data-ig="${esc(it.uid)}"${(edit && A.unequip) || (pick && A.drop && !off) ? ' data-igdrag="1"' : ''}${edit ? ' data-igdrop="slot"' : ''} aria-label="${esc(nm)}: ${esc(it.name)}"><span class="cy-gi">${artOf(it)}</span>${it.en > 0 ? `<i class="en">+${+it.en}</i>` : ''}${big ? `${it.dur != null ? `<i class="du${+it.dur <= 30 ? ' br' : ''}">${+it.dur <= 30 ? '⚠' : ''}${+it.dur}%</i>` : ''}<span class="lgi-sl">${esc(nm)}</span><span class="lgi-sn">${esc(it.name)}</span>` : v === 'full' ? `<span class="lgi-sl">${esc(nm)}</span>` : ''}</button>`;
       }
       return `<button type="button" class="cy-sc lgi-slot e2" data-slot="${sl}"${small ? ' tabindex="-1"' : ` data-empty="${sl}"`}${edit ? ' data-igdrop="slot"' : ''} aria-label="${esc(nm)}: пусто${small ? '' : ' - показать подходящее'}" title="${esc(nm)}: пусто"><span class="cy-gi sil">${artOf(EMPTY[sl])}</span>${big ? `<span class="lgi-sl">${esc(nm)}</span><span class="lgi-sn">пусто</span>` : v === 'full' ? `<span class="lgi-sl">${esc(nm)}</span>` : ''}</button>`;
     }
-    const sig = (it) => (it ? [it.uid, it.id, it.rarity, it.en || 0, it.dur == null ? '' : it.dur, it.name, it.on ? 1 : 0, it.q || 0].join('|') : '');   // 26.10: q - осколков в кучке руды
-    // кусок разметки меняется - только если поменялась его подпись (иначе DOM не трогаем: фокус, наведение, двойной клик целы)
+    const sig = (it) => (it ? [it.uid, it.id, it.rarity, it.en || 0, it.dur == null ? '' : it.dur, it.name, it.on ? 1 : 0, it.q || 0].join('|') : '');
+
     function put(name, key, html) { const e = q(name); if (!e || S.k[name] === key) return e; S.k[name] = key; e.innerHTML = html(); return e; }
     function slots() {
       if (doll()) {
@@ -685,7 +685,7 @@
         return `<button type="button" class="lgi-chip${EMPTY[k] ? ' ic' : ''}" data-bf="${k}" aria-pressed="${S.f === k}" title="${esc(t)}: ${n}" aria-label="${esc(t)}: ${n}">${EMPTY[k] ? `<span class="cy-gi">${artOf(EMPTY[k])}</span>` : esc(k === 'all' ? 'Все' : k === 'use' ? 'Еда' : 'Ещё')}<small>${n}</small></button>`; }).join('')
         + (O.sort === false ? '' : `<select data-bsort aria-label="Порядок" title="Порядок">${SORTS.map(([k, t]) => `<option value="${k}"${S.sort === k ? ' selected' : ''}>${t}</option>`).join('')}</select>`));
     }
-    // 31.10 (feat/candy-tile): плитка «не вещи» (конфеты): без data-ig / data-igdrag / data-igdrop - ни выбора, ни действий, ни перетаскивания
+
     const pinsOf = (from) => (from === 'bag' && S.f === 'all' && (mode === 'equip' || mode === 'view') ? D.pins : []);
     const pinHtml = (p) => pinCell(p);
     const pinBy = (id) => D.pins.find((p) => p.id === id) || null;
@@ -700,7 +700,7 @@
       const ord = from === 'bag' && reorderOn() ? ' data-igdrop="cell"' : '';
       return cell(c, { art: artOf, drag: dr, off, attr: `data-from="${from}"${ord}`, extra: O.extra });
     }
-    // сетка: ячейка с той же подписью остаётся тем же элементом (только переставляется); новая - создаётся; лишние - уходят
+
     function gridPatch(from) {
       const g = q('grid-' + from); if (!g) return;
       const cs = listCells(from), old = new Map(), ph = [];
@@ -712,7 +712,7 @@
         if (g.children[i] !== b) g.insertBefore(b, g.children[i] || null);
         i++;
       }
-      // 31.10: плитки «не вещей» - после вещей (вещи не сдвигаются), до пустых ячеек; в счёт места не идут
+
       const pins = pinsOf(from);
       for (const p of pins) {
         const k = ['pin', p.id, p.label, p.aria || p.name || ''].join('#');
@@ -730,13 +730,13 @@
       const cp = q('cap-' + from); if (cp) cp.textContent = cap != null ? `${used} / ${cap}` : String(used);
     }
     function grids() { gridPatch('bag'); if (obOn()) gridPatch('ob'); if (mode === 'storage') gridPatch('st'); }
-    // нижняя строка: выбранная вещь и её кнопка (или подсказка); в 'full' - ещё карточка вещи справа
+
     function useLabel(it) { return it.slot === 'potion' || it.drink ? T().drink : it.slot === 'food' ? T().eat : T().use; }
     function actBtn(it) {
       const t = T(), dis = S.busy ? ' disabled' : '';
       if (mode === 'equip') {
         if (it.on) return A.unequip && v !== 'inline' ? `<button type="button" class="btn ghost lgi-btn" data-lgi-off="${esc(it.slot)}"${dis}>${t.off}</button>` : '';
-        // 28.10 (bag-trash): у выбранной вещи сумки - ещё «🗑» (выбросить; на телефоне перетаскивать неудобно)
+
         const tb = trashOn() && !trashWhy(it) ? `<button type="button" class="btn ghost lgi-btn ghost lgi-trb" data-lgi-trash="${esc(it.uid)}"${dis} aria-label="${esc(t.trash)}" title="${esc(t.trash)}">🗑</button>` : '';
         if (it.wearable) return (A.equip ? `<button type="button" class="btn primary lgi-btn" data-lgi-on="${esc(it.uid)}"${dis}>${t.on}</button>` : '') + tb;
         if (USE.has(it.slot) && A.use) { const ok = okOf(O.canUse, it); return `<button type="button" class="btn primary lgi-btn" data-lgi-use="${esc(it.uid)}"${ok !== true || S.busy ? ' disabled' : ''}${ok !== true ? ` title="${esc(ok)}"` : ''}>${useLabel(it)}</button>${tb}`; }
@@ -778,14 +778,14 @@
       slots(); vit(); chips(); grids(); foot(); mark();
     }
 
-    /* ---------- управление ---------- */
+     
     function card(c) {
       const it = itemBy(c.dataset.ig); if (!it) return;
       const cc = cellOf(it.uid), n = cc ? cc.n : 1;
-      if (O.cardTip) { try { O.cardTip(c, n > 1 ? { ...it, n, uids: cc.uids } : it, D.hero); } catch (e) { /* карточка страницы */ } S.tip = true; return; }
+      if (O.cardTip) { try { O.cardTip(c, n > 1 ? { ...it, n, uids: cc.uids } : it, D.hero); } catch (e) {   } S.tip = true; return; }
       tipShow(c, cardHtml({ ...it, n }, all(), O), it.rarity); S.tip = true;
     }
-    function cardOff() { if (!S.tip) return; S.tip = false; if (O.cardTip) { try { if (O.tipHide) O.tipHide(); } catch (e) { /* карточка страницы */ } } else tipHide(); }
+    function cardOff() { if (!S.tip) return; S.tip = false; if (O.cardTip) { try { if (O.tipHide) O.tipHide(); } catch (e) {   } } else tipHide(); }
     function select(uid) { S.sel = uid || ''; mark(); foot(); }
     async function run(fn, ...args) {
       if (S.busy || !fn) return;
@@ -806,7 +806,7 @@
     }
     function move(uid, from, n, to) {
       const c = cellOf(uid), it = itemBy(uid); if (!c || !it || !A.move) return;
-      run(A.move, uid, from === 'ob' ? 'bag' : from, to || (from === 'st' ? 'bag' : 'st'), Math.max(1, Math.min(c.n, +n || 1)), c);   // 26.10: из рудной сумки - как из сумки (игра знает, где кучка)
+      run(A.move, uid, from === 'ob' ? 'bag' : from, to || (from === 'st' ? 'bag' : 'st'), Math.max(1, Math.min(c.n, +n || 1)), c);
     }
     function pick(uid) {
       const it = itemBy(uid); if (!it) return;
@@ -818,15 +818,15 @@
       select(c.dataset.ig); card(c);
       if (O.onSelect) try { O.onSelect(itemBy(c.dataset.ig)); } catch (e) { console.warn('[инвентарь]', e); }
     }
-    // есть ли место в сетке to для ячейки src (Склад полон - нельзя, но стопка того же вида дополняется)
+
     function room(to, src) {
       const cap = to === 'st' ? D.storageCap : to === 'ob' ? D.obCap : D.bagCap; if (cap == null) return true;
       const list = srcOf(to), cs = cells(list, to === 'st' ? D.storageStack : D.stack).filter((c) => !c.ev);
-      if (to === 'ob') { const it = itemBy(src.dataset.ig); if (!it || !it.qty) return false; }   // в рудную сумку - только руда
+      if (to === 'ob') { const it = itemBy(src.dataset.ig); if (!it || !it.qty) return false; }
       const it = itemBy(src.dataset.ig), k = to === 'st' ? D.storageStack : D.stack;
       return cs.length < cap || (!!it && !it.wearable && cs.some((c) => c.it.id === it.id && c.n < k));
     }
-    // 28.10 (bag-trash): выбросить - окно подтверждения (стопка: 1 / все; эпическая и легендарная - с предупреждением), потом actions.discard
+
     function trashAskFor(uid, back) {
       if (!trashOn()) return;
       const it = itemBy(uid); if (!it) return;
@@ -836,7 +836,7 @@
       trashAsk({ name: it.name, rarity: it.rarity, n, ore: !!it.qty, labels: O.labels, back: back && back.isConnected ? back : null,
         yes: (k) => run(A.discard, uids.slice(0, Math.max(1, Math.min(n, k))), it, k) });
     }
-    // Склад: сколько перенести - 1 / половину / всё / сколько… (правая кнопка; на телефоне - удержать и отпустить); одна вещь - карточка
+
     function stMenu(src, e) {
       const c = cellOf(src.dataset.ig); if (!c) return;
       if (c.n < 2) { if (e) card(src); else tap(src); return; }
@@ -846,35 +846,35 @@
     }
     function bindDrag() {
       if (S.drag) { S.drag.off(); S.drag = null; }
-      // правая кнопка - меню вещи страницы (options.menu), а нет меню - карточка вещи; Shift + правая - быстрое действие
+
       const ctx = (src, e) => { const it = itemBy(src.dataset.ig); if (!it) return; if (O.menu) { cardOff(); try { O.menu(src, it, e); } catch (x) { console.warn('[инвентарь]', x); } } else card(src); };
       const base = { tap: (src) => tap(src), menu: ctx, onStart: cardOff, snap: true, scroll: PE ? 'page' : true, onEnd: () => { if (O.onDragEnd) try { O.onDragEnd(); } catch (e) { console.warn('[инвентарь]', e); } } };
-      // кукла в своём элементе: корень перетаскивания - общий предок (dragRoot), тащить / бросать / нажимать - только своё (data-lgi-id)
+
       const R = PE ? O.dragRoot || document.body : el, own = PE ? { src: `[data-lgi-id="${ID}"] [data-igdrag]`, tapSel: `[data-lgi-id="${ID}"] [data-ig]`, drop: `[data-lgi-id="${ID}"] [data-igdrop]` } : {};
       if (mode === 'equip') S.drag = drag(R, { ...base, ...own,
         ok: (src, t) => { const it = itemBy(src.dataset.ig); if (!it) return false;
-          if (t.dataset.igdrop === 'trash') return !trashWhy(it);   // 28.10 (bag-trash): «Выбросить» - вещь сумки, которую можно выбросить
-          if (t.dataset.igdrop === 'cell') return it.on ? true : t !== src && reorderOn();   // надетое на ячейку сумки - просто снять
+          if (t.dataset.igdrop === 'trash') return !trashWhy(it);
+          if (t.dataset.igdrop === 'cell') return it.on ? true : t !== src && reorderOn();
           return t.dataset.igdrop === 'bag' ? !!it.on : !it.on && !!it.wearable && it.slot === t.dataset.slot; },
         onDrop: (src, t) => { const it = itemBy(src.dataset.ig); if (t.dataset.igdrop === 'trash') { trashAskFor(src.dataset.ig, src); return; } if (t.dataset.igdrop === 'cell' && it && !it.on) { run(A.reorder, src.dataset.ig, t.dataset.ig); return; } use(src.dataset.ig); }, quick: (src) => use(src.dataset.ig),
-        // 28.10: палец удержали и отпустили на месте - меню вещи страницы (там «Выбросить»), как правая кнопка мыши
+
         hold: trashOn() && O.menu ? (src) => { const r = src.getBoundingClientRect(); ctx(src, { clientX: r.left, clientY: r.bottom + 4 }); } : undefined,
         reject: (src, t) => { if (t.dataset.igdrop === 'trash') { say(trashWhy(itemBy(src.dataset.ig))); return; } if (t !== src.closest('[data-igdrop]') && t.dataset.igdrop === 'slot') say(T().wrongSlot); } });
       else if (mode === 'storage') S.drag = drag(el, { ...base,
-        ok: (src, t) => src.dataset.from !== t.dataset.igdrop && !(src.dataset.from !== 'st' && t.dataset.igdrop !== 'st') && room(t.dataset.igdrop, src),   // 26.10: сумка ↔ рудная сумка - нет (руду кладёт игра), только со склада и на склад
+        ok: (src, t) => src.dataset.from !== t.dataset.igdrop && !(src.dataset.from !== 'st' && t.dataset.igdrop !== 'st') && room(t.dataset.igdrop, src),
         onDrop: (src, t) => { const c = cellOf(src.dataset.ig); move(src.dataset.ig, src.dataset.from, c ? c.n : 1, t.dataset.igdrop); },
         quick: (src) => { const c = cellOf(src.dataset.ig); move(src.dataset.ig, src.dataset.from, c ? c.n : 1); },
-        shift: (src) => { const c = cellOf(src.dataset.ig); move(src.dataset.ig, src.dataset.from, c ? c.n : 1); },   // как у прежнего Склада: Shift+клик - вся стопка
+        shift: (src) => { const c = cellOf(src.dataset.ig); move(src.dataset.ig, src.dataset.from, c ? c.n : 1); },
         menu: (src, e) => stMenu(src, e), hold: (src) => stMenu(src),
         reject: (src, t) => { if (t !== src.closest('[data-igdrop]')) say(T().full); } });
-      // выбор с перетаскиванием на чужую цель (наковальня, «Ты отдаёшь» в обмене): корень - окно страницы (options.dragRoot),
-      // цели - options.dropSel, бросок - actions.drop(it, цель); тащить и нажимать - только ячейки этой сумки
+
+
       else if (mode === 'pick' && A.drop) S.drag = drag(O.dragRoot || el, { ...base, src: `[data-lgi-id="${ID}"] [data-igdrag]`, tapSel: `[data-lgi-id="${ID}"] [data-ig]`, drop: O.dropSel || '[data-igdrop]',
         ok: (src, t) => { const it = itemBy(src.dataset.ig); return !!it && okOf(O.can, it) === true && !el.contains(t) && (!O.dropOk || O.dropOk(it, t) !== false); },
-        onDrop: (src, t) => { const it = itemBy(src.dataset.ig); if (it) run(A.drop, it, t); }, quick: (src) => pick(src.dataset.ig), shift: (src) => pick(src.dataset.ig) });   // 26.10: Shift+клик - тоже «положить» (окно скупщика)
+        onDrop: (src, t) => { const it = itemBy(src.dataset.ig); if (it) run(A.drop, it, t); }, quick: (src) => pick(src.dataset.ig), shift: (src) => pick(src.dataset.ig) });
       else S.drag = drag(R, { ...base, ...own, quick: mode === 'pick' ? (src) => pick(src.dataset.ig) : undefined });
     }
-    // 30.10: свернуть / развернуть «Рудную сумку»: сетка прячется (ячейки остаются в разметке - счётчик и перетаскивание на заголовок целы)
+
     function foldSync(on) {
       if (S.dead) return; S.fold = !!on;
       const g = q('g-ob'); if (!g) return;
@@ -884,7 +884,7 @@
     FOLDS.add(foldSync);
     const onClick = (e) => {
       const t = e.target;
-      // свернуть / развернуть: запоминаем и сообщаем другим открытым сумкам страницы
+
       const fb = t.closest('[data-lgi-fold]'); if (fb && el.contains(fb)) { const on = !S.fold; foldPut(on); FOLDS.forEach((f) => f(on)); return; }
       const f = t.closest('[data-bf]'); if (f && el.contains(f)) { S.f = f.dataset.bf; save(); chips(); grids(); mark(); return; }
       const em = t.closest('[data-empty]'); if (em && el.contains(em)) { if ((filters() || []).includes(em.dataset.empty)) { S.f = em.dataset.empty; save(); chips(); grids(); mark(); } return; }
@@ -892,23 +892,23 @@
       const on = t.closest('[data-lgi-on]'); if (on) { use(on.dataset.lgiOn); return; }
       const off = t.closest('[data-lgi-off]'); if (off) { const it = D.items.find((x) => x.on && x.slot === off.dataset.lgiOff); if (it) use(it.uid); return; }
       const us = t.closest('[data-lgi-use]'); if (us) { use(us.dataset.lgiUse); return; }
-      const tb = t.closest('[data-lgi-trash]'); if (tb) { trashAskFor(tb.dataset.lgiTrash, tb); return; }   // 28.10 (bag-trash)
-      // 31.10: нажатие на плитку «не вещи» (палец) - та же подсказка, что наведение
+      const tb = t.closest('[data-lgi-trash]'); if (tb) { trashAskFor(tb.dataset.lgiTrash, tb); return; }
+
       const pn = t.closest('[data-lgi-pin]'); if (pn && el.contains(pn)) { pinTip(pn); return; }
       const tr = t.closest('[data-lgi="trash"]'); if (tr && el.contains(tr)) { if (S.sel && itemBy(S.sel) && !itemBy(S.sel).on) trashAskFor(S.sel, tr); else say(T().trashPick); return; }
       const mv = t.closest('[data-lgi-mv]'); if (mv && S.sel) { const c = cellOf(S.sel); move(S.sel, fromOf(S.sel), mv.dataset.lgiMv === 'all' && c ? c.n : 1); }
     };
     const onChange = (e) => { if (e.target.matches('[data-bsort]')) { S.sort = e.target.value; save(); chips(); grids(); mark(); } };
     const onDbl = (e) => { const c = e.target.closest('[data-ig]'); if (!c || !el.contains(c) || mode === 'view' || mode === 'pick') return; if (c.closest('.lgi-eqrow')) return; use(c.dataset.ig); };
-    // 26.10: слоты куклы в отдельном элементе (dollEl) - тоже наши: карточка вещи при наведении и там (раньше - только в сетке el)
+
     const onOver = (e) => { if (e.pointerType !== 'mouse' || (S.drag && S.drag.dragging())) return; const pn = e.target.closest('[data-lgi-pin]'); if (pn && el.contains(pn)) { pinTip(pn); return; } const c = e.target.closest('[data-ig]'); if (c && (el.contains(c) || (PE && PE.contains(c)))) card(c); };
     const onOut = (e) => { const c = e.target.closest('[data-ig], [data-lgi-pin]'); if (c && !c.contains(e.relatedTarget)) cardOff(); };
-    // стрелки - по ячейкам сетки (вверх / вниз - на ряд), Enter / пробел - выбрать (кнопка), Esc - закрыть
+
     const onKey = (e) => {
       if (!e.key.startsWith('Arrow')) return;
       const c = e.target.closest && e.target.closest('[data-ig]'); if (!c || !el.contains(c)) return;
       const box = c.parentElement, list = Array.from(box.querySelectorAll(':scope > [data-ig]')), i = list.indexOf(c); if (i < 0) return;
-      if (e.altKey) {   // Alt+стрелка - сдвинуть ячейку на одну (свой порядок)
+      if (e.altKey) {
         if (!reorderOn() || c.dataset.from !== 'bag') return;
         const j = i + (e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 1); if (j < 0 || j >= list.length) return;
         e.preventDefault(); const uid = c.dataset.ig;
@@ -942,10 +942,10 @@
     skeleton(); bind(); render();
     const api = {
       el, variant: v, mode,
-      update(data) { if (S.dead) return api; D = norm(data); if (!!S.ob !== obOn()) { unbind(); skeleton(); bind(); } render(); return api; },   // 26.10: рудную сумку купили - своя сетка
+      update(data) { if (S.dead) return api; D = norm(data); if (!!S.ob !== obOn()) { unbind(); skeleton(); bind(); } render(); return api; },
       set(o) { if (S.dead) return api; if (o.actions) A = o.actions; O = { ...O, ...(o.options || o) }; delete O.actions; unbind(); skeleton(); bind(); render(); return api; },
       select(uid) { select(uid); return api; },
-      discard(uid) { trashAskFor(uid); return api; },   // 28.10 (bag-trash): меню вещи страницы → «Выбросить» (то же окно подтверждения)
+      discard(uid) { trashAskFor(uid); return api; },
       state: () => ({ f: S.f, sort: S.sort, sel: S.sel, busy: S.busy }),
       dragging: () => !!(S.drag && S.drag.dragging()),
       destroy() {

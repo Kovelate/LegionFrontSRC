@@ -1,11 +1,11 @@
-// Мелочи интерфейса для страниц обоих продуктов (оверлей, пульты, сайт) и для сервера. Без зависимостей, без DOM при загрузке.
-//   esc(s)                  - текст в HTML без подстановки разметки;
-//   plural(n, one, few, many) - «1 голос / 2 голоса / 5 голосов» (только слово); pluralN - с числом;
-//   timeAgo(ts, now)         - «только что», «5 мин назад», «2 ч назад», «вчера», «3 дн назад»;
-//   toast(text, o)           - всплывающая надпись внизу страницы (одна на страницу, сама прячется); o.long - подольше.
-//                              Свой элемент страницы (сайт: #toast со стилями оформления): o.el, o.cls - его класс ('toast';
-//                              показ - «cls on», ошибка o.err - ещё « err»), o.ms - сколько держать. Таймер - один на элемент.
-// В браузере - window.LGUi, в Node - module.exports. Отдаётся шлюзом по адресу /lib/ui-kit.js.
+
+
+
+
+
+
+
+
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
@@ -38,7 +38,7 @@
   const elT = typeof WeakMap === 'function' ? new WeakMap() : null;
   function toast(text, o = {}) {
     if (typeof document === 'undefined') return;
-    if (o.el) {   // 25.10: свой элемент страницы (site-ui: #toast сайта)
+    if (o.el) {
       const e = o.el, cls = o.cls || 'toast', T = elT.get(e) || {}, k = o.key || '';
       e.textContent = String(text == null ? '' : text);
       e.className = cls + ' on' + (o.err ? ' err' : '');

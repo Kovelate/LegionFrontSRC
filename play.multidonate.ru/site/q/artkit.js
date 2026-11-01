@@ -1,6 +1,6 @@
-// Общий набор рисования местности (стиль Легиона): деревья, горы, скалы, холмы, вода, мелочь.
-// Им пользуются карта Похода (mapart.js) и фоны локаций (scene.js). Всё — строки SVG, случайность — от переданного r().
-// Соседние горы сливаются в хребты, деревья — в рощи (общий контур рисуется под всеми телами группы): QArt.begin() → рисуем → QArt.render().
+
+
+
 (function () {
   const W = 1920, H = 1080, INK = '#2a2236', CAM = { x: 1500, y: 830 };
   const f1 = (v) => Math.round(v * 10) / 10;
@@ -11,7 +11,7 @@
   const P = (p) => `${f1(p[0])} ${f1(p[1])}`;
   const poly = (pts) => 'M' + pts.map(P).join(' L') + ' Z';
 
-  // плавная кривая через точки (Катмулл-Ром → кубические Безье)
+
   function smooth(pts, closed) {
     const n = pts.length, g = (i) => closed ? pts[(i + n) % n] : pts[Math.max(0, Math.min(n - 1, i))];
     let d = 'M' + P(pts[0]);
@@ -21,7 +21,7 @@
     }
     return d + (closed ? ' Z' : '');
   }
-  // те же кривые, но густые точки (для толщины реки и столкновений)
+
   function dense(pts, step = 6) {
     const n = pts.length, g = (i) => pts[Math.max(0, Math.min(n - 1, i))], out = [];
     for (let i = 0; i < n - 1; i++) {
@@ -35,21 +35,21 @@
     out.push(pts[n - 1]);
     return out;
   }
-  // неровное пятно (озеро, лужа, поле)
+
   function blob(r, x, y, rx, ry, n = 10, jit = 0.22) {
     const pts = []; const a0 = r() * 6.28;
     for (let i = 0; i < n; i++) { const a = a0 + i / n * Math.PI * 2, k = 1 - jit + r() * jit * 2; pts.push([x + Math.cos(a) * rx * k, y + Math.sin(a) * ry * k]); }
     return pts;
   }
 
-  /* ================= объекты с общим контуром =================
-     Каждый объект: силуэт (ol — рисуется чернилами, толще) и тело (body).
-     Объекты одного семейства, стоящие вплотную, собираются в группу: сначала все силуэты, потом все тела —
-     так соседние горы становятся хребтом, а деревья — рощей с одним общим контуром. */
+  
+
+
+
   let OBJ = [], CID = 0;
   const add = (fam, x, y, rad, ol, body) => OBJ.push({ fam, x, y, rad, ol, body });
   function renderObjs(ow = 5.2) {
-    // сцена может попросить не ставить объекты в занятых местах (палатки привала): QArt.skip(obj) → true — объект выкидывается
+
     const skip = window.QArt && window.QArt.skip; if (skip) OBJ = OBJ.filter((o) => !skip(o));
     const n = OBJ.length, par = OBJ.map((_, i) => i), find = (i) => (par[i] === i ? i : (par[i] = find(par[i])));
     for (let i = 0; i < n; i++) { const a = OBJ[i]; if (!a.fam) continue;
@@ -58,19 +58,19 @@
     const groups = new Map();
     OBJ.forEach((o, i) => { const k = find(i); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(o); });
     const list = [...groups.values()].map((g) => { g.sort((a, b) => a.y - b.y); return { key: g[g.length - 1].y, g }; }).sort((a, b) => a.key - b.key);
-    // 23.10: одёжка сцены по природе (biomeskin.js) может дорисовать к телу снежную шапку: QArt.cap(объект) → строка SVG; нет — как раньше
+
     const cap = window.QArt && window.QArt.cap, bodyOf = cap ? (o) => o.body + cap(o) : (o) => o.body;
     return list.map(({ g }) => `<g fill="${INK}" stroke="${INK}" stroke-width="${ow}" stroke-linejoin="round" stroke-linecap="round">${g.map((o) => o.ol).join('')}</g>${g.map(bodyOf).join('')}`).join('');
   }
 
-  /* ---------------- деревья ---------------- */
+   
   const LEAF = {
     green: ['#3f7a44', '#5a9a4e', '#8cc47a'], deep: ['#2f6a42', '#468a4e', '#78b46a'], olive: ['#5f7f34', '#7f9f44', '#b0c86a'],
     autumn: ['#b8642a', '#de8f36', '#f4c25a'], red: ['#9a3a2a', '#c45a36', '#ea8a5a'], gold: ['#b89a2a', '#d8bc3e', '#f2de76'],
   };
   const NEEDLE = { pine: ['#2c5f44', '#3e7a52', '#5f9a68'], blue: ['#2a5658', '#3c706c', '#5e9488'], dark: ['#24483a', '#335e4a', '#4f7c60'] };
   function trunk(x, y, s, h, w = 2.6) { const d = `M${f1(x - w * s)} ${f1(y)} L${f1(x - w * 0.7 * s)} ${f1(y - h * s)} L${f1(x + w * 0.7 * s)} ${f1(y - h * s)} L${f1(x + w * s)} ${f1(y)} Z`; return { ol: `<path d="${d}"/>`, body: `<path d="${d}" fill="#7a5232"/><path d="M${f1(x + w * 0.2 * s)} ${f1(y)} L${f1(x + w * 0.2 * s)} ${f1(y - h * s)} L${f1(x + w * 0.7 * s)} ${f1(y - h * s)} L${f1(x + w * s)} ${f1(y)} Z" fill="#5a3a22"/>` }; }
-  // лиственное: крона из нескольких «облачков», тень снизу-справа, блик сверху-слева
+
   function treeRound(r, x, y, s, pal) {
     const t = trunk(x, y, s, 13), cy = y - 22 * s, lobes = [[x, cy, 11.5 * s]], n = 2 + Math.floor(r() * 3);
     for (let i = 0; i < n; i++) { const a = Math.PI * (0.9 + r() * 1.2) + (i % 2 ? 0 : Math.PI * 0.6); lobes.push([x + Math.cos(a) * 8 * s, cy + Math.sin(a) * 5.5 * s - 2 * s, (6.5 + r() * 4) * s]); }
@@ -79,10 +79,10 @@
     for (const [lx, ly, lr] of lobes) { ol += `<circle cx="${f1(lx)}" cy="${f1(ly)}" r="${f1(lr)}"/>`; body += `<circle cx="${f1(lx)}" cy="${f1(ly)}" r="${f1(lr)}" fill="${pal[0]}" stroke="${pal[0]}" stroke-width="1"/>`; }
     for (const [lx, ly, lr] of lobes) body += `<circle cx="${f1(lx - lr * 0.18)}" cy="${f1(ly - lr * 0.22)}" r="${f1(lr * 0.72)}" fill="${pal[1]}"/>`;
     const top = lobes[0]; body += `<path d="M${f1(top[0] - top[2] * 0.55)} ${f1(top[1] - top[2] * 0.1)} q${f1(top[2] * 0.25)} ${f1(-top[2] * 0.55)} ${f1(top[2] * 0.75)} ${f1(-top[2] * 0.5)}" stroke="${pal[2]}" stroke-width="${f1(2 * s)}" fill="none" stroke-linecap="round"/>`;
-    if (r() < 0.25) for (let i = 0; i < 3; i++) body += `<circle cx="${f1(x + (r() - 0.5) * 14 * s)}" cy="${f1(cy + (r() - 0.3) * 8 * s)}" r="${f1(1.5 * s)}" fill="${r() < 0.5 ? '#e8455c' : '#ffc94d'}"/>`;   // плоды
+    if (r() < 0.25) for (let i = 0; i < 3; i++) body += `<circle cx="${f1(x + (r() - 0.5) * 14 * s)}" cy="${f1(cy + (r() - 0.3) * 8 * s)}" r="${f1(1.5 * s)}" fill="${r() < 0.5 ? '#e8455c' : '#ffc94d'}"/>`;
     add('tree', x, y, 12 * s, ol, body);
   }
-  // ель / сосна: ярусы с тенью на правой половине
+
   function treePine(r, x, y, s, pal, tall) {
     const t = trunk(x, y, s, 7, 2), tiers = (tall ? 4 : 3) + (r() < 0.4 ? 1 : 0), step = (tall ? 8.5 : 9.5) * s, hw0 = (tall ? 10 : 13) * s;
     let ol = t.ol, body = t.body;
@@ -93,10 +93,10 @@
       body += `<path d="${d}" fill="${pal[1]}"/><path d="M${f1(x)} ${f1(ty)} L${f1(x + w)} ${f1(by)} Q${f1(x + w * 0.5)} ${f1(by + 2.6 * s)} ${f1(x)} ${f1(by + 3.4 * s)} Z" fill="${pal[0]}"/>`
         + `<path d="M${f1(x - w * 0.55)} ${f1(by - 3 * s)} L${f1(x - w * 0.15)} ${f1(ty + (by - ty) * 0.35)}" stroke="${pal[2]}" stroke-width="${f1(1.6 * s)}" stroke-linecap="round"/>`;
     }
-    if (r() < 0.2) body += `<path d="M${f1(x - 4 * s)} ${f1(y - 5 * s - step * 0.4)} l${f1(2 * s)} ${f1(2 * s)} M${f1(x + 5 * s)} ${f1(y - 4 * s - step * 1.3)} l${f1(-2 * s)} ${f1(2 * s)}" stroke="#f4f1ff" stroke-width="${f1(1.8 * s)}" stroke-linecap="round" opacity=".7"/>`;   // иней
+    if (r() < 0.2) body += `<path d="M${f1(x - 4 * s)} ${f1(y - 5 * s - step * 0.4)} l${f1(2 * s)} ${f1(2 * s)} M${f1(x + 5 * s)} ${f1(y - 4 * s - step * 1.3)} l${f1(-2 * s)} ${f1(2 * s)}" stroke="#f4f1ff" stroke-width="${f1(1.8 * s)}" stroke-linecap="round" opacity=".7"/>`;
     add('tree', x, y, 11 * s, ol, body);
   }
-  // берёза: белый ствол с чёрными чёрточками, светлая лёгкая крона
+
   function treeBirch(r, x, y, s) {
     const h = 22 * s, d = `M${f1(x - 2 * s)} ${f1(y)} L${f1(x - 1.5 * s)} ${f1(y - h)} L${f1(x + 1.5 * s)} ${f1(y - h)} L${f1(x + 2 * s)} ${f1(y)} Z`;
     let ol = `<path d="${d}"/>`, body = `<path d="${d}" fill="#f4f1ec"/>`;
@@ -107,14 +107,14 @@
       body += `<ellipse cx="${f1(cx)}" cy="${f1(cy)}" rx="${f1(rx)}" ry="${f1(ry)}" fill="${pal[0]}"/><ellipse cx="${f1(cx - 1.2 * s)}" cy="${f1(cy - 2 * s)}" rx="${f1(rx * 0.68)}" ry="${f1(ry * 0.68)}" fill="${pal[1]}"/>`; }
     add('tree', x, y, 10 * s, ol, body);
   }
-  // тополь: высокая узкая крона
+
   function treePoplar(r, x, y, s, pal) {
     const t = trunk(x, y, s, 8, 2), cy = y - 26 * s, rx = 7 * s, ry = 19 * s;
     const ol = t.ol + `<ellipse cx="${f1(x)}" cy="${f1(cy)}" rx="${f1(rx)}" ry="${f1(ry)}"/>`;
     const body = t.body + `<ellipse cx="${f1(x)}" cy="${f1(cy)}" rx="${f1(rx)}" ry="${f1(ry)}" fill="${pal[0]}"/><ellipse cx="${f1(x - 1.5 * s)}" cy="${f1(cy - 2 * s)}" rx="${f1(rx * 0.62)}" ry="${f1(ry * 0.85)}" fill="${pal[1]}"/><path d="M${f1(x - 3 * s)} ${f1(cy - ry * 0.5)} q${f1(-1 * s)} ${f1(6 * s)} 0 ${f1(12 * s)}" stroke="${pal[2]}" stroke-width="${f1(1.8 * s)}" fill="none" stroke-linecap="round"/>`;
     add('tree', x, y, 8 * s, ol, body);
   }
-  // сухое дерево: ветвится случайно (каждое — своё)
+
   function treeDead(r, x, y, s, col = '#5a4232', fam = 'dead', depth) {
     const segs = [];
     const grow = (x0, y0, a, len, w, depth) => {
@@ -128,7 +128,7 @@
     for (const [a, b, c, d, w] of segs) { ol += `<path d="M${f1(a)} ${f1(b)} L${f1(c)} ${f1(d)}" fill="none" stroke-width="${f1(w + 4.6)}"/>`; body += `<path d="M${f1(a)} ${f1(b)} L${f1(c)} ${f1(d)}" stroke="${col}" stroke-width="${f1(w)}" stroke-linecap="round"/>`; }
     add(fam, x, y, 9 * s, ol, body);
   }
-  // куст (может быть с ягодами или цветами); живёт в одной группе с деревьями — так получаются опушки и живые изгороди
+
   function bush(r, x, y, s, pal = LEAF.green) {
     let ol = '', body = '', l = [];
     const n = 3 + Math.floor(r() * 2);
@@ -149,7 +149,7 @@
     return treeRound(r, x, y, s, r() < 0.08 ? pick(r, [LEAF.autumn, LEAF.gold]) : pick(r, [LEAF.green, LEAF.green, LEAF.deep, LEAF.olive]));
   }
 
-  /* ---------------- горы, скалы, холмы ---------------- */
+   
   const ROCKP = {
     violet: { b: '#8f8a9a', d: '#6c6680', l: '#aaa5b6', snow: '#f4f1ff' }, slate: { b: '#7f8a98', d: '#5f6a7c', l: '#9aa6b4', snow: '#f4f6ff' },
     brown: { b: '#a08a70', d: '#7c6652', l: '#bca688', snow: '#f6f1e8' }, ochre: { b: '#b49a6a', d: '#8c744c', l: '#cdb486', snow: '#fbf4e2' },
@@ -170,17 +170,17 @@
     prof.push(jag(prof[prof.length - 1], [x + bw, y]), [x + bw, y]);
     const d = poly(prof);
     let body = `<path d="${d}" fill="${pal.b}"/>`;
-    // тень: правый склон каждого пика
+
     idx.forEach((pi) => {
       const p = prof[pi], sh = [p]; let j = pi + 1;
       while (j < prof.length) { sh.push(prof[j]); if (j === prof.length - 1 || prof[j][1] > prof[j - 1][1] && prof[j + 1] && prof[j + 1][1] < prof[j][1]) break; j++; }
       const last = sh[sh.length - 1]; sh.push([last[0], y], [p[0] + bw * 0.12, y]);
       body += `<path d="${poly(sh)}" fill="${pal.d}"/>`;
     });
-    // светлые грани и трещины слева
+
     idx.forEach((pi) => { const p = prof[pi]; body += `<path d="M${P(p)} L${f1(p[0] - 5 * s)} ${f1(p[1] + 16 * s)} L${f1(p[0] + 1 * s)} ${f1(p[1] + 30 * s)}" stroke="${pal.l}" stroke-width="${f1(2.2 * s)}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`; });
     for (let i = 0; i < 2; i++) { const p = peaks[Math.floor(r() * peaks.length)], yy = p[1] + (y - p[1]) * (0.45 + r() * 0.3), xx = p[0] - (y - p[1]) * (0.1 + r() * 0.25); body += `<path d="M${f1(xx)} ${f1(yy)} l${f1(6 * s)} ${f1(-3 * s)} l${f1(5 * s)} ${f1(2 * s)}" stroke="${INK}" stroke-width="${f1(1.3 * s)}" fill="none" opacity=".3"/>`; }
-    // снежные шапки на высоких пиках (зубчатый край)
+
     if (opt.snow !== false) idx.forEach((pi) => {
       const p = prof[pi], hh = y - p[1]; if (hh < 40 * s && !opt.allSnow) return;
       const L = prof[pi - 1], R = prof[pi + 1], fr = 0.28 + r() * 0.12, along = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
@@ -193,7 +193,7 @@
     });
     add(opt.fam || 'mnt', x, y, bw, `<path d="${d}"/>`, body);
   }
-  // утёс / столовая скала: плоская вершина, отвесные бока, слои породы
+
   function crag(r, x, y, s, pal, cave) {
     const bw = 34 * s * (0.8 + r() * 0.5), h = 40 * s * (0.8 + r() * 0.5), tw = bw * (0.55 + r() * 0.2), tx = x + (r() - 0.5) * 8 * s;
     const pts = [[x - bw, y], [x - bw * 0.85, y - h * 0.45], [tx - tw, y - h * 0.8], [tx - tw * 0.7, y - h], [tx + tw * 0.1, y - h - 3 * s], [tx + tw * 0.8, y - h * 0.97], [tx + tw, y - h * 0.75], [x + bw * 0.9, y - h * 0.35], [x + bw, y]];
@@ -204,7 +204,7 @@
     if (cave) body += `<path d="M${f1(x - 9 * s)} ${f1(y)} V${f1(y - 9 * s)} Q${f1(x)} ${f1(y - 21 * s)} ${f1(x + 9 * s)} ${f1(y - 9 * s)} V${f1(y)} Z" fill="#1e1828" ${O(2)}/>`;
     add('mnt', x, y, bw, `<path d="${d}"/>`, body);
   }
-  // холм: мягкий горб, светлая макушка, тень справа (по маске формы холма)
+
   function hill(r, x, y, s, pal = ['#7f9a52', '#9ab06a', '#c4d48e']) {
     const bw = 42 * s * (0.8 + r() * 0.5), h = 30 * s * (0.75 + r() * 0.6), sk = (r() - 0.5) * bw * 0.5;
     const d = `M${f1(x - bw)} ${f1(y)} C${f1(x - bw * 0.6 + sk)} ${f1(y - h * 1.3)} ${f1(x + bw * 0.5 + sk)} ${f1(y - h * 1.3)} ${f1(x + bw)} ${f1(y)} Z`, id = 'qh' + (CID++);
@@ -213,7 +213,7 @@
     for (let i = 0; i < 3; i++) body += `<path d="M${f1(x + (r() - 0.6) * bw)} ${f1(y - h * (0.15 + r() * 0.35))} q2 -4 3 -6" stroke="#5f7f3a" stroke-width="1.6" fill="none" stroke-linecap="round" opacity=".6"/>`;
     add('hill', x, y, bw * 0.9, `<path d="${d}"/>`, body);
   }
-  // камень: неровный многогранник со светлой верхней гранью
+
   function rock(r, x, y, s, pal = pick(r, [ROCKP.violet, ROCKP.brown, ROCKP.slate])) {
     const n = 6, pts = [];
     for (let i = 0; i < n; i++) { const a = Math.PI + i / (n - 1) * Math.PI, k = 0.75 + r() * 0.45; pts.push([x + Math.cos(a) * 11 * s * k, y + Math.min(0, Math.sin(a)) * 10 * s * k]); }
@@ -222,7 +222,7 @@
     add('rock', x, y, 9 * s, `<path d="${d}"/>`, body);
   }
 
-  /* ---------------- мелочь (без общего контура) ---------------- */
+   
   const grass = (x, y, s = 1, c = '#5f7f3a') => `<path d="M${f1(x - 5 * s)} ${f1(y)} q${f1(2 * s)} ${f1(-7 * s)} ${f1(3 * s)} ${f1(-9 * s)} M${f1(x)} ${f1(y)} q0 ${f1(-8 * s)} ${f1(1 * s)} ${f1(-11 * s)} M${f1(x + 5 * s)} ${f1(y)} q${f1(-1 * s)} ${f1(-6 * s)} ${f1(-3 * s)} ${f1(-8 * s)}" stroke="${c}" stroke-width="2" fill="none" stroke-linecap="round" opacity=".7"/>`;
   const flower = (x, y, c) => `<circle cx="${f1(x)}" cy="${f1(y)}" r="2.6" fill="${c}" stroke="${INK}" stroke-width=".8"/>`;
   const one = (x, y, svg) => add(null, x, y, 0, '', svg);
@@ -235,7 +235,7 @@
     one(x, y, g); }
   function column(r, x, y, s = 1) { const broken = r() < 0.7, hh = (broken ? 16 + r() * 12 : 32) * s; let g = `<rect x="${f1(x - 6 * s)}" y="${f1(y - hh)}" width="${f1(12 * s)}" height="${f1(hh)}" fill="#d8ccb2" ${O(2.2)}/><path d="M${f1(x + 1.5 * s)} ${f1(y - hh)} V${f1(y)} M${f1(x - 2.5 * s)} ${f1(y - hh)} V${f1(y)}" stroke="#b4a688" stroke-width="1.6"/><rect x="${f1(x - 8.5 * s)}" y="${f1(y - 3 * s)}" width="${f1(17 * s)}" height="${f1(3 * s)}" fill="#c8bca0" ${O(2)}/>`;
     g += broken ? `<path d="M${f1(x - 6 * s)} ${f1(y - hh)} L${f1(x - 2 * s)} ${f1(y - hh - 5 * s)} L${f1(x + 2 * s)} ${f1(y - hh - 1 * s)} L${f1(x + 6 * s)} ${f1(y - hh - 4 * s)} V${f1(y - hh)}" fill="#d8ccb2" ${O(2)}/>` : `<rect x="${f1(x - 8.5 * s)}" y="${f1(y - hh - 3 * s)}" width="${f1(17 * s)}" height="${f1(4 * s)}" fill="#c8bca0" ${O(2)}/>`;
-    if (r() < 0.5) g += `<path d="M${f1(x - 6 * s)} ${f1(y - hh * 0.4)} q${f1(4 * s)} ${f1(-6 * s)} ${f1(8 * s)} ${f1(-3 * s)} q3 4 4 10" stroke="#4f8a4a" stroke-width="2.2" fill="none" stroke-linecap="round"/>`;   // плющ
+    if (r() < 0.5) g += `<path d="M${f1(x - 6 * s)} ${f1(y - hh * 0.4)} q${f1(4 * s)} ${f1(-6 * s)} ${f1(8 * s)} ${f1(-3 * s)} q3 4 4 10" stroke="#4f8a4a" stroke-width="2.2" fill="none" stroke-linecap="round"/>`;
     one(x, y, g); }
   function ruinWall(r, x, y, s = 1) { const w = (40 + r() * 30) * s, h = (18 + r() * 14) * s, pts = [[x - w / 2, y], [x - w / 2, y - h]]; const steps = 4 + Math.floor(r() * 3);
     for (let i = 1; i <= steps; i++) pts.push([x - w / 2 + w * i / steps, y - h * (0.35 + r() * 0.65)]); pts.push([x + w / 2, y]);
@@ -253,17 +253,17 @@
   const signpost = (x, y, txt) => `<g transform="translate(${x} ${y})"><path d="M0 0 V-34" stroke="${INK}" stroke-width="4"/><path d="M-2 -34 H${12 + txt.length * 7} l8 6 l-8 6 H-2 Z" fill="#c8a06a" ${O(2)}/><text x="${f1(4 + txt.length * 3.6)}" y="-24" font-family="Russo One" font-size="10" fill="${INK}" text-anchor="middle">${txt}</text></g>`;
   const tent = (x, y, c) => `<g transform="translate(${x} ${y})"><path d="M-16 0 L0 -26 L16 0 Z" fill="${c}" ${O(2.4)}/><path d="M0 -26 L16 0 H6 Z" fill="#000" opacity=".15"/><path d="M0 -26 V0" stroke="#fff4d6" stroke-width="2"/><path d="M0 -26 V-34 l7 2 -7 3" fill="#ffc94d" ${O(1.4)}/></g>`;
 
-  /* ---------------- вода ---------------- */
+   
   const WATER = { b: '#6fa8d8', d: '#5a90c4', l: '#bfe0f4' }, MURK = { b: '#7a9a7a', d: '#647f64', l: '#b4c8a4' };
   function lake(r, x, y, rx, ry, W_ = WATER) {
     const pts = blob(r, x, y, rx, ry, 11, 0.18), d = smooth(pts, true), id = 'ql' + (CID++);
-    let g = `<path d="${smooth(blob(r, x, y + 3, rx + 7, ry + 5, 11, 0.12), true)}" fill="#d8c88a" opacity=".7"/>`;   // песчаный берег
+    let g = `<path d="${smooth(blob(r, x, y + 3, rx + 7, ry + 5, 11, 0.12), true)}" fill="#d8c88a" opacity=".7"/>`;
     g += `<clipPath id="${id}"><path d="${d}"/></clipPath><path d="${d}" fill="${W_.b}" ${O(3)}/><g clip-path="url(#${id})"><path d="${smooth(pts.map(([px, py]) => [x + (px - x) * 0.92, y + (py - y) * 0.92 - ry * 0.18]), true)}" fill="none" stroke="${W_.d}" stroke-width="${f1(ry * 0.25)}" opacity=".5"/></g>`;
     for (let i = 0; i < 2 + Math.floor(rx / 30); i++) { const lx = x + (r() - 0.5) * rx, ly = y + (r() - 0.5) * ry * 0.8; g += `<path d="M${f1(lx)} ${f1(ly)} h${f1(8 + r() * 14)}" stroke="${W_.l}" stroke-width="3" stroke-linecap="round"><animate attributeName="opacity" values=".3;1;.3" dur="${(2 + r() * 2).toFixed(1)}s" repeatCount="indefinite"/></path>`; }
-    if (W_ === MURK || r() < 0.4) for (let i = 0; i < 3; i++) { const a = r() * 6.28, lx = x + Math.cos(a) * rx * 0.5, ly = y + Math.sin(a) * ry * 0.5; g += `<path d="M${f1(lx)} ${f1(ly)} m-5 0 a5 3 0 1 0 10 0 l-5 0 Z" fill="#5f9a4e" stroke="${INK}" stroke-width="1"/>`; }   // кувшинки
+    if (W_ === MURK || r() < 0.4) for (let i = 0; i < 3; i++) { const a = r() * 6.28, lx = x + Math.cos(a) * rx * 0.5, ly = y + Math.sin(a) * ry * 0.5; g += `<path d="M${f1(lx)} ${f1(ly)} m-5 0 a5 3 0 1 0 10 0 l-5 0 Z" fill="#5f9a4e" stroke="${INK}" stroke-width="1"/>`; }
     return { svg: g, pts };
   }
-  // река: переменная ширина, блики посередине и течение пунктиром
+
   function riverSvg(cl, w0, w1, r, W_ = WATER) {
     const n = cl.length, L = [], R = [], ws = [], ph = r() * 6;
     for (let i = 0; i < n; i++) {
@@ -280,25 +280,25 @@
     return { svg: g, ws };
   }
 
-  /* ---------- прогулка человечка (привал, ловушка после итога) ----------
-     walk(key, x, s, xmin, xmax, o) → { a, b, fa, fb }: a…b — обёртка, которая водит человечка туда-сюда (с покачиванием шага и остановками),
-     fa…fb — обёртка тела, которая разворачивает его лицом по ходу. flip — как он стоит без прогулки (1 — лицом вправо, −1 — влево).
-     o.begin = 'indefinite' — стоит, пока не запустят (beginElement() у всех animate* внутри .qwalk); иначе идёт сразу.
-     Маршрут по зерну key — при перерисовке тот же; в конце круга возвращается на своё место. */
+  
+
+
+
+
   function walk(key, x, s, xmin, xmax, o = {}) {
     const r = rng(hash(String(key))), flip = o.flip || 1, R = o.range || 240, lo = Math.max(xmin, x - R), hi = Math.min(xmax, x + R);
     const sp = 52 * Math.max(0.5, s), bob = -5 * s;
     const T = [0], X = [0], Y = [0], F = [flip];
     const add = (dt, dx, dy, f) => { T.push(T[T.length - 1] + dt); X.push(dx); Y.push(dy); F.push(f); };
-    add(0.4 + r() * 3.5, 0, 0, flip);   // кто-то трогается сразу, кто-то чуть погодя
+    add(0.4 + r() * 3.5, 0, 0, flip);
     let cx = x;
     const legs = 2 + Math.floor(r() * 3);
     for (let i = 0; i <= legs; i++) {
       const to = i === legs ? x : lo + r() * (hi - lo), d = to - cx; if (Math.abs(d) < 30 && i < legs) continue;
       const dir = d >= 0 ? 1 : -1, t = Math.abs(d) / sp, n = Math.max(2, Math.round(t / 0.22));
-      F[F.length - 1] = dir;   // развернулся — и пошёл
+      F[F.length - 1] = dir;
       for (let k = 1; k <= n; k++) add(t / n, cx - x + d * k / n, k % 2 && k < n ? bob : 0, dir);
-      cx = to; add(1.2 + r() * 3.5, cx - x, 0, dir);   // постоял
+      cx = to; add(1.2 + r() * 3.5, cx - x, 0, dir);
     }
     const dur = T[T.length - 1], kt = T.map((t) => (t / dur).toFixed(4)).join(';'), b = o.begin ? `begin="${o.begin}"` : '';
     return {
@@ -308,9 +308,9 @@
       fb: '</g>',
     };
   }
-  // кто гуляет: примерно доля share, по нику (при перерисовке — те же)
+
   const walks = (login, share) => (hash(String(login) + '#гуляет') % 1000) / 1000 < share;
 
-  // take() — забрать накопленные объекты как есть ({ fam, x, y, rad, ol, body }): карта мира (worldart.js) делает из них заготовки и группирует сама
+
   window.QArt = { walk, walks, begin() { OBJ = []; CID = 0; }, take() { const o = OBJ; OBJ = []; return o; }, objCount: () => OBJ.length, W, H, INK, CAM, f1, O, rng, hash, pick, P, poly, smooth, dense, blob, add, renderObjs, LEAF, NEEDLE, trunk, treeRound, treePine, treeBirch, treePoplar, treeDead, bush, anyTree, ROCKP, mountain, crag, hill, rock, grass, flower, one, reeds, tomb, column, ruinWall, fence, stump, log, mushrooms, house, mill, cow, ship, signpost, tent, WATER, MURK, lake, riverSvg };
 })();

@@ -1,17 +1,17 @@
-/* Общий генератор человечков Легиона — СКЕЛЕТ. Один на весь MultiDonate и игры «Ивент менеджера».
-   Скелет решает, ЧТО нарисовать (по нику, по Костюмерной, по настроению, призрак, бой), и собирает слои.
-   КАК нарисовать каждую деталь, решает СТИЛЬ: styles/<id>/characters.js (первый стиль — styles/legion).
-   Сервер отдаёт по адресу /overlay/doodle.js этот файл + все стили + выбор активного стиля одним файлом.
-   (public/overlay/doodle.js — прежний генератор целиком, запасной: сервер отдаёт его, только если сборка не удалась.)
-   Подключение:
-     • оверлей MultiDonate — /overlay/doodle.js (подключён в index.html), гардероб приходит через runtime;
-     • игры StreamClass (file://) — <script src="http://localhost:3777/overlay/doodle.js">, гардероб — сам по /events.
-   API (не менять — на нём держатся алерты, виджеты и игры):
-     MDDoodle.jDoodle(seed, mood, uniform, extra, look), jhash, jrng, jpick, J_BODIES, jHats, BASE_HATS, CATALOG,
-     auraArt, weaponArt, shieldArt, RARITY, setLooks, lookOf, seedFor, defaultsFor(ник, стиль?), setGhosts, isGhost, setGear, feed, connect, onLooks, looks.
-   Стили: MDDoodle.addStyle(def), MDDoodle.use(id), MDDoodle.style (активный), MDDoodle.styles (все).
-   Локации: MDDoodle.addLocation(стиль, локация, фабрика), MDDoodle.location(локация, env).
-   Договор стиля — styles/README.md. */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 (function () {
   'use strict';
   if (window.MDDoodle) return;
@@ -19,24 +19,24 @@
   const jhash = (s) => { let h = 2166136261; for (const c of String(s)) { h ^= c.codePointAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
   const jpick = (r, arr) => arr[Math.floor(r() * arr.length)];
 
-  // каталог для костюмерной и магазина: какие детали бывают (id общие для ВСЕХ стилей) и как называются
+
   const CATALOG = {
     shapes: [['bean', 'Фасолина'], ['box', 'Кубик'], ['ball', 'Шар'], ['tall', 'Высокий'], ['ghost', 'Призрак'], ['cone', 'Конус'], ['egg', 'Яйцо']],
     eyes: [['dots', 'Точки'], ['big', 'Большие'], ['happy', 'Довольные'], ['cyclops', 'Циклоп'], ['stars', 'Звёзды']],
     mouths: [['open', 'Открытый рот'], ['grin', 'Улыбка до ушей'], ['tongue', 'Язык']],
     hats: [['none', 'Без шапки'], ['tuft', 'Хохолок'], ['cap', 'Кепка'], ['bow', 'Бантик'], ['horns', 'Рожки'], ['crown', 'Корона'], ['tophat', 'Цилиндр'], ['party', 'Колпак'], ['wizard', 'Шляпа мага'], ['antenna', 'Антенна'], ['antenna2', 'Две антенны'], ['cat', 'Кошачьи ушки'], ['bunny', 'Заячьи уши'], ['halo', 'Нимб'], ['sprout', 'Росток'], ['bandana', 'Бандана'],
       ['legion', 'Шлем легионера'], ['laurel', 'Лавровый венок'], ['beret', 'Берет'], ['headphones', 'Наушники'], ['cowboy', 'Ковбойская шляпа'], ['chef', 'Колпак повара']],
-    acc: [['bowtie', 'Бабочка'], ['tie', 'Галстук'], ['scarf', 'Шарф'], ['glasses', 'Очки'], ['shades', 'Тёмные очки'], ['monocle', 'Монокль'], ['mustache', 'Усы'], ['cape', 'Плащ'], ['pioneer', 'Плащ первопроходца']],   // pioneer — только наградой (19.10), не продаётся
+    acc: [['bowtie', 'Бабочка'], ['tie', 'Галстук'], ['scarf', 'Шарф'], ['glasses', 'Очки'], ['shades', 'Тёмные очки'], ['monocle', 'Монокль'], ['mustache', 'Усы'], ['cape', 'Плащ'], ['pioneer', 'Плащ первопроходца']],
     auras: [['gold', 'Золотая аура'], ['sparks', 'Искры'], ['halo', 'Нимб'], ['shadow', 'Тёмное пламя'], ['frost', 'Морозное сияние']],
     colors: [['#ff9fb2', 'Розовый'], ['#ffb27a', 'Персик'], ['#ffe27a', 'Лимон'], ['#9fe39a', 'Мята'], ['#7fd6e6', 'Бирюза'], ['#8fb6ff', 'Небо'], ['#b9a2ff', 'Лаванда'], ['#e6e6ee', 'Облако'], ['#ffc94d', 'Золото'], ['#5a5470', 'Графит']],
-    // снаряжение (id из modules/legionary/items.json → look)
-    weapons: ['sword', 'gladius', 'dagger', 'axe', 'club', 'mace', 'hammer', 'spear', 'pitchfork', 'bow', 'staff', 'crook', 'censer', 'kris', 'skullstaff', 'grimoire', 'holymace'],   // 20.10: + оружие новых классов
+
+    weapons: ['sword', 'gladius', 'dagger', 'axe', 'club', 'mace', 'hammer', 'spear', 'pitchfork', 'bow', 'staff', 'crook', 'censer', 'kris', 'skullstaff', 'grimoire', 'holymace'],
     shields: ['scutum', 'round', 'buckler', 'barrel'],
-    armors: ['lorica', 'robe', 'leather', 'shroud', 'plate', 'hwbarrow', 'hwthicket', 'hwchapel', 'hwshadow', 'hwgrave', 'hwmidnight'],   // доспехи: лорика (физ. броня), мантия (маги и жрецы); 23.10: вещи классов — кожа разбойника, саван некроманта, латы паладина
+    armors: ['lorica', 'robe', 'leather', 'shroud', 'plate', 'hwbarrow', 'hwthicket', 'hwchapel', 'hwshadow', 'hwgrave', 'hwmidnight'],
     rarities: ['common', 'uncommon', 'rare', 'epic', 'legendary'],
   };
 
-  // HW: «Ночь Тыквенной Луны» — детали ивента (только обменник конфет, баттл-пасс и ачивки; в обычные кабинки Шатра не попадают)
+
   const HW_LOOKS = {
     hats: [['pumpkin', 'Тыква-фонарь'], ['witch', 'Ведьмина шляпа'], ['batears', 'Уши нетопыря'], ['skull', 'Шлем-череп'], ['reaper', 'Капюшон жнеца'], ['scarehat', 'Шляпа пугала']],
     acc: [['fangs', 'Вампирские клыки'], ['vampcape', 'Плащ вампира'], ['candybag', 'Ведёрко-тыква'], ['bolts', 'Болты в шее'], ['cobweb', 'Паутина на плече']],
@@ -48,23 +48,23 @@
   const HW_ID = (cat) => new Set(HW_LOOKS[cat].map(([id]) => id));
   const HW_HAT = HW_ID('hats'), HW_ACC = HW_ID('acc'), HW_EYE = HW_ID('eyes'), HW_AURA = HW_ID('auras');
 
-  /* ---------- HW: рисунок деталей ивента — общий для всех стилей, по токенам стиля (st.hw = { line, ink, sw, face }) ----------
-     Стиль может нарисовать своё: hats(k).pumpkin…, st.hwEyes(kind, k), st.hwAcc[id](k), aura(kind, k) — тогда берётся его рисунок.
-     Холст 120×170, ноги на y = 168, центр x = 60. Анимации — только SMIL transform / opacity, без filter. */
+  
+
+
   const f1h = (v) => Math.round(v * 10) / 10;
   const hwTok = (st) => Object.assign({ line: '#f5f2ff', ink: '#15122e', sw: 4, face: '#15122e' }, (st && st.hw) || {});
   function hwHats(k, T) {
     const b = k.b, t = b.square ? b.top - 5 : b.top, hw = b.hw, cx = 60, O = `stroke="${T.line}" stroke-width="${T.sw}" stroke-linejoin="round" stroke-linecap="round"`, I = `stroke="${T.ink}" stroke-width="2" stroke-linejoin="round"`;
-    // 31.10 (стример: «тыква-фонарь плохо получилась»): тыква-шлем из пяти долек (рёбра - стыки долек), сидит на макушке и не ниже бровей
-    // (лицо героя видно, как у шлема-черепа), вырезанные глаза, нос и улыбка Джека с тёплым светом изнутри, черенок с листом. Без анимации и фильтров
+
+
     const pkR = f1h(Math.max(hw + 9, 24)), pkY0 = f1h(Math.min(t + 10, b.eyeY - 11)), pkH = f1h(Math.min(40, Math.max(30, pkR * 0.95 + 6))), pkC = f1h(pkY0 - pkH / 2), pkTop = f1h(pkC - pkH / 2);
-    // дольки: крайние, средние, центральная (у каждой пары - один path; стыки долек и есть рёбра тыквы)
+
     const pkEl = (dx, rx, ry, dy) => { const x = f1h(cx + dx * pkR - rx * pkR), r = f1h(rx * pkR), y = f1h(pkC + dy); return `M${x} ${y} a${r} ${f1h(ry * pkH)} 0 1 0 ${f1h(2 * r)} 0 a${r} ${f1h(ry * pkH)} 0 1 0 ${f1h(-2 * r)} 0Z`; };
     const pkOut = pkEl(-0.56, 0.44, 0.46, 1) + pkEl(0.56, 0.44, 0.46, 1), pkMid = pkEl(-0.3, 0.4, 0.49, 0) + pkEl(0.3, 0.4, 0.49, 0), pkCen = pkEl(0, 0.4, 0.5, 0);
     const pkE = f1h(Math.min(9, Math.max(6, pkR * 0.22))), pkEy = f1h(pkC - pkH * 0.12), pkGy = f1h(pkC + pkH * 0.13), pkGw = f1h(pkR * 0.46), pkGd = f1h(pkH * 0.2);
     const pkTri = (x, sd, w, y0, y1) => `M${f1h(x - w)} ${f1h(y0)} L${f1h(x + sd * w * 0.24)} ${f1h(y1)} L${f1h(x + w)} ${f1h(y0)}Z`;
     const pkEx = [-1, 1].map((sd) => [f1h(cx + sd * pkR * 0.27), sd]);
-    // вырезы (глаза, нос, улыбка) - одним path, свет внутри - вторым
+
     const pkCut = pkEx.map(([x, sd]) => pkTri(x, sd, pkE / 2, pkEy + pkE * 0.42, pkEy - pkE * 0.48)).join('') + `M${cx - 2.5} ${f1h(pkC + pkH * 0.05)}l2.5 -4l2.5 4Z`
       + `M${f1h(cx - pkGw)} ${pkGy}Q${cx} ${f1h(pkGy + pkGd * 0.55)} ${f1h(cx + pkGw)} ${pkGy}Q${f1h(cx + pkGw * 0.7)} ${f1h(pkGy + pkGd * 1.15)} ${cx} ${f1h(pkGy + pkGd * 1.25)}Q${f1h(cx - pkGw * 0.7)} ${f1h(pkGy + pkGd * 1.15)} ${f1h(cx - pkGw)} ${pkGy}Z`;
     const pkCore = pkEx.map(([x, sd]) => pkTri(x, sd, pkE * 0.24, pkEy + pkE * 0.36, pkEy - pkE * 0.06)).join('');
@@ -133,21 +133,21 @@
       return { back: '', front: s }; }
     return null;
   }
-  // HW: «облик духа» — весь отряд в Изнанке (решение 20.10): тот же человечек со своей косметикой, полупрозрачный, с призрачным хвостом и парит
+
   function hwSpirit(svgInner, k) {
     const fl = ((k.seed >>> 0) % 1000) / 1000 * 2.4, b = k.b;
     let hem = `M${b.L - 2} 150`; const n = 5, dx = (b.R - b.L + 4) / n; for (let i = 0; i < n; i++) hem += ` q${f1h(dx / 2)} ${i % 2 ? 14 : 22} ${f1h(dx)} 0`; hem += ` V178 H${b.L - 2} Z`;
     return `<g opacity=".84"><animateTransform attributeName="transform" type="translate" values="0 0;0 -4;0 0" dur="2.8s" begin="-${fl.toFixed(2)}s" repeatCount="indefinite"/>${svgInner}<path d="${hem}" fill="#9fffd0" opacity=".38"/><path d="M${b.L + 4} 160 q6 10 2 18 M${b.R - 6} 160 q-6 10 -2 18" fill="none" stroke="#eafff4" stroke-width="2" opacity=".6" stroke-linecap="round"/></g>`;
   }
 
-  /* ---------- стили ---------- */
+   
   const STYLES = {};
-  // названия стиля (styles/<id>/names.json): looks — детали Костюмерной { shapes, eyes, mouths, hats, acc, auras, colors: { id: название } };
-  // items и roles читает сервер «Легионера»
+
+
   const NAMES = {};
   function addNames(id, data) { if (id && data && typeof data === 'object') NAMES[id] = data; }
   const LOOK_KEYS = ['shapes', 'eyes', 'mouths', 'hats', 'acc', 'auras', 'colors'];
-  // каталог с названиями выбранного стиля (если стиль их задал); id — общие
+
   function catalogNow() {
     const L = NAMES[ACTIVE] && NAMES[ACTIVE].looks;
     if (!L || typeof L !== 'object') return CATALOG;
@@ -155,9 +155,9 @@
     for (const k of LOOK_KEYS) if (L[k] && typeof L[k] === 'object') out[k] = CATALOG[k].map(([id, n]) => [id, typeof L[k][id] === 'string' && L[k][id].trim() ? L[k][id].trim() : n]);
     return out;
   }
-  let S = null;                 // активный стиль человечков
-  let ACTIVE = 'legion';        // выбранный стиль целиком (человечки + локации); у стиля может не быть своих человечков
-  const broken = new Set();     // стили, упавшие при рисовании (чтобы не спамить в консоль)
+  let S = null;
+  let ACTIVE = 'legion';
+  const broken = new Set();
   function addStyle(def) {
     if (!def || !def.id) return;
     STYLES[def.id] = def;
@@ -169,16 +169,16 @@
     return S ? S.id : null;
   }
 
-  /* ---------- локации (Ярмарка, позже Поход): styles/<id>/<локация>.js ----------
-     Файл локации вызывает MDDoodle.addLocation('<стиль>', '<локация>', (env) => ({ … })) — фабрика рисунка и разметки.
-     Виджет локации берёт MDDoodle.location('<локация>', env): из выбранного стиля, а если там её нет или она с ошибкой — из «Легиона». */
-  const LOCS = {};   // стиль → { локация → фабрика }
+  
+
+
+  const LOCS = {};
   const brokenLoc = new Set();
   function addLocation(styleId, locId, factory) {
     if (!styleId || !locId || typeof factory !== 'function') return;
     (LOCS[styleId] = LOCS[styleId] || {})[locId] = factory;
   }
-  // проверочный прогон на отдельном экземпляре: рисунок и предметы собираются без ошибок
+
   function probeLoc(factory, env, locId) {
     const p = factory(env || {});
     if (!p || typeof p !== 'object') throw new Error('фабрика должна вернуть объект');
@@ -196,37 +196,37 @@
     }
   }
   function location(locId, env) {
-    // 24.10 (решение стримера): данжи у всех стилей одинаковые — если у стиля и «Легиона» своего рисунка данжа нет, берём «Котиков»
+
     return makeLoc(ACTIVE, locId, env) || (ACTIVE !== 'legion' ? makeLoc('legion', locId, env) : null)
       || (locId === 'dungeon' && ACTIVE !== 'cats' ? makeLoc('cats', locId, env) : null);
   }
-  // доспехи: у стиля функция armor(вид, редкость) необязательна — если её нет, рисуются доспехи «Легиона»
+
   function armorArt(kind, rar) {
-    // 23.10: доспехи классов — рисунок ядра по токенам стиля, если стиль не рисует их сам (st.classArmor)
+
     if (CLASS_ARMOR.has(kind) && !(S && S.classArmor === true)) { try { return classArmorIcon(kind, rar, wearTok(S)); } catch (e) { return ''; } }
-    // 31.10 (feat/hw-armor-pick): броня Хэллоуина - свой рисунок ядра для всех стилей (стиль со своим - st.hwArmor = true)
+
     if (HW_ARMOR.has(kind) && !(S && S.hwArmor === true)) { try { return hwArmorIcon(kind, rar, wearTok(S)); } catch (e) { return ''; } }
     const own = S && typeof S.armor === 'function' ? S : null, base = STYLES.legion;
     try { if (own) return own.armor(kind, rar); } catch (e) { if (!broken.has(S.id + ':armor')) { broken.add(S.id + ':armor'); console.error(`[человечки] доспехи стиля «${S.id}» с ошибкой, рисую доспехи «Легиона»:`, e); } }
     return base && typeof base.armor === 'function' ? base.armor(kind, rar) : '';
   }
 
-  /* ---------- гардероб, призраки, снаряжение: всё — по НИКУ ----------
-     18.10 (безопасность): карты приходят по нику в нижнем регистре, а не по jhash(ник). 32-битный хэш легко подобрать:
-     зритель с подобранным ником показывался в чужом облике / с чужим оружием / призраком вместо другого (и наоборот).
-     Хэш остаётся только зерном случайного вида «по нику» (совпадение там — просто два одинаковых человечка «по умолчанию»).
-     Чей человечек, говорит seedFor(ник) — то же число-зерно, но с ником внутри — или extra.who. Голое число (jDoodle(jhash(ник)))
-     — просто случайный вид без облика, призрака и оружия: по хэшу чужие данные больше не достаются (NPC тоже не «надевают» зрителя). */
+  
+
+
+
+
+
   const keyOf = (who) => String(who == null ? '' : who).trim().replace(/^@/, '').toLowerCase();
-  // число (как jhash) + ник: арифметика и сравнения через >>> 0 работают как раньше
+
   function seedFor(who) { const k = keyOf(who), s = Object(jhash(k)); s.who = k; return s; }
   const whoOf = (seed, extra) => (extra && extra.who != null ? keyOf(extra.who) : seed && typeof seed === 'object' && seed.who != null ? keyOf(seed.who) : null);
-  // looks: { ник: { shape, color, color2, eyes, mouth, blush, hat, acc: [...], accColor } }
-  // ghosts: { ник: до какого времени (мс) } — пока не воскрес, человечек везде рисуется призраком
-  // gear (снаряжение, для боя и карточки героя): { ник: { w: вид оружия, wr: редкость, s: вид щита, sr: редкость,
-  //   a: доспех lorica|robe, ar: редкость, am: материал heavy|light|cloth, h: шлем (вид шапки), hr, t: амулет (аура|plain), tr } } — см. gearOf
+
+
+
+
   let LOOKS = {}, GHOSTS = {}, GEAR = {};
-  // запись карты для человечка — только по нику
+
   function entry(map, seed, extra) {
     const k = whoOf(seed, extra);
     return k && Object.prototype.hasOwnProperty.call(map, k) ? map[k] : undefined;
@@ -237,8 +237,8 @@
   const lookOf = (seed, who) => entry(LOOKS, seed, who != null ? { who } : null) || null;
   function setGhosts(map) { GHOSTS = isMap(map); listeners.forEach((fn) => { try { fn(); } catch {} }); }
   function setGear(map) { GEAR = isMap(map); }
-  /* 19.10: звания зрителей (награды платформы; «Костюмерная» шлёт titles: { ник: оттенок }) — особый цвет ника в оверлее.
-     Цвета светлые и спокойные: ник остаётся читаемым на тёмной обводке, просто чуть отличается от обычного. */
+  
+
   let TITLES = {};
   const TITLE_COLORS = { pioneer: '#bfe3ff' };
   function setTitles(map) { TITLES = isMap(map); }
@@ -247,12 +247,12 @@
   const ghostT = (t) => !!t && (t === true || t > Date.now());
   const isGhost = (seed, who) => ghostT(entry(GHOSTS, seed, who != null ? { who } : null));
 
-  // уникальные id для <defs> внутри SVG (градиенты, маски, фильтры): один счётчик на всю страницу
+
   let jUid = 0;
   const uid = (prefix) => prefix + (++jUid);
 
-  /* 19.10: что человечек получает «по нику» — ОДНА функция и для рисунка (build), и для подписей на сайте (defaultsFor).
-     ВАЖНО: порядок вызовов r() — часть внешности (см. ниже). sad: грустный не тянет рот и румянец — как было всегда. */
+  
+
   function nickPicks(st, seed, sad) {
     const r = jrng(Number(seed) >>> 0);
     const { fill, c2 } = st.palette(r);
@@ -264,9 +264,9 @@
     const hat = r() < st.hatNoneChance ? 'none' : jpick(r, st.hatPool);
     return { fill, c2, shape, b, eyes, mouth, blush, hat };
   }
-  // названия глаз, которых нет в каталоге (стили тянут их «по нику», купить нельзя)
+
   const EXTRA_NAMES = { eyes: { sleepy: 'Сонные', wide: 'Широко раскрытые', slit: 'Кошачьи щёлочки', crazy: 'Безумные', mad: 'Злые', derp: 'Косые', lash: 'С ресничками', glam: 'Гламурные', heart: 'Сердечки', starg: 'Блёстки', sly: 'Хитрые' } };
-  // цвет «по нику» часто не из каталога (hsl, окрас шерсти): называем по оттенку
+
   function hueName(c) {
     let h, sa, l, m = /^hsl\(\s*([\d.]+)[\s,]+([\d.]+)%[\s,]+([\d.]+)%/i.exec(String(c));
     if (m) { h = +m[1]; sa = +m[2]; l = +m[3]; } else {
@@ -284,14 +284,14 @@
     return l >= 80 ? 'Светло-' + n.toLowerCase() : n;
   }
   const lc = (v) => String(v).replace(/^#/, '').toLowerCase();
-  /* 19.10: что зритель получает «по нику» в каждом поле гардероба — БЕЗ рисования (сайт: вкладка «Облик», первая кнопка).
-     seed — seedFor(ник), ник или число; styleId — стиль (по умолчанию активный). → { поле: { v: значение, name: название } };
-     v === null — «ничего» (аура, аксессуары). Значения те же, что рисует jDoodle (общая nickPicks). */
+  
+
+
   function defaultsFor(seed, styleId) {
     if (typeof seed === 'string') seed = seedFor(seed);
     const id = styleId || ACTIVE;
     let st = STYLES[styleId] || S, P;
-    try { P = nickPicks(st, seed, false); } catch (e) { st = STYLES.legion; P = nickPicks(st, seed, false); }   // как jDoodle: упал стиль — «Легион»
+    try { P = nickPicks(st, seed, false); } catch (e) { st = STYLES.legion; P = nickPicks(st, seed, false); }
     const L = (NAMES[id] && NAMES[id].looks) || {};
     const nm = (cat, v) => {
       const own = L[cat] && (L[cat][v] || L[cat][String(v).toLowerCase()]);
@@ -301,7 +301,7 @@
       if (cat === 'colors') { const cn = st.colorNames && Object.keys(st.colorNames).find((k) => lc(k) === lc(v)); return cn ? st.colorNames[cn] : hueName(v) || 'Свой цвет'; }
       return String(v);
     };
-    // «свой» цвет стиля (овощи: маркер → природный цвет овоща)
+
     const fill = typeof st.autoColor === 'function' ? st.autoColor(P.fill, P.b) : P.fill;
     const col = (v) => ({ v, name: nm('colors', v) });
     return {
@@ -313,13 +313,13 @@
       hat: { v: P.hat, name: nm('hats', P.hat) },
       aura: { v: null, name: 'Без ауры' },
       acc: { v: null, name: 'Без аксессуаров' },
-      accColor: col(P.c2),   // аксессуары красятся вторым цветом
+      accColor: col(P.c2),
       capeColor: col(st.capeColor || '#c0182b'),
     };
   }
 
-  /* 19.10: без двойных кнопок в «Облике»: купленное, совпадающее с тем, что даёт ник (например, «Без шапки» у ника без шапки),
-     показывается одной кнопкой «по нику». lookChoices(поле, купленное, defaultsFor(...)[поле]) → купленное без совпадающих. */
+  
+
   const normLook = (v) => String(v == null ? '' : v).trim().replace(/^#/, '').replace(/\s+/g, ' ').toLowerCase();
   function sameLook(field, a, b) {
     if (field === 'acc') { const none = (x) => x == null || x === '' || normLook(x) === 'none' || (Array.isArray(x) && !x.length); if (none(a) || none(b)) return none(a) && none(b); }
@@ -332,34 +332,34 @@
     return (Array.isArray(owned) ? owned : []).filter((v) => !sameLook(field, v, dv));
   }
 
-  /* ---------- 19.10: боевое снаряжение на человечке (доспех, шлем, амулет) ----------
-     Правило показа: в бою (extra.kit === 'battle'; без kit — боевая стойка armed) — шлем вместо шапки, доспех, амулет;
-     в мирных местах (kit 'peace' или обычные виджеты) — косметика: своя шапка из облика (или по нику); шлема нет никогда.
-     Рисунок доспеха/амулета собирается один раз на вид+редкость+форму тела (кэш строк SVG): толпа из 100+ не пересобирает его. */
-  // что из надетого видно (то же, что modules/legionary/gear.js на сервере): items — надетые вещи [{ slot, rarity, gear, id, look }]
+  
+
+
+
+
   function gearOf(items) {
     const g = {}, L = Array.isArray(items) ? items : [], on = (sl) => L.find((x) => x && x.slot === sl && x.on !== false), rar = (x) => (x && x.rarity) || 'common';
     const w = on('weapon'), s = on('shield'), a = on('armor'), h = on('helmet'), t = on('trinket');
     if (w && w.look && w.look.weapon) { g.w = w.look.weapon; g.wr = rar(w); }
-    // 31.10 (feat/hw-pass20): своё свечение оружия (look.glow) - как packages/game-data gearOf
+
     if (g.w && /^#[0-9a-f]{6}$/i.test(String(w.look.glow || ''))) g.wg = w.look.glow;
     if (s && s.look && s.look.shield) { g.s = s.look.shield; g.sr = rar(s); }
     if (a) { const k = a.look && CATALOG.armors.includes(a.look.armor) ? a.look.armor : a.gear === 'cloth' || a.id === 'robe' ? 'robe' : 'lorica'; g.a = k; g.ar = rar(a); g.am = ['heavy', 'light', 'cloth'].includes(a.gear) ? a.gear : k === 'robe' ? 'cloth' : 'heavy'; }
     if (h && h.look && h.look.hat) { g.h = h.look.hat; g.hr = rar(h); }
-    if (t) { g.t = (t.look && t.look.aura) || 'plain'; g.tr = rar(t); if (t.look && t.look.charm) g.tc = t.look.charm; }   // 23.10: подвеска амулета класса
+    if (t) { g.t = (t.look && t.look.aura) || 'plain'; g.tr = rar(t); if (t.look && t.look.charm) g.tc = t.look.charm; }
     return g;
   }
-  const W_RAR = { common: null, uncommon: '#4cc95a', rare: '#4aa3ff', epic: '#b06bff', legendary: '#ffb83d' };   // кайма/камень по редкости
-  const W_METAL = { common: '#aab2b8', uncommon: '#b9c8b6', rare: '#a9c2da', epic: '#c0b0e0', legendary: '#f2c75c' };   // металл доспеха
-  const W_CLOTH = { common: '#8a7a62', uncommon: '#3f6fb0', rare: '#2f58a8', epic: '#5a2fa8', legendary: '#7a1f3a' };   // ткань мантии
+  const W_RAR = { common: null, uncommon: '#4cc95a', rare: '#4aa3ff', epic: '#b06bff', legendary: '#ffb83d' };
+  const W_METAL = { common: '#aab2b8', uncommon: '#b9c8b6', rare: '#a9c2da', epic: '#c0b0e0', legendary: '#f2c75c' };
+  const W_CLOTH = { common: '#8a7a62', uncommon: '#3f6fb0', rare: '#2f58a8', epic: '#5a2fa8', legendary: '#7a1f3a' };
   const W_GEM = { gold: '#ffd76a', sparks: '#fff0a8', halo: '#ffe27a', shadow: '#a24bff', frost: '#8fd4ff', plain: '#d9a441' };
   const wornCache = new Map();
-  let wornN = 0;   // 20.10: свой id обрезки у КАЖДОГО рисунка: общий id ломал доспех на части телефонов (вкладка «Легион» — «прямоугольник» вместо доспеха)
+  let wornN = 0;
   const wornKey = (...a) => a.join('|');
-  // доспех поверх тела: обрезан по контуру тела (clipPath), сверху — снова контур тела. Стиль может нарисовать свой: st.wornArmor(k, gear)
+
   function wornArmor(st, k, g) {
     const b = k.b; if (!b || !b.d) return '';
-    // 31.10 (feat/hw-armor-pick): броню Хэллоуина рисует ядро во всех стилях, если стиль не заявил свою (st.hwArmor)
+
     const hwA = HW_ARMOR.has(g.a) && st.hwArmor !== true;
     if (!hwA && typeof st.wornArmor === 'function') { try { const own = st.wornArmor(k, g); if (typeof own === 'string') return own; } catch (e) {} }
     const W = st.wear || {}, line = W.line || '#f5f2ff', ink = W.ink || '#15122e';
@@ -369,7 +369,7 @@
       const id = 'jdW' + jhash(key).toString(36), rc = W_RAR[g.ar] || null, L = k.L, R = k.R;
       let inner = '', top = '';
       if (hwA) { const c = hwWorn(g, k, y0, { line, ink }); inner = c.inner; top = c.top; }
-      else if (CLASS_ARMOR.has(g.a)) { const c = classWorn(g, k, y0, { line, ink }); inner = c.inner; top = c.top; }   // 23.10: доспехи классов
+      else if (CLASS_ARMOR.has(g.a)) { const c = classWorn(g, k, y0, { line, ink }); inner = c.inner; top = c.top; }
       else if (g.a === 'robe') {
         const cl = W_CLOTH[g.ar] || W_CLOTH.common, tr = rc || '#c9b28a';
         inner = `<rect x="0" y="${y0}" width="120" height="${170 - y0}" fill="${cl}"/>`
@@ -382,16 +382,16 @@
           + `<path d="M0 ${y0} H120" stroke="${tr}" stroke-width="6"/><path d="M0 ${y1} H120" stroke="${ink}" stroke-width="3" opacity=".5"/>`
           + `<path d="M${L + 6} ${y0 + 4} L${R - 10} ${y1 - 4}" stroke="${ink}" stroke-width="4" opacity=".45"/>`
           + `<path d="M${L} ${y0 + 20} H${R} M${L} ${y0 + 34} H${R}" stroke="#e8d2a8" stroke-width="1.6" stroke-dasharray="3 3" opacity=".8"/>`;
-      } else {   // лорика: пластины, пояс, ремни снизу
+      } else {
         const m = W_METAL[g.ar] || W_METAL.common, tr = rc || '#8a6a4a', y1 = Math.min(158, y0 + 48);
-        // полосы пластин и ремешки — по одному пути на всё (меньше разметки на толпу из 100+)
+
         let bands = '', strips = '';
         for (let y = y0 + 9; y < y1 - 4; y += 9) bands += `M0 ${y}H120`;
         for (let x = L + 8; x < R - 4; x += 9) strips += `M${x} ${y1 + 5}v8`;
         inner = `<rect x="0" y="${y0}" width="120" height="${y1 - y0}" fill="${m}"/>${bands ? `<path d="${bands}" stroke="${ink}" stroke-width="2" opacity=".4"/>` : ''}<path d="M0 ${y0}H120" stroke="${tr}" stroke-width="5"/>`
           + `<path d="M0 ${y1 + 0.5}H120" stroke="${tr}" stroke-width="7"/>${strips ? `<path d="${strips}" stroke="#7a5232" stroke-width="6" stroke-linecap="round"/>` : ''}`;
         const pad = (x, s) => `<path d="M${x - 11 * s} ${b.armY - 3} Q${x} ${b.armY - 13} ${x + 11 * s} ${b.armY - 3} L${x + 9 * s} ${b.armY + 7} Q${x} ${b.armY + 1} ${x - 9 * s} ${b.armY + 7} Z" fill="${m}" stroke="${line}" stroke-width="2.5" stroke-linejoin="round"/>`;
-        top = pad(k.sx.l + 3, 1) + pad(k.sx.r - 3, 1);   // наплечники — поверх плеч (руки рисуются раньше тела)
+        top = pad(k.sx.l + 3, 1) + pad(k.sx.r - 3, 1);
       }
       out = `<defs><clipPath id="${id}@@"><path d="${b.d}"/></clipPath></defs><g class="jd-armor" clip-path="url(#${id}@@)">${inner}</g><path class="body" fill="none" d="${b.d}"/>${top}`;
       if (wornCache.size > 2000) wornCache.clear();
@@ -400,7 +400,7 @@
     const u = '_' + (++wornN).toString(36); if (wornN > 1e9) wornN = 0;
     return out.replace(/@@/g, u);
   }
-  // амулет на шнурке под ртом: камень цвета его ауры, у редких — кайма по редкости
+
   function wornAmulet(st, k, g) {
     const W = st.wear || {}, ink = W.ink || '#15122e', y = Math.round(k.my + 12), key = wornKey('am', st.id, g.t, g.tr, g.tc || '', y, k.L, k.R);
     let out = wornCache.get(key);
@@ -415,29 +415,29 @@
     return out;
   }
 
-  /* ---------- 23.10: вещи новых классов (Разбойник, Некромант, Паладин) — рисует ЯДРО для всех стилей, как детали Хэллоуина ----------
-     Параметрически, по токенам стиля (st.wear: line/ink; st.hw) и редкости — не 7 стилей × N картинок. Стиль может нарисовать своё:
-     доспех — st.wornArmor (на теле) и st.armor с флагом st.classArmor = true (значок); шлем — свой ключ в st.hats(k).
-     Доспехи: leather — кожа разбойника (ремни, ножны, пряжки), shroud — саван некроманта (рёбра, кости, рваный подол),
-     plate — латы паладина (белое с золотом, знак солнца, большие наплечники). Шлемы: rhood/rmask — капюшон и капюшон с платком,
-     nhood/ncrown — капюшон с черепом и костяной венец, phelm/pwing — белый шлем с крестом и крылатый шлем с нимбом.
-     Подвески амулетов классов (look.charm) — charmPendant: на человечке и значком в сумке/лавке (charmArt). */
+  
+
+
+
+
+
+
   const CLASS_ARMOR = new Set(['leather', 'shroud', 'plate']);
   const CLASS_HAT = new Set(['rhood', 'rmask', 'nhood', 'ncrown', 'phelm', 'pwing']);
   const CLASS_CHARM = new Set(['lockpick', 'vial', 'cateye', 'bone', 'souljar', 'phylactery', 'ladanka', 'sun', 'dawn']);
   const RANK = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4 };
   const rk = (r) => RANK[r] || 0;
-  const LEATHER = ['#7a5436', '#5a3f2c', '#3a2c26', '#2a2230', '#221a26'];   // кожа темнеет с редкостью
-  const SHROUD = ['#5f5a68', '#33403a', '#2a2a44', '#2b1a40', '#1e1024'];    // серый саван → тёмно-зелёный → синий → фиолетовый → чёрный
-  const PLATE = ['#c4cad3', '#dde3eb', '#eaeef4', '#f4f6fa', '#fff8ea'];     // сталь светлеет до белого
+  const LEATHER = ['#7a5436', '#5a3f2c', '#3a2c26', '#2a2230', '#221a26'];
+  const SHROUD = ['#5f5a68', '#33403a', '#2a2a44', '#2b1a40', '#1e1024'];
+  const PLATE = ['#c4cad3', '#dde3eb', '#eaeef4', '#f4f6fa', '#fff8ea'];
   const BONE = '#ebe2c9', GOLD = '#e8b923', GLOW = ['#7dff9a', '#7dff9a', '#7dff9a', '#7dff9a', '#d38bff'];
   const wearTok = (st) => { const W = (st && st.wear) || {}; return { line: W.line || '#f5f2ff', ink: W.ink || '#15122e' }; };
-  // солнце-знак: круг и лучи (x, y — центр)
+
   const sunMark = (x, y, r, col, ink) => { let rays = ''; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4, c = Math.cos(a), s = Math.sin(a); rays += `M${f1h(x + c * (r + 1.6))} ${f1h(y + s * (r + 1.6))}L${f1h(x + c * (r + 4.6))} ${f1h(y + s * (r + 4.6))}`; }
     return `<path d="${rays}" stroke="${col}" stroke-width="2.2" stroke-linecap="round"/><circle cx="${x}" cy="${y}" r="${r}" fill="${col}" stroke="${ink}" stroke-width="1.5"/>`; };
   const skullMark = (x, y, r, ink, eye) => `<circle cx="${x}" cy="${f1h(y - r * 0.15)}" r="${r}" fill="${BONE}" stroke="${ink}" stroke-width="1.4"/><rect x="${f1h(x - r * 0.55)}" y="${f1h(y + r * 0.45)}" width="${f1h(r * 1.1)}" height="${f1h(r * 0.6)}" rx="1" fill="${BONE}" stroke="${ink}" stroke-width="1.2"/>`
     + `<circle cx="${f1h(x - r * 0.38)}" cy="${f1h(y - r * 0.15)}" r="${f1h(r * 0.27)}" fill="${eye || ink}"/><circle cx="${f1h(x + r * 0.38)}" cy="${f1h(y - r * 0.15)}" r="${f1h(r * 0.27)}" fill="${eye || ink}"/>`;
-  // доспех класса на теле: { inner — обрезается по телу, top — поверх плеч }
+
   function classWorn(g, k, y0, W) {
     const b = k.b, L = k.L, R = k.R, n = rk(g.ar), rc = W_RAR[g.ar] || null, ink = W.ink, line = W.line, sx = k.sx || { l: L + 6, r: R - 6 };
     let inner = '', top = '';
@@ -445,7 +445,7 @@
       const lt = LEATHER[n], dk = '#1e140e', bk = rc || '#c9a24a', y1 = Math.min(160, y0 + 52), yb = Math.min(y1 - 6, y0 + 34);
       inner = `<rect x="0" y="${y0}" width="120" height="${y1 - y0}" fill="${lt}"/><path d="M0 ${y0}H120" stroke="${dk}" stroke-width="5"/>`
         + `<path d="M0 ${y0 + 14}H120M0 ${yb + 9}H120" stroke="#b08a5e" stroke-width="1.4" stroke-dasharray="3 3" opacity=".75"/>`
-        + `<path d="M${L + 4} ${y0 + 2}L${R - 6} ${y1 - 4}" stroke="${dk}" stroke-width="7"/>`   // перевязь через грудь
+        + `<path d="M${L + 4} ${y0 + 2}L${R - 6} ${y1 - 4}" stroke="${dk}" stroke-width="7"/>`
         + [0.25, 0.5].map((f) => { const x = f1h(L + 4 + (R - L - 10) * f), y = f1h(y0 + 2 + (y1 - y0 - 6) * f); return `<rect x="${x - 3}" y="${y - 3}" width="6" height="6" fill="#8a6a44" stroke="${ink}" stroke-width="1.2" transform="rotate(35 ${x} ${y})"/>`; }).join('')
         + `<path d="M0 ${yb}H120" stroke="${dk}" stroke-width="6"/><rect x="55" y="${yb - 4}" width="10" height="8" rx="1.5" fill="none" stroke="${bk}" stroke-width="2.4"/>`
         + `<rect x="${L + 7}" y="${yb + 3}" width="11" height="9" rx="2" fill="#5a3d28" stroke="${ink}" stroke-width="1.4"/>`
@@ -467,7 +467,7 @@
         + (n >= 3 ? [[L + 8, y0 + 40], [R - 9, y0 + 30], [L + 14, 140], [R - 15, 150]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.9" fill="${gl}"/>`).join('') : '');
       if (n >= 2) { const spikes = (x, s) => `<path d="M${x - 8 * s} ${b.armY + 2}L${x - 6 * s} ${b.armY - 10}L${x - 2 * s} ${b.armY}L${x + 1 * s} ${b.armY - 12}L${x + 4 * s} ${b.armY}L${x + 8 * s} ${b.armY - 8}L${x + 9 * s} ${b.armY + 3}Z" fill="${BONE}" stroke="${ink}" stroke-width="1.6" stroke-linejoin="round"/>`;
         top = spikes(sx.l + 2, 1) + spikes(sx.r - 2, -1) + (n >= 3 ? skullMark(sx.l + 2, b.armY + 4, 5, ink, gl) + skullMark(sx.r - 2, b.armY + 4, 5, ink, gl) : ''); }
-    } else {   // plate
+    } else {
       const m = PLATE[n], gd = n ? GOLD : '#b89a52', y1 = Math.min(156, y0 + 46);
       inner = `<rect x="0" y="${y0}" width="120" height="${y1 - y0}" fill="${m}"/>`
         + `<path d="M${L + 6} ${y0 + 6}Q60 ${y0 + 18} ${R - 6} ${y0 + 6}" fill="none" stroke="#ffffff" stroke-width="3" opacity=".7"/>`
@@ -482,7 +482,7 @@
     }
     return { inner, top };
   }
-  // значок доспеха класса (Кузня, сумка, лавка): низ на y = 0, центр x = 0, высота ~100 — как st.armor
+
   function classArmorIcon(kind, rar, W) {
     const n = rk(rar), rc = W_RAR[rar] || null, ink = W.ink === W.line ? '#2a2236' : W.ink, O = (w) => `stroke="${W.line}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"`;
     if (kind === 'leather') {
@@ -503,33 +503,33 @@
         + (n >= 2 ? `<path d="M-24 -100 L-30 -116 L-18 -103 L-14 -118 L-10 -100 Z M24 -100 L30 -116 L18 -103 L14 -118 L10 -100 Z" fill="${BONE}" stroke="${ink}" stroke-width="1.6" stroke-linejoin="round"/>` : '')
         + (n >= 3 ? `<circle cx="-18" cy="-40" r="2.4" fill="${gl}"/><circle cx="16" cy="-24" r="2.4" fill="${gl}"/><circle cx="-6" cy="-14" r="2" fill="${gl}"/>` : '');
     }
-    const m = PLATE[n], gd = n ? GOLD : '#b89a52';   // plate
+    const m = PLATE[n], gd = n ? GOLD : '#b89a52';
     return `<rect x="-9" y="-24" width="18" height="24" fill="#f4efe2" ${O(3)}/><path d="M-9 -24 V0 M9 -24 V0" stroke="${rc || gd}" stroke-width="2.6"/>`
       + `<path d="M-32 -96 C-36 -70 -32 -44 -26 -24 H26 C32 -44 36 -70 32 -96 Q0 -86 -32 -96 Z" fill="${m}" ${O(4)}/>`
       + `<path d="M-30 -94 Q0 -84 30 -94" fill="none" stroke="${gd}" stroke-width="4"/><path d="M-27 -26 H27" stroke="${gd}" stroke-width="5"/>`
       + (n >= 1 ? sunMark(0, -66, 7, gd, ink) : `<path d="M0 -78 V-54 M-9 -68 H9" stroke="${gd}" stroke-width="4"/>`)
       + `<path d="M-46 -96 Q-34 -114 -12 -102 L-15 -82 Q-34 -86 -46 -76 Z M46 -96 Q34 -114 12 -102 L15 -82 Q34 -86 46 -76 Z" fill="${m}" stroke="${gd}" stroke-width="3" stroke-linejoin="round"/>`;
   }
-  /* ---------- 31.10 (решение стримера 00:20, feat/hw-armor-pick): броня «Ночи Тыквенной Луны» - свой рисунок у каждой вещи ----------
-     Рисует ЯДРО для всех стилей (как детали Хэллоуина и доспехи классов), по токенам стиля (st.wear: line/ink); стиль может нарисовать своё:
-     st.wornArmor и st.armor с флагом st.hwArmor = true. Палитра ночная и тыквенная, без filter и анимаций.
-     hwbarrow - Лорика Курганного стража (латы, кости, руна), hwthicket - Куртка Тыквенной чащи (кожа, лоза, листья, тыква-пряжка),
-     hwchapel - Ряса Часовни без колокола (ткань, колокол, свечи, воск), hwshadow - Куртка Деревни без теней (тёмная кожа, капюшон),
-     hwgrave - Саван Шепчущего погоста (саван, призрачный узор), hwmidnight - Латы Врат Полуночи (латы, луна, циферблат полуночи). */
+  
+
+
+
+
+
   const HW_ARMOR = new Set(['hwbarrow', 'hwthicket', 'hwchapel', 'hwshadow', 'hwgrave', 'hwmidnight']);
   const HWA = { pump: '#ff7a1a', pumpD: '#c4520e', night: '#1c1424', moon: '#ffe9a8', ghost: '#9fffd0', gold: '#e8b923', wax: '#efe6d2', leaf: '#4f9a38', vine: '#2f6a24' };
-  // циферблат полуночи: обе стрелки на двенадцати (x, y - центр)
+
   const midClock = (x, y, r, ink) => { let t = ''; for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6, c = Math.sin(a), s = -Math.cos(a), l = i % 3 ? 0.78 : 0.62; t += `M${f1h(x + c * r * l)} ${f1h(y + s * r * l)}L${f1h(x + c * r * 0.92)} ${f1h(y + s * r * 0.92)}`; }
     return `<circle cx="${x}" cy="${y}" r="${r}" fill="#141a30" stroke="${HWA.gold}" stroke-width="2.2"/><path d="${t}" stroke="${HWA.moon}" stroke-width="1.3"/>`
       + `<path d="M${x} ${y}V${f1h(y - r * 0.72)}M${x} ${y}L${f1h(x + r * 0.14)} ${f1h(y - r * 0.5)}" stroke="${HWA.pump}" stroke-width="1.8" stroke-linecap="round"/><circle cx="${x}" cy="${y}" r="1.4" fill="${ink}"/>`; };
   const crescent = (x, y, r, col, ink) => `<path d="M${f1h(x + r * 0.2)} ${f1h(y - r)} A${r} ${r} 0 1 0 ${f1h(x + r * 0.2)} ${f1h(y + r)} A${f1h(r * 0.78)} ${f1h(r * 0.78)} 0 1 1 ${f1h(x + r * 0.2)} ${f1h(y - r)} Z" fill="${col}" stroke="${ink}" stroke-width="1.2"/>`;
   const pumpkinMark = (x, y, r, ink) => `<ellipse cx="${x}" cy="${y}" rx="${f1h(r * 1.15)}" ry="${r}" fill="${HWA.pump}" stroke="${ink}" stroke-width="1.4"/><path d="M${x} ${f1h(y - r)}V${f1h(y + r)}M${f1h(x - r * 0.5)} ${f1h(y - r * 0.85)}Q${f1h(x - r * 0.75)} ${y} ${f1h(x - r * 0.5)} ${f1h(y + r * 0.85)}M${f1h(x + r * 0.5)} ${f1h(y - r * 0.85)}Q${f1h(x + r * 0.75)} ${y} ${f1h(x + r * 0.5)} ${f1h(y + r * 0.85)}" fill="none" stroke="${HWA.pumpD}" stroke-width="1"/><path d="M${x} ${f1h(y - r)}l1.5 -3" stroke="${HWA.vine}" stroke-width="2" stroke-linecap="round"/>`;
-  // лист тыквы (три доли): x, y - черенок, a - поворот, s - размер
+
   const pumpLeaf = (x, y, a, s, ink) => `<path transform="translate(${f1h(x)} ${f1h(y)}) rotate(${a}) scale(${s})" d="M0 0 C-3 -4 -9 -4 -9 -9 C-12 -12 -8 -17 -4 -15 C-3 -20 3 -20 4 -15 C8 -17 12 -12 9 -9 C9 -4 3 -4 0 0 Z" fill="${HWA.leaf}" stroke="${ink}" stroke-width="1.3" stroke-linejoin="round"/>`;
   const ghostMark = (x, y, r, ink) => `<path d="M${f1h(x - r)} ${f1h(y + r)}V${y}A${r} ${r} 0 0 1 ${f1h(x + r)} ${y}V${f1h(y + r)}L${f1h(x + r * 0.5)} ${f1h(y + r * 0.6)}L${x} ${f1h(y + r)}L${f1h(x - r * 0.5)} ${f1h(y + r * 0.6)}Z" fill="#e8fff6" fill-opacity=".9" stroke="${ink}" stroke-width="1.2"/>`
     + `<circle cx="${f1h(x - r * 0.35)}" cy="${f1h(y - r * 0.1)}" r="${f1h(r * 0.18)}" fill="${ink}"/><circle cx="${f1h(x + r * 0.35)}" cy="${f1h(y - r * 0.1)}" r="${f1h(r * 0.18)}" fill="${ink}"/>`;
   const bellMark = (x, y, s, ink) => `<g transform="translate(${x} ${y}) scale(${s})"><path d="M-7 8 Q-7 -6 0 -7 Q7 -6 7 8 L9 11 H-9 Z" fill="${HWA.gold}" stroke="${ink}" stroke-width="1.4" stroke-linejoin="round"/><path d="M-3 -1 Q0 -4 3 -1" fill="none" stroke="#fff3c2" stroke-width="1.2"/><circle cy="12.5" r="2.2" fill="${HWA.pump}" stroke="${ink}" stroke-width="1"/><path d="M0 -7 V-10" stroke="${ink}" stroke-width="2"/></g>`;
-  // на теле: { inner - обрезается по телу, top - поверх плеч }
+
   function hwWorn(g, k, y0, W) {
     const b = k.b, L = k.L, R = k.R, ink = W.ink, line = W.line, sx = k.sx || { l: L + 6, r: R - 6 };
     let inner = '', top = '';
@@ -572,7 +572,7 @@
         + `<path d="M0 ${yb}H120" stroke="${dk}" stroke-width="6"/><rect x="55" y="${yb - 4}" width="10" height="8" rx="1.5" fill="none" stroke="${HWA.pump}" stroke-width="2.4"/>`
         + `<path d="M${L} ${y0 + 4}L${L + 12} ${y1}M${R} ${y0 + 4}L${R - 12} ${y1}" stroke="#08060c" stroke-width="10" opacity=".55"/>`
         + `<path d="M0 ${y1}H120" stroke="${ink}" stroke-width="3" opacity=".5"/>`;
-      // капюшон, сброшенный на плечи: складки вокруг шеи
+
       top = `<path d="M${sx.l - 6} ${b.armY + 6}Q${sx.l - 2} ${y0 - 10} 60 ${y0 + 2}Q${sx.r + 2} ${y0 - 10} ${sx.r + 6} ${b.armY + 6}L${sx.r} ${b.armY + 12}Q60 ${y0 + 16} ${sx.l} ${b.armY + 12}Z" fill="#2a2338" stroke="${line}" stroke-width="2.4" stroke-linejoin="round"/>`
         + `<path d="M${sx.l + 4} ${b.armY + 7}Q60 ${y0 + 9} ${sx.r - 4} ${b.armY + 7}" fill="none" stroke="#6a4ad8" stroke-width="1.6"/>`;
     } else if (g.a === 'hwgrave') {
@@ -584,7 +584,7 @@
         + ghostMark(60, y0 + 22, 8, ink)
         + `<path d="${hem}" fill="#e8efe9" opacity=".7"/>`;
       top = [[sx.l + 2, b.armY], [sx.r - 2, b.armY - 2]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3.2" fill="${HWA.ghost}" opacity=".75"/><circle cx="${x}" cy="${y}" r="1.4" fill="#ffffff"/>`).join('');
-    } else {   // hwmidnight
+    } else {
       const m = '#2c3654', gd = HWA.gold, y1 = Math.min(156, y0 + 46);
       inner = `<rect x="0" y="${y0}" width="120" height="${y1 - y0}" fill="${m}"/>`
         + `<path d="M${L + 6} ${y0 + 6}Q60 ${y0 + 18} ${R - 6} ${y0 + 6}" fill="none" stroke="#5a6a94" stroke-width="3" opacity=".8"/>`
@@ -598,7 +598,7 @@
     }
     return { inner, top };
   }
-  // значок (Кузня, сумка, окно выбора): низ на y = 0, центр x = 0, высота ~100 - как st.armor и значки доспехов классов
+
   function hwArmorIcon(kind, rar, W) {
     const ink = W.ink === W.line ? '#2a2236' : W.ink, O = (w) => `stroke="${W.line}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"`;
     const heavy = (m) => `<path d="M-32 -96 C-36 -70 -32 -44 -26 -24 H26 C32 -44 36 -70 32 -96 Q0 -86 -32 -96 Z" fill="${m}" ${O(4)}/>`;
@@ -640,14 +640,14 @@
         + `<path d="M-28 -40 c-7 -9 5 -16 9 -9 c3 6 -6 9 -7 3 M20 -26 c7 -9 -5 -16 -9 -9 c-3 6 6 9 7 3 M14 -54 c6 -8 -4 -14 -8 -8 c-3 5 5 8 6 3" fill="none" stroke="${HWA.ghost}" stroke-width="2.4" stroke-linecap="round" opacity=".6"/>`
         + ghostMark(0, -76, 11, ink) + `<circle cx="-24" cy="-62" r="3" fill="${HWA.ghost}" opacity=".7"/><circle cx="26" cy="-80" r="2.6" fill="${HWA.ghost}" opacity=".7"/>`;
     }
-    const m = '#2c3654', gd = HWA.gold;   // hwmidnight
+    const m = '#2c3654', gd = HWA.gold;
     return `<rect x="-9" y="-24" width="18" height="24" fill="#1a2038" ${O(3)}/><path d="M-9 -24 V0 M9 -24 V0" stroke="${HWA.pump}" stroke-width="2.6"/>`
       + heavy(m) + `<path d="M-30 -94 Q0 -84 30 -94" fill="none" stroke="${gd}" stroke-width="4"/><path d="M-27 -26 H27" stroke="${gd}" stroke-width="5"/>`
       + midClock(0, -64, 13, ink) + crescent(-20, -44, 6, HWA.moon, ink)
       + `<path d="M-46 -96 Q-34 -114 -12 -102 L-15 -82 Q-34 -86 -46 -76 Z M46 -96 Q34 -114 12 -102 L15 -82 Q34 -86 46 -76 Z" fill="${m}" stroke="${gd}" stroke-width="3" stroke-linejoin="round"/>`
       + crescent(-30, -96, 4, HWA.moon, ink) + crescent(30, -96, 4, HWA.moon, ink);
   }
-  // шлем класса на голове: k.b (top, hw, square, eyeY) — того же вида, что у шапок стиля; T — токены (line, ink)
+
   function classHat(id, k, T, rar) {
     const b = k.b, t = b.square ? b.top - 5 : b.top, hw = b.hw, ey = b.eyeY, cx = 60, n = rk(rar), rc = W_RAR[rar] || null;
     const O = (w) => `stroke="${T.line}" stroke-width="${w || T.sw || 4}" stroke-linejoin="round" stroke-linecap="round"`, I = (w) => `stroke="${T.ink}" stroke-width="${w}" stroke-linejoin="round"`;
@@ -659,7 +659,7 @@
       if (id === 'rmask') { const mc = ['#6a2a2a', '#7a2a2a', '#1c1a22', '#d8d2c6', '#2a1f38'][n];
         s += `<path d="M${f1h(cx - hw - 3)} ${ey + 8} Q${cx} ${ey + 4} ${f1h(cx + hw + 3)} ${ey + 8} L${f1h(cx + hw)} ${ey + 22} Q${cx} ${ey + 30} ${f1h(cx - hw)} ${ey + 22} Z" fill="${mc}" ${O(2.6)}/>`
           + (n >= 4 ? `<path d="M${f1h(cx - hw - 2)} ${ey + 9} Q${cx} ${ey + 5} ${f1h(cx + hw + 2)} ${ey + 9}" fill="none" stroke="${GOLD}" stroke-width="2"/>` : '')
-          + (n === 3 ? '' : `<path d="M${f1h(cx + hw - 2)} ${ey + 12} l9 4 l-3 7 z" fill="${mc}" ${I(1.4)}/>`); }   // узел платка
+          + (n === 3 ? '' : `<path d="M${f1h(cx + hw - 2)} ${ey + 12} l9 4 l-3 7 z" fill="${mc}" ${I(1.4)}/>`); }
       return `<g class="jd-class-hat">${s}</g>`;
     }
     if (id === 'nhood') {
@@ -671,8 +671,8 @@
       return `<g class="jd-class-hat">${sp}<path d="M${f1h(cx - hw - 3)} ${t + 9} Q${cx} ${t + 3} ${f1h(cx + hw + 3)} ${t + 9} L${f1h(cx + hw + 1)} ${t + 1} Q${cx} ${t - 5} ${f1h(cx - hw - 1)} ${t + 1} Z" fill="${BONE}" ${O(2.6)}/>`
         + (rc ? `<path d="M${f1h(cx - hw)} ${t + 5} Q${cx} ${t} ${f1h(cx + hw)} ${t + 5}" fill="none" stroke="${rc}" stroke-width="1.8"/>` : '') + skullMark(cx, t - 4, 6.4, T.ink, n >= 3 ? GLOW[n] : null) + '</g>';
     }
-    // 25.10: «Каска шахтёра» (look.hat miner) — жёлтая каска с фонарём во лбу; по голове человечка (раньше в шахте каска висела над
-    // головой отдельной картинкой, а в сумке и в бою была шлемом легионера)
+
+
     if (id === 'miner') {
       const y0 = t + 10, top = t - 17;
       return `<g class="jd-class-hat jd-miner"><path d="M${f1h(cx - hw - 6)} ${y0} Q${f1h(cx - hw - 5)} ${top} ${cx} ${top} Q${f1h(cx + hw + 5)} ${top} ${f1h(cx + hw + 6)} ${y0} Z" fill="#ffcf3a" ${O()}/>`
@@ -680,7 +680,7 @@
         + `<path d="M${f1h(cx - hw - 11)} ${y0 + 1} Q${cx} ${y0 - 5} ${f1h(cx + hw + 11)} ${y0 + 1} L${f1h(cx + hw + 9)} ${y0 + 6} Q${cx} ${y0 + 1} ${f1h(cx - hw - 9)} ${y0 + 6} Z" fill="#f2b82a" ${O(2.6)}/>`
         + `<circle cx="${cx}" cy="${f1h(t - 3)}" r="15" fill="#fff6c0" opacity=".28"/><circle cx="${cx}" cy="${f1h(t - 3)}" r="7.5" fill="#fff6c0" ${O(2.6)}/><circle cx="${cx}" cy="${f1h(t - 3)}" r="3.4" fill="#ffe27a"/></g>`;
     }
-    // phelm / pwing — белый шлем паладина
+
     const steel = PLATE[n], gd = n ? GOLD : '#b89a52';
     let s = `<path d="M${f1h(cx - hw - 5)} ${t + 14} Q${f1h(cx - hw - 6)} ${t - 18} ${cx} ${t - 19} Q${f1h(cx + hw + 6)} ${t - 18} ${f1h(cx + hw + 5)} ${t + 14} L${f1h(cx + hw - 1)} ${t + 14} L${f1h(cx + hw - 1)} ${t + 6} L${f1h(cx - hw + 1)} ${t + 6} L${f1h(cx - hw + 1)} ${t + 14} Z" fill="${steel}" ${O()}/>`
       + `<path d="M${f1h(cx - hw - 4)} ${t + 3} Q${cx} ${t - 3} ${f1h(cx + hw + 4)} ${t + 3}" fill="none" stroke="${gd}" stroke-width="4"/>`
@@ -691,7 +691,7 @@
     }
     return `<g class="jd-class-hat">${s}</g>`;
   }
-  // подвеска амулета класса: центр (0, 0), высота ~14
+
   function charmPendant(kind, rar, ink) {
     const rc = W_RAR[rar] || null, I = (w) => `stroke="${ink}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"`;
     const ring = rc ? `<circle r="8.6" fill="none" stroke="${rc}" stroke-width="2"/>` : '';
@@ -709,60 +709,60 @@
       default: return '';
     }
   }
-  // значок амулета класса (сумка, лавка, аукцион): низ на y ≈ 6, шнурок сверху — как общий значок амулета на сайте
+
   function charmArt(kind, rar) {
     if (!CLASS_CHARM.has(kind)) return '';
     const rc = W_RAR[rar] || null;
     return `<path d="M-16 -46 Q0 -20 16 -46" fill="none" stroke="#c9a35a" stroke-width="3.5" stroke-dasharray="1 5" stroke-linecap="round"/>`
       + (rc ? `<circle cy="-12" r="19" fill="${rc}" opacity=".16"/>` : '') + `<g transform="translate(0 -12) scale(2.3)">${charmPendant(kind, rar, '#2a2236')}</g>`;
   }
-  // шлемы классов для значков (jHats): ключ id — обычная редкость, id@редкость — со своими деталями (нимб, огни в глазницах, золото)
+
   function classHatsFor(b) {
     const T = Object.assign(hwTok(S), { sw: 4 }), out = {};
-    for (const id of [...CLASS_HAT, 'miner']) { out[id] = classHat(id, { b }, T, 'common'); for (const r of CATALOG.rarities) out[id + '@' + r] = classHat(id, { b }, T, r); }   // 25.10: + каска шахтёра
+    for (const id of [...CLASS_HAT, 'miner']) { out[id] = classHat(id, { b }, T, 'common'); for (const r of CATALOG.rarities) out[id + '@' + r] = classHat(id, { b }, T, r); }
     return out;
   }
 
-  /* ---------- сборка человечка ----------
-     ВАЖНО: порядок вызовов r() — часть внешности. Если поменять порядок, у всех зрителей сменится внешность.
-     mood: 'happy' (по умолчанию, руки вверх) | 'walk' (гуляет: руки вдоль тела, лицо — своё, по нику) | 'sad' | 'chill' | 'stern' | 'hurt'
-     uniform: тюремная роба
-     extra: { crown: 'big'|'mini', cape: цвет, bow: цвет, wig: true } — наряды событий (поверх купленного);
-            alive — нарисовать живым, даже если погиб; ghost — призраком принудительно; noAura — без ауры;
-            armed + gear — боевая стойка со снаряжением; hold: 'cocktail' + holdRot — что в руке на отдыхе
-     look: внешность явно (для примерочной); иначе — из гардероба по seed */
+  
+
+
+
+
+
+
+
   function build(st, seed, mood, uniform, extra, look) {
     extra = extra || {};
-    // чей человечек (seedFor(ник) или extra.who) — данные из карт берутся по нику; дальше зерно — обычное число
+
     const who = whoOf(seed, extra), me = who !== null ? { who } : null;
     seed = Number(seed) >>> 0;
     const ghost = !extra.alive && (extra.ghost || ghostT(entry(GHOSTS, seed, me)));
     const lk = look !== undefined ? look : entry(LOOKS, seed, me) || null;
-    const P = nickPicks(st, seed, mood === 'sad');   // всё «по нику» — одной функцией с defaultsFor (тот же порядок r())
+    const P = nickPicks(st, seed, mood === 'sad');
     let { fill, c2, b } = P;
-    // купленное подменяет «по нику», но случайные числа тянутся в том же порядке — остальное у человечка не меняется
+
     if (lk && lk.shape && st.bodies[lk.shape]) b = st.bodies[lk.shape](jrng((seed ^ 0x5bd1e995) >>> 0));
     if (lk && lk.color) fill = String(lk.color);
     if (lk && lk.color2) c2 = String(lk.color2);
     const sad = mood === 'sad', battle = mood === 'stern' || mood === 'hurt', chill = mood === 'chill';
     const armed = battle && !!extra.armed;
-    // 19.10: боевой вид (шлем, доспех, амулет) — по месту (extra.kit), иначе — в боевой стойке. Снаряжение — только своего ника
+
     const fight = extra.kit === 'battle' || (extra.kit !== 'peace' && armed);
     const gearAll = extra.gear || entry(GEAR, seed, me) || {};
-    // k — всё, что нужно стилю, чтобы нарисовать деталь на этом человечке
-    // look — купленное (стилю: например, цвет глаз котика у купленных глаз — как на образце в Шатре)
+
+
     const k = Object.assign({ b, fill, c2, mood, sad, battle, chill, seed, extra, uid, look: lk || null }, st.frame(b));
 
     let arms, front = '';
     if (armed) {
       const gear = gearAll;
-      const a = st.arms.armed(k);   // { svg, right: {x,y} — правая кисть (оружие), left: {x,y} — левая (щит) }
+      const a = st.arms.armed(k);
       arms = a.svg;
       const hr = a.right, hl = a.left, H = st.hold;
-      // 31.10: col - своё свечение вещи (gear.wg у хэллоуинского оружия) вместо цвета редкости; у стиля без свечения редкости - как было (без свечения)
+
       const glow = (rar, col) => { if (!st.rarityGlow[rar]) return ''; const id = uid('jlR'); return { id, def: st.gearGlow(id, col || st.rarityGlow[rar]) }; };
       let defs = '';
-      // jd-weapon / jd-shield — обёртки для анимаций боя (взмах оружием, щит вперёд): точка поворота — кисть (transform-origin)
+
       const wa = gear.w && gearArt(st, 'weapon', gear.w, gear.wr);
       front += `<g class="jd-weapon" data-w="${wa ? gear.w : 'fist'}" style="transform-origin:${hr.x}px ${hr.y}px">`;
       if (wa) { const g = glow(gear.wr, gear.wg); if (g) defs += g.def; front += `<g transform="translate(${hr.x} ${hr.y}) rotate(${H.weaponRot(gear.w)}) scale(${H.weaponScale})"${g ? ` filter="url(#${g.id})"` : ''}>${wa}</g>`; }
@@ -771,8 +771,8 @@
       if (sa) { const g = glow(gear.sr); if (g) defs += g.def; front += `<g class="jd-shield" style="transform-origin:${hl.x}px ${hl.y}px"><g transform="translate(${hl.x + H.shieldDx} ${hl.y + H.shieldDy}) scale(${H.shieldScale})"${g ? ` filter="url(#${g.id})"` : ''}>${sa}</g></g>`; }
       else front += st.hand(k, hl.x, hl.y);
       if (defs) front = `<defs>${defs}</defs>` + front;
-    } else if (sad || battle || chill || mood === 'walk') arms = st.arms.down(k);   // руки висят вдоль тела
-    else arms = st.arms.up(k);                                    // руки вверх
+    } else if (sad || battle || chill || mood === 'walk') arms = st.arms.down(k);
+    else arms = st.arms.up(k);
     if (chill && extra.hold && st.held[extra.hold]) front += st.held[extra.hold](k, Number(extra.holdRot) || 0);
 
     let eyesKind = P.eyes;
@@ -780,42 +780,42 @@
     k.eyesKind = eyesKind; k.cyc = eyesKind === 'cyclops';
     let eyes, mouth;
     const sadFace = sad ? st.faces.sad(k) : null;
-    eyes = sad ? sadFace.eyes : HW_EYE.has(eyesKind) ? ((st.hwEyes && st.hwEyes(eyesKind, k)) || hwEyes(eyesKind, k, hwTok(st))) : st.eyes(eyesKind, k);   // HW: глаза ивента
+    eyes = sad ? sadFace.eyes : HW_EYE.has(eyesKind) ? ((st.hwEyes && st.hwEyes(eyesKind, k)) || hwEyes(eyesKind, k, hwTok(st))) : st.eyes(eyesKind, k);
     mouth = sad ? sadFace.mouth : st.mouth(P.mouth, k);
     if (!sad && lk && lk.mouth && st.mouthPool.includes(lk.mouth)) mouth = st.mouth(lk.mouth, k);
-    // 18.10: купленные глаза видны и в бою, и на отдыхе, и на сайте (там герой «суровый»): настроение меняет только рот.
-    // Раненое лицо (hurt) остаётся как есть — по нему видно, что герою плохо
-    // 19.10: и выбранный рот тоже (раньше в бою и на сайте его подменяло настроение — «Чеширская улыбка» превращалась в рот с одним зубом)
+
+
+
     if (chill || battle) { const f = st.faces[mood](k); const own = (x) => lk && lk[x] && mood !== 'hurt';
       if (!(own('mouth') && st.mouthPool.includes(lk.mouth))) mouth = f.mouth; if (!own('eyes')) eyes = f.eyes; }
-    if ((chill || battle) && lk && lk.eyes && HW_EYE.has(lk.eyes) && mood !== 'hurt') eyes = (st.hwEyes && st.hwEyes(lk.eyes, k)) || hwEyes(lk.eyes, k, hwTok(st));   // HW
+    if ((chill || battle) && lk && lk.eyes && HW_EYE.has(lk.eyes) && mood !== 'hurt') eyes = (st.hwEyes && st.hwEyes(lk.eyes, k)) || hwEyes(lk.eyes, k, hwTok(st));
 
     let blush = P.blush ? st.blush(k) : '';
     if (!sad && lk && typeof lk.blush === 'boolean') blush = lk.blush ? st.blush(k) : '';
     if (battle) blush = '';
     const H = st.hats(k);
-    try { const hh = hwHats(k, hwTok(st)); for (const id of HW_HAT) if (H[id] === undefined) H[id] = hh[id]; } catch (e) {}   // HW: шапки ивента (свой рисунок стиля — главнее)
+    try { const hh = hwHats(k, hwTok(st)); for (const id of HW_HAT) if (H[id] === undefined) H[id] = hh[id]; } catch (e) {}
     let hat = H[P.hat];
-    // 23.10: шлем класса (rhood, nhood, phelm…) — рисунок ядра с деталями по редкости, если у стиля нет своего
+
     let classHelm = null; if (gearAll.h && (CLASS_HAT.has(gearAll.h) || gearAll.h === 'miner') && H[gearAll.h] === undefined) { try { classHelm = classHat(gearAll.h, k, hwTok(st), gearAll.hr); } catch (e) { classHelm = null; } }
     const ownHat = !!(lk && lk.hat && H[lk.hat] !== undefined), helm = classHelm || (gearAll.h && H[gearAll.h] !== undefined ? H[gearAll.h] : null);
     if (ownHat) hat = H[lk.hat];
-    // шлем: только в бою — вместо любой шапки; в мирных местах шлема нет никогда (решение стримера 19.10), там — своя шапка или шапка по нику
+
     if (helm && fight) hat = helm;
-    // 25.10: в шахте каска шахтёра видна и в мирном виде (extra.minerHat — надета: свет в темноте); у Скупщика и Фонарщика — тоже
+
     if (extra.minerHat) { try { hat = classHat('miner', k, hwTok(st), 'common'); } catch (e) {} }
     const robe = uniform ? st.uniform(k) : '';
     let worn = '', amulet = '';
     if (fight && !uniform) {
       try { if (gearAll.a) worn = wornArmor(st, k, gearAll); } catch (e) { worn = ''; }
-      try { if (gearAll.t) amulet = wornAmulet(st, k, gearAll); } catch (e) { amulet = ''; }   // поверх шарфа/галстука — иначе не видно
+      try { if (gearAll.t) amulet = wornAmulet(st, k, gearAll); } catch (e) { amulet = ''; }
     }
 
-    // аксессуары из костюмерной (наряды событий — плащ/бабочка из extra — главнее)
+
     const acc = new Set(lk && Array.isArray(lk.acc) ? lk.acc : []), aC = (lk && lk.accColor) || c2;
-    // 19.10: плащ первопроходца (награда) — стиль рисует свой (acc.pioneer), иначе — общий.
-    // 20.10: надеты оба плаща — рисуется обычный, своего цвета (capeColor): раньше первопроходец перекрывал его,
-    // и выбранный в «Облике» цвет плаща не применялся (красный плащ рисовался синим плащом первопроходца)
+
+
+
     const capeCol = extra.cape || (acc.has('cape') ? (lk.capeColor || st.capeColor) : null);
     const pioneer = !capeCol && acc.has('pioneer');
     const bowCol = extra.bow || (acc.has('bowtie') ? aC : null);
@@ -832,32 +832,32 @@
       if (acc.has('scarf')) neck += st.acc.scarf(k, aC);
       if (acc.has('tie') && !bowCol) neck += st.acc.tie(k, aC);
     }
-    // HW: аксессуары ивента — клыки, плащ вампира, ведёрко-тыква, болты, паутина (стиль может нарисовать свои: st.hwAcc[id](k))
+
     let hwFront = '';
     for (const a of acc) if (HW_ACC.has(a)) { try { const r = (st.hwAcc && st.hwAcc[a] && st.hwAcc[a](k)) || hwAcc(a, k, hwTok(st)); if (!r) continue;
-      if (r.back && !capeCol && !pioneer) cape = r.back + cape; if (r.face) face += r.face; if (r.neck) neck += r.neck; if (r.wear) wear += r.wear; if (r.front) hwFront += r.front; } catch (e) { /* без детали */ } }
+      if (r.back && !capeCol && !pioneer) cape = r.back + cape; if (r.face) face += r.face; if (r.neck) neck += r.neck; if (r.wear) wear += r.wear; if (r.front) hwFront += r.front; } catch (e) {   } }
     if (mood === 'hurt') wear += st.hurt(k);
     const wig = extra.wig ? st.event.wig(k) : '';
-    const head = extra.wig ? wig : extra.crown ? crown : hat;   // шапка: парик судьи / корона события / купленная или «по нику»
+    const head = extra.wig ? wig : extra.crown ? crown : hat;
 
     if (ghost) {
-      const g = st.ghost(k, { arms, head });   // { style, inner }
+      const g = st.ghost(k, { arms, head });
       return `<svg class="jl-doodle jd-ghost" viewBox="0 0 120 170" style="${g.style}">${g.inner}</svg>`;
     }
-    // jd-eyes — обёртка глаз (сайт Легиона моргает ими через CSS transform; на рисунок не влияет)
-    const au = lk && lk.aura && !extra.noAura ? (HW_AURA.has(lk.aura) ? (() => { const s0 = st.aura(lk.aura, k); return s0 && (s0.back || s0.front) ? s0 : hwAura(lk.aura, k) || { back: '', front: '' }; })() : st.aura(lk.aura, k)) : { back: '', front: '' };   // HW: ауры ивента
-    // 19.10: аура — в своих группах jd-aura-b / jd-aura-f (на рисунок не влияют): сайт Легиона по ним выносит ауру
-    // своего героя в отдельные слои и оживляет её дешёвой CSS-анимацией вместо SMIL
+
+    const au = lk && lk.aura && !extra.noAura ? (HW_AURA.has(lk.aura) ? (() => { const s0 = st.aura(lk.aura, k); return s0 && (s0.back || s0.front) ? s0 : hwAura(lk.aura, k) || { back: '', front: '' }; })() : st.aura(lk.aura, k)) : { back: '', front: '' };
+
+
     if (au.back) au.back = `<g class="jd-aura-b">${au.back}</g>`;
     if (au.front) au.front = `<g class="jd-aura-f">${au.front}</g>`;
     const inner = `${au.back}${cape}${(() => { try { return st.tail ? st.tail(k) : ''; } catch (e) { return ''; } })()}${arms}${st.body(k)}${robe}${worn}<g class="jd-eyes">${eyes}</g>${face}<g class="jd-mouth">${mouth}</g>${wear}${blush}${neck}${amulet}${bow}${head}${front}${hwFront}${au.front}`;
-    // HW: в Изнанке весь отряд — духи (extra.spirit): своя косметика видна, но человечек полупрозрачный и парит
+
     if (extra.spirit) return `<svg class="jl-doodle jd-spirit" viewBox="0 0 120 170">${hwSpirit(inner, k)}</svg>`;
     return `<svg class="jl-doodle" viewBox="0 0 120 170">${inner}</svg>`;
   }
-  /* 19.10: «Плащ первопроходца» (награда) — дорожный плащ цвета ночного неба: светлый подбой у ворота, пара звёздочек на полах,
-     застёжки-звёзды (роза ветров) на плечах. Стиль подстраивает его данными st.pioneer = { cloak, lining, line, ink, w, len, flare,
-     hem: 'zig' | 'round' | 'leaf', clasp: 'star' | 'paw' | 'leaf', claspAt: 'shoulder' | 'collar' } или рисует сам: st.acc.pioneer(k) → { back, front }. */
+  
+
+
   function pioneerCape(st, k) {
     try { if (st.acc && typeof st.acc.pioneer === 'function') { const r = st.acc.pioneer(k); if (r && typeof r.back === 'string') return { back: r.back, front: r.front || '' }; } } catch (e) {}
     const P = Object.assign({ cloak: '#2c4a6e', lining: '#bfe3ff', line: '#2a2140', ink: '#2a2140', w: 3.5, len: 168, flare: 18, hem: 'zig', clasp: 'star', clasp2: '#ffd36b' }, st.pioneer || {});
@@ -865,9 +865,9 @@
     let d = `M${L + 6} ${t} C${L - 12} ${t + 30} ${x0 - 2} ${B - 18} ${x0} ${B}`;
     for (let i = 0; i < n; i++) {
       const a = x0 + dx * i, b = a + dx, m = (a + b) / 2;
-      if (P.hem === 'round') d += ` Q${m} ${B + 6} ${b} ${B}`;                          // мягкие фестоны
-      else if (P.hem === 'leaf') d += ` Q${a + dx * 0.15} ${B + 7} ${m} ${B + 8} Q${b - dx * 0.15} ${B + 7} ${b} ${B}`;   // листья
-      else d += ` L${m} ${B - 7} L${b} ${B}`;                                            // рваный край дорожного плаща
+      if (P.hem === 'round') d += ` Q${m} ${B + 6} ${b} ${B}`;
+      else if (P.hem === 'leaf') d += ` Q${a + dx * 0.15} ${B + 7} ${m} ${B + 8} Q${b - dx * 0.15} ${B + 7} ${b} ${B}`;
+      else d += ` L${m} ${B - 7} L${b} ${B}`;
     }
     d += ` C${x1 + 2} ${B - 18} ${R + 12} ${t + 30} ${R - 6} ${t} Z`;
     const tiny = (x, y, r) => `<path d="M${x} ${y - r} L${x + r * 0.3} ${y - r * 0.3} L${x + r} ${y} L${x + r * 0.3} ${y + r * 0.3} L${x} ${y + r} L${x - r * 0.3} ${y + r * 0.3} L${x - r} ${y} L${x - r * 0.3} ${y - r * 0.3} Z" fill="${P.lining}"/>`;
@@ -879,24 +879,24 @@
       : P.clasp === 'leaf'
         ? `<path d="M${x - 5} ${y + 3} Q${x - 4} ${y - 5} ${x + 5} ${y - 4} Q${x + 4} ${y + 4} ${x - 5} ${y + 3} Z M${x - 5} ${y + 3} L${x + 3} ${y - 3}" fill="${P.clasp2}" stroke="${P.ink}" stroke-width="1.6" stroke-linejoin="round"/>`
         : starClasp(x, y, 5.5, P.ink, P.clasp2));
-    // 20.10: claspAt: 'collar' — застёжки у ворота (под ртом, на уровне шарфа/бабочки), а не у плеч. У котика голова и тело — одно,
-    // «плечи» (armY − 3) приходятся ровно на щёки: застёжки-лапки ложились на румянец и выглядели как лапки на щеках
+
+
     const cy = P.claspAt === 'collar' && Number.isFinite(k.my) ? Math.max(t + 5, k.my + 12) : t + 5;
     return { back, front: clasp(L + 7, cy) + clasp(R - 7, cy) };
   }
-  // застёжка-звезда с четырьмя лучами (роза ветров)
+
   const starClasp = (x, y, r, ink, fill) => `<path d="M${x} ${y - r} L${x + r * 0.32} ${y - r * 0.32} L${x + r} ${y} L${x + r * 0.32} ${y + r * 0.32} L${x} ${y + r} L${x - r * 0.32} ${y + r * 0.32} L${x - r} ${y} L${x - r * 0.32} ${y - r * 0.32} Z" fill="${fill || '#ffd36b'}" stroke="${ink}" stroke-width="1.6" stroke-linejoin="round"/>`;
 
-  // оружие и щит: вид, которого стиль не умеет (новое снаряжение появилось позже стиля), рисуется «Легионом»
+
   function gearArt(st, fn, kind, rar) {
     let out = '';
     try { out = st[fn](kind, rar) || ''; } catch (e) { out = ''; }
     if (!out && st !== STYLES.legion && STYLES.legion) out = STYLES.legion[fn](kind, rar) || '';
     return out;
   }
-  // если в новом стиле ошибка — рисуем этого человечка стилем «Легион», чтобы стрим не остался без человечков
-  // 26.10 (ТЗ «старт для стримера», часть 4): личный стиль героя (Печать Метаморфозы) - метка ps в облике («Костюмерная»):
-  // такой человечек рисуется своим стилем, если его сборка загружена (оверлей - все стили; сайт догружает нужный), иначе - стилем канала
+
+
+
   function styleFor(seed, extra, look) {
     let lk = look;
     if (lk === undefined) lk = entry(LOOKS, seed, extra || {});
@@ -913,25 +913,25 @@
     }
   }
 
-  /* ---------- откуда берётся гардероб ---------- */
-  // оверлей MultiDonate: runtime.js сам передаёт состояние модуля «Костюмерная» (MDDoodle.feed)
+   
+
   function feed(id, data) {
     if (id === 'wardrobe') {
-      setTitles(data && data.titles);   // до setLooks: слушатели onLooks перерисуют и ники
+      setTitles(data && data.titles);
       setLooks(data && data.looks);
-      // в Костюмерной включили другой стиль: перезагружаемся, чтобы все виджеты взяли его целиком (а не смесь двух стилей)
-      if (data && data.style && data.style !== ACTIVE && !reloading && window.location && window.location.reload) {   // window.location: имя location внутри занято функцией локаций
+
+      if (data && data.style && data.style !== ACTIVE && !reloading && window.location && window.location.reload) {
         reloading = true; console.log(`[человечки] включён стиль «${data.style}» — перезагружаю страницу`); setTimeout(() => window.location.reload(), 300);
       }
     } else if (id === 'legionary') { setGhosts(data && data.ghosts); setGear(data && data.gear); }
   }
   let reloading = false;
-  // страницы вне MultiDonate (игры StreamClass) — слушаем поток событий сами
-  /* 28.10 (hw-npc-ghosts, стример 00:17): НПС города (кузнец, продавцы, франт, звездочёт…) в «мёртвом» хэллоуинском городе - призраки:
-     тот же облик (сид, шапка, аксессуары), призрачный рисунок стиля (как у героев-призраков), без filter (свечение - мягкий ореол
-     градиентом) и без анимации внутри; висит чуть над землёй. Стиль оборачивает своего НПС: npcWrap(обычный рисунок, те же параметры).
-     MDDoodle.npcGh (ставит город на время рисования): 'both' - обычный (.cy-npc) и призрак (.cy-npcg, скрыт) - рисунок улицы, мёртвые
-     плитки citygl показывают призрака; 'ghost' - только призрак (помещения сайта в хэллоуинском виде); нет - как было */
+
+  
+
+
+
+
   function npcGhost(seed, base, cx, s, mood, extra, look) {
     let svg = ''; try { svg = jDoodle(jhash(seed), mood || 'happy', false, Object.assign({}, extra || {}, { ghost: true }), look); } catch (e) { return ''; }
     const w = 120 * s, h = 170 * s, f1 = (n) => (Math.round(n * 10) / 10).toString(), id = 'npcH' + (jhash(seed) % 1e6);
@@ -957,62 +957,62 @@
     open();
   }
   const src = document.currentScript && document.currentScript.src ? new URL(document.currentScript.src) : null;
-  const inMD = !!(src && /^https?:$/.test(window.location.protocol) && src.origin === window.location.origin);   // страница самого MultiDonate
+  const inMD = !!(src && /^https?:$/.test(window.location.protocol) && src.origin === window.location.origin);
   window.MDDoodle = {
     jrng, jhash, jpick, get CATALOG() { return catalogNow(); }, jDoodle, gearOf, defaultsFor, sameLook, lookChoices, setLooks, lookOf, seedFor, setGhosts, isGhost, setGear, feed, connect,
     setTitles, titleOf, nickColor, npcGhost, npcWrap, npcGh: '',
     onLooks: (fn) => listeners.push(fn), get looks() { return LOOKS; },
-    // детали активного стиля — старые имена, ими пользуются алерты и виджеты
+
     get J_BODIES() { return S ? S.bodies : {}; },
     get BASE_HATS() { return S ? S.hatPool : []; },
     get RARITY() { return S ? S.rarityGlow : {}; },
-    jHats: (b, c1, c2) => { let H; try { H = S.hats({ b, fill: c1, c2 }); } catch (e) { H = STYLES.legion && STYLES.legion !== S ? STYLES.legion.hats({ b, fill: c1, c2 }) : {}; }   // стиль не умеет «голую» голову (пиксельный) — шапки «Легиона»
-      try { const C = classHatsFor(b); for (const id of Object.keys(C)) if (H[id] === undefined) H[id] = C[id]; } catch (e) {} return H; },   // 23.10: + шлемы классов (id и id@редкость)
+    jHats: (b, c1, c2) => { let H; try { H = S.hats({ b, fill: c1, c2 }); } catch (e) { H = STYLES.legion && STYLES.legion !== S ? STYLES.legion.hats({ b, fill: c1, c2 }) : {}; }
+      try { const C = classHatsFor(b); for (const id of Object.keys(C)) if (H[id] === undefined) H[id] = C[id]; } catch (e) {} return H; },
     weaponArt: (kind, rar) => gearArt(S, 'weapon', kind, rar),
     armorArt,
-    charmArt,   // 23.10: значок амулета класса (look.charm)
+    charmArt,
     CLASS_LOOKS: { armors: [...CLASS_ARMOR], hats: [...CLASS_HAT], charms: [...CLASS_CHARM] },
-    HW_ARMORS: [...HW_ARMOR],   // 31.10 (feat/hw-armor-pick): виды брони Хэллоуина (рисунок ядра)
+    HW_ARMORS: [...HW_ARMOR],
     shieldArt: (kind, rar) => gearArt(S, 'shield', kind, rar),
     auraArt: (kind, b, seed) => S.aura(kind, { b, seed, uid }),
-    // стили
+
     addStyle, use, get style() { return S; }, get styles() { return STYLES; }, get active() { return ACTIVE; },
     addLocation, location, get locations() { return LOCS; },
     addNames, get names() { return NAMES; }, baseCatalog: CATALOG,
-    // другие части стиля (карточки героя и т.п.) устроены так же, как локации: addPart(стиль, часть, фабрика) / part(часть, env)
+
     addPart: addLocation, part: location,
-    // HW: «Ночь Тыквенной Луны» — детали ивента (стилям: свои рисунки поверх общих; тестам — списки)
+
     HW_LOOKS, hwHats: (k, tok) => hwHats(k, Object.assign(hwTok(S), tok || {})), hwEyes: (kind, k, tok) => hwEyes(kind, k, Object.assign(hwTok(S), tok || {})), hwAcc: (id, k, tok) => hwAcc(id, k, Object.assign(hwTok(S), tok || {})), hwAura,
-    // локация заданного стиля БЕЗ подстраховки (для стенда)
+
     drawLocation: (styleId, locId, env) => { const f = LOCS[styleId] && LOCS[styleId][locId]; if (!f) throw new Error(`у стиля «${styleId}» нет локации «${locId}»`); return f(env || {}); },
-    // нарисовать заданным стилем БЕЗ подстраховки «Легионом» (для стенда: ошибки стиля должны быть видны)
+
     draw: (id, seed, mood, uniform, extra, look) => build(STYLES[id], seed, mood, uniform, extra, look),
   };
-  // файл, открытый с диска (стенд стилей), никуда не подключается
+
   if (!inMD && !(src && src.protocol === 'file:')) connect(src ? src.origin : 'http://localhost:3777');
 })();
 
-/* ───── стиль «legion»: styles/legion/characters.js ───── */
+ 
 try {
-/* Стиль «Легион» — человечки Легиона: плоские цвета, толстая светлая обводка, тёмные лица.
-   Это стиль-образец: новый стиль = копия этого файла в styles/<id>/characters.js с другими рисунками.
-   Договор (что обязан уметь стиль) — styles/README.md.
-   Холст 120×170, ноги на y = 168, центр по x = 60. Каждая функция возвращает строку SVG. */
+
+
+
+
 (function () {
   'use strict';
   const D = window.MDDoodle;
   if (!D) return;
 
-  // ── цвета стиля ──
-  const LINE = '#f5f2ff';   // обводка тел, рук, предметов
-  const INK = '#15122e';    // лица, контуры аксессуаров
-  const WS = `stroke="${LINE}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"`;   // обводка снаряжения
-  const RARITY = { common: null, uncommon: '#5bd36a', rare: '#4aa3ff', epic: '#b06bff', legendary: '#ffb83d' };          // свечение редких вещей
-  const METAL = { common: '#a9b1b6', uncommon: '#cdeec4', rare: '#cfe3f5', epic: '#dcc6ff', legendary: '#ffd76a' };       // металл по редкости
 
-  /* ── тела: (r) → { L, R, top, hw, eyeY, armY, d, square?, narrow? } ──
-     L/R — левый и правый край, top — макушка, hw — полуширина головы (под шапки), eyeY — линия глаз, armY — плечи,
-     d — контур тела (path), square — плоская макушка, narrow — узкое лицо. r() — случайные числа «по нику». */
+  const LINE = '#f5f2ff';
+  const INK = '#15122e';
+  const WS = `stroke="${LINE}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"`;
+  const RARITY = { common: null, uncommon: '#5bd36a', rare: '#4aa3ff', epic: '#b06bff', legendary: '#ffb83d' };
+  const METAL = { common: '#a9b1b6', uncommon: '#cdeec4', rare: '#cfe3f5', epic: '#dcc6ff', legendary: '#ffd76a' };
+
+  
+
+
   const bodies = {
     bean(r) { const w = 25 + Math.floor(r() * 9), L = 60 - w, R = 60 + w, top = 76; return { L, R, top, hw: w * 0.72, eyeY: 100, armY: 112, d: `M${L} 168 C${L - 4} 124 ${L + 1} 80 60 ${top} C${R - 1} 80 ${R + 4} 124 ${R} 168 Z` }; },
     box(r) { const w = 24 + Math.floor(r() * 9), L = 60 - w, R = 60 + w, top = 80 + Math.floor(r() * 10); return { L, R, top, hw: w - 4, eyeY: top + 26, armY: top + 34, square: true, d: `M${L + 9} ${top} H${R - 9} Q${R} ${top} ${R} ${top + 9} V168 H${L} V${top + 9} Q${L} ${top} ${L + 9} ${top} Z` }; },
@@ -1023,10 +1023,10 @@ try {
     egg(r) { const w = 27 + Math.floor(r() * 5), L = 60 - w, R = 60 + w, top = 70; return { L, R, top, hw: w * 0.6, eyeY: 98, armY: 116, d: `M60 ${top} C${R - 4} ${top} ${R + 6} 130 ${R - 2} 160 Q60 174 ${L + 2} 160 C${L - 6} 130 ${L + 4} ${top} 60 ${top} Z` }; },
   };
 
-  /* ── шапки: k → { id: svg } (k.b — тело, k.fill — цвет тела, k.c2 — второй цвет) ── */
+   
   function hats(k) {
     const b = k.b, c1 = k.fill, c2 = k.c2;
-    const t = b.square ? b.top - 6 : b.top, hw = b.hw, cx = 60;   // у квадратных макушка плоская — шапка садится сверху, а не утопает
+    const t = b.square ? b.top - 6 : b.top, hw = b.hw, cx = 60;
     const S = `stroke="${LINE}" stroke-width="4" stroke-linejoin="round"`;
     let leaves = '';
     for (let i = 0; i < 6; i++) for (const sd of [-1, 1]) { const a = (200 + i * 14) * Math.PI / 180, x = cx + sd * Math.cos(a) * -(hw + 5), y = t + 10 + Math.sin(a) * 12 - i * 1.5; leaves += `<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="7" ry="3.6" transform="rotate(${(sd * (35 - i * 12)).toFixed(0)} ${x.toFixed(1)} ${y.toFixed(1)})" fill="${i % 2 ? '#ffc94d' : '#ffe08a'}" stroke="#8a5a00" stroke-width="1.6"/>`; }
@@ -1047,7 +1047,7 @@ try {
       halo: `<ellipse cx="${cx}" cy="${t - 14}" rx="17" ry="5" fill="none" stroke="#ffe27a" stroke-width="4"/>`,
       sprout: `<path class="ln" d="M${cx} ${t} v-14"/><path d="M${cx} ${t - 12} q-14 -2 -14 -12 q12 0 14 12 z M${cx} ${t - 14} q12 -4 14 -14 q-12 0 -14 14 z" fill="#6fdc6f" class="body"/>`,
       bandana: `<path d="M${cx - hw - 2} ${t + 16} Q${cx} ${t - 6} ${cx + hw + 2} ${t + 16} Z" fill="#e8455c" class="body"/><path d="M${cx + hw} ${t + 14} l12 -2 l-4 10 z" fill="#e8455c" class="body"/>`,
-      // только из Костюмерной (в случайный выбор по нику не входят)
+
       legion: `<path d="M${cx - hw - 5} ${t + 16} Q${cx - hw - 5} ${t - 15} ${cx} ${t - 15} Q${cx + hw + 5} ${t - 15} ${cx + hw + 5} ${t + 16} L${cx + hw - 2} ${t + 16} L${cx + hw - 2} ${t + 8} L${cx - hw + 2} ${t + 8} L${cx - hw + 2} ${t + 16} Z" fill="#d9b04a" ${S}/>`
         + `<path d="M${cx - 18} ${t - 13} Q${cx - 14} ${t - 40} ${cx} ${t - 41} Q${cx + 14} ${t - 40} ${cx + 18} ${t - 13} Z" fill="#e8455c" ${S}/><path d="M${cx - 9} ${t - 32} v14 M${cx} ${t - 36} v18 M${cx + 9} ${t - 32} v14" stroke="#a3122a" stroke-width="2.5"/>`,
       laurel: `<g>${leaves}</g>`,
@@ -1059,8 +1059,8 @@ try {
     };
   }
 
-  /* ── снаряжение ── */
-  // оружие: рукоять в (0,0), клинок вверх (−y)
+   
+
   function weapon(kind, rar) {
     const m = METAL[rar] || METAL.common, wood = '#8a5a2b', dw = '#5a3a1c';
     const grip = (y0, y1, w = 5) => `<rect x="${-w / 2}" y="${y1}" width="${w}" height="${y0 - y1}" rx="2" fill="${wood}" ${WS}/>`;
@@ -1078,27 +1078,27 @@ try {
       case 'staff': { const top = !rar || rar === 'common' ? `<circle cy="-66" r="7" fill="${wood}" ${WS}/>` : `<path d="M0 -84 L8 -70 L0 -58 L-8 -70 Z" fill="${RARITY[rar]}" ${WS}/><path d="M-2 -76 l3 -4" stroke="#fff" stroke-width="2"/>`; return `<rect x="-2.5" y="-60" width="5" height="96" rx="2" fill="${wood}" ${WS}/>${top}`; }
       case 'crook': return `<rect x="-2.5" y="-48" width="5" height="84" rx="2" fill="${wood}" ${WS}/><path d="M0 -48 C-3 -62 10 -68 13 -58 C15 -50 5 -47 5 -54" fill="none" stroke="${LINE}" stroke-width="8" stroke-linecap="round"/><path d="M0 -48 C-3 -62 10 -68 13 -58 C15 -50 5 -47 5 -54" fill="none" stroke="${wood}" stroke-width="4.5" stroke-linecap="round"/><path d="M-3 -40 q-8 -2 -9 -8 q7 0 9 8 z" fill="#6fdc6f" stroke="${LINE}" stroke-width="1.5"/>`;
       case 'censer': return `<path d="M0 0 V22" stroke="${LINE}" stroke-width="2.5" stroke-dasharray="3 2"/><path d="M-9 26 Q0 20 9 26 L7 36 Q0 41 -7 36 Z" fill="${rar && rar !== 'common' ? m : '#c58a45'}" ${WS}/><path d="M-4 22 Q0 18 4 22" fill="none" stroke="${LINE}" stroke-width="2"/><circle cx="-4" cy="14" r="3" fill="rgba(235,235,245,.55)"/><circle cx="2" cy="8" r="4" fill="rgba(235,235,245,.45)"/><circle cx="-1" cy="0" r="3.4" fill="rgba(235,235,245,.35)"/>`;
-      // 20.10: оружие новых классов (Разбойник, Некромант, Паладин). Другие стили, где своего рисунка нет, берут эти (gearArt → «Легион»)
-      case 'kris': {   // волнистый кинжал разбойника
+
+      case 'kris': {
         const gem = rar && rar !== 'common' ? `<circle cy="-1.5" r="2.4" fill="${RARITY[rar]}" stroke="${LINE}" stroke-width="1.5"/>` : '';
         return `<rect x="-2.5" y="2" width="5" height="11" rx="2" fill="#3a2a40" ${WS}/><circle cy="15" r="3.2" fill="${m}" ${WS}/>`
           + `<path d="M-3.5 -2 Q-6.5 -8 -2.5 -13 Q1.5 -18 -2.5 -24 Q-4.5 -30 0 -38 Q4.5 -30 3 -24 Q6.5 -18 2.5 -13 Q6.5 -8 3.5 -2 Z" fill="${m}" ${WS}/>`
           + `<path d="M0 -6 Q-2 -14 0 -22" fill="none" stroke="rgba(42,34,54,.35)" stroke-width="1.4"/><rect x="-9" y="-4" width="18" height="5" rx="2.5" fill="#5a4a6a" ${WS}/>${gem}`;
       }
-      case 'skullstaff': {   // посох с черепом некроманта: глаза светятся цветом редкости
+      case 'skullstaff': {
         const eye = (rar && RARITY[rar]) || '#9fffd0';
         return `<rect x="-2.5" y="-60" width="5" height="96" rx="2" fill="#4a3a2a" ${WS}/><path d="M-2.5 -40 l-6 -6 M2.5 -48 l6 -5" stroke="${LINE}" stroke-width="5" stroke-linecap="round"/><path d="M-2.5 -40 l-6 -6 M2.5 -48 l6 -5" stroke="#4a3a2a" stroke-width="2.4" stroke-linecap="round"/>`
           + `<path d="M0 -84 C-10 -84 -12 -76 -11 -70 C-10 -66 -7 -64 -6 -62 V-58 H6 V-62 C7 -64 10 -66 11 -70 C12 -76 10 -84 0 -84 Z" fill="#efe6d2" ${WS}/>`
           + `<ellipse cx="-4.5" cy="-72" rx="3" ry="3.4" fill="#2a2236"/><ellipse cx="4.5" cy="-72" rx="3" ry="3.4" fill="#2a2236"/><circle cx="-4.5" cy="-72" r="1.4" fill="${eye}"/><circle cx="4.5" cy="-72" r="1.4" fill="${eye}"/>`
           + `<path d="M-1.5 -66 l1.5 -3 l1.5 3 z" fill="#2a2236"/><path d="M-3 -60 v-2.5 M0 -60 v-2.5 M3 -60 v-2.5" stroke="#2a2236" stroke-width="1.4"/>`;
       }
-      case 'grimoire': {   // гримуар: книга в руке, на обложке — череп-руна цветом редкости
+      case 'grimoire': {
         const rune = (rar && RARITY[rar]) || '#9fffd0';
         return `<path d="M0 0 V-6" stroke="${LINE}" stroke-width="2.5"/><rect x="-13" y="-34" width="26" height="30" rx="3" fill="#4a2a6a" ${WS}/><rect x="-13" y="-34" width="5" height="30" rx="2" fill="#2e1a44"/>`
           + `<path d="M11 -31 V-7" stroke="#efe6d2" stroke-width="2.4"/><rect x="9" y="-22" width="7" height="6" rx="1.5" fill="${m}" ${WS}/>`
           + `<circle cx="1.5" cy="-21" r="6" fill="none" stroke="${rune}" stroke-width="2"/><circle cx="-0.6" cy="-22" r="1.3" fill="${rune}"/><circle cx="3.6" cy="-22" r="1.3" fill="${rune}"/><path d="M-0.5 -17.5 h4" stroke="${rune}" stroke-width="1.4"/>`;
       }
-      case 'holymace': {   // булава паладина: навершие-солнце, на редких — золото и камень
+      case 'holymace': {
         const g = rar === 'legendary' || rar === 'epic' ? '#ffd76a' : m, gem = rar && rar !== 'common' ? RARITY[rar] : '#ffe9a8';
         let rays = ''; for (let i = 0; i < 8; i++) { const a2 = i * Math.PI / 4, x1 = Math.sin(a2) * 9, y1 = -46 - Math.cos(a2) * 9, x2 = Math.sin(a2) * 15, y2 = -46 - Math.cos(a2) * 15; rays += `<path d="M${x1.toFixed(1)} ${y1.toFixed(1)} L${x2.toFixed(1)} ${y2.toFixed(1)}" stroke="${LINE}" stroke-width="6" stroke-linecap="round"/><path d="M${x1.toFixed(1)} ${y1.toFixed(1)} L${x2.toFixed(1)} ${y2.toFixed(1)}" stroke="${g}" stroke-width="3" stroke-linecap="round"/>`; }
         return `${grip(14, -36)}<rect x="-6" y="-38" width="12" height="5" rx="2" fill="${g}" ${WS}/>${rays}<circle cy="-46" r="10" fill="${g}" ${WS}/><circle cy="-46" r="4" fill="${gem}" stroke="${LINE}" stroke-width="1.5"/>`;
@@ -1106,7 +1106,7 @@ try {
       default: return '';
     }
   }
-  // щит: центр в (0,0)
+
   function shield(kind, rar) {
     const m = METAL[rar] || METAL.common;
     switch (kind) {
@@ -1118,8 +1118,8 @@ try {
     }
   }
 
-  /* ── доспехи: сама вещь, без стойки (Кузня ставит её на манекен). Низ вещи на y = 0, центр x = 0, высота ~100 ──
-     kind: 'lorica' | 'robe'; rar: common | rare | epic | legendary. На человечке (19.10) — свой рисунок по телу: doodle-core.js → wornArmor. */
+  
+
   const ARMOR_RAR = { uncommon: '#4cc95a', rare: '#4aa3ff', epic: '#b06bff', legendary: '#ffb83d' };
   const O = (w) => `stroke="${LINE}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"`;
   function armor(kind, rar) {
@@ -1136,7 +1136,7 @@ try {
         <path d="M-12 -100 Q0 -92 12 -100" fill="none" stroke="#a3122a" stroke-width="4"/>`;
   }
 
-  /* ── ауры (редкая косметика): свечение за телом, искры, нимб — анимация встроена в SVG (SMIL), без CSS ── */
+   
   const AURA = { gold: ['#ffd76a', '#ffb83d'], sparks: ['#fff6c8', '#ffd76a'], halo: ['#ffe27a', '#ffe27a'], shadow: ['#a24bff', '#3a0f66'], frost: ['#bfe8ff', '#6fb8ff'] };
   function aura(kind, k) {
     const b = k.b, seed = k.seed;
@@ -1146,7 +1146,7 @@ try {
     let back = '', front = '';
     const glow = (op1, op2, dur) => `<defs><radialGradient id="${id}"><stop offset=".3" stop-color="${c[0]}" stop-opacity="1"/><stop offset=".62" stop-color="${c[1]}" stop-opacity=".7"/><stop offset="1" stop-color="${c[1]}" stop-opacity="0"/></radialGradient></defs>`
       + `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="url(#${id})"><animate attributeName="opacity" values="${op1};${op2};${op1}" dur="${dur}s" begin="-${d0.toFixed(2)}s" repeatCount="indefinite"/></ellipse>`;
-    // частицы, поднимающиеся вверх вокруг тела
+
     const motes = (n, col, shape, size) => Array.from({ length: n }, (_, i) => {
       const x = b.L - 8 + ((i * 37 + (seed >>> (i % 8))) % (b.R - b.L + 16)), y0 = 168 - (i * 23) % 40, dur = 1.8 + (i % 4) * 0.45, beg = ((i * 0.53 + d0) % dur).toFixed(2);
       const sh = shape === 'star' ? `<path d="M0 ${-size} L${size * 0.3} ${-size * 0.3} L${size} 0 L${size * 0.3} ${size * 0.3} L0 ${size} L${-size * 0.3} ${size * 0.3} L${-size} 0 L${-size * 0.3} ${-size * 0.3} Z" fill="${col}"/>` : shape === 'flake' ? `<path d="M0 ${-size} V${size} M${-size} 0 H${size} M${-size * 0.7} ${-size * 0.7} L${size * 0.7} ${size * 0.7} M${size * 0.7} ${-size * 0.7} L${-size * 0.7} ${size * 0.7}" stroke="${col}" stroke-width="1.6" stroke-linecap="round"/>` : `<circle r="${size}" fill="${col}"/>`;
@@ -1169,33 +1169,33 @@ try {
 
   D.addStyle({
     id: 'legion',
-    hw: { line: LINE, ink: INK, sw: 4, face: INK },   // HW: токены для деталей «Ночи Тыквенной Луны» (doodle-core.js → hwHats / hwAcc / hwEyes)
+    hw: { line: LINE, ink: INK, sw: 4, face: INK },
     name: 'Легион',
-    // CSS для классов внутри рисунка (виджеты уже содержат эти правила; новому стилю — свои)
+
     css: `.jl-doodle .ln{fill:none;stroke:${LINE};stroke-width:4.5;stroke-linecap:round;stroke-linejoin:round}.jl-doodle .body{stroke:${LINE};stroke-width:4.5;stroke-linejoin:round}.jl-doodle .face:not([fill]){fill:none}.jl-doodle .face{stroke:${INK};stroke-width:3.5;stroke-linecap:round}.jl-doodle .eye{fill:${INK}}`,
 
-    // цвета «по нику»: ровно 4 вызова r() в этом порядке
+
     palette(r) {
       const hue = Math.floor(r() * 360);
       const fill = `hsl(${hue} ${60 + Math.floor(r() * 25)}% ${64 + Math.floor(r() * 12)}%)`, c2 = `hsl(${(hue + 140 + Math.floor(r() * 80)) % 360} 75% 58%)`;
       return { fill, c2 };
     },
     bodies,
-    // разметка лица и плеч по телу: ex — полурасстояние между глазами, ey — линия глаз, my — линия рта, sx — точки плеч
+
     frame(b) {
       return { L: b.L, R: b.R, ex: b.narrow ? 8 : 10, ey: b.eyeY, my: b.eyeY + 14, sx: { l: b.L + (b.square ? 4 : 6), r: b.R - (b.square ? 4 : 6) } };
     },
     body: (k) => `<path class="body" fill="${k.fill}" d="${k.b.d}"/>`,
 
-    // ── лицо ──
-    eyePool: ['dots', 'dots', 'big', 'happy', 'sleepy', 'cyclops', 'stars', 'wide'],   // случайный выбор по нику (не менять — сменятся глаза у всех)
+
+    eyePool: ['dots', 'dots', 'big', 'happy', 'sleepy', 'cyclops', 'stars', 'wide'],
     eyes(kind, k) {
       const { ex, ey } = k;
       if (kind === 'dots') return `<circle class="eye" cx="${60 - ex}" cy="${ey}" r="4"/><circle class="eye" cx="${60 + ex}" cy="${ey}" r="4"/>`;
       if (kind === 'big') return `<circle cx="${60 - ex}" cy="${ey}" r="7" fill="#fff" class="face"/><circle cx="${60 + ex}" cy="${ey}" r="7" fill="#fff" class="face"/><circle class="eye" cx="${60 - ex + 1}" cy="${ey + 1}" r="3"/><circle class="eye" cx="${60 + ex + 1}" cy="${ey + 1}" r="3"/>`;
       if (kind === 'cyclops') return `<circle cx="60" cy="${ey}" r="10" fill="#fff" class="face"/><circle class="eye" cx="61" cy="${ey + 1}" r="4.5"/>`;
       if (kind === 'stars') return [60 - ex, 60 + ex].map((x) => `<path class="face" d="M${x - 4} ${ey} h8 M${x} ${ey - 4} v8 M${x - 3} ${ey - 3} l6 6 M${x + 3} ${ey - 3} l-6 6"/>`).join('');
-      return `<path class="face" d="M${60 - ex - 4} ${ey + 1} q4 -6 8 0 M${60 + ex - 4} ${ey + 1} q4 -6 8 0"/>`;   // happy, sleepy, wide
+      return `<path class="face" d="M${60 - ex - 4} ${ey + 1} q4 -6 8 0 M${60 + ex - 4} ${ey + 1} q4 -6 8 0"/>`;
     },
     mouthPool: ['open', 'grin', 'tongue'],
     mouth(kind, k) {
@@ -1204,9 +1204,9 @@ try {
       if (kind === 'grin') return `<path class="face" d="M50 ${my - 3} h20 q-2 10 -10 10 q-8 0 -10 -10 z" fill="#fff"/>`;
       return `<path class="face" d="M50 ${my - 2} q10 10 20 0"/><path d="M57 ${my + 2} q3 7 6 0 z" fill="#ff6b8a"/>`;
     },
-    // лица настроений: { eyes, mouth }
+
     faces: {
-      sad(k) {   // грустные глаза у всех одинаково узнаваемы: точки + бровки домиком, слеза
+      sad(k) {
         const { ex, ey, my } = k;
         const eyes = (k.eyesKind === 'cyclops'
           ? `<circle cx="60" cy="${ey}" r="10" fill="#fff" class="face"/><circle class="eye" cx="60" cy="${ey + 3}" r="4.5"/><path class="face" d="M48 ${ey - 13} q12 -8 24 0"/>`
@@ -1214,16 +1214,16 @@ try {
           + `<path class="tear" d="M${60 + ex + 4} ${ey + 6} q-3 6 0 8 q3 -2 0 -8 z" fill="#7cc8ff" stroke="${LINE}" stroke-width="1.5"/>`;
         return { eyes, mouth: `<path class="face" d="M51 ${my + 4} q9 -8 18 0"/>` };
       },
-      chill(k) {   // блаженство: глаза-дужки, мечтательная улыбка
+      chill(k) {
         const { ex, ey, my } = k;
         return { eyes: k.cyc ? `<path class="face" d="M51 ${ey + 1} q9 -7 18 0"/>` : `<path class="face" d="M${60 - ex - 5} ${ey + 1} q5 -5 10 0 M${60 + ex - 5} ${ey + 1} q5 -5 10 0"/>`, mouth: `<path class="face" d="M51 ${my} q9 8 18 0"/>` };
       },
-      stern(k) {   // суровое: брови сведены вниз, губы сжаты
+      stern(k) {
         const { ex, ey, my } = k;
         return { eyes: k.cyc ? `<circle cx="60" cy="${ey}" r="10" fill="#fff" class="face"/><circle class="eye" cx="60" cy="${ey + 2}" r="4.5"/><path class="face" d="M47 ${ey - 13} l13 5 l13 -5"/>`
           : `<circle class="eye" cx="${60 - ex}" cy="${ey + 1}" r="4"/><circle class="eye" cx="${60 + ex}" cy="${ey + 1}" r="4"/><path class="face" d="M${60 - ex - 7} ${ey - 9} l10 4 M${60 + ex + 7} ${ey - 9} l-10 4"/>`, mouth: `<path class="face" d="M51 ${my + 3} q9 -4 18 0"/>` };
       },
-      hurt(k) {   // раненое: один глаз крестиком, второй прищурен, рот кривой
+      hurt(k) {
         const { ex, ey, my } = k;
         return { eyes: k.cyc ? `<circle cx="60" cy="${ey}" r="10" fill="#fff" class="face"/><path class="face" d="M51 ${ey + 1} q9 -5 18 0"/><circle class="eye" cx="60" cy="${ey + 3}" r="3"/>`
           : `<path class="face" d="M${60 - ex - 4} ${ey - 4} l8 8 M${60 - ex + 4} ${ey - 4} l-8 8"/><circle class="eye" cx="${60 + ex}" cy="${ey + 1}" r="3.4"/><path class="face" d="M${60 + ex + 7} ${ey - 7} l-9 -3"/>`, mouth: `<path class="face" d="M50 ${my + 2} q5 -5 10 0 q5 5 10 0"/>` };
@@ -1231,35 +1231,35 @@ try {
     },
     blushChance: 0.6,
     blush: blushSvg,
-    // раненый: пластырь крестом на макушке, синяк на щеке
+
     hurt(k) {
       const b = k.b, px = 60 + b.hw * 0.45, py = (b.square ? b.top + 8 : b.top + 12);
       return `<g transform="rotate(35 ${px} ${py})"><rect x="${px - 10}" y="${py - 3.5}" width="20" height="7" rx="2" fill="#f1d9b5" stroke="${INK}" stroke-width="1.6"/><rect x="${px - 3.5}" y="${py - 10}" width="7" height="20" rx="2" fill="#f1d9b5" stroke="${INK}" stroke-width="1.6"/></g>`
         + `<circle cx="${60 - k.ex - 8}" cy="${k.ey + 10}" r="5" fill="#8a5ab8" opacity=".45"/>`;
     },
 
-    // ── шапки ──
-    // исходный список шапок: по нему выбирается шапка «по нику» (новые сюда не добавлять — иначе у всех сменятся шапки)
+
+
     hatPool: ['none', 'tuft', 'cap', 'bow', 'horns', 'crown', 'tophat', 'party', 'wizard', 'antenna', 'antenna2', 'cat', 'bunny', 'halo', 'sprout', 'bandana'],
     hatNoneChance: 0.18,
     hats,
 
-    // ── руки ──
+
     arms: {
-      // руки вверх (радость). Классы armL/armR и transform-origin нужны анимациям виджетов
+
       up(k) {
         const b = k.b, sx = k.sx;
         const lh = { x: k.L - 16, y: 34 + (b.top > 90 ? 10 : 0) }, rh = { x: k.R + 16, y: 34 + (b.top > 90 ? 10 : 0) };
         const arm = (s, h) => `<path class="ln" d="M${s} ${b.armY} C${s + (h.x - s) * 0.2} ${b.armY - 30} ${h.x} ${h.y + 34} ${h.x} ${h.y}"/><path class="ln" d="M${h.x} ${h.y} l-7 -11 M${h.x} ${h.y} l0 -13 M${h.x} ${h.y} l7 -11"/>`;
         return `<g class="arm armL" style="transform-origin:${sx.l}px ${b.armY}px">${arm(sx.l, lh)}</g><g class="arm armR" style="transform-origin:${sx.r}px ${b.armY}px">${arm(sx.r, rh)}</g>`;
       },
-      // руки вдоль тела (грусть, отдых, бой без снаряжения). Классы sadL/sadR
+
       down(k) {
         const b = k.b, sx = k.sx;
         const arm = (s, dir) => `<path class="ln" d="M${s} ${b.armY} C${s + dir * 10} ${b.armY + 14} ${s + dir * 12} ${b.armY + 30} ${s + dir * 9} ${Math.min(162, b.armY + 44)}"/><circle cx="${s + dir * 9}" cy="${Math.min(162, b.armY + 44) + 3}" r="5.5" fill="${k.fill}" class="body"/>`;
         return `<g class="arm sadL">${arm(sx.l, -1)}</g><g class="arm sadR">${arm(sx.r, 1)}</g>`;
       },
-      // боевая стойка: правая рука держит оружие сбоку, левая — щит (или кулак) перед телом. Классы batL/batR
+
       armed(k) {
         const b = k.b, sx = k.sx;
         const hr = { x: k.R + 15, y: b.armY + 12 }, hl = { x: k.L - 7, y: b.armY + 20 };
@@ -1268,15 +1268,15 @@ try {
       },
     },
     hand: (k, x, y) => `<circle cx="${x}" cy="${y}" r="5.5" fill="${k.fill}" class="body"/>`,
-    // как держать снаряжение в боевой стойке
+
     hold: { weaponScale: 1.22, weaponRot: (kind) => (kind === 'bow' || kind === 'censer' || kind === 'grimoire' ? 0 : 12), shieldScale: 1.15, shieldDx: 6, shieldDy: 2 },
     weapon,
     shield,
-    armor,   // необязательно: без неё рисуются доспехи «Легиона»
-    wear: { line: LINE, ink: INK },   // 19.10: обводка надетых доспехов и амулета (рисует скелет, doodle-core.js)
+    armor,
+    wear: { line: LINE, ink: INK },
     rarityGlow: RARITY,
     gearGlow: (id, color) => `<filter id="${id}" x="-60%" y="-60%" width="220%" height="220%"><feDropShadow dx="0" dy="0" stdDeviation="3.4" flood-color="${color}" flood-opacity="1"/></filter>`,
-    // предметы в руке на отдыхе (extra.hold). rot — компенсировать наклон человечка, чтобы бокал стоял ровно
+
     held: {
       cocktail(k, rot) {
         const hy = Math.min(162, k.b.armY + 44) + 3, hx = k.sx.r + 9;
@@ -1291,17 +1291,17 @@ try {
       },
     },
 
-    // ── аксессуары Костюмерной ──
-    // 19.10: «Плащ первопроходца» (награда): тёмно-синий дорожный плащ с рваным краем, обводка — как у тел
+
+
     pioneer: { cloak: '#2c4a6e', lining: '#bfe3ff', line: LINE, ink: INK, w: 4, hem: 'zig', clasp: 'star' },
-    capeColor: '#c0182b',   // цвет плаща, если зритель не выбрал свой
+    capeColor: '#c0182b',
     acc: {
-      cape(k, col) {   // плащ — за телом, от плеч до земли
+      cape(k, col) {
         const L = k.L, R = k.R, t = k.b.armY - 8;
         return `<path d="M${L + 6} ${t} C${L - 12} ${t + 30} ${L - 20} 150 ${L - 18} 168 L${R + 18} 168 C${R + 20} 150 ${R + 12} ${t + 30} ${R - 6} ${t} Z" fill="${col}" stroke="${LINE}" stroke-width="4" stroke-linejoin="round"/>`
           + `<path d="M${L + 4} ${t + 2} Q60 ${t + 14} ${R - 4} ${t + 2}" fill="none" stroke="#ffc94d" stroke-width="4" stroke-linecap="round"/>`;
       },
-      bowtie(k, col) {   // бабочка под ртом
+      bowtie(k, col) {
         const y = k.my + 14;
         return `<path d="M60 ${y} l-11 -7 l0 14 z M60 ${y} l11 -7 l0 14 z" fill="${col}" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/><circle cx="60" cy="${y}" r="3" fill="${INK}"/>`;
       },
@@ -1333,21 +1333,21 @@ try {
       },
     },
 
-    // ── наряды событий (корона «Тцаря дня», парик судьи, тюремная роба) ──
+
     event: {
-      crown(k, size) {   // корона вместо шапки: 'big' | 'mini'
+      crown(k, size) {
         const b = k.b, kk = size === 'mini' ? 0.7 : 1, t = b.top + (b.square ? -1 : 4), w = 16 * kk, h = 20 * kk;
         return `<path d="M${60 - w} ${t} l0 ${-h} l${w / 2} ${h * 0.45} l${w / 2} ${-h * 0.7} l${w / 2} ${h * 0.7} l${w / 2} ${-h * 0.45} l0 ${h} z" fill="#ffc94d" stroke="${LINE}" stroke-width="${3.5 * kk}" stroke-linejoin="round"/>`
           + `<circle cx="60" cy="${t - h * 0.35}" r="${3 * kk}" fill="#e8455c"/><circle cx="${60 - w * 0.55}" cy="${t - h * 0.2}" r="${2.2 * kk}" fill="#4ab0ff"/><circle cx="${60 + w * 0.55}" cy="${t - h * 0.2}" r="${2.2 * kk}" fill="#6fdc6f"/>`;
       },
-      wig(k) {   // парик судьи: кудри поверх головы и по бокам
+      wig(k) {
         const b = k.b, t = b.square ? b.top - 4 : b.top, hw = b.hw, cs = [];
         for (let i = -3; i <= 3; i++) cs.push(`<circle cx="${60 + i * hw / 3.1}" cy="${t + 3 - (3 - Math.abs(i)) * 2.2}" r="9.5"/>`);
         for (let j = 1; j <= 4; j++) { cs.push(`<circle cx="${60 - hw - 7}" cy="${t + 4 + j * 13}" r="9"/>`); cs.push(`<circle cx="${60 + hw + 7}" cy="${t + 4 + j * 13}" r="9"/>`); }
         return `<g fill="#f4f1ea" stroke="#9a9488" stroke-width="2.5">${cs.join('')}</g>`;
       },
     },
-    // тюремная роба: полоски ниже рта, поверх — воротник и контур тела
+
     uniform(k) {
       const u = k.uid('jlU'), y0 = k.my + 11, d = k.b.d;
       return `<defs><clipPath id="${u}c"><path d="${d}"/></clipPath><pattern id="${u}p" patternUnits="userSpaceOnUse" width="120" height="16" patternTransform="rotate(-4)"><rect width="120" height="16" fill="#f1efe8"/><rect y="8" width="120" height="8" fill="#23212b"/></pattern></defs>`
@@ -1356,8 +1356,8 @@ try {
         + `<path class="body" fill="none" d="${d}"/>`;
     },
 
-    // ── призрак (погиб в Походе): той же формы, полупрозрачный, низ «рваный», глаза и рот — тёмные овалы, плавно парит ──
-    // parts.arms — руки, parts.head — шапка/корона/парик. Возвращает { style — для <svg style>, inner — содержимое }
+
+
     ghost(k, parts) {
       const g = k.uid('jlG'), cyc = k.cyc, GI = '#2a2f55', { ex, ey, my } = k;
       let wave = 'M-20 190 V160'; for (let x = -20; x < 140; x += 12) wave += ' q6 -9 12 0'; wave += ' V190 Z';
@@ -1378,36 +1378,36 @@ try {
 
 } catch (e) { console.error('[стили] styles/legion/characters.js не загрузился:', e); }
 
-/* ───── стиль «cats»: styles/cats/characters.js ───── */
+ 
 try {
-/* Стиль «Котики» — человечки Легиона в виде котов: уши в контуре тела, хвост покачивается,
-   кошачьи глаза со зрачком-щёлкой, розовый нос, усы, мех с узором «по нику» (полосатый, грудка, пятно).
-   Тёплая тёмно-коричневая обводка, как в детской книжке-картинке. Лапки с подушечками вместо кистей.
-   Устроен как образец styles/legion/characters.js, договор — styles/README.md.
-   Холст 120×170, ноги на y = 168, центр по x = 60. Каждая функция возвращает строку SVG. */
-let catRobeN = 0;   // 20.10: счётчик id обрезки пледа (свой у каждого рисунка)
+
+
+
+
+
+let catRobeN = 0;
 (function () {
   'use strict';
   const D = window.MDDoodle;
   if (!D) return;
 
-  // ── цвета стиля ──
-  const INK = '#2b1d18';     // обводка всего: тёплый тёмно-коричневый
-  const NOSE = '#ff8fa3';    // нос, подушечки, внутренность ушей
-  const STRIPE = 'rgba(70,35,15,.32)';   // полоски и пятна меха (ложатся на любой цвет)
-  const IRIS = ['#9be15d', '#ffd23f', '#f5a623', '#6ec6ff', '#7bdcb5'];   // цвет глаз — по нику (из seed, без r())
-  const WS = `stroke="${INK}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"`;   // обводка снаряжения
+
+  const INK = '#2b1d18';
+  const NOSE = '#ff8fa3';
+  const STRIPE = 'rgba(70,35,15,.32)';
+  const IRIS = ['#9be15d', '#ffd23f', '#f5a623', '#6ec6ff', '#7bdcb5'];
+  const WS = `stroke="${INK}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"`;
   const RARITY = { common: null, uncommon: '#5bd36a', rare: '#5ec8ff', epic: '#c77dff', legendary: '#ffcf4a' };
   const METAL = { common: '#b7bec4', uncommon: '#cdeec4', rare: '#bfe3ff', epic: '#e0c8ff', legendary: '#ffd76a' };
   const FUR = ['#f2a65a', '#e8914a', '#f3d9b1', '#9aa3ad', '#7d8a99', '#f4f1ec', '#4a4350', '#a8754f', '#ffc6a0', '#c9ccd3', '#b6a6c9', '#e7b98a'];
   const f1 = (v) => +v.toFixed(1);
-  // цвет глаз «по нику»; у купленных глаз — тот же, что у образца в Шатре (образец рисуется с ником «образец eyes <id>»):
-  // 17.10 купили «голубые» глаза-блюдца, а на своём коте они были жёлтыми
+
+
   const iris = (k) => IRIS[(((k.look && k.look.eyes ? D.jhash('образец eyes ' + k.look.eyes) : k.seed) >>> 0) >>> 3) % IRIS.length];
 
-  /* ── тела: (r) → { L, R, top, hw, eyeY, armY, d, square?, narrow?, ear, pat } ──
-     Уши — часть контура d (их видят и виджеты). ear — точки левого уха (для розовой серединки и кисточек рыси),
-     pat — узор меха: 0 гладкий, 1 полосатый, 2 светлая грудка, 3 пятно у глаза, 4 полосатый с грудкой. */
+  
+
+
   function earSeg(top, hw, eh) {
     const ox = f1(60 - hw), oy = top + 9, tx = f1(ox + hw * 0.1), ty = top - eh, ix = f1(60 - hw * 0.3), iy = top + 1;
     return { ear: { ox, oy, tx, ty, ix, iy }, seg: `L${tx} ${ty} L${ix} ${iy} Q60 ${top - 2.5} ${f1(120 - ix)} ${iy} L${f1(120 - tx)} ${ty} L${f1(120 - ox)} ${oy}` };
@@ -1423,8 +1423,8 @@ let catRobeN = 0;   // 20.10: счётчик id обрезки пледа (св�
   };
   const earOf = (b) => b.ear || { ox: 60 - b.hw, oy: b.top + 9, tx: 60 - b.hw * 0.9, ty: b.top - 14, ix: 60 - b.hw * 0.3, iy: b.top + 1 };
 
-  // тело: хвост (покачивается) → контур с ушами → серединки ушей → узор меха → нос и усы
-  // 18.10: хвост — отдельным слоем, скелет кладёт его ПОД руки (раньше хвост перекрывал правую лапу)
+
+
   function tail(k) {
     const b = k.b, fill = k.fill, pat = b.pat || 0;
     const bx = b.R - 7, by = 158, beg = (((k.seed >>> 0) % 997) / 997 * 2.8).toFixed(2);
@@ -1457,7 +1457,7 @@ let catRobeN = 0;   // 20.10: счётчик id обрезки пледа (св�
     return s;
   }
 
-  /* ── лицо ── */
+   
   const eyeIris = (x, y, rr, col) => `<circle cx="${x}" cy="${y}" r="${rr}" fill="${col}" stroke="${INK}" stroke-width="2"/><ellipse cx="${x}" cy="${y}" rx="${f1(rr * 0.22)}" ry="${f1(rr * 0.78)}" fill="${INK}"/><circle cx="${f1(x - rr * 0.38)}" cy="${f1(y - rr * 0.4)}" r="${f1(rr * 0.24)}" fill="#fff"/>`;
   const starP = (x, y, rr) => { let d = ''; for (let i = 0; i < 10; i++) { const a = (i * 36 - 90) * Math.PI / 180, q = i % 2 ? rr * 0.45 : rr; d += `${i ? 'L' : 'M'}${f1(x + Math.cos(a) * q)} ${f1(y + Math.sin(a) * q)}`; } return d + 'Z'; };
   const FL = `fill="none" stroke="${INK}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"`;
@@ -1469,19 +1469,19 @@ let catRobeN = 0;   // 20.10: счётчик id обрезки пледа (св�
     if (kind === 'stars') return `<path d="${starP(xs[0], ey, 5.8)}${starP(xs[1], ey, 5.8)}" fill="#ffd23f" stroke="${INK}" stroke-width="1.5" stroke-linejoin="round"/>`;
     if (kind === 'slit') return xs.map((x) => `<path d="M${x - 7} ${ey} q7 -8 14 0 q-7 8 -14 0 z" fill="${col}" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/><path d="M${x} ${ey - 4} v8" stroke="${INK}" stroke-width="2.2" stroke-linecap="round"/>`).join('');
     if (kind === 'sleepy') return xs.map((x) => `<path d="M${x - 6} ${ey} a6 5 0 0 0 12 0 z" fill="${col}" stroke="${INK}" stroke-width="1.8"/><path d="M${x} ${ey} v3.6" stroke="${INK}" stroke-width="2"/><path d="M${x - 7} ${ey} h14" ${FL}/>`).join('');
-    return `<path d="M${60 - ex - 5} ${ey + 1} q5 -6 10 0 M${60 + ex - 5} ${ey + 1} q5 -6 10 0" ${FL}/>`;   // happy: ^ ^
+    return `<path d="M${60 - ex - 5} ${ey + 1} q5 -6 10 0 M${60 + ex - 5} ${ey + 1} q5 -6 10 0" ${FL}/>`;
   }
-  const PH = (my) => `M60 ${my - 4} v2.5`;   // от носа ко рту
+  const PH = (my) => `M60 ${my - 4} v2.5`;
   const OMEGA = (my, w = 6.5) => `M60 ${my - 1.5} q-3 4 -${w} 0.5 M60 ${my - 1.5} q3 4 ${w} 0.5`;
   function mouth(kind, k) {
     const my = k.my;
     if (kind === 'open') return `<path d="${PH(my)}" ${FL}/><path d="M53 ${my - 1.5} Q60 ${my + 11} 67 ${my - 1.5} Q60 ${my + 2} 53 ${my - 1.5} Z" fill="#7a2b3a" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/><ellipse cx="60" cy="${my + 4.6}" rx="3" ry="1.8" fill="${NOSE}"/>`;
     if (kind === 'grin') return `<path d="${PH(my)} ${OMEGA(my, 9)}" ${FL}/><path d="M53.5 ${my + 1.2} l1.4 3.4 l1.4 -3.6 z M63.7 ${my + 1} l1.4 3.6 l1.4 -3.4 z" fill="#fff" stroke="${INK}" stroke-width="1.2" stroke-linejoin="round"/>`;
-    return `<path d="M57.5 ${my + 0.8} q2.5 7.5 5 0 z" fill="#ff7f9a" stroke="${INK}" stroke-width="1.4" stroke-linejoin="round"/><path d="${PH(my)} ${OMEGA(my)}" ${FL}/>`;   // tongue: «блеп»
+    return `<path d="M57.5 ${my + 0.8} q2.5 7.5 5 0 z" fill="#ff7f9a" stroke="${INK}" stroke-width="1.4" stroke-linejoin="round"/><path d="${PH(my)} ${OMEGA(my)}" ${FL}/>`;
   }
-  // настроения
+
   const faces = {
-    sad(k) {   // огромные блестящие глаза «кота в сапогах», бровки домиком, слеза
+    sad(k) {
       const { ex, ey, my } = k;
       const big = (x, y, rr) => `<circle cx="${x}" cy="${y}" r="${rr}" fill="${INK}"/><circle cx="${f1(x - rr * 0.35)}" cy="${f1(y - rr * 0.35)}" r="${f1(rr * 0.36)}" fill="#fff"/><circle cx="${f1(x + rr * 0.35)}" cy="${f1(y + rr * 0.3)}" r="${f1(rr * 0.16)}" fill="#fff"/>`;
       const eyesS = (k.cyc ? big(60, ey - 2, 8.5) + `<path d="M50 ${ey - 13} q10 -6 20 0" ${FL}/>`
@@ -1489,32 +1489,32 @@ let catRobeN = 0;   // 20.10: счётчик id обрезки пледа (св�
         + `<path class="tear" d="M${60 + ex + 4} ${ey + 6} q-3 6 0 8 q3 -2 0 -8 z" fill="#8fd3ff" stroke="${INK}" stroke-width="1.2"/>`;
       return { eyes: eyesS, mouth: `<path d="${PH(my)} M53 ${my + 3} q3.5 -5 7 -3 q3.5 -2 7 3" ${FL}/>` };
     },
-    chill(k) {   // мурчит: глаза-щёлочки дужками вниз, довольное «ω»
+    chill(k) {
       const { ex, ey, my } = k;
       return { eyes: k.cyc ? `<path d="M51 ${ey - 1} q9 6 18 0" ${FL}/>` : `<path d="M${60 - ex - 5} ${ey} q5 4 10 0 M${60 + ex - 5} ${ey} q5 4 10 0" ${FL}/>`, mouth: `<path d="${PH(my)} ${OMEGA(my)}" ${FL}/>` };
     },
-    stern(k) {   // прищур охотника: полуприкрытые глаза, брови вниз, клык
+    stern(k) {
       const { ex, ey, my } = k, col = iris(k);
       const half = (x, y, rr) => `<path d="M${x - rr} ${y - 1} h${2 * rr} a${rr} ${f1(rr * 0.8)} 0 0 1 ${-2 * rr} 0 z" fill="${col}" stroke="${INK}" stroke-width="1.8" stroke-linejoin="round"/><path d="M${x} ${y - 1} v${f1(rr * 0.75)}" stroke="${INK}" stroke-width="2.2" stroke-linecap="round"/>`;
       return { eyes: k.cyc ? half(60, ey - 1, 9) + `<path d="M48 ${ey - 10} l12 5 l12 -5" ${FL}/>`
         : half(60 - ex, ey + 1, 6) + half(60 + ex, ey + 1, 6) + `<path d="M${60 - ex - 7} ${ey - 8} l11 4 M${60 + ex + 7} ${ey - 8} l-11 4" ${FL}/>`,
         mouth: `<path d="${PH(my)} M53 ${my + 1} q7 -3 14 0" ${FL}/><path d="M63 ${my + 0.4} l1.3 3.4 l1.3 -3.2 z" fill="#fff" stroke="${INK}" stroke-width="1.1" stroke-linejoin="round"/>` };
     },
-    hurt(k) {   // один глаз крестиком, второй зажмурен, рот волной
+    hurt(k) {
       const { ex, ey, my } = k;
       return { eyes: k.cyc ? `<path d="M52 ${ey - 8} l16 12 M68 ${ey - 8} l-16 12" ${FL}/>`
         : `<path d="M${60 - ex - 4} ${ey - 4} l8 8 M${60 - ex + 4} ${ey - 4} l-8 8 M${60 + ex - 5} ${ey - 3} l9 3 l-9 3" ${FL}/>`, mouth: `<path d="${PH(my)} M52 ${my + 2} q4 -4 8 0 q4 4 8 0" ${FL}/>` };
     },
   };
   const blush = (k) => `<ellipse cx="${60 - k.ex - 9}" cy="${k.ey + 8}" rx="4.2" ry="2.6" fill="#ff7aa2" opacity=".55"/><ellipse cx="${60 + k.ex + 9}" cy="${k.ey + 8}" rx="4.2" ry="2.6" fill="#ff7aa2" opacity=".55"/>`;
-  // раненый: пластырь крестом у уха, клок шерсти дыбом, синяк
+
   function hurt(k) {
     const b = k.b, px = f1(60 + b.hw * 0.45), py = b.top + 9;
     return `<g transform="rotate(35 ${px} ${py})"><rect x="${px - 9}" y="${py - 3}" width="18" height="6" rx="2" fill="#f1d9b5" stroke="${INK}" stroke-width="1.5"/><rect x="${px - 3}" y="${py - 9}" width="6" height="18" rx="2" fill="#f1d9b5" stroke="${INK}" stroke-width="1.5"/></g>`
       + `<circle cx="${60 - k.ex - 8}" cy="${k.ey + 10}" r="5" fill="#8a5ab8" opacity=".45"/>`;
   }
 
-  /* ── шапки: k → { id: svg }. Шапки садятся между ушами, уши торчат по бокам ── */
+   
   function hats(k) {
     const b = k.b, c1 = k.fill, c2 = k.c2, t = b.top, hw = b.hw, cx = 60, e = earOf(b);
     const S = `stroke="${INK}" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"`;
@@ -1529,16 +1529,16 @@ let catRobeN = 0;   // 20.10: счётчик id обрезки пледа (св�
       crown: `<path d="M${cx - 13} ${t + 6} l0 -16 l7 8 l6 -12 l6 12 l7 -8 l0 16 z" fill="#ffc94d" ${S}/><circle cx="${cx}" cy="${t}" r="2.2" fill="#e8455c"/>`,
       tophat: `<rect x="${cx - 12}" y="${t - 24}" width="24" height="28" rx="2" fill="#2a2440" ${S}/><rect x="${cx - 19}" y="${t + 2}" width="38" height="4.5" rx="2" fill="#2a2440" ${S}/><path d="M${cx - 11} ${t - 3} h22" stroke="${c2}" stroke-width="4.5"/>`,
       party: `<path d="M${cx - 12} ${t + 6} L${cx} ${t - 30} L${cx + 12} ${t + 6} z" fill="${c2}" ${S}/><circle cx="${cx}" cy="${t - 32}" r="4.5" fill="#fff" ${S}/><circle cx="${cx - 3}" cy="${t - 4}" r="2" fill="#fff"/><circle cx="${cx + 4}" cy="${t - 14}" r="2" fill="#fff"/><circle cx="${cx - 1}" cy="${t - 22}" r="1.6" fill="#fff"/>`,
-      // 18.10: колпак накрывает уши целиком (раньше кончики ушей торчали из-под полей)
+
       wizard: `<path d="M${f1(Math.min(cx - hw, e.ox) - 4)} ${t + 9} C${f1(e.tx - 11)} ${e.ty - 1} ${cx - 10} ${t - 24} ${cx + 4} ${t - 38} Q${cx + 12} ${t - 34} ${cx + 20} ${t - 28} C${cx + 14} ${t - 22} ${f1(127 - e.tx)} ${e.ty - 2} ${f1(Math.max(cx + hw, 120 - e.ox) + 4)} ${t + 9} z" fill="#4b3bb8" ${S}/><path d="${starP(cx + 1, t - 10, 5)}" fill="#ffc94d"/><path d="M${cx - 9} ${t - 22} a4 4 0 1 0 4 -5 a3 3 0 1 1 -4 5 z" fill="#ffe27a"/>`,
       antenna: `<path d="M${cx + 2} ${t + 1} q2 -16 12 -26" fill="none" stroke="${INK}" stroke-width="2.4" stroke-linecap="round"/><path d="M${cx + 14} ${t - 25} q6 6 4 14" fill="none" stroke="${INK}" stroke-width="1.2"/><path d="M${cx + 18} ${t - 12} q6 4 4 16 q-7 -6 -4 -16 z" fill="${c2}" ${S}/>`,
       antenna2: `<path d="M${cx - 5} ${t + 1} q-1 -10 -9 -18 M${cx + 5} ${t + 1} q1 -10 9 -18" fill="none" stroke="${INK}" stroke-width="2.4" stroke-linecap="round"/><circle cx="${cx - 14}" cy="${t - 19}" r="5" fill="${c2}" ${S}/><circle cx="${cx + 14}" cy="${t - 19}" r="5" fill="${c2}" ${S}/>`,
-      cat: `<path d="M${f1(e.tx - 2.5)} ${e.ty + 4} L${f1(e.tx - 1)} ${e.ty - 11} L${f1(e.tx + 3)} ${e.ty + 3} Z M${f1(122.5 - e.tx)} ${e.ty + 4} L${f1(121 - e.tx)} ${e.ty - 11} L${f1(117 - e.tx)} ${e.ty + 3} Z" fill="${INK}" stroke="${INK}" stroke-width="1.5" stroke-linejoin="round"/>`,   // кисточки рыси
+      cat: `<path d="M${f1(e.tx - 2.5)} ${e.ty + 4} L${f1(e.tx - 1)} ${e.ty - 11} L${f1(e.tx + 3)} ${e.ty + 3} Z M${f1(122.5 - e.tx)} ${e.ty + 4} L${f1(121 - e.tx)} ${e.ty - 11} L${f1(117 - e.tx)} ${e.ty + 3} Z" fill="${INK}" stroke="${INK}" stroke-width="1.5" stroke-linejoin="round"/>`,
       bunny: `<ellipse cx="${cx - 8}" cy="${t - 18}" rx="6" ry="17" fill="#f7f2ee" ${S}/><ellipse cx="${cx + 8}" cy="${t - 18}" rx="6" ry="17" fill="#f7f2ee" ${S}/><ellipse cx="${cx - 8}" cy="${t - 17}" rx="2.6" ry="11" fill="${NOSE}"/><ellipse cx="${cx + 8}" cy="${t - 17}" rx="2.6" ry="11" fill="${NOSE}"/><path d="M${cx - 13} ${t + 3} q13 -8 26 0" fill="none" stroke="${c2}" stroke-width="3.5" stroke-linecap="round"/>`,
       halo: `<ellipse cx="${cx}" cy="${t - 22}" rx="16" ry="4.5" fill="none" stroke="#ffe27a" stroke-width="3.6"/>`,
-      sprout: `<path d="M${cx} ${t + 1} v-14" stroke="#3d7a2a" stroke-width="2.4" stroke-linecap="round"/><path d="M${cx} ${t - 9} q-13 -1 -13 -11 q11 0 13 11 z M${cx} ${t - 12} q11 -3 13 -13 q-11 0 -13 13 z" fill="#6fdc6f" ${S}/>`,   // кошачья мята
+      sprout: `<path d="M${cx} ${t + 1} v-14" stroke="#3d7a2a" stroke-width="2.4" stroke-linecap="round"/><path d="M${cx} ${t - 9} q-13 -1 -13 -11 q11 0 13 11 z M${cx} ${t - 12} q11 -3 13 -13 q-11 0 -13 13 z" fill="#6fdc6f" ${S}/>`,
       bandana: `<path d="M${f1(cx - hw - 1)} ${t + 12} Q${cx} ${t - 8} ${f1(cx + hw + 1)} ${t + 12} Z" fill="#e8455c" ${S}/><path d="M${f1(cx + hw - 1)} ${t + 10} l11 -1 l-4 9 z" fill="#e8455c" ${S}/><circle cx="${cx - 6}" cy="${t + 5}" r="1.5" fill="#fff"/><circle cx="${cx + 5}" cy="${t + 3}" r="1.5" fill="#fff"/><circle cx="${cx}" cy="${t + 8}" r="1.5" fill="#fff"/>`,
-      // только из Костюмерной: шлем легионера с ушками
+
       legion: `<path d="M${f1(cx - hw * 0.7)} ${t - 6} l3 -16 l9 11 z M${f1(cx + hw * 0.7)} ${t - 6} l-3 -16 l-9 11 z" fill="#d9b04a" ${S}/>`
         + `<path d="M${f1(cx - hw - 5)} ${t + 16} Q${f1(cx - hw - 5)} ${t - 15} ${cx} ${t - 15} Q${f1(cx + hw + 5)} ${t - 15} ${f1(cx + hw + 5)} ${t + 16} L${f1(cx + hw - 2)} ${t + 16} L${f1(cx + hw - 2)} ${t + 8} L${f1(cx - hw + 2)} ${t + 8} L${f1(cx - hw + 2)} ${t + 16} Z" fill="#d9b04a" ${S}/>`
         + `<path d="M${cx - 15} ${t - 13} Q${cx - 12} ${t - 38} ${cx} ${t - 39} Q${cx + 12} ${t - 38} ${cx + 15} ${t - 13} Z" fill="#e8455c" ${S}/><path d="M${cx - 7} ${t - 30} v13 M${cx} ${t - 34} v17 M${cx + 7} ${t - 30} v13" stroke="#a3122a" stroke-width="2.2"/>`,
@@ -1551,16 +1551,16 @@ let catRobeN = 0;   // 20.10: счётчик id обрезки пледа (св�
     };
   }
 
-  /* ── снаряжение ── */
+   
   const paw = (x, y, s, col) => `<g fill="${col}"><ellipse cx="${x}" cy="${f1(y + s * 0.35)}" rx="${f1(s * 0.55)}" ry="${f1(s * 0.45)}"/><circle cx="${f1(x - s * 0.55)}" cy="${f1(y - s * 0.3)}" r="${f1(s * 0.22)}"/><circle cx="${x}" cy="${f1(y - s * 0.55)}" r="${f1(s * 0.22)}"/><circle cx="${f1(x + s * 0.55)}" cy="${f1(y - s * 0.3)}" r="${f1(s * 0.22)}"/></g>`;
-  // оружие котиков: рукоять в (0,0), «клинок» вверх (−y). Начальное снаряжение — забавное: вобла, рыбья кость, коготь, открывашка…
-  // обычное — своего цвета; редкое, эпическое и легендарное — окрашено «металлом» редкости (и светится — это делает скелет)
+
+
   function weapon(kind, rar) {
     const m = METAL[rar] || METAL.common, hi = rar && rar !== 'common', wood = '#a0703a';
     const grip = (y0, y1, w = 5, c = wood) => `<rect x="${-w / 2}" y="${y1}" width="${w}" height="${y0 - y1}" rx="2" fill="${c}" ${WS}/>`;
     const line = (d, c = INK, w = 1.6) => `<path d="${d}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
     switch (kind) {
-      case 'sword': {   // сушёная вобла: держат за хвост
+      case 'sword': {
         const c = hi ? m : '#c99a58';
         return `<path d="M-7 13 L0 2 L7 13 Q0 9 -7 13 Z" fill="${c}" ${WS}/><path d="M0 3 C-10 -8 -11 -40 0 -60 C11 -40 10 -8 0 3 Z" fill="${c}" ${WS}/>`
           + `<path d="M0 -58 C-5 -40 -5 -12 0 1" fill="none" stroke="rgba(90,50,20,.35)" stroke-width="3"/>`
@@ -1568,93 +1568,93 @@ let catRobeN = 0;   // 20.10: счётчик id обрезки пледа (св�
           + line('M-7 -30 l3 2 M-7 -20 l3 2 M7 -30 l-3 2 M7 -20 l-3 2', 'rgba(60,30,10,.5)', 1.3)
           + `<path d="M-9 -26 l-5 4 l5 2 Z M9 -26 l5 4 l-5 2 Z" fill="${c}" ${WS}/>`;
       }
-      case 'gladius': {   // рыбья кость
+      case 'gladius': {
         const c = hi ? m : '#f3ead8';
         let ribs = ''; for (let y = -8; y >= -38; y -= 7) ribs += `<path d="M-10 ${y + 4} Q0 ${y - 3} 10 ${y + 4}" fill="none" stroke="${INK}" stroke-width="5" stroke-linecap="round"/><path d="M-10 ${y + 4} Q0 ${y - 3} 10 ${y + 4}" fill="none" stroke="${c}" stroke-width="2.6" stroke-linecap="round"/>`;
         return `<path d="M-7 12 L0 2 L7 12 Z" fill="${c}" ${WS}/><rect x="-2" y="-44" width="4" height="47" rx="2" fill="${c}" ${WS}/>${ribs}`
           + `<path d="M-8 -42 L0 -56 L8 -42 Q0 -38 -8 -42 Z" fill="${c}" ${WS}/><circle cx="-1.5" cy="-47" r="2" fill="${INK}"/>`;
       }
-      case 'dagger': {   // коготь
+      case 'dagger': {
         const c = hi ? m : '#f1ece2';
         return `<rect x="-5" y="1" width="10" height="11" rx="5" fill="#ff8fa3" ${WS}/><circle cx="-2" cy="5" r="1.4" fill="${INK}" opacity=".35"/><circle cx="2" cy="8" r="1.4" fill="${INK}" opacity=".35"/>`
           + `<path d="M-4 2 C-5 -10 -1 -24 9 -33 C5 -22 5 -10 4 2 Z" fill="${c}" ${WS}/>` + line('M-1 -2 C-1 -12 2 -22 7 -29', 'rgba(255,255,255,.7)', 1.4);
       }
-      case 'axe':   // открывашка для консервов
+      case 'axe':
         return `${grip(14, -32, 5, '#e8455c')}<circle cy="-40" r="9" fill="${m}" ${WS}/><circle cy="-40" r="3" fill="${INK}"/>`
           + `<path d="M3 -44 L19 -52 Q24 -46 20 -40 L5 -35 Z" fill="${m}" ${WS}/><path d="M-6 -46 l-6 -6 l4 -3 l6 6 Z" fill="${m}" ${WS}/>`
           + line('M-5 -40 h10 M0 -45 v10', 'rgba(0,0,0,.3)', 1.2);
-      case 'club': {   // колбаса на верёвочке
+      case 'club': {
         const c = hi ? m : '#c8564b';
         return line('M0 2 V14', INK, 2.4) + `<path d="M-7 -54 C-10 -40 -10 -16 -7 -3 C-5 4 5 4 7 -3 C10 -16 10 -40 7 -54 C5 -61 -5 -61 -7 -54 Z" fill="${c}" ${WS}/>`
           + [[-2, -44], [3, -34], [-3, -24], [2, -14], [-1, -6]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.7" fill="#f6d9cb"/>`).join('')
           + line('M-5 -58 q5 -6 10 0', INK, 2) + line('M-4 -50 Q-6 -30 -4 -8', 'rgba(255,255,255,.35)', 2);
       }
-      case 'mace': {   // клубок ниток на спицах
+      case 'mace': {
         const c = hi ? m : '#e8607a';
         return `${grip(12, -30, 5, '#c9ced4')}<circle cy="-42" r="11" fill="${c}" ${WS}/>`
           + line('M-10 -46 Q0 -36 10 -46 M-9 -38 Q0 -50 9 -36 M-4 -52 Q2 -42 -2 -31', 'rgba(43,29,24,.45)', 1.6)
           + `<path d="M-15 -58 L10 -28 M15 -58 L-10 -28" stroke="${INK}" stroke-width="4" stroke-linecap="round"/><path d="M-15 -58 L10 -28 M15 -58 L-10 -28" stroke="#dfe3e6" stroke-width="2" stroke-linecap="round"/>`
           + `<circle cx="-15" cy="-58" r="2.6" fill="#ffd23f" ${WS}/><circle cx="15" cy="-58" r="2.6" fill="#ffd23f" ${WS}/>` + line('M10 -36 q8 6 4 16 q-4 8 2 14', c, 2);
       }
-      case 'hammer': {   // игрушечный молоток-пищалка
+      case 'hammer': {
         const c = hi ? m : '#ff5a7a';
         return `${grip(14, -38, 5, '#ffd23f')}<rect x="-16" y="-56" width="32" height="18" rx="9" fill="${c}" ${WS}/><rect x="-11" y="-53" width="9" height="4" rx="2" fill="#fff" opacity=".6"/>`
           + line('M19 -50 l5 -2 M19 -44 l6 0 M-19 -50 l-5 -2 M-19 -44 l-6 0', INK, 1.6);
       }
-      case 'spear': {   // дразнилка: палочка с пёрышками на верёвке
+      case 'spear': {
         const c = hi ? m : '#6ec6ff';
         return `<rect x="-2" y="-62" width="4" height="94" rx="2" fill="#d9b37a" ${WS}/>` + line('M0 -62 Q12 -66 13 -80', INK, 1.4)
           + `<path d="M13 -80 q9 5 3 17 q-9 -4 -3 -17 Z" fill="${c}" ${WS}/><path d="M13 -80 q-9 3 -6 16 q8 -5 6 -16 Z" fill="#ff8fa3" ${WS}/><circle cx="13" cy="-81" r="2.4" fill="#ffd23f" ${WS}/>`;
       }
-      case 'pitchfork': {   // расчёска-вилы
+      case 'pitchfork': {
         const c = hi ? m : '#ff8fa3';
         let teeth = ''; for (let i = 0; i < 6; i++) { const x = -12.5 + i * 5; teeth += `<path d="M${x} -56 V-76" stroke="${INK}" stroke-width="5" stroke-linecap="round"/><path d="M${x} -56 V-76" stroke="${c}" stroke-width="2.4" stroke-linecap="round"/>`; }
         return `<rect x="-3" y="-50" width="6" height="82" rx="3" fill="#e8914a" ${WS}/>${teeth}<rect x="-16" y="-58" width="32" height="10" rx="4" fill="${c}" ${WS}/>`;
       }
-      case 'bow': {   // рогатка с кошачьим кормом
+      case 'bow': {
         const c = hi ? m : wood;
         return `<path d="M0 20 V-6 M0 -6 L-12 -32 M0 -6 L12 -32" fill="none" stroke="${INK}" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><path d="M0 20 V-6 M0 -6 L-12 -32 M0 -6 L12 -32" fill="none" stroke="${c}" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/>`
           + line('M-12 -32 Q0 -16 12 -32', '#ff5a7a', 2) + `<path d="M-3 -24 h6 l-1 5 h-4 Z" fill="#7a4a2a" ${WS}/><circle cx="-1" cy="-25" r="1.3" fill="#c88a50"/><circle cx="1.6" cy="-26" r="1.2" fill="#c88a50"/>`;
       }
-      case 'staff': {   // лазерная указка — главное оружие кота-колдуна
+      case 'staff': {
         const dot = hi ? RARITY[rar] : '#ff3030';
         return `<rect x="-2.2" y="-62" width="4.4" height="98" rx="2" fill="${hi ? m : '#3a3a44'}" ${WS}/><rect x="-3.5" y="-10" width="7" height="12" rx="2" fill="#5a5a66" ${WS}/><circle cy="-4" r="1.6" fill="#ff3030"/>`
           + `<path d="M0 -64 V-84" stroke="${dot}" stroke-width="2" stroke-dasharray="3 3" opacity=".8"/><circle cy="-88" r="6" fill="${dot}" opacity=".35"/><circle cy="-88" r="3" fill="${dot}"/><circle cy="-64" r="2.6" fill="${dot}"/>`;
       }
-      case 'crook': {   // мышка на палочке
+      case 'crook': {
         const c = hi ? m : '#9aa3ad';
         return `<rect x="-2.5" y="-50" width="5" height="86" rx="2" fill="${wood}" ${WS}/>` + line('M0 -50 C4 -62 14 -62 16 -54', INK, 1.6)
           + `<ellipse cx="17" cy="-44" rx="6" ry="9" fill="${c}" ${WS}/><circle cx="12.5" cy="-50" r="3" fill="${c}" ${WS}/><circle cx="21.5" cy="-50" r="3" fill="${c}" ${WS}/>`
           + `<circle cx="17" cy="-37" r="1.4" fill="#ff8fa3"/>` + line('M17 -35 q-4 8 3 12', '#ff8fa3', 1.4);
       }
-      case 'censer':   // кадило с валерьянкой (зелёный дымок)
+      case 'censer':
         return `<path d="M0 0 V22" stroke="${INK}" stroke-width="2" stroke-dasharray="3 2"/><path d="M-9 26 Q0 20 9 26 L7 36 Q0 41 -7 36 Z" fill="${hi ? m : '#c58a45'}" ${WS}/>`
           + `<path d="M-4 30 h8" stroke="${INK}" stroke-width="1.4"/><circle cx="-4" cy="14" r="3" fill="rgba(150,230,150,.6)"/><circle cx="2" cy="8" r="4" fill="rgba(150,230,150,.5)"/><circle cx="-1" cy="0" r="3.4" fill="rgba(150,230,150,.4)"/>`;
       default: return '';
     }
   }
-  // щиты котиков: центр в (0,0)
+
   function shield(kind, rar) {
     const m = METAL[rar] || METAL.common, hi = rar && rar !== 'common';
     switch (kind) {
-      case 'scutum': {   // когтеточка
+      case 'scutum': {
         let rope = ''; for (let y = -16; y <= 16; y += 4) rope += `<path d="M-10 ${y} H10" stroke="#a07a40" stroke-width="1.6"/>`;
         return `<rect x="-13" y="-21" width="26" height="42" rx="4" fill="${hi ? m : '#8a5a2b'}" ${WS}/><rect x="-10" y="-18" width="20" height="36" rx="2" fill="#dcbf86"/>${rope}`
           + `<path d="M-6 -10 l9 12 M-2 -12 l9 12 M2 -14 l7 10" stroke="#ff8fa3" stroke-width="1.8" stroke-linecap="round"/>`;
       }
-      case 'round':   // миска с кормом
+      case 'round':
         return `<circle r="15" fill="${hi ? m : '#c58a45'}" ${WS}/><circle r="10.5" fill="#7a4a2a" stroke="${INK}" stroke-width="1.6"/>`
           + [[-4, -3], [3, -5], [5, 2], [-2, 4], [-6, 3], [1, -1]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2.2" fill="#c88a50" stroke="${INK}" stroke-width=".8"/>`).join('');
-      case 'buckler':   // крышка от консервы
+      case 'buckler':
         return `<circle r="10.5" fill="${m}" ${WS}/><circle r="8" fill="none" stroke="rgba(0,0,0,.2)" stroke-width="1.2"/><ellipse cy="-4.5" rx="4" ry="2.4" fill="none" stroke="${INK}" stroke-width="1.6"/>`
           + `<path d="M-4 3 q4 -4 8 0 q-4 4 -8 0 z M4 3 l3 -2 v4 z" fill="#6ec6ff" stroke="${INK}" stroke-width=".8"/>`;
-      case 'barrel':   // лежанка-пончик
+      case 'barrel':
         return `<circle r="14.5" fill="${hi ? m : '#b6a6c9'}" ${WS}/><circle r="7" fill="#8e7aa8" stroke="${INK}" stroke-width="1.6"/>`
           + `<path d="M-11 -6 q2 -3 4 0 M6 -10 q2 -3 4 0 M-10 7 q2 3 4 0 M7 8 q2 3 4 0" fill="none" stroke="#fff" stroke-width="1.2" opacity=".6"/><text x="0" y="3" text-anchor="middle" font-size="6" font-weight="700" fill="#fff">zz</text>`;
       default: return '';
     }
   }
-  // доспехи котиков: сама вещь без стойки, низ на y = 0. Лорика — вязаный свитер с рыбкой, мантия — клетчатый плед колдуна
+
   const ARMOR_RAR = { uncommon: '#4cc95a', rare: '#4aa3ff', epic: '#b06bff', legendary: '#ffb83d' };
   function armor(kind, rar) {
     const tr = rar === 'common' || !ARMOR_RAR[rar] ? null : ARMOR_RAR[rar];
@@ -1663,7 +1663,7 @@ let catRobeN = 0;   // 20.10: счётчик id обрезки пледа (св�
       let plaid = '';
       for (const x of [-30, -15, 0, 15, 30]) plaid += `<path d="M${x} -100 V0" stroke="#ffd23f" stroke-width="3" opacity=".55"/>`;
       for (const y of [-80, -60, -40, -20]) plaid += `<path d="M-44 ${y} H44" stroke="#ff8fa3" stroke-width="4" opacity=".5"/>`;
-      const rc = 'catRobeClip' + (++catRobeN).toString(36);   // 20.10: свой id у каждого рисунка (общий id ломался на части телефонов)
+      const rc = 'catRobeClip' + (++catRobeN).toString(36);
       return `<defs><clipPath id="${rc}"><path d="M-22 -102 C-30 -70 -38 -30 -42 0 H42 C38 -30 30 -70 22 -102 Q0 -92 -22 -102 Z"/></clipPath></defs>`
         + `<path d="M-22 -102 C-30 -70 -38 -30 -42 0 H42 C38 -30 30 -70 22 -102 Q0 -92 -22 -102 Z" fill="${base}"/><g clip-path="url(#${rc})">${plaid}</g>`
         + `<path d="M-22 -102 C-30 -70 -38 -30 -42 0 H42 C38 -30 30 -70 22 -102 Q0 -92 -22 -102 Z" fill="none" ${WS}/>`
@@ -1679,7 +1679,7 @@ let catRobeN = 0;   // 20.10: счётчик id обрезки пледа (св�
       + `<path d="M-10 -52 q10 -10 18 0 q-8 10 -18 0 z M8 -52 l6 -5 v10 z" fill="#6ec6ff" ${WS}/><circle cx="-5" cy="-53" r="1.3" fill="${INK}"/>`;
   }
 
-  /* ── ауры: свечение за котом, поднимающиеся следы лапок, звёзды, снежинки — анимация встроена в SVG ── */
+   
   const AURA = { gold: ['#ffd76a', '#ffb83d'], sparks: ['#fff6c8', '#ffd76a'], halo: ['#ffe27a', '#ffe27a'], shadow: ['#a24bff', '#3a0f66'], frost: ['#bfe8ff', '#6fb8ff'] };
   function aura(kind, k) {
     const b = k.b, seed = k.seed >>> 0;
@@ -1698,7 +1698,7 @@ let catRobeN = 0;   // 20.10: счётчик id обрезки пледа (св�
     else if (kind === 'sparks') { back = glow(0.25, 0.45, 2); front = motes(12, '#fff6c8', 'star', 4.5); }
     else if (kind === 'shadow') { back = glow(0.75, 1, 1.6); front = motes(11, '#c48bff', 'dot', 3.2); }
     else if (kind === 'frost') { back = glow(0.6, 0.95, 2.8); front = motes(10, '#e6f7ff', 'flake', 4.4); }
-    else if (kind === 'halo') {   // нимб с ушками
+    else if (kind === 'halo') {
       const t = b.top - 30;
       front = `<g><animateTransform attributeName="transform" type="translate" values="0 0;0 -3;0 0" dur="2.2s" begin="-${d0.toFixed(2)}s" repeatCount="indefinite"/>`
         + `<ellipse cx="60" cy="${t}" rx="19" ry="5.5" fill="none" stroke="#fff3b0" stroke-width="9" opacity=".35"/>`
@@ -1708,23 +1708,23 @@ let catRobeN = 0;   // 20.10: счётчик id обрезки пледа (св�
     return { back, front };
   }
 
-  // лапа-конечность: тёмная обводка + мех; кисть — круглая лапка с пальчиками
+
   const limb = (d, col) => `<path d="${d}" fill="none" stroke="${INK}" stroke-width="9" stroke-linecap="round"/><path d="${d}" fill="none" stroke="${col}" stroke-width="5" stroke-linecap="round"/>`;
   const pawHand = (x, y, col, dir) => `<circle cx="${x}" cy="${y}" r="5.6" fill="${col}" stroke="${INK}" stroke-width="2.2"/><path d="M${x - 2} ${f1(y + dir * 4.4)} v${-dir * 2.4} M${x + 2} ${f1(y + dir * 4.4)} v${-dir * 2.4}" stroke="${INK}" stroke-width="1.2" stroke-linecap="round"/>`;
   const OUT = `stroke="${INK}" stroke-width="2.4" stroke-linejoin="round"`;
 
   D.addStyle({
     id: 'cats',
-    hw: { line: INK, ink: INK, sw: 2.6, face: INK },   // HW: токены для деталей «Ночи Тыквенной Луны» (doodle-core.js → hwHats / hwAcc / hwEyes)
+    hw: { line: INK, ink: INK, sw: 2.6, face: INK },
     name: 'Котики',
-    css: '',   // классы body/ln/face/eye стиль не использует: все цвета заданы прямо в SVG
-    // цвета «по нику»: ровно 3 вызова r(): окрас шерсти, оттенок и насыщенность второго цвета
+    css: '',
+
     palette(r) {
       const fill = FUR[Math.floor(r() * FUR.length)];
       const c2 = `hsl(${Math.floor(r() * 360)} ${70 + Math.floor(r() * 15)}% 58%)`;
       return { fill, c2 };
     },
-    // 19.10: названия окрасов «по нику» (сайт, вкладка «Облик»: что даёт ник)
+
     colorNames: { '#f2a65a': 'Рыжий', '#e8914a': 'Тёмно-рыжий', '#f3d9b1': 'Кремовый', '#9aa3ad': 'Серый', '#7d8a99': 'Сизый', '#f4f1ec': 'Белый', '#4a4350': 'Чёрный', '#a8754f': 'Коричневый', '#ffc6a0': 'Персиковый', '#c9ccd3': 'Серебристый', '#b6a6c9': 'Лиловый', '#e7b98a': 'Песочный' },
     bodies,
     frame(b) {
@@ -1747,17 +1747,17 @@ let catRobeN = 0;   // 20.10: счётчик id обрезки пледа (св�
     hats,
 
     arms: {
-      up(k) {   // лапы вверх
+      up(k) {
         const b = k.b, sx = k.sx, hy = b.top - 4;
         const arm = (s, hx) => limb(`M${s} ${b.armY} C${f1(s + (hx - s) * 0.2)} ${b.armY - 24} ${hx} ${hy + 26} ${hx} ${hy}`, k.fill) + pawHand(hx, hy, k.fill, -1);
         return `<g class="arm armL" style="transform-origin:${sx.l}px ${b.armY}px">${arm(sx.l, k.L - 14)}</g><g class="arm armR" style="transform-origin:${sx.r}px ${b.armY}px">${arm(sx.r, k.R + 14)}</g>`;
       },
-      down(k) {   // лапы вдоль тела
+      down(k) {
         const b = k.b, sx = k.sx, ey = Math.min(160, b.armY + 42);
         const arm = (s, dir) => limb(`M${s} ${b.armY} C${s + dir * 10} ${b.armY + 14} ${s + dir * 12} ${b.armY + 28} ${s + dir * 9} ${ey}`, k.fill) + pawHand(s + dir * 9, ey + 2, k.fill, 1);
         return `<g class="arm sadL">${arm(sx.l, -1)}</g><g class="arm sadR">${arm(sx.r, 1)}</g>`;
       },
-      armed(k) {   // боевая стойка
+      armed(k) {
         const b = k.b, sx = k.sx;
         const hr = { x: k.R + 15, y: b.armY + 12 }, hl = { x: k.L - 7, y: b.armY + 20 };
         const svg = `<g class="arm batL">${limb(`M${sx.l} ${b.armY} C${sx.l - 8} ${b.armY + 6} ${hl.x + 2} ${hl.y - 8} ${hl.x} ${hl.y}`, k.fill)}</g><g class="arm batR">${limb(`M${sx.r} ${b.armY} C${sx.r + 8} ${b.armY + 4} ${hr.x - 2} ${hr.y - 8} ${hr.x} ${hr.y}`, k.fill)}</g>`;
@@ -1769,11 +1769,11 @@ let catRobeN = 0;   // 20.10: счётчик id обрезки пледа (св�
     weapon,
     shield,
     armor,
-    wear: { line: INK, ink: INK },   // 19.10: обводка надетых доспехов и амулета (рисует скелет, doodle-core.js)
+    wear: { line: INK, ink: INK },
     rarityGlow: RARITY,
     gearGlow: (id, color) => `<filter id="${id}" x="-60%" y="-60%" width="220%" height="220%"><feDropShadow dx="0" dy="0" stdDeviation="3.2" flood-color="${color}" flood-opacity="1"/></filter>`,
     held: {
-      cocktail(k, rot) {   // молочный коктейль с рыбкой на бортике
+      cocktail(k, rot) {
         const hy = Math.min(160, k.b.armY + 42) + 2, hx = k.sx.r + 9;
         return `<g transform="translate(${hx} ${hy}) rotate(${rot})"><g class="jd-cocktail">`
           + `<path d="M-1.5 0 V-10 M-7 1 h11" stroke="${INK}" stroke-width="2.6" stroke-linecap="round"/>`
@@ -1785,8 +1785,8 @@ let catRobeN = 0;   // 20.10: счётчик id обрезки пледа (св�
       },
     },
 
-    // 19.10: «Плащ первопроходца» у котика — маленький, чуть выше лапок, с фестонами (шире боков — видно из-за круглого котика) и застёжками-лапками
-    // 20.10: застёжки — у ворота (collar): на «плечах» они садились на щёки поверх румянца
+
+
     pioneer: { cloak: '#35507a', lining: '#cfe8ff', line: INK, ink: INK, w: 3, len: 150, flare: 24, hem: 'round', clasp: 'paw', claspAt: 'collar' },
     capeColor: '#c0182b',
     acc: {
@@ -1795,7 +1795,7 @@ let catRobeN = 0;   // 20.10: счётчик id обрезки пледа (св�
         return `<path d="M${L + 6} ${t} C${L - 12} ${t + 30} ${L - 20} 150 ${L - 18} 168 L${R + 18} 168 C${R + 20} 150 ${R + 12} ${t + 30} ${R - 6} ${t} Z" fill="${col}" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>`
           + `<path d="M${L + 4} ${t + 2} Q60 ${t + 14} ${R - 4} ${t + 2}" fill="none" stroke="#ffc94d" stroke-width="4" stroke-linecap="round"/>`;
       },
-      bowtie(k, col) {   // бабочка с бубенчиком
+      bowtie(k, col) {
         const y = k.my + 13;
         return `<path d="M60 ${y} l-11 -7 l0 14 z M60 ${y} l11 -7 l0 14 z" fill="${col}" ${OUT}/><circle cx="60" cy="${y + 6}" r="3.6" fill="#ffc94d" ${OUT}/><path d="M60 ${y + 7} v2.5" stroke="${INK}" stroke-width="1.2"/>`;
       },
@@ -1804,7 +1804,7 @@ let catRobeN = 0;   // 20.10: счётчик id обрезки пледа (св�
         return k.cyc ? `<circle cx="60" cy="${ey - 2}" r="13" fill="rgba(255,255,255,.18)" stroke="${INK}" stroke-width="2.6"/>`
           : `<circle cx="${60 - ex}" cy="${ey}" r="8.5" fill="rgba(255,255,255,.18)" stroke="${INK}" stroke-width="2.6"/><circle cx="${60 + ex}" cy="${ey}" r="8.5" fill="rgba(255,255,255,.18)" stroke="${INK}" stroke-width="2.6"/><path d="M${60 - ex + 8} ${ey - 1} q${ex - 8} -5 ${2 * ex - 16} 0" fill="none" stroke="${INK}" stroke-width="2.6"/>`;
       },
-      shades(k) {   // очки «кошачий глаз»
+      shades(k) {
         const { ex, ey } = k;
         if (k.cyc) return `<path d="M43 ${ey - 11} L77 ${ey - 11} Q75 ${ey + 7} 60 ${ey + 7} Q45 ${ey + 7} 43 ${ey - 11} Z" fill="${INK}"/><path d="M48 ${ey - 6} l6 0" stroke="#fff" stroke-width="2" opacity=".6"/>`;
         const lens = (xo, xi) => `M${xo} ${ey - 8} L${xi} ${ey - 4} Q${xi} ${ey + 6} ${f1((xo + xi) / 2)} ${ey + 6} Q${xo + (xi > xo ? 2 : -2)} ${ey + 5} ${xo} ${ey - 8} Z`;
@@ -1814,7 +1814,7 @@ let catRobeN = 0;   // 20.10: счётчик id обрезки пледа (св�
         const { ex, ey } = k, cyc = k.cyc, x = cyc ? 60 : 60 + ex, y = cyc ? ey - 2 : ey;
         return `<circle cx="${x}" cy="${y}" r="${cyc ? 12.5 : 8.5}" fill="rgba(255,255,255,.2)" stroke="#ffc94d" stroke-width="2.8"/><path d="M${x + (cyc ? 9 : 6)} ${y + (cyc ? 9 : 6)} q6 14 -2 30" fill="none" stroke="#ffc94d" stroke-width="1.6"/>`;
       },
-      mustache(k) {   // подкрученные усы под носом
+      mustache(k) {
         const y = k.my - 2;
         return `<path d="M60 ${y} c-3 -4 -10 -5 -14 -1 c-3 3 -6 2 -7 -1 c0 6 9 9 15 5 c3 -1 5 -2 6 -3 c1 1 3 2 6 3 c6 4 15 1 15 -5 c-1 3 -4 4 -7 1 c-4 -4 -11 -3 -14 1 z" fill="#3a2410" stroke="#3a2410" stroke-width="1.2" stroke-linejoin="round"/>`;
       },
@@ -1829,19 +1829,19 @@ let catRobeN = 0;   // 20.10: счётчик id обрезки пледа (св�
     },
 
     event: {
-      crown(k, size) {   // корона между ушами
+      crown(k, size) {
         const b = k.b, kk = size === 'mini' ? 0.7 : 1, t = b.top + 5, w = 15 * kk, h = 19 * kk;
         return `<path d="M${60 - w} ${t} l0 ${-h} l${w / 2} ${f1(h * 0.45)} l${w / 2} ${f1(-h * 0.7)} l${w / 2} ${f1(h * 0.7)} l${w / 2} ${f1(-h * 0.45)} l0 ${h} z" fill="#ffc94d" stroke="${INK}" stroke-width="${f1(2.8 * kk)}" stroke-linejoin="round"/>`
           + `<circle cx="60" cy="${f1(t - h * 0.35)}" r="${f1(3 * kk)}" fill="#e8455c"/><circle cx="${f1(60 - w * 0.55)}" cy="${f1(t - h * 0.2)}" r="${f1(2.2 * kk)}" fill="#4ab0ff"/><circle cx="${f1(60 + w * 0.55)}" cy="${f1(t - h * 0.2)}" r="${f1(2.2 * kk)}" fill="#6fdc6f"/>`;
       },
-      wig(k) {   // парик судьи: кудри поверх головы и по бокам (ушки выглядывают)
+      wig(k) {
         const b = k.b, t = b.top, hw = b.hw, cs = [];
         for (let i = -2; i <= 2; i++) cs.push(`<circle cx="${f1(60 + i * hw / 3.4)}" cy="${f1(t + 4 - (2 - Math.abs(i)) * 2)}" r="8.5"/>`);
         for (let j = 1; j <= 4; j++) { cs.push(`<circle cx="${f1(60 - hw - 6)}" cy="${t + 6 + j * 13}" r="8.5"/>`); cs.push(`<circle cx="${f1(60 + hw + 6)}" cy="${t + 6 + j * 13}" r="8.5"/>`); }
         return `<g fill="#f4f1ea" stroke="#9a9488" stroke-width="2.2">${cs.join('')}</g>`;
       },
     },
-    uniform(k) {   // тюремная роба
+    uniform(k) {
       const u = k.uid('jlU'), y0 = k.my + 11, d = k.b.d;
       return `<defs><clipPath id="${u}c"><path d="${d}"/></clipPath><pattern id="${u}p" patternUnits="userSpaceOnUse" width="120" height="16" patternTransform="rotate(-4)"><rect width="120" height="16" fill="#f1efe8"/><rect y="8" width="120" height="8" fill="#23212b"/></pattern></defs>`
         + `<g clip-path="url(#${u}c)"><rect x="0" y="${y0}" width="120" height="${170 - y0}" fill="url(#${u}p)"/><path d="M0 ${y0} H120" stroke="#23212b" stroke-width="4"/>`
@@ -1849,7 +1849,7 @@ let catRobeN = 0;   // 20.10: счётчик id обрезки пледа (св�
         + `<path fill="none" stroke="${INK}" stroke-width="3" stroke-linejoin="round" d="${d}"/>`;
     },
 
-    // призрак: полупрозрачный кот с ушками, низ «рваный», светящиеся глаза, плавно парит
+
     ghost(k, parts) {
       const g = k.uid('jlG'), cyc = k.cyc, GI = '#2a2f55', { ex, ey, my } = k;
       let wave = 'M-20 190 V160'; for (let x = -20; x < 140; x += 12) wave += ' q6 -9 12 0'; wave += ' V190 Z';
@@ -1872,18 +1872,18 @@ let catRobeN = 0;   // 20.10: счётчик id обрезки пледа (св�
 
 } catch (e) { console.error('[стили] styles/cats/characters.js не загрузился:', e); }
 
-/* ───── стиль «cats»: styles/cats/goods.js ───── */
+ 
 try {
-/* Стиль «Котики» — товары (часть 'goods'): кошачья еда и «молочко здоровья» — рисунки совпадают с названиями из names.json.
-   Договор — styles/legion/goods.js: { food: { id: () => svg }, potion: (it) => svg }. Низ вещи — y = 0, ширина около 60–70.
-   Обводка — тёплая коричневая, как у самих котиков. */
+
+
+
 (function () {
   'use strict';
   if (!window.MDDoodle || !window.MDDoodle.addPart) return;
   window.MDDoodle.addPart('cats', 'goods', function () {
     const INK = '#2b1d18', O = (w = 3) => `stroke="${INK}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"`;
     const MILK = '#fffaf0', PINK = '#ff8fa3';
-    // рыбка мордой вправо: c — спинка, b — брюшко, L — длина, H — полувысота
+
     const fish = (c, b, L = 52, H = 11, dy = 0) => {
       const rx = L * 0.36, cy = -(H + 2) + dy;
       return `<path d="M${-rx + 3} ${cy} L${-rx - 15} ${cy - H - 2} L${-rx - 15} ${cy + H + 2} Z" fill="${c}" ${O(2.6)}/>`
@@ -1892,39 +1892,39 @@ try {
         + `<path d="M${rx * 0.28} ${cy - H + 3} q4 ${H - 3} 0 ${2 * H - 6}" fill="none" stroke="${INK}" stroke-width="2"/>`
         + `<circle cx="${rx * 0.58}" cy="${cy - 3}" r="2.6" fill="${INK}"/>`;
     };
-    // миска: внутри — что угодно (рисуется поверх ободка)
+
     const bowl = (inside, c = PINK) => `<path d="M-32 -16 H32 Q30 4 0 4 Q-30 4 -32 -16 Z" fill="${c}" ${O(3.2)}/>`
       + `<ellipse cy="-16" rx="32" ry="7" fill="#fff" ${O(2.6)}/>${inside}<path d="M-14 -4 q14 4 28 0" stroke="#fff" stroke-width="2.4" fill="none" opacity=".6"/>`;
     const steam = (x = 0, y = -36) => `<path d="M${x - 6} ${y} q-5 -7 0 -13 M${x + 6} ${y} q-5 -7 0 -13" stroke="#fff" stroke-width="2.6" fill="none" opacity=".8" stroke-linecap="round"/>`;
     const FOOD = {
-      // Килька — маленькая серебристая рыбка
+
       apple: () => fish('#9fb7cf', '#e8f1fa', 46, 9),
-      // Корюшка — зеленоватая рыбка
+
       pear: () => fish('#9cc7a8', '#e9f6ec', 50, 9),
-      // Хрустящий корм — миска с кормом-рыбками
+
       pretzel: () => bowl([[-16, -19], [-4, -22], [9, -20], [20, -18], [-9, -16], [4, -17]].map(([x, y], i) => `<path d="M${x - 4} ${y} q4 -4 8 0 l3 -2 v4 l-3 -2 q-4 4 -8 0" fill="${i % 2 ? '#b5762f' : '#8a5a2b'}" stroke="${INK}" stroke-width="1.4"/>`).join(''), '#7cc8ff'),
-      // Миска сметаны — белая горка в миске
+
       bread: () => bowl(`<path d="M-24 -17 Q-18 -30 -4 -28 Q6 -38 16 -28 Q26 -26 24 -17 Z" fill="${MILK}" ${O(2.6)}/><path d="M0 -36 q4 -4 2 -8" stroke="${INK}" stroke-width="2.4" fill="none"/>`),
-      // Блюдце молока
+
       kvass: () => `<ellipse cy="-6" rx="34" ry="8" fill="#ffd9a8" ${O(3)}/><ellipse cy="-9" rx="24" ry="5" fill="${MILK}" ${O(2.2)}/><circle cx="-8" cy="-10" r="1.6" fill="#fff"/>`,
-      // Сыр с дырками
+
       cheese: () => `<path d="M-30 0 H30 V-28 L-30 -12 Z" fill="#ffd34d" ${O(3.4)}/><circle cx="-8" cy="-8" r="4" fill="#e8b923"/><circle cx="14" cy="-14" r="3.4" fill="#e8b923"/><circle cx="20" cy="-5" r="2.4" fill="#e8b923"/>`,
-      // Рыбный пирог — пирог, из которого торчит хвост
+
       pie: () => `<path d="M30 -20 L44 -32 L44 -10 Z" fill="#9fb7cf" ${O(2.6)}/><path d="M-34 0 L-29 -16 H29 L34 0 Z" fill="#d9993f" ${O(3.4)}/><path d="M-28 -16 q28 -18 56 0" fill="#e8a23a" ${O(3)}/><path d="M-22 -24 l4 4 m4 -4 l4 4 m-4 -4" stroke="#8a5a2b" stroke-width="2.4"/><path d="M-30 -20 q-8 -6 -10 -14" stroke="#9fb7cf" stroke-width="0"/>`,
-      // Копчёная колбаска — с перевязками на концах
+
       ham: () => `<path d="M-30 -10 Q-30 -26 -12 -26 H14 Q32 -26 32 -12 Q32 0 14 0 H-12 Q-30 0 -30 -10 Z" fill="#b5523a" ${O(3.2)}/><path d="M-30 -13 l-8 -6 M-30 -13 l-8 4 M32 -13 l8 -6 M32 -13 l8 4" stroke="${INK}" stroke-width="2.4"/><circle cx="-6" cy="-14" r="2.4" fill="#f2c3a8"/><circle cx="8" cy="-10" r="2" fill="#f2c3a8"/><circle cx="18" cy="-17" r="2" fill="#f2c3a8"/><path d="M-18 -21 q10 -3 20 0" stroke="#fff" stroke-width="2.4" fill="none" opacity=".5"/>`,
-      // Целый лосось — большая розово-оранжевая рыба
+
       roast: () => fish('#f08a66', '#ffd2bf', 70, 14) + `<path d="M-6 -24 q4 -6 10 0 M6 -24 q4 -6 10 0" stroke="${INK}" stroke-width="1.6" fill="none" opacity=".5"/>`,
-      // Пучок кошачьей мяты
+
       honey_cake: () => `<path d="M0 0 V-24 M0 -8 L-12 -26 M0 -8 L12 -26" stroke="#5a8a3a" stroke-width="3.4" stroke-linecap="round"/>`
         + [[-14, -30, -30], [0, -36, 0], [14, -30, 30], [-8, -18, -40], [9, -18, 40]].map(([x, y, a]) => `<ellipse cx="${x}" cy="${y}" rx="7" ry="11" transform="rotate(${a} ${x} ${y})" fill="#8fd16a" ${O(2.4)}/>`).join('')
         + `<path d="M-6 -2 H6" stroke="${PINK}" stroke-width="5" stroke-linecap="round"/>`,
-      // Тёплое молоко с мёдом — кружка, мёд стекает, пар
+
       sage_tea: () => `<path d="M-18 -32 H16 L13 -2 Q0 3 -15 -2 Z" fill="${MILK}" ${O(3)}/><path d="M16 -26 q12 2 8 12 q-3 6 -11 4" fill="none" stroke="${INK}" stroke-width="3.2"/><path d="M-18 -32 H16 L15 -26 Q8 -22 6 -26 Q2 -18 -2 -26 Q-10 -22 -17 -26 Z" fill="#ffc94d" ${O(2)}/>${steam(-2, -38)}`,
-      // Бойцовая уха — котелок с рыбьим хвостом
+
       spicy_stew: () => `<path d="M-30 -24 H30 Q30 4 0 4 Q-30 4 -30 -24Z" fill="#6d5a45" ${O(3.4)}/><ellipse cy="-24" rx="30" ry="6" fill="#ffb27a" ${O(2.6)}/><path d="M8 -26 L20 -40 L24 -26 Z" fill="#9fb7cf" ${O(2.2)}/><circle cx="-10" cy="-25" r="3" fill="#ff6a3d"/><circle cx="-2" cy="-23" r="2" fill="#6fbf4a"/>${steam(-10, -34)}`,
     };
-    // Молочко здоровья: малое — бутылочка с розовой крышкой, большое — бидон-кувшин
+
     const potion = (it) => /hp|big|больш/i.test(String(it.id) + (it.name || ''))
       ? `<path d="M-22 0 V-34 Q-22 -42 -12 -44 V-52 H12 V-44 Q22 -42 22 -34 V0 Z" fill="${MILK}" ${O(3.2)}/><rect x="-14" y="-58" width="28" height="8" rx="3" fill="${PINK}" ${O(2.6)}/><path d="M22 -36 q14 0 12 14 q-2 10 -12 10" fill="none" stroke="${INK}" stroke-width="3.2"/><path d="M-8 -26 q-6 -6 0 -10 q6 4 8 0 q2 4 -8 10" fill="${PINK}" stroke="${INK}" stroke-width="1.6"/><path d="M-22 -14 H22" stroke="#e8e0d0" stroke-width="2.4"/>`
       : `<path d="M-12 0 V-24 Q-12 -30 -6 -32 V-38 H6 V-32 Q12 -30 12 -24 V0 Z" fill="${MILK}" ${O(3)}/><rect x="-8" y="-44" width="16" height="7" rx="3" fill="${PINK}" ${O(2.4)}/><path d="M-4 -18 q-4 -4 0 -7 q4 3 5 0 q2 3 -5 7" fill="${PINK}" stroke="${INK}" stroke-width="1.4"/>`;
@@ -1934,11 +1934,11 @@ try {
 
 } catch (e) { console.error('[стили] styles/cats/goods.js не загрузился:', e); }
 
-/* ───── стиль «cats»: styles/cats/hero.js ───── */
+ 
 try {
-/* Стиль «Котики» — карточки героя (модуль «Легионер»): карточки как страница детской книжки: тёплая бумага, коричневая обводка, розовые лапки.
-   Разметка и анимации — в modules/legionary/client/widget.js; здесь только вид. Основа — CSS «Легиона», ниже — правила этого стиля
-   (последние перекрывают основу). Договор — styles/README.md, раздел «Карточки героя». */
+
+
+
 (function () {
   'use strict';
   if (!window.MDDoodle || !window.MDDoodle.addPart) return;
@@ -2104,7 +2104,7 @@ try {
       scenes: { death: { title: '😿 МИНУС ЖИЗНЬ', color: '#e8607a' }, revive: { title: '😺 ЕЩЁ ОДНА ЖИЗНЬ', color: '#ffd23f' }, level: { title: (n) => `🐾 УРОВЕНЬ ${n}`, color: '#ffb84a' } },
     };
   });
-  // монеты стиля «Котики»: чешуйка (бронза), серебряная рыбка, золотая рыбка. 100 : 1, как у всех
+
   window.MDDoodle.addPart('cats', 'coins', function () {
     const fish = (c1, c2) => `<path d="M2 21 Q14 2 29 21 Q14 38 2 21 Z" fill="${c1}" stroke="#2a2236" stroke-width="2.6"/><path d="M27 21 L39 9 L38 33 Z" fill="${c1}" stroke="#2a2236" stroke-width="2.6" stroke-linejoin="round"/><circle cx="9" cy="18" r="2.6" fill="#2a2236"/><path d="M14 13 Q19 21 14 29 M20 12 Q25 21 20 30" stroke="${c2}" stroke-width="2.2" fill="none"/>`;
     const ART = {
@@ -2123,10 +2123,10 @@ try {
 
 } catch (e) { console.error('[стили] styles/cats/hero.js не загрузился:', e); }
 
-/* ───── стиль «cats»: styles/cats/legend.js ───── */
+ 
 try {
-/* Стиль «Котики» - своя рамка легендарки с босса (часть 'legend'): подушка с ушками, кольцо следов лап, искорки-сердечки.
-   Раскладка, рамка вида и эмблема ауры - общие (styles/legion/legend.js → MDDoodle.legendKit); без фильтров, движение - SVG animate. */
+
+
 (function () {
   'use strict';
   const D = window.MDDoodle;

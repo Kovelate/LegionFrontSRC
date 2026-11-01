@@ -1,36 +1,36 @@
-/* 20.10: «Город» на PixiJS — только отрисовка улицы (логика: камера, ходьба, присутствие, клики — в city.js).
-   Зачем: при 30 гуляющих SVG-версия ела 58–80% процессора у зрителя без видеокарты — браузер перерисовывал слои человечков.
-   Как: все SVG (Ярмарка стиля, квартал, нижняя улица, предметы с глубиной, человечки) один раз «запекаются» в картинки
-   под масштаб камеры и плотность экрана (фон — плитками 1024 px: лимит размера текстур и память), дальше Pixi только
-   двигает спрайты (WebGL; нет WebGL или он программный — canvas 2D того же Pixi). Кадр рисуется, только когда что-то
-   поменялось (камера, кто-то идёт, допеклась картинка) — в покое не рисуется ничего. Подробно — docs/CITY.md.
-   Pixi (legacy/site/public/vendor) грузится лениво — только когда открыли «Город» (load). */
+
+
+
+
+
+
+
 (function () {
   'use strict';
   const NS = 'http://www.w3.org/2000/svg';
-  const TILE = 1024;           // плитка фона, пикселей экрана (меньше любого лимита текстур — 4096)
-  const TILE_BUDGET = 28e6;    // пикселей фона в памяти (~110 МБ); больше — выкидываем плитки, давно ушедшие из кадра
-  const K_MAX = 2.5;           // плотнее не печём (телефоны с dpr 3–4: глазу не видно, памяти — вдвое меньше)
-  // 22.10: кадр без видеокарты (canvas 2D) рисует процессор, и цена кадра — число пикселей: телефон с dpr 2,75 платил за 2,5 Мпикс
-  // на кадр (в 6 раз больше ПК, 9 кадров/с вместо 30). Плотнее 1,5 в canvas не рисуем — на глаз чуть мягче, втрое легче
+  const TILE = 1024;
+  const TILE_BUDGET = 28e6;
+  const K_MAX = 2.5;
+
+
   const CANVAS_RES = 1.5;
-  // внутри запечённых SVG: без анимаций (как .cy-art * в city.css), вложенные человечки — без обрезки и фильтра (как fixDoodles Ярмарки)
+
   const CSS = '*{animation:none!important;transition:none!important}.jl-doodle{overflow:visible;filter:none}';
   const ESC = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-  /* ---------- загрузка Pixi и шрифта вывесок (только по требованию) ---------- */
+   
   let loading = null, FONT = null;
-  const vend = (V, k) => '/site/vendor/' + ((V && V[k]) || '');   // имя файла с версией — из LG_CITYV (static.ts)
+  const vend = (V, k) => '/site/vendor/' + ((V && V[k]) || '');
   function load(V) {
     if (window.PIXI && window.PIXI.autoDetectRenderer) return Promise.resolve();
     if (loading) return loading;
     const js = (src) => new Promise((ok, no) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => no(new Error('не загрузился ' + src)); document.head.appendChild(s); });
-    // unsafe-eval — замена new Function для WebGL (CSP сайта запрещает eval)
+
     loading = js(vend(V, 'pixi')).then(() => js(vend(V, 'pixiEval'))).then(() => { if (!window.PIXI || !window.PIXI.autoDetectRenderer) throw new Error('нет PIXI'); })
       .catch((e) => { loading = null; throw e; });
     return loading;
   }
-  // Russo One — шрифт вывесок Ярмарки: картинка-SVG не видит шрифты страницы, поэтому кладём его внутрь SVG (data:, 14 КБ)
+
   async function loadFont(V) {
     if (FONT != null) return FONT;
     try {
@@ -41,8 +41,8 @@
   }
   const fontCss = (s) => (FONT && /Russo One/.test(s) ? `@font-face{font-family:'Russo One';src:url(${FONT}) format('woff')}` : '');
 
-  /* ---------- SVG → картинка ---------- */
-  // строку SVG (из HTML-шаблонов: сущности, без xmlns) — в правильный XML: разбор HTML-парсером внутри <svg> и XMLSerializer
+   
+
   let probe = null;
   function holder() {
     if (probe && probe.isConnected) return probe;
@@ -52,12 +52,12 @@
     document.body.appendChild(probe);
     return probe;
   }
-  // разметка внутрь <g>: XML и (по желанию) рамка рисунка — getBBox (без толщины линий — запас добавляет вызывающий)
+
   function measure(inner, box, keepFilter) {
     const p = holder();
     p.innerHTML = `<g>${inner}</g>`;
     const g = p.firstChild;
-    // вложенные человечки: размер — из атрибутов (иначе .jl-doodle{width:100%} страницы сжимает их в пробнике), как в SVG-версии
+
     g.querySelectorAll('svg.jl-doodle').forEach((d) => { const w = d.getAttribute('width'), h = d.getAttribute('height'); if (w) d.style.width = parseFloat(w) + 'px'; if (h) d.style.height = parseFloat(h) + 'px'; d.style.position = 'static'; if (!keepFilter) d.style.filter = 'none'; });
     let bb = null;
     if (box) try { const b = g.getBBox(); if (b.width > 0 && b.height > 0) bb = { x: b.x, y: b.y, w: b.width, h: b.height }; } catch {}
@@ -66,13 +66,13 @@
     p.innerHTML = '';
     return { xml: x, bb };
   }
-  // 28.10 (hw-npc-ghosts): где на слое НПС (doodle-core.js npcWrap: .cy-npc - обычный, рядом .cy-npcg - призрак) - рамки в координатах мира
+
   function npcBoxes(inner) {
     const p = holder(); p.innerHTML = `<g>${inner}</g>`; const out = [];
     try { const h = p.getBoundingClientRect(); for (const e of p.querySelectorAll('.cy-npc')) { const r = e.getBoundingClientRect(); if (r.width > 0 && r.height > 0) out.push({ x: r.left - h.left, y: r.top - h.top, w: r.width, h: r.height, f: 0 }); } } catch {}
     p.innerHTML = ''; return out;
   }
-  // кусок мира [x, y, w, h] при k пикселей на единицу → canvas; pad — 1 px «нахлёста» по краям (без швов между плитками)
+
   async function raster(xml, x, y, w, h, k, pad) {
     const cw = Math.max(1, Math.ceil(w * k)), ch = Math.max(1, Math.ceil(h * k)), W = cw + pad * 2, H = ch + pad * 2;
     const svg = `<svg xmlns="${NS}" xmlns:xlink="http://www.w3.org/1999/xlink" width="${W}" height="${H}" viewBox="${x - pad / k} ${y - pad / k} ${W / k} ${H / k}" preserveAspectRatio="none"><style>${CSS}${fontCss(xml)}</style>${xml}</svg>`;
@@ -94,10 +94,10 @@
     return new P.Texture({ source, frame: new P.Rectangle(r.pad, r.pad, r.cw, r.ch) });
   }
 
-  /* 28.10 (hw-city-dead, стример 15:53): «мёртвый» город Изнанки - перекраска картинки ОДИН раз при запекании (кадр её не делает):
-     обесцветить (остаётся ~10% цвета), затемнить и сжать светлое (самое светлое - ~0,55), холодный серо-синий тон; огни (тёплое яркое -
-     окна, факелы, фонари, лампочки гирлянд, свечи, огонь кузни; ярко-зелёное - котлы, магия) гаснут почти в чёрное. Попиксельно (без
-     ctx.filter - одинаково в OBS, Chrome и телефоне): плитка 1024² - ~10-20 мс один раз. Человечки и убранство ивента не перекрашиваются. */
+  
+
+
+
   const DEAD_LUT = (() => { const a = new Float32Array(256); for (let i = 0; i < 256; i++) a[i] = 0.04 + 0.4 * Math.pow(i / 255, 1.45); return a; })();
   function deadPaint(c) {
     let x; try { x = c.getContext('2d', { willReadFrequently: true }); } catch { x = null; } if (!x) return;
@@ -107,8 +107,8 @@
       const r = d[i], g = d[i + 1], b = d[i + 2], mx = r > g ? (r > b ? r : b) : (g > b ? g : b), mn = r < g ? (r < b ? r : b) : (g < b ? g : b);
       const l = (r * 77 + g * 150 + b * 29) >> 8, sat = mx ? (mx - mn) / mx : 0;
       let y = DEAD_LUT[l];
-      if (mx > 165 && sat > 0.3 && ((r >= b && g >= b && (r > 185 || g > 185)) || (g > r && g > b && g > 160))) y *= 0.3;   // огни гаснут
-      const k = 0.1;   // доля прежнего цвета
+      if (mx > 165 && sat > 0.3 && ((r >= b && g >= b && (r > 185 || g > 185)) || (g > r && g > b && g > 160))) y *= 0.3;
+      const k = 0.1;
       d[i] = Math.min(255, Math.max(0, y * 200 + k * (r - l)));
       d[i + 1] = Math.min(255, Math.max(0, y * 214 + k * (g - l)));
       d[i + 2] = Math.min(255, Math.max(0, y * 255 + k * (b - l)));
@@ -116,7 +116,7 @@
     x.putImageData(im, 0, 0);
   }
 
-  // небо — CSS-градиент сцены (linear-gradient(#a 0%, #b 40%…)) → SVG-градиент на всю высоту мира
+
   function skyDef(css, H) {
     const m = /linear-gradient\((.*)\)\s*$/i.exec(String(css || '').trim());
     let stops = [];
@@ -132,13 +132,13 @@
     return `<linearGradient id="cyglsky" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="${H}">${stops.map((s) => `<stop offset="${s.at}" stop-color="${ESC(s.c)}"/>`).join('')}</linearGradient>`;
   }
 
-  /* ---------- подпись над героем: ник, уровень, значки — свой canvas (чётко на любом экране, рисуется один раз) ---------- */
+   
   function labelStyle(host) {
     const st = {};
     try {
       const mk = (cls) => { const d = document.createElement('div'); d.className = cls; d.style.cssText = 'position:absolute;visibility:hidden;left:-9999px;top:0'; d.textContent = 'x'; host.appendChild(d); const cs = getComputedStyle(d); const r = { bg: cs.backgroundColor, color: cs.color, family: cs.fontFamily }; d.remove(); return r; };
       st.other = mk('cy-nm'); st.me = mk('cy-nm me');
-      // city.css ещё не применился (подписи без подложки) — те же значения, что в нём
+
       const none = (c) => !c || /rgba\([^)]*,\s*0\)|transparent/.test(c);
       if (none(st.other.bg)) st.other.bg = 'rgba(15, 12, 34, 0.62)';
       if (none(st.me.bg)) st.me.bg = (getComputedStyle(document.documentElement).getPropertyValue('--accent') || '').trim() || '#c81e17';
@@ -163,7 +163,7 @@
   }
   function labelCanvas(o, st, dpr) {
     const S = (o.mine ? st.me : st.other) || {}, fam = S.family || 'system-ui, sans-serif';
-    const k = st.k || 1, fs = 12 * k, px = 7 * k, py = 3 * k, gap = 4 * k, bd = 13 * k;   // 27.10: k - крупнее (оверлей стрима, o.labK)
+    const k = st.k || 1, fs = 12 * k, px = 7 * k, py = 3 * k, gap = 4 * k, bd = 13 * k;
     const c = document.createElement('canvas'), g = c.getContext('2d');
     const f1 = `700 ${fs}px ${fam}`, f2 = `700 ${(fs * 0.78).toFixed(2)}px ${fam}`;
     g.font = f1; const nw = g.measureText(o.name).width;
@@ -186,7 +186,7 @@
       if (col.ring) { g.strokeStyle = col.bg; g.lineWidth = 1.5; g.stroke(); } else { g.fillStyle = col.bg; g.fill(); }
       g.fillStyle = col.fg;
       const ic = a.i || '✦';
-      if (ic === '✦') {   // звезда значка — тот же контур, что AW_STAR в app.js (62% круга)
+      if (ic === '✦') {
         const k = bd * 0.62 / 16; g.save(); g.translate(cx - 8 * k, cy - 8 * k); g.scale(k, k);
         g.fill(new Path2D('M8 0.8 9.7 6.3 15.2 8 9.7 9.7 8 15.2 6.3 9.7 0.8 8 6.3 6.3Z')); g.restore();
       } else { g.font = `700 ${Math.round(bd * 0.62)}px ${fam}`; g.textAlign = 'center'; g.fillText(String(ic), cx, cy + 0.5); g.textAlign = 'start'; }
@@ -195,29 +195,29 @@
     return { c, w, h };
   }
 
-  /* ---------- 20.10: обводка по силуэту — подсветка того, на что навели (здание, наковальня, кузнец) ----------
-     В рисунке такие места помечены <g data-ol="id …"> (styles/<стиль>/fair.js, cityart.js). Силуэт — только эти группы
-     (с <defs> своего слоя, без свечений-градиентов и анимаций), запечённые в картинку. Контур — силуэт, «раздутый» сдвигами
-     на 2,5 px экрана, минус сам силуэт; мягкое свечение — тень холста. Готовится один раз на цель и масштаб (первое наведение),
-     дальше это одна готовая картинка: спрайт Pixi между фоном и человечками (или canvas над улицей в SVG-версии) — в кадре
-     ничего не пересчитывается, остальные здания ничего не стоят. sources — [{ svg, dx }]: слои и предметы в координатах города. */
+  
+
+
+
+
+
   const OL = { line: 2.5, blur: 9, color: '#ffd66e', glow: 'rgba(255, 196, 84, .95)', max: 4000, keep: 4 };
   function outliner(sources) {
     let cuts = null;
-    const st = { prep: 0, bakes: 0, bakeMs: 0, px: 0 };   // для проверок (LGCity.debug)
-    const cache = new Map();   // "id|k" → { c, x, y, k, tex, on } или Promise
+    const st = { prep: 0, bakes: 0, bakeMs: 0, px: 0 };
+    const cache = new Map();
     const ser = (n) => new XMLSerializer().serializeToString(n);
-    // все помеченные группы — за один проход по рисунку (несколько десятков мс, один раз за открытие города)
+
     function prep() {
       if (cuts) return cuts;
       cuts = {};
       const p = holder(), t0 = performance.now();
       try {
         sources.forEach((src, si) => {
-          if (!src || !/data-ol=/.test(src.svg)) return;   // предметы без пометок — даже не разбираем
+          if (!src || !/data-ol=/.test(src.svg)) return;
           p.innerHTML = `<g transform="translate(${src.dx || 0} 0)">${src.svg}</g>`;
           p.querySelectorAll('svg.jl-doodle').forEach((d) => { const w = d.getAttribute('width'), h = d.getAttribute('height'); if (w) d.style.width = parseFloat(w) + 'px'; if (h) d.style.height = parseFloat(h) + 'px'; d.style.position = 'static'; d.style.filter = 'none'; });
-          // свечения (радиальный градиент, тающий в ноль) и невидимое без анимаций — не часть силуэта
+
           const glow = new Set([...p.querySelectorAll('radialGradient')].filter((g) => [...g.querySelectorAll('stop')].some((s) => +(s.getAttribute('stop-opacity') ?? 1) === 0)).map((g) => g.id));
           p.querySelectorAll('animate, animateTransform, animateMotion, set').forEach((n) => n.remove());
           p.querySelectorAll('[fill^="url(#"], [opacity="0"]').forEach((n) => { const m = /url\(#([^)]+)\)/.exec(n.getAttribute('fill') || ''); if (n.getAttribute('opacity') === '0' || (m && glow.has(m[1]))) n.remove(); });
@@ -225,7 +225,7 @@
           const o = p.getBoundingClientRect();
           for (const el of p.querySelectorAll('[data-ol]')) {
             const r = el.getBoundingClientRect(); if (!r.width && !r.height) continue;
-            // группа с цепочкой предков (вложенные <svg> слоя, сдвиги) — те же координаты, что на улице
+
             let node = el.cloneNode(true);
             for (let a = el.parentNode; a && a !== p; a = a.parentNode) { const sh = a.cloneNode(false); sh.appendChild(node); node = sh; }
             const bb = [r.left - o.left, r.top - o.top, r.right - o.left, r.bottom - o.top];
@@ -241,35 +241,35 @@
       return cuts;
     }
     const canvas = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
-    // k — пикселей картинки на единицу города (как у фона: масштаб камеры × плотность экрана), z — масштаб камеры
+
     async function make(cut, k, z) {
       const t0 = performance.now();
       const lw = OL.line / z, bl = OL.blur / z, m = lw + bl * 1.5 + 2;
       const w0 = cut.bb[2] - cut.bb[0] + m * 2, h0 = cut.bb[3] - cut.bb[1] + m * 2;
-      k = Math.min(k, OL.max / w0, OL.max / h0);   // не больше лимита текстур
+      k = Math.min(k, OL.max / w0, OL.max / h0);
       const x = Math.floor((cut.bb[0] - m) * k) / k, y = Math.floor((cut.bb[1] - m) * k) / k;
       const r = await raster(cut.defs + cut.xml, x, y, w0 + 1 / k, h0 + 1 / k, k, 0);
       const mask = r.c, W = mask.width, H = mask.height, L = lw * k;
-      // контур: силуэт, сдвинутый по кругу (два радиуса — без щелей на тонких местах), залитый цветом, минус сам силуэт
+
       const ring = canvas(W, H), g = ring.getContext('2d');
       const n = Math.max(12, Math.min(32, Math.ceil(L * 5)));
       for (const rr of [L, L * 0.55]) for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2; g.drawImage(mask, Math.cos(a) * rr, Math.sin(a) * rr); }
       g.globalCompositeOperation = 'source-in'; g.fillStyle = OL.color; g.fillRect(0, 0, W, H);
       g.globalCompositeOperation = 'destination-out'; g.drawImage(mask, 0, 0);
-      // свечение — тень контура (наружу; внутрь — чуть-чуть, по краю здания), сверху — чёткая линия
+
       const out = canvas(W, H), q = out.getContext('2d');
       q.shadowColor = OL.glow; q.shadowBlur = bl * k; q.drawImage(ring, 0, 0); q.shadowBlur = bl * k * 0.45; q.drawImage(ring, 0, 0);
       q.shadowBlur = 0; q.shadowColor = 'transparent';
       q.globalCompositeOperation = 'destination-out'; q.globalAlpha = 0.6; q.drawImage(mask, 0, 0);
       q.globalCompositeOperation = 'source-over'; q.globalAlpha = 1; q.drawImage(ring, 0, 0);
-      mask.width = mask.height = 0; ring.width = ring.height = 0;   // память — сразу назад
+      mask.width = mask.height = 0; ring.width = ring.height = 0;
       st.bakes++; st.bakeMs += performance.now() - t0; st.px = Math.max(st.px, W * H);
       return { c: out, x, y, k, tex: null, on: 0 };
     }
     return {
       prep,
       stats: () => ({ ...st, bakeMs: Math.round(st.bakeMs), ids: cuts ? Object.keys(cuts) : null, cached: cache.size }),
-      // готовая обводка цели (из запаса или запечь); null — у цели нет пометок в рисунке
+
       bake(id, k, z) {
         const cut = prep()[id]; if (!cut) return Promise.resolve(null);
         const key = id + '|' + k.toFixed(3);
@@ -280,12 +280,12 @@
         return e;
       },
       clear,
-      // HW-NPC: источники с меткой tag заменить на list (НПС ивента ставятся поверх собранного города) - пометки пересоберутся при следующем наведении
+
       set(tag, list) { for (let i = sources.length - 1; i >= 0; i--) if (sources[i] && sources[i].tag === tag) sources.splice(i, 1); for (const l of list || []) sources.push({ ...l, tag }); cuts = null;
-        for (const [key, e] of cache) if (e && typeof e.then !== 'function' && !(e.on > 0)) { if (e.tex) try { e.tex.destroy(true); } catch {} cache.delete(key); } },   // показанную сейчас обводку не трогаем (её текстуру рисует кадр)
+        for (const [key, e] of cache) if (e && typeof e.then !== 'function' && !(e.on > 0)) { if (e.tex) try { e.tex.destroy(true); } catch {} cache.delete(key); } },
     };
     function clear() { for (const e of cache.values()) if (e && e.tex) try { e.tex.destroy(true); } catch {} cache.clear(); }
-    // держим несколько последних (вернулся на то же здание — сразу); показанные сейчас не трогаем
+
     function trim() {
       for (const [key, e] of cache) {
         if (cache.size <= OL.keep) break;
@@ -296,36 +296,36 @@
     }
   }
 
-  /* ---------- сам город ---------- */
-  // o: { host (.cy-view), W, H, top, sky (CSS), layers: [{ svg (один корневой <svg x y …>) }], props: [{ svg, x, y, w, h, z, dx }],
-  //      mode ('webgl'|'canvas'|'auto'), V (LG_CITYV), labelHost, onDirty (нужен кадр), onFail (Pixi не смог — назад на SVG) }
+   
+
+
   function create(o) {
     const P = window.PIXI;
     const G = { mode: '', ok: false, dead: false };
     const dpr = () => Math.min(4, window.devicePixelRatio || 1);
-    // 22.10: плотность кадра — экран, но не выше предела (canvas — CANVAS_RES; адаптивное качество city.js понижает дальше: setRes)
+
     G.qcap = 4;
     const res = () => Math.min(dpr(), G.qcap, G.mode === 'canvas' ? CANVAS_RES : 4);
     const reres = () => { if (renderer && renderer.resolution !== res()) { renderer.resize(Math.max(1, cam.vw), Math.max(1, cam.vh), res()); G.view(cam.x, cam.y, cam.z, cam.vw, cam.vh, true); } };
     let renderer = null, canvas = null, dirty = true;
     let cam = { x: 0, y: 0, z: 0.6, vw: 360, vh: 400 }, k = 1, gen = 0, TS = TILE;
     const stage = new P.Container(), world = new P.Container(), bg = new P.Container(), walk = new P.Container(), names = new P.Container();
-    const hl = new P.Container();   // обводка наведённого — над фоном, под человечками и предметами
-    const bgD = new P.Container();   // 28.10 (hw-city-dead): плитки мёртвого города - над обычными (во время волны - под маской)
+    const hl = new P.Container();
+    const bgD = new P.Container();
     walk.sortableChildren = true; names.sortableChildren = true;
     world.addChild(bg, bgD, hl, walk, names); stage.addChild(world);
     const lst = labelStyle(o.labelHost || o.host); lst.k = +o.labK || 1;
     const need = () => { dirty = true; if (o.onDirty) o.onDirty(); };
 
-    // слои фона — один раз в XML; небо — градиентом в каждой плитке (плитки непрозрачные: на кадр — одна заливка меньше)
-    // 28.10 (hw-city-dead): у слоя может быть свой «мёртвый» рисунок от художника (l.dead - svg того же места и размера): его печём как есть
-    const layers = o.layers.map((l) => { const m = measure(l.svg, false); return { xml: m.xml, x: l.x, y: l.y, w: l.w, h: l.h, dxml: l.dead ? measure(l.dead, false).xml : '', npc: !l.dead && m.xml.includes('cy-npcg') ? npcBoxes(m.xml) : [] }; });
-    const npcs = layers.flatMap((l) => l.npc);   // 28.10 (hw-npc-ghosts): НПС города - для вспышки, когда до них доходит волна
-    const sky = skyDef(o.sky, o.H);
-    const skyD = skyDef(o.skyDead || 'linear-gradient(#05060a 0%, #0b0d14 30%, #151824 58%, #1f2330 100%)', o.H);   // свое небо художника - o.skyDead   // 28.10 (hw-city-dead): небо Изнанки - почти чёрно-синее
-    let mort = false, wave = null, maskG = null;   // мёртвый город (запечён перекрашенным), волна «умирания» от точки (маска круга)
 
-    /* --- очередь запекания: по одной картинке за раз (без рывков), сначала то, что в кадре --- */
+
+    const layers = o.layers.map((l) => { const m = measure(l.svg, false); return { xml: m.xml, x: l.x, y: l.y, w: l.w, h: l.h, dxml: l.dead ? measure(l.dead, false).xml : '', npc: !l.dead && m.xml.includes('cy-npcg') ? npcBoxes(m.xml) : [] }; });
+    const npcs = layers.flatMap((l) => l.npc);
+    const sky = skyDef(o.sky, o.H);
+    const skyD = skyDef(o.skyDead || 'linear-gradient(#05060a 0%, #0b0d14 30%, #151824 58%, #1f2330 100%)', o.H);
+    let mort = false, wave = null, maskG = null;
+
+     
     const Q = []; let busy = false;
     function job(j) { Q.push(j); pump(); }
     async function pump() {
@@ -340,16 +340,16 @@
       } finally { busy = false; }
     }
 
-    /* --- фон плитками --- */
-    const tiles = new Map();   // "i,j" → { spr, gen, used }
-    let old = [];              // плитки прошлого масштаба: видны, пока новые не допеклись
-    // dd: мёртвый вариант - перекрашиваемая часть (небо Изнанки, слои без своего мёртвого рисунка, deadArt.under);
-    // raw: то, что печётся поверх БЕЗ перекраски (мёртвые слои художника, deadArt.over - тыквы, конфеты, трещины, лозы, портал)
+     
+    const tiles = new Map();
+    let old = [];
+
+
     let deadArt = { under: '', over: '' };
     function tileXml(x, y, s, dd, raw) {
       const hit = (l) => l.x < x + s && l.x + l.w > x && l.y < y + s && l.y + l.h > y;
-      // 28.10 (hw-npc-ghosts): мёртвый город - НПС перекрашенного слоя убраны (.cy-npc), их призраки (.cy-npcg) печём поверх без перекраски:
-      // тот же слой, всё прочее в нём невидимо (на плитку с НПС - ещё одна картинка, один раз)
+
+
       const nh = (l) => l.npc.some((b) => b.x < x + s && b.x + b.w > x && b.y < y + s && b.y + b.h > y);
       if (raw) {
         let out = ''; for (const l of layers) if (l.dxml && hit(l)) out += l.dxml;
@@ -392,7 +392,7 @@
           },
         });
       }
-      // остальные плитки — из кадра (без удаления: вернёмся — не печь заново), сверх бюджета — самые давние
+
       const pxPer = TILE * TILE;
       if (tiles.size * pxPer > TILE_BUDGET) {
         const far = [...tiles.entries()].filter(([, t]) => t.used < now && t.spr).sort((a, b) => a[1].used - b[1].used);
@@ -402,9 +402,9 @@
       return missing;
     }
 
-    /* --- предметы с глубиной (колодец, фонари, прилавки): по картинке на предмет, глубина — zIndex (как z-index в SVG-версии) --- */
+     
     const props = o.props.map((p) => ({ ...p, spr: null, gen: -1, q: false, box: [p.x + (p.dx || 0) - 160, p.y - 160, p.w + 320, p.h + 320] }));
-    // 29.10: кадры пламени костра - как @keyframes cyCampFl (city.css): [время, scaleX, scaleY, прозрачность], между кадрами - ease-in-out
+
     const FLK = [[0, 1, 1, 1], [0.3, 0.94, 1.07, 0.92], [0.55, 1.04, 0.95, 1], [0.8, 0.97, 1.04, 0.95], [1, 1, 1, 1]];
     const flickAt = (t) => { const u = (t / 1700) % 1; let i = 1; while (i < FLK.length - 1 && u > FLK[i][0]) i++; const a = FLK[i - 1], b = FLK[i], v = (u - a[0]) / (b[0] - a[0]), e = v * v * (3 - 2 * v); return [a[1] + (b[1] - a[1]) * e, a[2] + (b[2] - a[2]) * e, a[3] + (b[3] - a[3]) * e]; };
     const waveR = () => (wave ? Math.max(0, (performance.now() - wave.t0) / wave.ms) * wave.R : Infinity);
@@ -412,7 +412,7 @@
       const wr = waveR();
       for (const p of props) {
         const [bx, by, bw, bh] = p.box, on = bx < vx + vw && bx + bw > vx && by < vy + vh && by + bh > vy;
-        // 28.10 (hw-city-dead): предметы города - и мёртвой картинкой (своей); волна прошла предмет - мёртвая, нет - обычная
+
         const wd = mort && !p.tag, dOn = wd && !!p.sprD && Math.hypot(p.box[0] + p.box[2] / 2 - (wave ? wave.x : 0), p.box[1] + p.box[3] - (wave ? wave.y : 0)) <= wr;
         if (p.sprD) p.sprD.visible = on && dOn;
         if (p.spr) p.spr.visible = on && !dOn;
@@ -425,15 +425,15 @@
             p.q = false;
             if (!p.m) p.m = measure(p.svg, true);
             const b = p.m.bb || { x: p.x, y: p.y, w: p.w, h: p.h };
-            // начало картинки — на целом пикселе экрана (чётко, без размытия на полпикселя)
+
             const x0 = Math.floor((b.x - 8 + (p.dx || 0)) * kk) / kk - (p.dx || 0), y0 = Math.floor((b.y - 8) * kk) / kk;
             const r = await raster(p.m.xml, x0, y0, b.x + b.w + 8 - x0, b.y + b.h + 8 - y0, kk, 1);
             if (G.dead || g0 !== gen || p.dead) return;
-            if (p.paint && mort) deadPaint(r.c);   // 28.10 (hw-city-dead): предмет ивента, который тоже «мёртвый» (рамка портала)
+            if (p.paint && mort) deadPaint(r.c);
             const spr = new P.Sprite(texOf(r)); spr.position.set(x0 + (p.dx || 0), y0); spr.scale.set(1 / kk); spr.zIndex = p.z;
-            if (G.ptint != null && !p.tag) spr.tint = G.ptint;   // 28.10 (hw-city): холодный тон города - и предметам города (убранство ивента - тёплое, без тона)
+            if (G.ptint != null && !p.tag) spr.tint = G.ptint;
             if (p.spin) { spr.pivot.set((p.spin[0] - x0) * kk, (p.spin[1] - y0) * kk); spr.position.set(p.spin[0] + (p.dx || 0), p.spin[1]); }
-            if (p.flick) { spr.pivot.set((p.flick[0] - x0) * kk, (p.flick[1] - y0) * kk); spr.position.set(p.flick[0] + (p.dx || 0), p.flick[1]); spr.__k = kk; }   // 29.10: пламя костра качается от низа (campart.js)   // 28.10 (hw-city): вращается вокруг spin (воронка портала на оверлее)
+            if (p.flick) { spr.pivot.set((p.flick[0] - x0) * kk, (p.flick[1] - y0) * kk); spr.position.set(p.flick[0] + (p.dx || 0), p.flick[1]); spr.__k = kk; }
             if (p.spr) p.spr.destroy(true);
             p.spr = spr; p.gen = g0; p.box = [x0 + (p.dx || 0), y0, r.cw / kk, r.ch / kk];
             walk.addChild(spr);
@@ -449,7 +449,7 @@
         pri: () => 1.5, skip: () => { if (G.dead || g0 !== gen || p.dead || !mort) { p.qD = false; return true; } return false; },
         run: async () => {
           p.qD = false;
-          // свой мёртвый рисунок предмета (художник: hw.dead.props) - как есть; нет - перекраска обычного
+
           const own = !!p.svgDead; if (own && !p.md) p.md = measure(p.svgDead, true); if (!p.m) p.m = measure(p.svg, true);
           const m = own ? p.md : p.m, b = m.bb || { x: p.x, y: p.y, w: p.w, h: p.h };
           const x0 = Math.floor((b.x - 8 + (p.dx || 0)) * kk) / kk - (p.dx || 0), y0 = Math.floor((b.y - 8) * kk) / kk;
@@ -463,8 +463,8 @@
       });
     }
 
-    /* --- человечки: картинка — по облику (одинаковые делят одну), шаг — сдвигом, покачивание — поворотом --- */
-    const looks = new Map();   // ключ облика → { tex, refs, gen, p (идёт запекание), bb }
+     
+    const looks = new Map();
     function look(svg) {
       let L = looks.get(svg);
       if (!L) { L = { tex: null, refs: 0, gen: -1, p: null, bb: null, used: 0 }; looks.set(svg, L); }
@@ -472,12 +472,12 @@
     }
     function bakeLook(svg, L) {
       if (L.p || (o.lookK ? !!L.tex : L.gen === gen)) return;
-      const g0 = gen, kk = +o.lookK || k * 1.0;   // 27.10: o.lookK - облики печём один раз в этом масштабе (оверлей: 600 героев не перепекаются на каждый зум)   // крупнее 1:1 человечек в городе не бывает (масштаб глубины ×1,3 ≤ 0,99)
+      const g0 = gen, kk = +o.lookK || k * 1.0;
       L.p = true;
       job({
         pri: () => 0.5, skip: () => { if (G.dead || !L.refs) { L.p = null; return true; } return false; },
         run: async () => {
-          // человечек 120×170, ноги — (60, 170); шапки, оружие, аура выходят за рамку — берём настоящую рамку рисунка
+
           const svgA = svg.replace(/<svg\b/, '<svg x="0" y="0" width="120" height="170" overflow="visible"');
           const m = measure(svgA, true, true), b = m.bb || { x: 0, y: 0, w: 120, h: 170 };
           const x0 = b.x - 10, y0 = b.y - 10;
@@ -488,7 +488,7 @@
           if (L.tex) L.tex.destroy(true);
           L.tex = t; L.gen = g0; L.bb = { x: x0, y: y0, k: kk };
           for (const w of walkers) if (w.gl && w.gl.svg === svg) skin(w);
-          if (g0 !== gen && L.refs && !o.lookK) bakeLook(svg, L);   // пока пеклось, поменялся масштаб — ещё раз, под новый
+          if (g0 !== gen && L.refs && !o.lookK) bakeLook(svg, L);
           need();
         },
       });
@@ -497,12 +497,12 @@
       const L = looks.get(w.gl.svg); const s = w.gl.spr;
       if (!L || !L.tex) { s.visible = false; return; }
       s.texture = L.tex; s.visible = true;
-      s.position.set(L.bb.x - 60, L.bb.y - 170); s.scale.set(1 / L.bb.k);   // ноги (60, 170) рисунка — в (0, 0) человечка
+      s.position.set(L.bb.x - 60, L.bb.y - 170); s.scale.set(1 / L.bb.k);
     }
     function release(svg) {
       const L = looks.get(svg); if (!L) return;
       L.refs--; L.used = performance.now();
-      // ненужные облики: держим до 40 (ушёл и вернулся — без повторного запекания), дальше — самые давние
+
       const idle = [...looks.entries()].filter(([, x]) => x.refs <= 0);
       if (idle.length > 40) { idle.sort((a, b) => a[1].used - b[1].used); for (const [key, x] of idle.slice(0, idle.length - 40)) { if (x.tex) x.tex.destroy(true); looks.delete(key); } }
     }
@@ -514,10 +514,10 @@
       w.gl.nm.texture = t; w.gl.lw = r.w; w.gl.lh = r.h; w.gl.ld = d;
     }
 
-    /* --- кружок «иду сюда» --- */
+     
     const rips = [];
 
-    /* --- рендерер: WebGL; нет его (или он программный — SwiftShader) — canvas 2D; не вышло — city.js вернёт SVG --- */
+     
     const pref = o.mode === 'canvas' ? ['canvas'] : ['webgl', 'canvas'];
     const ready = (async () => {
       await loadFont(o.V);
@@ -529,18 +529,18 @@
         eventMode: 'none', eventFeatures: { move: false, globalMove: false, click: false, wheel: false },
       });
       renderer = await make(pref);
-      // WebGL без видеокарты (Chrome сам переходит на программный SwiftShader) — втрое тяжелее canvas: берём canvas
+
       if (renderer.name !== 'canvas' && o.mode !== 'webgl') {
         let soft = false;
         try { const gl = renderer.gl, ext = gl.getExtension('WEBGL_debug_renderer_info'); soft = /swiftshader|llvmpipe|softpipe|software|basic render/i.test(String(gl.getParameter(ext ? ext.UNMASKED_RENDERER_WEBGL : gl.RENDERER))); } catch {}
         if (soft) { G.soft = true; try { renderer.destroy(); } catch {} renderer = await make(['canvas']); }
       }
       if (G.dead) { renderer.destroy(); return; }
-      // Pixi сам заводит «системный» таймер (requestAnimationFrame каждый кадр — для уборки памяти и событий мыши);
-      // нам он не нужен: кадры рисуем сами и только по делу, картинки удаляем сами — в покое ни одного кадра
+
+
       try { for (const T of [P.Ticker.system, P.Ticker.shared]) { T.autoStart = false; T.stop(); } } catch {}
       G.mode = renderer.name === 'canvas' ? 'canvas' : 'webgl';
-      reres();   // canvas — плотность не выше CANVAS_RES (картинки — сразу под неё)
+      reres();
       canvas = renderer.canvas;
       canvas.className = 'cy-gl';
       canvas.setAttribute('aria-hidden', 'true');
@@ -550,14 +550,14 @@
       need();
     })().catch((e) => { console.warn('[город] Pixi не запустился — SVG', e); if (!G.dead && o.onFail) o.onFail(String(e && e.message || e)); });
 
-    // плохая производительность canvas-режима (очень медленная машина): кадр дольше 60 мс подряд — назад на SVG
+
     let slow = 0, frames = 0;
     G.ready = ready;
     G.view = (x, y, z, vw, vh, now) => {
       const resized = vw !== cam.vw || vh !== cam.vh;
       cam = { x, y, z, vw: vw || cam.vw, vh: vh || cam.vh };
       if (renderer && (resized || renderer.resolution !== res())) renderer.resize(cam.vw, cam.vh, res());
-      // масштаб картинок = масштаб камеры × плотность экрана; поменялся заметно (поворот телефона, другое окно) — перепечь
+
       const nk = Math.min(K_MAX, Math.max(0.3, z * res()));
       if (Math.abs(nk / k - 1) > 0.004 || gen === 0) {
         clearTimeout(G.rk);
@@ -569,7 +569,7 @@
           for (const w of walkers) if (w.gl && w.gl.ld !== res()) labelTex(w);
           need();
         };
-        if (gen === 0 || now) go(); else G.rk = setTimeout(go, 250);   // окно тянут — не печь на каждом шаге
+        if (gen === 0 || now) go(); else G.rk = setTimeout(go, 250);
       }
       dirty = true;
     };
@@ -594,10 +594,10 @@
       if (lab && JSON.stringify(lab) !== JSON.stringify(w.gl.lab)) { w.gl.lab = lab; labelTex(w); }
       dirty = true;
     };
-    // в кадре (с запасом на рост и ник) — по нему решаем, нужен ли новый кадр: шаги за краем экрана кадров не тратят
+
     const inView = (x, y) => { const vw = cam.vw / cam.z, vh = cam.vh / cam.z; return x > cam.x - 160 && x < cam.x + vw + 160 && y + 40 > cam.y && y - 280 < cam.y + vh; };
-    // 23.10: значок звания в подписи (ник у Pixi — картинка): где значок i героя w в координатах сцены, и какой значок под точкой (x, y) —
-    // для подсказки по тапу и наведению. Та же раскладка, что в labelCanvas: значки — в конце подписи (отступ 7, шаг 4 + 13), круг 13
+
+
     const awOfW = (w) => { const g = w.gl, aw = g && g.lab && Array.isArray(g.lab.aw) ? g.lab.aw.slice(0, 3) : null; return aw && aw.length && g.lw ? aw : null; };
     function badgeXY(w, i, n) {
       const g = w.gl, z = cam.z, L = w.x - g.lw / z / 2;
@@ -621,9 +621,9 @@
       g.root.zIndex = Math.round(w.y) + (w.mine ? 1 : 0);
       g.body.scale.set(w.face * sc, sc);
       g.sc = sc;
-      if (!w.cull && (g.root.visible || inView(w.x, w.y))) dirty = true;   // шаги убранных и тех, кто за краем, кадров не тратят
+      if (!w.cull && (g.root.visible || inView(w.x, w.y))) dirty = true;
     };
-    // 23.10: проявление чужого (встал на место после большого расхождения, новенький, вернулся в ближние) — герой и ник
+
     G.alpha = (w, a) => { const g = w.gl; if (!g || g.root.alpha === a) return; g.root.alpha = a; g.nm.alpha = a; if (!w.cull && (g.root.visible || inView(w.x, w.y))) dirty = true; };
     G.moving = (w, on) => { if (w.gl) { w.gl.mv = on; if (!on) { w.gl.bob.position.y = -85; w.gl.bob.rotation = 0; } dirty = true; } };
     G.remove = (w) => {
@@ -639,8 +639,8 @@
       walk.addChild(r); rips.push({ r, t0: performance.now() });
       dirty = true;
     };
-    // обводка наведённого (готовая картинка из outliner): плавно появляется за 150 мс, прежняя так же тает
-    const ols = [];   // { s, e, a0, a1, t0 }
+
+    const ols = [];
     G.outline = (e) => {
       const cur = ols.find((o) => o.a1 === 1);
       if (cur && cur.e === e) return;
@@ -655,12 +655,12 @@
       need();
     };
     G.dirty = () => { dirty = true; };
-    // 28.10 (hw-city): предметы с глубиной после создания (хэллоуинское убранство, портал): add - печь по мере появления в кадре
-    // (как и остальные), drop - убрать все с меткой tag. spin: [x, y] - картинка медленно вращается вокруг точки (render, spinV рад/с)
+
+
     G.addProps = (list, tag) => { for (const p of list || []) props.push({ ...p, tag, spr: null, gen: -1, q: false, box: [p.x + (p.dx || 0) - 160, p.y - 160, p.w + 320, p.h + 320] }); dirty = true; need(); };
     G.dropProps = (tag) => { for (let i = props.length - 1; i >= 0; i--) if (props[i].tag === tag) { const p = props[i]; p.dead = true; if (p.spr) try { p.spr.destroy(true); } catch {} props.splice(i, 1); } dirty = true; need(); };
     G.hasProps = (tag) => props.some((p) => p.tag === tag);
-    // 28.10 (hw-npc-ghosts): НПС превращается в призрака, когда до него доходит волна: холодная вспышка-рябь на месте (текстура - одна на всех)
+
     const fls = []; let flT = null;
     function ghostFlash(b, t) {
       if (!flT) { const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'), g = x.createRadialGradient(64, 64, 0, 64, 64, 64);
@@ -669,7 +669,7 @@
       const s = new P.Sprite(flT); s.anchor.set(0.5); s.position.set(b.x + b.w / 2, b.y + b.h * 0.55); s.alpha = 0; s.zIndex = b.y + b.h + 1;
       const k = Math.max(b.w, b.h) * 1.3 / 128; s.scale.set(k * 0.45); walk.addChild(s); fls.push({ s, t0: t, k });
     }
-    // 28.10 (hw-city-dead): мёртвый город (фон и предметы города перекрашены при запекании); w = { x, y, ms } - волна «умирания» из точки
+
     G.setDead = (on, w) => {
       on = !!on; if (on === mort && !w) return;
       mort = on;
@@ -681,38 +681,38 @@
       dirty = true; need();
     };
     G.isDead = () => mort;
-    // убранство ивента прямо в мёртвых плитках (не отдельными картинками: кадр их не рисует - ноль затрат), under - перекрашивается вместе с городом
+
     G.setDeadArt = (a) => {
       const n = { under: (a && a.under) || '', over: (a && a.over) || '' }; if (n.under === deadArt.under && n.over === deadArt.over) return;
       deadArt = { under: n.under ? measure(n.under, false).xml : '', over: n.over ? measure(n.over, false).xml : '' };
-      for (const [key, t] of [...tiles]) if (t.md === 'd') { if (t.spr) old.push(t); tiles.delete(key); }   // прежние видны, пока новые не испеклись
+      for (const [key, t] of [...tiles]) if (t.md === 'd') { if (t.spr) old.push(t); tiles.delete(key); }
       dirty = true; need();
     };
-    // 28.10 (hw-city): тон города (Изнанка - серо-синий): фон и предметы города умножаются на цвет (tint спрайтов, без filter); null - как было
+
     G.tint = (col) => { if ((col == null ? null : col) === (G.ptint ?? null)) return; const c = col == null ? 0xffffff : col; G.ptint = col == null ? null : col; bg.tint = c; for (const p of props) if (p.spr && !p.tag) p.spr.tint = c; for (const q of old) if (q.spr) q.spr.tint = c; dirty = true; need(); };
-    // 22.10: адаптивное качество (city.js): предел плотности кадра — перепечь картинки под неё; покачивание чужих на ходу — вкл/выкл
+
     G.setRes = (cap) => { G.qcap = Math.max(1, +cap || 4); reres(); dirty = true; };
-    G.busy = () => busy || Q.length > 0;   // печём картинки (кадры в это время реже — адаптивное качество их не считает)
+    G.busy = () => busy || Q.length > 0;
     G.res = () => res();
     G.noBob = false;
     G.setBob = (on) => { G.noBob = !on; if (!on) for (const w of walkers) if (w.gl && !w.mine) { w.gl.bob.position.y = -85; w.gl.bob.rotation = 0; } dirty = true; };
-    // кадр: возвращает true, если нужен следующий (кто-то качается на ходу, кружок ещё тает, плитки кадра не допеклись)
+
     G.render = (t, reduce) => {
       if (!renderer || G.dead) return false;
       t = t || performance.now();
       let more = false;
       for (const w of walkers) {
         const g = w.gl; if (!g || !g.mv || reduce || !g.root.visible || (G.noBob && !w.mine)) continue;
-        // покачивание на ходу — как cyBob в city.css: вверх на 7 px и поворот на 2°, 0,42 с туда и обратно
+
         const u = ((t / 420) + g.ph) % 2, p0 = u < 1 ? u : 2 - u, p = p0 * p0 * (3 - 2 * p0);
         g.bob.position.y = -85 - 7 * p; g.bob.rotation = 2 * Math.PI / 180 * p;
         more = true; dirty = true;
       }
       if (!reduce) for (const p of props) if (p.spin && p.spr && p.spr.visible) { p.spr.rotation = ((t / 1000) * (p.spinV || 1.2)) % (Math.PI * 2); more = true; dirty = true; }
-      // 29.10: p.flick = [x, y низа] - пламя костра лагеря: те же кадры, что CSS cyCampFl (1,7 с: сжатие-вытяжка и чуть прозрачности), только transform/alpha
-      //   12 кадров/с: сцена перерисовывается только при смене кадра пламени (не каждый кадр экрана - телефоны зрителей)
+
+
       if (!reduce) for (const p of props) if (p.flick && p.spr && p.spr.visible) { more = true; const fi = Math.floor(t / 83); if (p.fi === fi) continue; p.fi = fi; const f = flickAt(fi * 83); p.spr.scale.set(f[0] / (p.spr.__k || 1), f[1] / (p.spr.__k || 1)); p.spr.alpha = f[2]; dirty = true; }
-      // 28.10 (hw-city-light): p.pulse = [от, до, период с] - прозрачность дышит (сердцевина портала)
+
       if (!reduce) for (const p of props) if (p.pulse && p.spr && p.spr.visible) { const [a0, a1, per] = p.pulse; p.spr.alpha = a0 + (a1 - a0) * (0.5 + 0.5 * Math.sin((t / 1000) * Math.PI * 2 / (per || 2))); more = true; dirty = true; }
       for (let i = rips.length - 1; i >= 0; i--) {
         const R = rips[i], a = Math.min(1, (t - R.t0) / 650), e = 1 - Math.pow(1 - a, 2);
@@ -731,11 +731,11 @@
         const wr = waveR();
         if (!maskG) { maskG = new P.Graphics(); world.addChild(maskG); bgD.mask = maskG; }
         maskG.clear(); maskG.circle(wave.x, wave.y, Math.max(1, wr)); maskG.fill(0xffffff);
-        for (const b of npcs) if (!b.f && Math.hypot(Math.max(b.x, Math.min(wave.x, b.x + b.w)) - wave.x, Math.max(b.y, Math.min(wave.y, b.y + b.h)) - wave.y) <= wr) { b.f = Math.round(t) || 1; if (!reduce) ghostFlash(b, t); }   // 28.10 (hw-npc-ghosts)
+        for (const b of npcs) if (!b.f && Math.hypot(Math.max(b.x, Math.min(wave.x, b.x + b.w)) - wave.x, Math.max(b.y, Math.min(wave.y, b.y + b.h)) - wave.y) <= wr) { b.f = Math.round(t) || 1; if (!reduce) ghostFlash(b, t); }
         if (wr >= wave.R) { bgD.mask = null; maskG.destroy(); maskG = null; wave = null; }
         more = true; dirty = true;
       }
-      for (let i = fls.length - 1; i >= 0; i--) {   // вспышка-рябь: только масштаб и прозрачность спрайта
+      for (let i = fls.length - 1; i >= 0; i--) {
         const f = fls[i], u = Math.min(1, (t - f.t0) / 900);
         f.s.alpha = u < 0.18 ? u / 0.18 : (1 - u) / 0.82; f.s.scale.set(f.k * (0.45 + 0.85 * u)); dirty = true; more = true;
         if (u >= 1) { f.s.destroy(); fls.splice(i, 1); }
@@ -743,22 +743,22 @@
       if (!dirty) return more;
       dirty = false;
       const z = cam.z, d = res(), vx = cam.x, vy = cam.y, vw = cam.vw / z, vh = cam.vh / z;
-      // камера — на целый пиксель экрана: плитки фона ложатся пиксель в пиксель (без мыла)
+
       world.scale.set(z); world.position.set(Math.round(-vx * z * d) / d, Math.round(-vy * z * d) / d);
       const tn = performance.now();
       let missing = wantTiles(vx, vy, vw, vh, mort ? 'd' : '', tn);
-      if (mort && wave) missing += wantTiles(vx, vy, vw, vh, '', tn);   // во время волны видны оба города
+      if (mort && wave) missing += wantTiles(vx, vy, vw, vh, '', tn);
       else if (mort && !missing) for (const q of tiles.values()) if (q.md !== 'd' && q.spr) q.spr.visible = false;
       else if (!mort) for (const q of tiles.values()) if (q.md === 'd' && q.spr) q.spr.visible = false;
-      if (!missing && old.length) { for (const q of old) q.spr.destroy(true); old = []; }   // новый масштаб допёкся — старые плитки не нужны
+      if (!missing && old.length) { for (const q of old) q.spr.destroy(true); old = []; }
       wantProps(vx, vy, vw, vh);
       for (const w of walkers) {
         const g = w.gl; if (!g) continue;
-        // 22.10: cull — адаптивное качество убрало его с экрана (дальние, когда кадр не успевает); nolab — без подписи
+
         const on = !w.cull && inView(w.x, w.y);
         g.root.visible = on; g.nm.visible = on && !w.nolab;
         if (!on) continue;
-        // ник — над головой, одного размера на экране при любом масштабе, на целом пикселе (чётко)
+
         const sc = g.sc || 1, k2 = z * d;
         g.nm.scale.set(1 / (z * g.ld));
         g.nm.position.set(Math.round((w.x - g.lw / z / 2) * k2) / k2, Math.round((w.y - (w.lift || 128) * sc - 4 - g.lh / z) * k2) / k2);
@@ -770,7 +770,7 @@
       if (G.mode === 'canvas' && ++frames > 10) { slow = dt > 60 ? slow + 1 : 0; if (slow > 20 && o.onFail) { o.onFail('медленно: ' + dt.toFixed(0) + ' мс на кадр'); return false; } }
       return more || missing > 0;
     };
-    G.npcs = () => npcs.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.w), h: Math.round(b.h), f: b.f }));   // 28.10 (hw-npc-ghosts): для проверок
+    G.npcs = () => npcs.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.w), h: Math.round(b.h), f: b.f }));
     G.stats = () => ({ dl: layers.filter((l) => l.dxml).length, pd: props.filter((p) => p.svgDead).length, art: !!(deadArt.under || deadArt.over), walkN: walk.children.length, bgN: bg.children.length, bgDN: bgD.children.length, bgDVis: bgD.children.filter((c) => c.visible).length, bgVis: bg.children.filter((c) => c.visible).length, mask: !!bgD.mask, wave: !!wave, nf: G.nf, ms: G.ms, js: G.js, looks: looks.size, baked: [...looks.values()].filter((x) => x.tex).length, tiles: tiles.size, tilesBaked: [...tiles.values()].filter((t) => t.spr).length, props: props.filter((p) => p.spr).length, queue: Q.length, k, gen,
       walkers: [...walkers].slice(0, 3).map((w) => ({ x: w.x, y: w.y, vis: w.gl && w.gl.root.visible, sv: w.gl && w.gl.spr.visible, tex: w.gl && w.gl.spr.texture && w.gl.spr.texture.width, pos: w.gl && [w.gl.spr.x, w.gl.spr.y, w.gl.spr.scale.x] })) });
     G.hide = (on) => { if (canvas) canvas.style.visibility = on ? 'hidden' : ''; if (!on) dirty = true; };
@@ -784,5 +784,5 @@
     return G;
   }
 
-  window.LGCityGL = { load, create, skyDef, outliner };   // skyDef — и сцене «Заточка» (кусок улицы в city.js)
+  window.LGCityGL = { load, create, skyDef, outliner };
 })();

@@ -1,13 +1,13 @@
-/* 27.10 (art/hw-npc): хэллоуинские НПС «Ночи Тыквенной Луны» в городе канала - «Ступа сладостей» (обменник конфет, ведьма в ступе)
-   и Призрачный Фонарщик (хранитель баттл-пасса: кованая арка с 20 фонариками, горят - пройденные уровни).
-   Одни на все 7 стилей (как враги); видны только в хэллоуинском городе (city.js / ovcity.js решают, когда). Стоят только на Ярмарке
-   «Города» (вкладка «Город» сайта): средняя улица у канала правее Шахты (решение стримера 27.10); в Перепутье и городах края их нет.
-   Один файл для сайта, оверлея и тестов (window.LGHwNpc):
-     (где стоят - крючок cityhw.js npcSpots(sc): только Ярмарка «Города»; слияние 27.10)
-     geo(spot, o)    - для места: здание (hit, door - как BUILDINGS), препятствия, предмет по глубине (prop), живые слои (live)
-     open(kind, X)   - окно лавки или пасса на сайте (поверх города; телефон - на весь экран)
-   Рисунок - SVG в стиле игры: контур, светлый верх, тень снизу; повторы - <symbol>; движение - только transform / opacity (CSS),
-   без filter и без SMIL. Живых групп: у Ступы 2 (искры под ступой, прыгающие конфеты), у Фонарщика 2 (призрак с шестом, мерцание огней). */
+
+
+
+
+
+
+
+
+
+
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
   else root.LGHwNpc = factory();
@@ -23,8 +23,8 @@
   const f1 = (v) => Math.round(v * 10) / 10;
   const esc = (t) => String(t == null ? '' : t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-  /* ===================== РИСУНОК ===================== */
-  // символы и градиенты (в каждом куске рисунка - свои: куски печатаются отдельно)
+   
+
   const DEFS = `<defs>
 <radialGradient id="hnGlow"><stop offset="0" stop-color="#ffb347" stop-opacity=".75"/><stop offset=".45" stop-color="#ff7a1a" stop-opacity=".28"/><stop offset="1" stop-color="#ff7a1a" stop-opacity="0"/></radialGradient>
 <radialGradient id="hnGlowG"><stop offset="0" stop-color="#9dffc8" stop-opacity=".7"/><stop offset="1" stop-color="#6dffb0" stop-opacity="0"/></radialGradient>
@@ -41,14 +41,14 @@
     return `<g transform="translate(${f1(x)} ${f1(y)}) scale(${s})"><path d="M-17 0 Q-21 -18 -17 -38 H17 Q21 -18 17 0 Z" fill="#dff6ff" fill-opacity=".35" ${O(2.6)}/><path d="M-15 -2 Q-18 -14 -15 -24 H15 Q18 -14 15 -2 Z" fill="${k}"/>`
       + `<rect x="-14" y="-46" width="28" height="9" rx="3" fill="${lid}" ${O(2.4)}/><path d="M-11 -33 v24" stroke="#fff" stroke-width="3.4" opacity=".55" stroke-linecap="round"/><rect x="-10" y="-30" width="20" height="10" rx="2" fill="${C.cream}" ${O(1.4)}/></g>`;
   }
-  // вывеска с двойной рамкой (как у зданий города)
+
   function board(x, y, w, h, lines, fs = 26) {
     let s = `<g transform="translate(${f1(x)} ${f1(y)})"><rect x="${-w / 2}" y="${-h / 2}" width="${w}" height="${h}" rx="12" fill="${C.woodD}" ${O(4)}/>`
       + `<rect x="${-w / 2 + 7}" y="${-h / 2 + 7}" width="${w - 14}" height="${h - 14}" rx="8" fill="${C.night}" stroke="${C.gold}" stroke-width="2.6"/>`;
     lines.forEach((t, i) => { const yy = (i - (lines.length - 1) / 2) * fs * 1.08 + fs * 0.36; s += `<text y="${f1(yy)}" text-anchor="middle" font-family="Russo One" font-size="${i ? f1(fs * 0.62) : fs}" fill="${i ? '#e8e0f4' : C.pumpL}" stroke="${INK}" stroke-width="${i ? 3 : 5}" paint-order="stroke" letter-spacing="1.5">${esc(t)}</text>`; });
     return s + `</g>`;
   }
-  // ведьма: x, y - низ подола; поднятой рукой держит пест (в ступе)
+
   function witch(x, y, s = 1) {
     const robe = C.vio, robeD = C.vioD;
     const hand = (hx, hy, r = 0) => `<g transform="translate(${hx} ${hy}) rotate(${r})"><ellipse rx="9" ry="8" fill="${C.skin}" ${O(2.6)}/><path d="M4 -6 q8 -2 9 4 M5 0 q9 0 9 6" stroke="${INK}" stroke-width="2.4" fill="${C.skin}"/></g>`;
@@ -57,10 +57,10 @@
     g += `<path d="M12 -116 Q36 -100 40 -60 Q44 -28 46 0 L36 -12 L26 0 L16 -10 L6 0 Q12 -60 12 -116 Z" fill="${robeD}"/><path d="M-26 -104 Q-10 -112 6 -110" stroke="${C.vioL}" stroke-width="4" fill="none" opacity=".7" stroke-linecap="round"/>`;
     g += `<path d="M-34 -78 Q0 -70 34 -78 L36 -66 Q0 -58 -36 -66 Z" fill="${C.pump}" ${O(2.6)}/><rect x="-8" y="-80" width="16" height="16" rx="3" fill="${C.gold}" ${O(2.4)}/>`;
     g += `<path d="M-30 -112 Q0 -96 30 -112 L22 -92 Q0 -82 -22 -92 Z" fill="${C.pump}" ${O(2.6)}/><path d="M-20 -104 L-14 -92 M-6 -100 L-2 -88 M8 -100 L6 -88 M20 -104 L16 -92" stroke="${C.pumpD}" stroke-width="2.4"/>`;
-    // правая рука с пестом (вверх), левая - у бока
+
     g += `<path d="M22 -104 Q48 -104 60 -120 L70 -112 Q58 -88 40 -84 Z" fill="${robe}" ${O(3)}/><path d="M58 -170 L74 -60" stroke="${INK}" stroke-width="15" stroke-linecap="round"/><path d="M58 -170 L74 -60" stroke="${C.woodL}" stroke-width="10" stroke-linecap="round"/><path d="M60 -160 L64 -130" stroke="#fff" stroke-width="2.4" opacity=".4"/>` + hand(66, -116, 70);
     g += `<path d="M-24 -104 Q-52 -96 -58 -74 L-56 -62 Q-44 -60 -40 -74 L-30 -84 Z" fill="${robe}" ${O(3)}/>` + hand(-52, -60, 100);
-    // голова: космы, лицо с тенью, глаза с бликом, нос крючком с бородавкой, улыбка с зубом, румянец
+
     g += `<g transform="translate(0 -142)">`;
     g += `<path d="M-34 -6 Q-46 26 -38 52 L-26 34 Z M34 -6 Q48 24 42 54 L28 34 Z" fill="${C.hair}" ${O(2.8)}/><path d="M-38 6 Q-42 30 -36 44 M38 4 Q44 26 40 44" stroke="${C.hairD}" stroke-width="3" fill="none"/>`;
     g += `<ellipse cx="0" cy="6" rx="31" ry="33" fill="${C.skin}" ${O(3.4)}/><path d="M10 -24 Q32 -10 30 18 Q22 36 2 38 Q24 20 10 -24 Z" fill="${C.skinD}" opacity=".7"/>`;
@@ -75,9 +75,9 @@
     return g + '</g>';
   }
 
-  /* --- Ступа сладостей: холст 520×560, земля y = 500, середина ступы x = 250 --- */
+   
   const SHOP_CX = 250, PASS_CX = 260, GROUND = 500;
-  // 30.10: рисунок Ступы - тремя слоями (тень и свечение земли / ступа с ведьмой / метла, вывеска, тыквы): так её и показывает появление (enter)
+
   function stupaParts(title) {
     const back = `<ellipse cx="250" cy="502" rx="170" ry="22" fill="#000" opacity=".28"/><ellipse cx="250" cy="470" rx="140" ry="20" fill="url(#hnGlowG)"/>`;
     let s = `<ellipse cx="250" cy="250" rx="134" ry="26" fill="${C.woodD}" ${O(5)}/><ellipse cx="250" cy="246" rx="118" ry="17" fill="#3a2414"/>`;
@@ -92,7 +92,7 @@
     s += [[160, 252, 0, -20], [190, 246, 1, 10], [222, 256, 2, -6], [282, 254, 3, 18], [312, 248, 4, -14], [340, 250, 5, 20], [250, 258, 4, 30]].map(([x, y, k, r]) => candy(x, y, C.candy[k], r, 0.9)).join('');
     s += jar(146, 254, C.candy[2], 0.85) + jar(356, 254, C.candy[0], 0.85, C.pump);
     const body = s; s = '';
-    // метла с вывеской слева, тыквы-фонари справа
+
     s += `<g transform="translate(70 500) rotate(8)"><path d="M0 -10 V-330" stroke="${INK}" stroke-width="12" stroke-linecap="round"/><path d="M0 -10 V-330" stroke="${C.woodL}" stroke-width="7" stroke-linecap="round"/>`
       + `<path d="M-6 -46 q-30 30 -26 50 h64 q4 -20 -26 -50 z" fill="#e0b050" ${O(3)}/><path d="M-20 -8 l4 -30 M-8 -6 l2 -34 M6 -6 l-2 -34 M18 -8 l-4 -30" stroke="#a87a2a" stroke-width="2.4"/><path d="M-10 -46 h20" stroke="${C.vio}" stroke-width="7" stroke-linecap="round"/></g>`;
     const T = String(title || 'Ступа сладостей').toUpperCase().split(' ');
@@ -101,13 +101,13 @@
     return { back, body, front: s };
   }
   const stupaArt = (title) => { const p = stupaParts(title); return p.back + p.body + p.front; };
-  // живое у Ступы: искры под ней мерцают, две конфеты подпрыгивают над горкой
+
   const stupaLive = () => [
     { cls: 'hwn-tw', box: [110, 450, 300, 50], svg: [[136, 470], [210, 488], [300, 486], [366, 470]].map(([x, y], i) => `<path style="animation-delay:${-i * 0.45}s" d="M${x} ${y - 8} l2 6 l6 2 l-6 2 l-2 6 l-2 -6 l-6 -2 l6 -2 z" fill="#c8ffe4"/>`).join('') },
     { cls: 'hwn-hop', box: [180, 190, 160, 70], svg: `<g style="animation-delay:-.4s">${candy(205, 236, C.candy[3], -18, 0.9)}</g><g style="animation-delay:-1.3s">${candy(300, 232, C.candy[1], 14, 0.9)}</g>` },
   ];
 
-  /* --- Фонарщик: холст 520×560, земля y = 500, середина арки x = 260; lv - сколько фонарей горит (0…20) --- */
+   
   const lampAt = (i) => { const t = (i + 0.5) / 20, a = Math.PI * (1 - t); return [260 + Math.cos(a) * 200, 470 - Math.sin(a) * 300 + 8]; };
   function archArt(lv) {
     let s = `<ellipse cx="260" cy="502" rx="230" ry="22" fill="#000" opacity=".28"/>`;
@@ -122,8 +122,8 @@
     s += board(260, 96, 270, 70, ['ФОНАРЩИК', 'зажигай огоньки пасса'], 26);
     return s;
   }
-  // призрак-фонарщик (живой - парит) и шест к следующему фонарю; плюс мерцание горящих фонарей
-  // тело призрака (низ подола - 0,0; рука с шестом - у 72,-110)
+
+
   function ghostBody() {
     let s = `<ellipse cy="26" rx="44" ry="8" fill="#000" opacity=".25"/>`;
     s += `<path d="M-44 0 Q-54 -80 -36 -140 Q0 -176 36 -140 Q54 -80 44 0 q-11 -16 -22 0 q-11 -16 -22 0 q-11 -16 -22 0 q-11 -16 -22 0 Z" fill="#e8fff4" fill-opacity=".94" ${O(3.8)}/>`;
@@ -134,7 +134,7 @@
     s += `<path d="M36 -70 Q66 -86 74 -110" stroke="#e8fff4" stroke-width="15" fill="none" stroke-linecap="round"/><path d="M36 -70 Q66 -86 74 -110" stroke="${INK}" stroke-width="2.6" fill="none" opacity=".45"/>`;
     return s;
   }
-  // шест от руки призрака (hx, hy) к фонарю next, на конце - огонёк
+
   function pole(hx, hy, next) {
     const len = Math.hypot(next[0] - hx, next[1] - hy) || 1, ux = (next[0] - hx) / len, uy = (next[1] - hy) / len, ex = next[0] - ux * 14, ey = next[1] - uy * 14;
     const d = `M${f1(hx - ux * 30)} ${f1(hy - uy * 30)} L${f1(ex)} ${f1(ey)}`;
@@ -152,8 +152,8 @@
     ];
   };
 
-  /* ===================== МЕСТО В ГОРОДЕ ===================== */
-  // в координатах холста (до масштаба): где кликать, куда идти, препятствия (эллипсы основания)
+   
+
   const SHAPE = {
     hwshop: { cx: SHOP_CX, hit: [40, 490, 96, 506], door: [250, 548], obst: [[250, 486, 128, 24], [72, 498, 18, 9], [434, 496, 46, 12]], box: [0, 60, 520, 470] },
     hwpass: { cx: PASS_CX, hit: [36, 484, 58, 506], door: [292, 548], obst: [[60, 492, 22, 12], [460, 492, 22, 12], [196, 494, 42, 12]], box: [0, 50, 520, 480] },
@@ -163,16 +163,16 @@
     hwpass: { title: 'Призрачный Фонарщик', sub: 'хэллоуинский баттл-пасс', icon: '🏮' },
   };
   const S_BASE = 0.62;
-  const WEBCAM = { x: 1516, y: 840, w: 384, h: 216 };   // правый нижний угол оверлея
-  // вид оверлея по умолчанию (ovcity.js camHome): камера zb = 0,98, верх 170, центр по x - homeX
+  const WEBCAM = { x: 1516, y: 840, w: 384, h: 216 };
+
   const camView = (homeX) => { const z = Math.min(1, 1080 / 1100), x = homeX - 1920 / z / 2; return { x, y: 170, z }; };
   function inWebcam(rect, homeX) {
     const v = camView(homeX), wx0 = v.x + WEBCAM.x / v.z, wy0 = v.y + WEBCAM.y / v.z, wx1 = wx0 + WEBCAM.w / v.z, wy1 = wy0 + WEBCAM.h / v.z;
     return rect[0] < wx1 && rect[1] > wx0 && rect[2] < wy1 && rect[3] > wy0;
   }
   function obstOf(id, x, y, s) { const H = SHAPE[id]; return H.obst.map(([ox, oy, rx, ry]) => ({ e: [f1(x + (ox - H.cx) * s), f1(y + (oy - GROUND) * s), f1(rx * s), f1(ry * s)], hwnpc: id })); }
-  /** Всё для места: building (как BUILDINGS: id, title, sub, icon, hit, door, hw), obst, prop (предмет по глубине), live (живые слои).
-      o: { lv - горящих фонарей (0…20, без него - все), shopTitle, still - без живых слоёв (всё в одной картинке) } */
+  
+
   function geo(sp, o) {
     o = o || {};
     const H = SHAPE[sp.id], s = sp.s || S_BASE, M = META[sp.id], tx = (cx) => f1(sp.x + (cx - H.cx) * s), ty = (cy) => f1(sp.y + (cy - GROUND) * s);
@@ -180,7 +180,7 @@
     const building = { id: sp.id, title, sub: M.sub, icon: M.icon, hw: true, hit: [tx(H.hit[0]), tx(H.hit[1]), ty(H.hit[2]), ty(H.hit[3])], door: { x: tx(H.door[0]), y: ty(H.door[1]) }, tag: [f1(sp.x), ty(H.hit[2]) - 6] };
     const lv = Math.max(0, Math.min(20, o.lv == null ? 20 : +o.lv || 0));
     const L0 = sp.id === 'hwshop' ? stupaLive() : passLive(lv);
-    // o.still (оверлей: город на Pixi без живых слоёв) - живое впечатано в картинку неподвижно (призрак Фонарщика, огоньки)
+
     const art = (sp.id === 'hwshop' ? stupaArt(title) : archArt(lv)) + (o.still ? L0.map((l) => l.svg).join('') : '');
     const [bx, by, bw, bh] = H.box, wrap = (inner, b) => `<svg x="${tx(b[0])}" y="${ty(b[1])}" width="${f1(b[2] * s)}" height="${f1(b[3] * s)}" viewBox="${b[0]} ${b[1]} ${b[2]} ${b[3]}" overflow="visible">${DEFS}${inner}</svg>`;
     const prop = { x: tx(bx), y: ty(by), w: f1(bw * s), h: f1(bh * s), z: Math.round(sp.y), svg: () => `<g data-ol="${sp.id}">${wrap(art, H.box)}</g>` };
@@ -188,18 +188,18 @@
       svg: `<svg width="100%" height="100%" viewBox="${l.box.join(' ')}" overflow="visible">${DEFS}${l.svg}</svg>` }));
     return { building, obst: obstOf(sp.id, sp.x, sp.y, s), prop, live };
   }
-  /* ===================== ОКНА НА САЙТЕ (клик по НПС) ===================== */
-  /* open(id, W): W = { hero() - герой сайта (hw: { c - конфет, p - уровень пасса, x - набрано за ивент }), data - { shop, pass } с сервера
-     (раздел fair.hw: ctx.bus.hollow.shopList / passList), D - MDDoodle (человечек в обновке), login, toast }. Окно - поверх города,
-     на телефоне - на весь экран. Чего нет с сервера - пишем «пока нет», механику не выдумываем. */
+   
+  
+
+
   const LOOK_FIELD = { hats: 'hat', acc: 'acc', eyes: 'eyes', colors: 'color', auras: 'aura' };
   const KIND_NAME = { hat: 'шапка', acc: 'украшение', eyes: 'глаза', color: 'цвет', aura: 'аура', item: 'предмет', candy: 'конфеты', pick: 'оружие на выбор' };
-  // 31.10 (feat/hw-armor-pick): вещь на выбор - оружие или броня (по слоту вещей списка): подписи карточки и окна выбора
+
   const PICK_WORD = { weapon: ['оружие на выбор', 'оружие', 'Можно взять оружие любого класса', 'Выбери класс. Конфеты спишутся, только когда оружие ляжет в сумку.'],
     armor: ['броня на выбор', 'броню', 'Можно взять броню любого класса', 'Выбери класс. Конфеты спишутся, только когда броня ляжет в сумку.'] };
   const pickSlot = (rows) => ((rows || []).find((r) => r && r.slot) || {}).slot === 'armor' ? 'armor' : 'weapon';
   const pickKind = (rows) => PICK_WORD[pickSlot(rows)][0];
-  // 31.10 (feat/hw-pass20): оружие на выбор (ур. 20 пасса, «Ступа сладостей») - подписи характеристик как в окне героя сайта (app.js)
+
   const STAT_RU = [['atk', 'Физ. урон', ''], ['mag', 'Маг. урон', ''], ['hp', 'Здоровье', ''], ['def', 'Броня', ''], ['crit', 'Шанс крита', '%'], ['critDmg', 'Сила крита', '%'],
     ['pierce', 'Пробивание', '%'], ['healPow', 'Сила лечения', '%'], ['resist', 'Сопротивление', ''], ['dodge', 'Уклонение', '%']];
   const statsText = (st) => STAT_RU.filter(([k]) => +(st || {})[k]).map(([k, n, u]) => `${n} +${+st[k]}${u}`).join(' · ');
@@ -215,27 +215,27 @@
     passDone: ['Все двадцать огней горят! Такого света на улице давно не было.'],
     passZero: ['Ни одного огонька пока... Сходи в Изнанку - там конфеты на каждом шагу.'],
   };
-  // 31.10 (feat/hw-coin-npc): реплики ведьмы на обмен монет на конфеты
+
   LINES.backOk = ['Монетки - в котёл, конфетки - тебе! Хи-хи!', 'Звонкая монета превращается... в сладкую! Колдую!', 'Конфеты на монеты? Ох, какой ты нетерпеливый сладкоежка!'];
   const plural = (n, a, b, c) => { const m = Math.abs(n) % 100, k = m % 10; return m > 10 && m < 20 ? c : k === 1 ? a : k > 1 && k < 5 ? b : c; };
   const cnd = (n) => `${n} ${plural(n, 'конфета', 'конфеты', 'конфет')}`;
   const cnm = (n) => `${n} ${plural(n, 'монета', 'монеты', 'монет')}`;
-  // 29.10: курс обмена конфет на монеты (монет за конфету) может быть дробным (1,5): меняется кратное шагу число конфет (шаг - наименьшее число
-  // конфет, дающее целые монеты: курс 1,5 - шаг 2, «2 🍬 = 3 монеты»); остаток остаётся у игрока. Та же арифметика, что у сервера (halloween/index.js swapPlan)
+
+
   const swapStep = (rate) => { for (let s = 1; s <= 100; s++) { const c = s * rate; if (Math.abs(c - Math.round(c)) < 1e-9) return s; } return 1; };
   const swapPlan = (n, rate) => { const st = swapStep(rate), spend = Math.floor(Math.max(0, n) / st) * st; return { step: st, spend, coins: Math.floor(spend * rate + 1e-9) }; };
   const fill = (t, o) => String(t).replace(/\{(\w+)\}/g, (m, k) => (o[k] != null ? o[k] : m));
-  // маленькие рисунки наград (viewBox -50 -50 100 100); символы и градиенты - один раз на окно (svg.hwn-defs)
+
   const art = {
     candy: (n) => `<svg viewBox="-50 -50 100 100" aria-hidden="true">${candy(-18, 8, C.candy[0], -20, 1.25)}${candy(18, 12, C.candy[1], 16, 1.25)}${candy(0, -14, C.candy[2], 4, 1.35)}${n > 5 ? candy(-4, 28, C.candy[3], -8, 1.2) : ''}</svg>`,
     candy_apple: () => `<svg viewBox="-50 -50 100 100" aria-hidden="true"><path d="M2 -14 L10 -46" stroke="${INK}" stroke-width="8" stroke-linecap="round"/><path d="M2 -14 L10 -46" stroke="${C.woodL}" stroke-width="4" stroke-linecap="round"/><path d="M-30 6 Q-34 -22 -8 -20 Q0 -16 8 -20 Q34 -22 30 6 Q26 32 0 34 Q-26 32 -30 6 Z" fill="#e8344a" ${O(3.4)}/><path d="M-30 6 Q-26 18 -20 14 Q-12 22 -4 14 Q4 24 12 14 Q20 22 30 6 Q26 32 0 34 Q-26 32 -30 6 Z" fill="#a8641a" ${O(2.6)}/><path d="M-20 -10 q4 -6 12 -6" stroke="#fff" stroke-width="4" fill="none" opacity=".7" stroke-linecap="round"/></svg>`,
     witch_brew: () => `<svg viewBox="-50 -50 100 100" aria-hidden="true"><rect x="-9" y="-44" width="18" height="12" rx="3" fill="${C.woodL}" ${O(2.6)}/><path d="M-7 -32 V-18 Q-30 -8 -30 14 Q-30 40 0 40 Q30 40 30 14 Q30 -8 7 -18 V-32 Z" fill="#dff6ff" fill-opacity=".4" ${O(3.4)}/><path d="M-26 8 Q0 0 26 8 Q28 36 0 36 Q-28 36 -26 8 Z" fill="${'#6dffb0'}"/><circle cx="-8" cy="18" r="4" fill="#c8ffe4"/><circle cx="8" cy="10" r="3" fill="#c8ffe4"/><path d="M-20 -2 q-4 14 0 26" stroke="#fff" stroke-width="4" fill="none" opacity=".6" stroke-linecap="round"/></svg>`,
-    // 29.10 (feat/hw-candy): картинки остальных вещей обменника
+
     hw_potion: () => `<svg viewBox="-50 -50 100 100" aria-hidden="true"><rect x="-9" y="-44" width="18" height="12" rx="3" fill="${C.woodL}" ${O(2.6)}/><path d="M-7 -32 V-18 Q-30 -8 -30 14 Q-30 40 0 40 Q30 40 30 14 Q30 -8 7 -18 V-32 Z" fill="#dff6ff" fill-opacity=".4" ${O(3.4)}/><path d="M-26 8 Q0 0 26 8 Q28 36 0 36 Q-28 36 -26 8 Z" fill="#b98aff"/><circle cx="-8" cy="18" r="4" fill="#e6d4ff"/><circle cx="8" cy="10" r="3" fill="#e6d4ff"/><path d="M0 -4 q6 -8 0 -14 q-6 -6 0 -12" stroke="#b98aff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".8"/></svg>`,
     scarecrow_fork: () => `<svg viewBox="-50 -50 100 100" aria-hidden="true"><path d="M0 44 V-6" stroke="${INK}" stroke-width="9" stroke-linecap="round"/><path d="M0 44 V-6" stroke="${C.woodL}" stroke-width="5" stroke-linecap="round"/><path d="M-20 -40 V-14 Q-20 -4 0 -4 Q20 -4 20 -14 V-40 M0 -44 V-4" fill="none" stroke="${INK}" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/><path d="M-20 -40 V-14 Q-20 -4 0 -4 Q20 -4 20 -14 V-40 M0 -44 V-4" fill="none" stroke="#c8c2d8" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M-6 6 l-10 8 M-4 12 l-12 4 M6 6 l10 8" stroke="#e8c85a" stroke-width="3" stroke-linecap="round"/></svg>`,
     bat_cloak: () => `<svg viewBox="-50 -50 100 100" aria-hidden="true"><path d="M-12 -34 Q-44 -30 -46 -6 L-34 -10 L-28 8 L-20 0 L-14 20 L0 36 L14 20 L20 0 L28 8 L34 -10 L46 -6 Q44 -30 12 -34 Q0 -28 -12 -34 Z" fill="${C.vio}" ${O(3.4)}/><path d="M-12 -34 Q0 -28 12 -34 Q0 -22 -12 -34 Z" fill="${C.vioL}" ${O(2.4)}/><circle cx="-5" cy="-24" r="3" fill="${C.gold}" ${O(1.6)}/><circle cx="5" cy="-24" r="3" fill="${C.gold}" ${O(1.6)}/><path d="M0 -20 V30" stroke="${C.vioD}" stroke-width="3" opacity=".7"/></svg>`,
     witch_broom: () => `<svg viewBox="-50 -50 100 100" aria-hidden="true"><path d="M-40 -30 L18 22" stroke="${INK}" stroke-width="9" stroke-linecap="round"/><path d="M-40 -30 L18 22" stroke="${C.woodL}" stroke-width="5" stroke-linecap="round"/><path d="M12 10 L38 4 L46 30 L22 40 Z" fill="${C.gold}" ${O(3.2)}/><path d="M20 16 L40 12 M24 26 L44 22 M27 34 L45 30" stroke="${C.goldD}" stroke-width="2.6" stroke-linecap="round"/><path d="M10 14 L24 30" stroke="${C.wood}" stroke-width="5" stroke-linecap="round"/></svg>`,
-    // 31.10 (feat/hw-pass20): материалы заточки за ур. 15 и 18 пасса - по две штуки
+
     enchant_star: () => `<svg viewBox="-50 -50 100 100" aria-hidden="true">${[[-14, 8, 0.8, -12], [12, -6, 1, 10]].map(([x, y, k, r]) => `<g transform="translate(${x} ${y}) rotate(${r}) scale(${k})"><path d="M0 -30 L9 -10 L30 -8 L14 6 L19 28 L0 17 L-19 28 L-14 6 L-30 -8 L-9 -10 Z" fill="#ffd34d" ${O(3.4)}/><path d="M-4 -14 L0 -22" stroke="#fff6c8" stroke-width="3" stroke-linecap="round"/></g>`).join('')}</svg>`,
     enchant_sphere: () => `<svg viewBox="-50 -50 100 100" aria-hidden="true">${[[-15, 12, 0.8], [12, -6, 1]].map(([x, y, k]) => `<g transform="translate(${x} ${y}) scale(${k})"><circle r="24" fill="#8fd4ff" fill-opacity=".55" ${O(3.4)}/><circle r="10" fill="#4aa3ff" opacity=".7"/><path d="M-12 -12 q6 -6 14 -6" stroke="#fff" stroke-width="3.4" fill="none" stroke-linecap="round"/></g>`).join('')}</svg>`,
     pick: () => `<svg viewBox="-50 -50 100 100" aria-hidden="true"><path d="M-34 34 L30 -30" stroke="${INK}" stroke-width="9" stroke-linecap="round"/><path d="M-34 34 L30 -30" stroke="${C.woodL}" stroke-width="5" stroke-linecap="round"/><circle cx="32" cy="-32" r="11" fill="${C.pump}" ${O(3)}/><circle cx="32" cy="-32" r="4" fill="#fff3c8"/>`
@@ -245,19 +245,19 @@
     lampOn: `<svg viewBox="-16 -10 32 40" aria-hidden="true"><use href="#hnLampOn"/></svg>`,
     lampOff: `<svg viewBox="-16 -10 32 40" aria-hidden="true"><use href="#hnLampOff"/></svg>`,
   };
-  // человечек зрителя в обновке (MDDoodle) - как вещи в обменнике Ярмарки (portal.js itemCard)
+
   function doodle(W, look) {
     try {
       const D = W.D; if (!D || !D.jDoodle) return '';
       const h = W.hero && W.hero(), base = h && h.look && typeof h.look === 'object' ? h.look : {};
       const seed = D.jhash ? D.jhash(W.login ? W.login() || 'hw' : 'hw') : 7;
-      // картинкой (<img> c SVG внутри): один узел страницы вместо сотни - окно не тяжелее интерьера «Лавки звездочёта»
+
       let svg = D.jDoodle(seed, 'happy', false, {}, { ...base, ...look });
       if (!/xmlns=/.test(svg)) svg = svg.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ');
       return `<img class="hwn-dd" alt="" src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}">`;
     } catch (e) { return ''; }
   }
-  // картинка вещи обменника / награды пасса
+
   function goodsPic(W, g) {
     if (g.candy) return art.candy(g.candy);
     if (g.pick) return art.pick();
@@ -268,9 +268,9 @@
   const ci = () => `<i class="hwn-ci">${art.candyIco}</i>`;
   const hwOf = (W) => { const h = W.hero && W.hero(); return (h && h.hw) || null; };
 
-  // --- окно «Ступы сладостей» ---
+
   function witchHead() { return `<svg class="hwn-wt" viewBox="-80 -330 175 340" aria-hidden="true">${witch(0, 0, 1)}</svg>`; }
-  // 29.10 (feat/hw-candy): пункт «Обмен конфет на монеты» - 100 / 500 / все и своё число; курс (монет за конфету) шлёт сервер (раздел fair.hw.swap)
+
   function swapHtml(W, have) {
     const sw = W.data && W.data.swap, rate = sw && +sw.rate > 0 ? +sw.rate : 0; if (!rate) return '';
     const steps = (sw.steps && sw.steps.length ? sw.steps : [100, 500]).map((n) => +n).filter((n) => n > 0), st = swapStep(rate);
@@ -279,14 +279,14 @@
       + `<div class="hwn-xcr">${steps.map((n) => b(n, n)).join('')}<button type="button" class="hwn-xcb hwn-xcall${swapPlan(have || 0, rate).coins ? '' : ' hwn-lack'}" data-all="1"><span class="hwn-xcn">все</span><span class="hwn-xcc">${have == null ? '' : cnm(swapPlan(have, rate).coins)}</span></button>`
       + `<label class="hwn-xcf">${numBox('Сколько конфет обменять', st)}<button type="button" class="hwn-xcb hwn-xcgo">Обменять</button></label></div></section>`;
   }
-  /* 31.10 (feat/hw-coin-npc, просьба стримера): поле «сколько» - свои кнопки − / + вместо серых стрелок браузера (одно на обе секции окна).
-     Шаг - шаг обмена (курс 1,5 - по 2: конфеты меняются парами), не меньше шага; число в поле можно и вписать (лишнее отбросит обмен) */
-  // 01.11 (координатор): на телефоне 390 «сколько» обрезалось до «сколькс» - плейсхолдер «кол-во», мельче цифр, поле без боковых отступов 8px
+  
+
+
   function numBox(label, step) {
     const st = Math.max(1, Math.floor(+step || 1));
     return `<span class="hwn-num"><button type="button" class="hwn-nb" data-d="-1" aria-label="Меньше на ${st}">−</button><input type="number" min="${st}" step="${st}" inputmode="numeric" class="hwn-xci" placeholder="кол-во" aria-label="${esc(label)}"><button type="button" class="hwn-nb" data-d="1" aria-label="Больше на ${st}">+</button></span>`;
   }
-  // клик по − / +: к ближайшему кратному шагу в нужную сторону, не меньше шага
+
   function numStep(nb) {
     const inp = nb.parentNode.querySelector('.hwn-xci'); if (!inp) return;
     const st = Math.max(1, Math.floor(+inp.step || 1)), v = Math.floor(+inp.value || 0), up = nb.dataset.d === '1';
@@ -304,9 +304,9 @@
 .hwn-xb{border-color:#9b6ef0;margin-top:10px}.hwn-xb .hwn-xct b{color:#c8a8ff}
 .hwn-num .hwn-xci::placeholder{font-size:13px;color:#8f86ad}
 @media (max-width:600px){.hwn-nb{min-width:42px}.hwn-num .hwn-xci{width:70px}.hwn-xc{margin:10px 10px 0;padding:10px}}`;
-  /* 31.10 (feat/hw-coin-npc, просьба стримера): «Обмен монет на конфеты» - вторая секция окна Ступы, под обменом конфет на монеты.
-     Тот же курс (fair.hw.swap.rate) в обратную сторону: сколько конфет получить, цена - целые монеты (backPlan, как у сервера events/core.js),
-     лишние монеты остаются. Открыт - у героя hw.bk (флаг quest.hwCoinBackPublic, пока идёт ивент). Монеты героя - hero.money (бронза) */
+  
+
+
   const backPlan = (n, rate) => { const st = swapStep(rate), got = Math.floor(Math.max(0, n) / st) * st; return { step: st, got, coins: Math.ceil(got * rate - 1e-9) }; };
   const backAll = (money, rate) => { const st = swapStep(rate); return backPlan(Math.floor(Math.max(0, money) / Math.max(1e-9, st * rate)) * st, rate); };
   const moneyOf = (el, W) => { if (el && el._money != null) return el._money; const h = W.hero && W.hero(); return Math.max(0, Math.floor(+(h && h.money) || 0)); };
@@ -319,7 +319,7 @@
       + `<div class="hwn-xcr">${steps.map(b).join('')}<button type="button" class="hwn-xcb hwn-xbb hwn-xball${A.got ? '' : ' hwn-lack'}" data-ball="1"><span class="hwn-xcn">все</span><span class="hwn-xcc">${A.got ? `${A.got} за ${cnm(A.coins)}` : 'мало монет'}</span></button>`
       + `<label class="hwn-xcf">${numBox('Сколько конфет получить', st)}<button type="button" class="hwn-xcb hwn-xbb hwn-xbgo">Обменять</button></label></div></section>`;
   }
-  // новые монеты и конфеты в секции обмена монет на конфеты (кнопки «не хватает», «все»)
+
   function setMoney(el, W, m) {
     m = Math.max(0, Math.floor(+m || 0)); el._money = m;
     const sec = el.querySelector('.hwn-xb'); if (!sec) return;
@@ -327,7 +327,7 @@
     for (const q of sec.querySelectorAll('.hwn-xbb[data-bn]')) q.classList.toggle('hwn-lack', +q.dataset.bc > m);
     const al = sec.querySelector('.hwn-xball'); if (al && rate) { const A = backAll(m, rate); al.classList.toggle('hwn-lack', !A.got); const c = al.querySelector('.hwn-xcc'); if (c) c.textContent = A.got ? `${A.got} за ${cnm(A.coins)}` : 'мало монет'; }
   }
-  // клик в секции обмена монет на конфеты: true - клик съеден
+
   function backClick(el, W, e) {
     const xb = e.target.closest('.hwn-xbb'); if (!xb) return false;
     const say = el.querySelector('.hwn-say'), rate = swapRateOf(W), money = moneyOf(el, W), st = swapStep(rate || 1);
@@ -341,12 +341,12 @@
     if (!W.back) { say.textContent = 'Обмен с сайта пока не открыт - пиши в чат Ярмарки: «обмен на конфеты ' + pl.got + '»'; return true; }
     el._bpend = { n: pl.got, coins: pl.coins }; clearTimeout(el._bpT); el._bpT = setTimeout(() => { el._bpend = null; }, 15000);
     Promise.resolve(W.back(all ? { all: true } : { n: pl.got }, xb)).then(() => {
-      // сразу показываем; точное число придёт ответом комнаты (result)
+
       say.textContent = pick(LINES.backOk); setHave(el, W, haveOf(el, W) + pl.got); setMoney(el, W, money - pl.coins);
     }).catch(() => { el._bpend = null; });
     return true;
   }
-  // ответ комнаты на обмен монет на конфеты (app.js, ack hwBack)
+
   function backResult(el, W, x) {
     const r = x.x, say = el.querySelector('.hwn-say'), was = el._bpend; el._bpend = null; clearTimeout(el._bpT);
     if (!x.ok) { if (was && !r.test) { setHave(el, W, haveOf(el, W) - was.n); setMoney(el, W, moneyOf(el, W) + was.coins); } say.textContent = x.error || 'Не вышло.'; return; }
@@ -360,7 +360,7 @@
     const cards = list.map((it) => {
       const g = it.kind === 'item' ? { item: it.item } : it.kind === 'pick' ? { pick: 1 } : { look: it.look || lookOf(String(it.field || 'hat'), it.id) };
       const kind = it.kind === 'item' || it.kind === 'pick' ? it.kind : it.field, lack = have == null ? 0 : Math.max(0, it.price - have);
-      // 31.10 (feat/hw-armor-pick): «на выбор» - подпись по слоту (оружие / броня); once - товар 1 раз за ивент, номера купленных - hw.b
+
       const kn = it.kind === 'pick' ? pickKind(it.pick) : KIND_NAME[kind] || '', done = !!(it.once && hw && Array.isArray(hw.b) && hw.b.includes(it.n));
       return `<li class="hwn-g${lack ? ' hwn-lack' : ''}"><b class="hwn-n">${it.n}</b><div class="hwn-pic">${goodsPic(W, g)}</div><div class="hwn-nm">${esc(it.name || it.id || it.item || '')}</div><div class="hwn-kd">${esc(kn)}</div>`
         + `<button type="button" class="hwn-buy" data-n="${it.n}" data-p="${it.price}"${it.kind === 'pick' ? ' data-pick="1"' : ''}${done ? ' disabled' : ''}><span class="hwn-pr">${art.candyIco}${it.price}</span><span class="hwn-t">${done ? 'Уже куплено' : lack ? `не хватает ${lack}` : it.kind === 'pick' ? 'Выбрать' : 'Обменять'}</span></button></li>`;
@@ -371,17 +371,17 @@
       + (cards ? `<ul class="hwn-grid">${cards}</ul>` : `<p class="hwn-empty">Товар обменника появится в дни ивента.</p>`)
       + `<p class="hwn-foot">Конфеты собирают в Изнанке - походе «Ночи Тыквенной Луны». После ивента остаток конфет обменяется на монеты.</p>`;
   }
-  // --- окно Призрачного Фонарщика: гирлянда 20 огней над ночной улицей, призрак зажигает следующий ---
+
   function garland(lv) {
     const X0 = 70, X1 = 930, Y0 = 76, SAG = 70, pos = (i) => { const t = i / 19, x = X0 + (X1 - X0) * t; return [x, Y0 + 4 * SAG * t * (1 - t) + 14]; };
     let s = `<defs><linearGradient id="hnSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#121a30"/><stop offset="1" stop-color="#2a3150"/></linearGradient></defs>`;
     s += `<rect width="1000" height="300" fill="url(#hnSky)"/><circle cx="800" cy="40" r="26" fill="#e9ecf4" opacity=".9"/><circle cx="791" cy="34" r="26" fill="#121a30" opacity=".35"/>`;
-    // пепел и лозы холодного мира (неподвижно), силуэты домов
+
     s += [[120, 40], [260, 110], [410, 30], [560, 96], [700, 24], [790, 140], [330, 180], [610, 200], [940, 180]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2.2" fill="#9aa4bc" opacity=".55"/>`).join('');
     s += `<path d="M0 300 V214 h70 v-34 l40 -30 l40 30 v34 h60 v-60 h70 v60 h90 v-24 l50 -34 l50 34 v24 h110 v-50 h60 v50 h80 v-40 l46 -30 l46 30 v40 h84 V300 Z" fill="#1b2136" stroke="#0d1222" stroke-width="3"/>`;
     s += `<path d="M0 300 V262 Q500 246 1000 262 V300 Z" fill="#232a42"/>`;
     s += `<path d="M30 300 Q22 250 44 214 Q60 190 50 160 M970 300 Q980 246 958 214 Q944 190 956 156" stroke="#2f5a46" stroke-width="5" fill="none" stroke-linecap="round"/>`;
-    // столбы и верёвка
+
     for (const x of [X0 - 30, X1 + 30]) s += `<rect x="${x - 7}" y="${Y0 - 14}" width="14" height="${262 - Y0 + 14}" rx="3" fill="${C.iron}" ${O(3)}/><circle cx="${x}" cy="${Y0 - 16}" r="9" fill="${C.pump}" ${O(2.6)}/>`;
     let rope = `M${X0 - 30} ${Y0}`; for (let i = 0; i <= 19; i++) { const [x, y] = pos(i); rope += ` L${f1(x)} ${f1(y - 14)}`; } rope += ` L${X1 + 30} ${Y0}`;
     s += `<path d="${rope}" fill="none" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/>`;
@@ -390,7 +390,7 @@
       s += `<g transform="translate(${f1(x)} ${f1(y)}) scale(1.25)"><use href="#${on ? 'hnLampOn' : 'hnLampOff'}"/></g>`;
       s += `<text x="${f1(x)}" y="${f1(y + 50)}" text-anchor="middle" font-family="'Russo One',sans-serif" font-size="15" fill="${on ? C.pumpL : '#7d84a0'}" stroke="${INK}" stroke-width="4" paint-order="stroke">${i + 1}</text>`;
     }
-    // призрак: внизу, у следующего огня (или посредине, когда горят все)
+
     const n = Math.min(19, lv), [nx, ny] = pos(n), gs = 0.56;
     let gx = nx - 96, flip = 1; if (gx < 80) { gx = nx + 96; flip = -1; } if (lv >= 20) { gx = 500; flip = 1; }
     const gy = 262, hx = gx + 72 * gs * flip, hy = gy - 110 * gs;
@@ -402,7 +402,7 @@
     const next = P.find((s) => s.lv === lv + 1) || null, prevNeed = lv > 0 ? ((P.find((s) => s.lv === lv) || {}).need || 0) : 0;
     const need = next ? next.need : prevNeed, left = next ? Math.max(0, need - x) : 0, pct = next ? Math.max(0, Math.min(100, ((x - prevNeed) / Math.max(1, need - prevNeed)) * 100)) : 100;
     const G = garland(lv);
-    // 31.10 (feat/hw-pass-claim): награды сами не выдаются - каждый зажжённый огонёк ждёт «Получить» (hw.o - такие уровни)
+
     const owe = new Set(hw && Array.isArray(hw.o) ? hw.o.map(Number) : []), isPk = (s) => !!(s && s.reward && s.reward.pick);
     const oweAll = P.filter((s) => owe.has(s.lv) && !isPk(s)).length;
     const say = hw && owe.size ? `Огоньки горят - ${owe.size === 1 ? 'награда ждёт' : `наград ждёт: ${owe.size}`}. Нажми «Получить»${oweAll > 1 ? ' или «Получить всё»' : ''}!` : !hw ? pick(LINES.passHi) : lv >= 20 ? LINES.passDone[0] : lv === 0 && x === 0 ? LINES.passZero[0] : next ? fill(pick(LINES.passNext), { n: cnd(left), lv: lv + 1, r: /«/.test(next.name) ? next.name : `«${next.name}»` }) : pick(LINES.passHi);
@@ -416,7 +416,7 @@
     }).join('');
     const spot = next ? `<div class="hwn-next"><div class="hwn-pic">${goodsPic(W, rw(next))}</div><div><span class="hwn-l">следующий огонёк - ${next.lv}-й</span><b>${esc(next.name)}</b><span class="hwn-s">${esc(KIND_NAME[kindOf(next)] || '')}</span></div></div>`
       : `<div class="hwn-next hwn-done"><div><span class="hwn-l">гирлянда</span><b>${lv >= 20 ? 'Все 20 огней горят!' : 'Шкала придёт с сервера в дни ивента'}</b></div></div>`;
-    // 31.10 (feat/hw-pass-claim): «Получить всё» в шапке - если ждут несколько наград (ур. 20 - отдельно, там нужен выбор)
+
     const allBtn = oweAll > 1 ? `<button type="button" class="hwn-claim hwn-all">Получить всё (${oweAll})</button>` : '';
     return `<style>${PASS_CSS}</style><div class="hwn-sw"><h2 class="hwn-title hwn-onscene">Призрачный Фонарщик</h2>${allBtn}<div class="hwn-scene"><svg viewBox="0 0 1000 300" preserveAspectRatio="xMidYMid meet" aria-hidden="true">${G.svg}<g class="hwn-ember">${G.next}</g><g class="hwn-gh">${G.ghost}</g></svg></div></div>`
       + `<div class="hwn-ps"><div class="hwn-lv"><span class="hwn-l">огней</span><b>${lv}</b><span class="hwn-s">из 20</span></div>`
@@ -426,7 +426,7 @@
       + (cards ? `<ul class="hwn-rw">${cards}</ul>` : `<p class="hwn-empty">Награды пасса появятся в дни ивента.</p>`)
       + `<p class="hwn-foot">Огоньки зажигаются сами: уровень пасса растёт от конфет, собранных в Изнанке (потраченные в «Ступе сладостей» не уменьшают его). Награду каждого огня забирай кнопкой «Получить» - она ждёт, пока не нажмёшь. Награда 20-го огня - эпическое оружие любого класса на выбор.</p>`;
   }
-  // 31.10 (feat/hw-pass-claim): кнопка «Получить всё» в шапке окна пасса
+
   const PASS_CSS = `.hwn-sw .hwn-all{position:absolute;z-index:2;left:12px;top:12px;margin:0}
 @media (max-width:820px){.hwn-sw .hwn-all{position:static;display:block;margin:6px 10px 2px}}`;
   const WIN_CSS = `.hwn-back{position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(8,8,20,.72)}
@@ -513,11 +513,11 @@ body.hwn-open .tip.card,body.hwn-open .lgi-tip{z-index:9100}
 @media (max-width:600px){.hwn-pki{grid-template-columns:48px minmax(0,1fr);gap:2px 10px;padding:10px}.hwn-pkp{width:48px;height:48px}.hwn-pki .hwn-xcb{grid-column:1/-1;grid-row:auto;margin-top:6px}}
 @media (prefers-reduced-motion:reduce){.hwn-gh,.hwn-ember{animation:none}}`;
   let WIN = null;
-  function close() { if (!WIN) return; const w = WIN; WIN = null; tipHide(w.W); try { document.body.classList.remove('hwn-open'); document.removeEventListener('keydown', w.key, true); document.removeEventListener('pointerdown', w.down, true); w.el.remove(); if (w.back && w.back.focus) w.back.focus(); } catch (e) { /* окна уже нет */ } }
+  function close() { if (!WIN) return; const w = WIN; WIN = null; tipHide(w.W); try { document.body.classList.remove('hwn-open'); document.removeEventListener('keydown', w.key, true); document.removeEventListener('pointerdown', w.down, true); w.el.remove(); if (w.back && w.back.focus) w.back.focus(); } catch (e) {   } }
   const swapRateOf = (W) => { const sw = W.data && W.data.swap; return sw && +sw.rate > 0 ? +sw.rate : 0; };
-  // сколько конфет у зрителя сейчас: ответ комнаты (el._have) главнее данных героя
+
   const haveOf = (el, W) => { if (el._have != null) return el._have; const hw = hwOf(W); return Math.max(0, (hw ? +hw.c || 0 : 0) - (el._spent || 0)); };
-  // новый остаток: кошелёк, кнопки покупки («не хватает N») и обмена
+
   function setHave(el, W, v) {
     v = Math.max(0, Math.floor(+v || 0)); el._have = v; backHave(el, v);
     const wb = el.querySelector('.hwn-wallet b'); if (wb) wb.textContent = String(v);
@@ -526,16 +526,16 @@ body.hwn-open .tip.card,body.hwn-open .lgi-tip{z-index:9100}
     for (const q of el.querySelectorAll('.hwn-xcb[data-n]')) q.classList.toggle('hwn-lack', +q.dataset.n > v);
     const al = el.querySelector('.hwn-xcall'); if (al && rate) { al.classList.toggle('hwn-lack', !swapPlan(v, rate).coins); const c = al.querySelector('.hwn-xcc'); if (c) c.textContent = cnm(swapPlan(v, rate).coins); }
   }
-  // 31.10 (feat/hw-coin-npc): конфеты в секции обмена монет на конфеты
+
   const backHave = (el, v) => { const cv = el.querySelector('.hwn-xb .hwn-xbcv'); if (cv) cv.textContent = String(v); };
-  // 31.10 (feat/hw-pass20): окно выбора оружия поверх окна НПС - список «класс - название - характеристики». o: { kind: 'pass' | 'shop', rows, title, hint, go,
-  // lv (пасс) или n, p (лавка: номер и цена) }. Новые классы - только тем, кому они открыты (hero.cb), как и в игре
-  // 31.10 (feat/hw-pick-pics): картинка и подсказка строки выбора - по id вещи для любого слота (оружие, скоро - броня на выбор).
-  // Вещь строки - как вещь сумки: слот с сервера (pickRows), а у старого ответа без слота - по облику (look.weapon - оружие, look.armor - доспех…)
+
+
+
+
   const LOOK_SLOT = [['weapon', 'weapon'], ['shield', 'shield'], ['armor', 'armor'], ['hat', 'helmet'], ['charm', 'trinket'], ['aura', 'trinket']];
   const slotOf = (r) => r.slot || ((LOOK_SLOT.find(([k]) => r.look && r.look[k]) || [])[1]) || 'weapon';
   const pickItem = (r) => ({ id: r.id, name: r.name || r.id, slot: slotOf(r), rarity: r.rarity || 'common', role: r.role, stats: { ...(r.stats || {}) }, look: r.look || {}, desc: r.desc || '', wearable: true, on: false, uids: [] });
-  // рисунок - тот же, что у вещи в сумке и лавках сайта (W.art = общий рисунок вещей сайта, packages/inventory art); нет его - свой рисунок ивента
+
   function pickPic(W, it) {
     let s = '';
     try { s = W.art ? W.art(it) || '' : ''; } catch (e) { console.warn('[hwnpc] рисунок вещи', it.id, e); s = ''; }
@@ -544,8 +544,8 @@ body.hwn-open .tip.card,body.hwn-open .lgi-tip{z-index:9100}
     if (!s && art[it.id]) s = art[it.id]();
     return s;
   }
-  // подсказка у картинки: карточка вещи сайта (W.tip = cardTip app.js: характеристики, сравнение с надетым, описание); нет её - встроенная
-  // карточка библиотеки инвентаря; нет и её - простая строка характеристик. Мышь - наведение, телефон - касание (второе касание и касание мимо - закрыть)
+
+
   const TIP = { el: null, tap: false, own: null };
   function tipOwn(el, it) {
     if (!TIP.own) { TIP.own = document.createElement('div'); TIP.own.className = 'hwn-tip'; TIP.own.setAttribute('role', 'tooltip'); document.body.appendChild(TIP.own); }
@@ -589,19 +589,19 @@ body.hwn-open .tip.card,body.hwn-open .lgi-tip{z-index:9100}
     cf.addEventListener('click', (e) => {
       const b = e.target.closest('.hwn-pkp'); if (!b) return;
       e.stopPropagation();
-      // мышь - подсказка уже по наведению; касание и клавиатура - показать, второе касание той же картинки - закрыть
+
       if (cf._pt === 'mouse' && e.detail > 0) return;
       if (TIP.el === b && TIP.tap) tipHide(W); else tipShow(W, b, itemOf(b), true);
     });
     cf.addEventListener('focusin', (e) => { const b = e.target.closest('.hwn-pkp'); if (b && b.matches(':focus-visible')) tipShow(W, b, itemOf(b), false); });
     cf.addEventListener('focusout', (e) => { if (e.target.closest('.hwn-pkp') && !TIP.tap) tipHide(W); });
-    // окно выбора листается - подсказка не висит над другой строкой
+
     cf.querySelector('.hwn-cfb').addEventListener('scroll', () => tipHide(W), { passive: true });
     el.appendChild(cf);
-    try { (cf.querySelector('.hwn-pky') || cf.querySelector('.hwn-cfn')).focus({ preventScroll: true }); } catch (e) { /* без фокуса */ }
+    try { (cf.querySelector('.hwn-pky') || cf.querySelector('.hwn-cfn')).focus({ preventScroll: true }); } catch (e) {   }
     return cf;
   }
-  // огонёк пасса забран: «Получить» → «✓ получено»; ждущих обычных наград меньше двух - «Получить всё» уходит
+
   function claimDone(el, lv) {
     const li = el.querySelector(`.hwn-r[data-lv="${lv}"]`); if (!li) return;
     li.classList.remove('hwn-own'); li.classList.add('hwn-got');
@@ -609,18 +609,18 @@ body.hwn-open .tip.card,body.hwn-open .lgi-tip{z-index:9100}
     const all = el.querySelector('.hwn-all'), left = el.querySelectorAll('.hwn-r .hwn-claim:not([data-pick])').length;
     if (all) { if (left > 1) all.textContent = `Получить всё (${left})`; else all.remove(); }
   }
-  /** Ответ комнаты на обмен / покупку / «Забрать» (app.js, ack hwBuy / hwSwap / hwPick): обновляет открытое окно. x = { ok, error, x: { op, n, price, left, got, coins, test, fail, lv } } */
+   
   function result(x) {
     const w = WIN; if (!w || !w.el || !x || !x.x) return false;
     const el = w.el, W = w.W, say = el.querySelector('.hwn-say'), r = x.x;
     if (r.op === 'hwBuy') {
       el._pend = 0;
-      // 31.10 (feat/hw-armor-pick): отказ «уже куплено» (лимит 1 раз за ивент) - кнопка товара «Уже куплено»
+
       if (!x.ok) { say.textContent = x.error || 'Не вышло.'; const bo = r.once && el.querySelector(`.hwn-buy[data-n="${r.n}"]`); if (bo) { bo.disabled = true; const t = bo.querySelector('.hwn-t'); if (t) t.textContent = 'Уже куплено'; } return true; }
       if (r.test) { say.textContent = `Тест: «${r.got || 'вещь'}» - ничего не списано.`; return true; }
       setHave(el, W, r.left); say.textContent = `Готово! «${r.got || 'вещь'}» теперь твоя. Осталось ${cnd(r.left)}.`;
       const bt = el.querySelector(`.hwn-buy[data-n="${r.n}"]`);
-      // 31.10 (feat/hw-armor-pick): товар «на выбор» с лимитом (once) - «Уже куплено»; остальные вещи можно брать снова, облик - «уже есть»
+
       const row = ((W.data && W.data.shop) || []).find((s) => s.n === +r.n);
       if (bt && row && row.once) { bt.disabled = true; const t = bt.querySelector('.hwn-t'); if (t) t.textContent = 'Уже куплено'; }
       else if (bt && !/предмет|оружие|броня/.test((bt.closest('.hwn-g').querySelector('.hwn-kd') || {}).textContent || '')) { bt.disabled = true; const t = bt.querySelector('.hwn-t'); if (t) t.textContent = 'уже есть'; }
@@ -631,7 +631,7 @@ body.hwn-open .tip.card,body.hwn-open .lgi-tip{z-index:9100}
       for (const b of el.querySelectorAll('.hwn-claim')) b.disabled = false;
       if (!x.ok) { say.textContent = x.error || 'Не вышло.'; if (r.done && r.lv) claimDone(el, r.lv); if (r.all && r.done) { const ab = el.querySelector('.hwn-all'); if (ab) ab.remove(); } return true; }
       if (r.test) { say.textContent = `Тест: «${r.got || 'награда'}» - ничего не выдано.`; return true; }
-      // 31.10 (feat/hw-pass-claim): «Получить всё» - lvs; что не влезло в сумку - ждёт дальше (full)
+
       if (r.all) { for (const v of r.lvs || []) claimDone(el, v); say.textContent = `Держи: ${r.got || 'награды'}!` + (r.full ? ' Остальное не влезло в сумку - освободи место и нажми «Получить» ещё раз.' : ''); return true; }
       claimDone(el, r.lv); say.textContent = `Держи: «${r.got || 'награда'}»! Уже у тебя.`;
       return true;
@@ -640,7 +640,7 @@ body.hwn-open .tip.card,body.hwn-open .lgi-tip{z-index:9100}
     if (r.op === 'hwSwap') { if (x.ok && r.left != null && !r.test) setHave(el, W, r.left); say.textContent = !x.ok ? (x.error || 'Не вышло.') : r.coins != null ? `Держи: ${cnm(r.coins)}!` : pick(LINES.shopSwap); return true; }
     return false;
   }
-  /** Окно НПС: id 'hwshop' | 'hwpass'. */
+   
   function open(id, W) {
     if (typeof document === 'undefined' || !META[id]) return null;
     close();
@@ -650,14 +650,14 @@ body.hwn-open .tip.card,body.hwn-open .lgi-tip{z-index:9100}
     const title = id === 'hwshop' ? (W.shopTitle || META.hwshop.title) : META.hwpass.title;
     el.innerHTML = `<div class="hwn-win hwn-${id === 'hwshop' ? 'shop' : 'pass'}" role="dialog" aria-modal="true" aria-label="${esc(title)}"><svg class="hwn-defs" width="0" height="0" aria-hidden="true" focusable="false">${DEFS}</svg><button type="button" class="hwn-x" aria-label="Закрыть">×</button>${id === 'hwshop' ? shopHtml(W, title) : passHtml(W)}</div>`;
     const back = document.activeElement, key = (e) => { if (e.key === 'Escape') { e.stopPropagation(); tipHide(W); const cf = el.querySelector('.hwn-cf'); if (cf) cf.remove(); else close(); } };
-    // 31.10 (feat/hw-pick-pics): касание мимо картинки вещи закрывает её подсказку (на телефоне наведения нет)
+
     const down = (e) => { if (TIP.el && !(e.target && e.target.closest && e.target.closest('.hwn-pkp') === TIP.el)) tipHide(W); };
     el.addEventListener('click', (e) => {
       if (e.target === el || e.target.closest('.hwn-x')) { close(); return; }
-      // 31.10 (feat/hw-coin-npc): кнопки − / + поля «сколько» и секция «Обмен монет на конфеты»
+
       const nb = e.target.closest('.hwn-nb'); if (nb) { e.preventDefault(); numStep(nb); return; }
       if (backClick(el, W, e)) return;
-      // 31.10 (feat/hw-pass20): выбор оружия (окно pickBox): пасс - «Забрать» (W.pick), лавка - покупка выбранного (W.buy с pick)
+
       const pky = e.target.closest('.hwn-pky');
       if (pky) {
         const cf = pky.closest('.hwn-pk'), sayP = el.querySelector('.hwn-say'), id = pky.dataset.id;
@@ -671,7 +671,7 @@ body.hwn-open .tip.card,body.hwn-open .lgi-tip{z-index:9100}
         Promise.resolve(fn(body, pky)).then(() => { el._pend = cf.dataset.kind === 'pass' ? -1 : +cf.dataset.n; cf.remove(); }).catch(() => { cf.remove(); sayP.textContent = 'Не вышло - попробуй ещё раз.'; });
         return;
       }
-      // 31.10 (feat/hw-pass-claim): «Получить всё» - все ждущие награды пасса, кроме ур. 20 (там выбор оружия)
+
       const alb = e.target.closest('.hwn-all');
       if (alb) {
         const sayA = el.querySelector('.hwn-say');
@@ -695,7 +695,7 @@ body.hwn-open .tip.card,body.hwn-open .lgi-tip{z-index:9100}
         return;
       }
       const xb = e.target.closest('.hwn-xcb:not(.hwn-cfy):not(.hwn-cfn)');
-      if (xb) {   // 29.10: обмен конфет на монеты
+      if (xb) {
         const left = haveOf(el, W), say0 = el.querySelector('.hwn-say'), rate = swapRateOf(W);
         const inp = (xb.closest('.hwn-xc') || el).querySelector('.hwn-xci'), all = !!xb.dataset.all, n0 = all ? left : xb.dataset.n ? +xb.dataset.n : Math.floor(+(inp && inp.value) || 0);
         if (!(n0 >= 1)) { say0.textContent = left < 1 ? 'Конфет нет - нечего менять. Загляни в Изнанку!' : 'Сколько менять-то? Напиши число.'; return; }
@@ -704,13 +704,13 @@ body.hwn-open .tip.card,body.hwn-open .lgi-tip{z-index:9100}
         if (!(pl.coins >= 1)) { say0.textContent = `Мало: меняю от ${cnd(pl.step)}.`; return; }
         if (!W.swap) { say0.textContent = 'Обмен с сайта пока не открыт - пиши в чат Ярмарки: «обмен монеты ' + n + '»'; return; }
         Promise.resolve(W.swap(all ? { all: true } : { n }, xb)).then(() => {
-          say0.textContent = pick(LINES.shopSwap); setHave(el, W, left - n);   // сразу показываем; точное число придёт ответом комнаты (result)
-          // 31.10: монеты в секции обмена монет на конфеты
+          say0.textContent = pick(LINES.shopSwap); setHave(el, W, left - n);
+
           if (el.querySelector('.hwn-xb')) setMoney(el, W, moneyOf(el, W) + pl.coins);
-        }).catch(() => { /* ошибку показал сам сайт (toast) */ });
+        }).catch(() => {   });
         return;
       }
-      const cfb = e.target.closest('.hwn-cfy, .hwn-cfn');   // 29.10: подтверждение покупки
+      const cfb = e.target.closest('.hwn-cfy, .hwn-cfn');
       if (cfb) {
         const cf = el.querySelector('.hwn-cf'); if (!cf) return;
         if (cfb.classList.contains('hwn-cfn')) { cf.remove(); return; }
@@ -725,7 +725,7 @@ body.hwn-open .tip.card,body.hwn-open .lgi-tip{z-index:9100}
       const have = haveOf(el, W), price = +b.dataset.p || 0, say = el.querySelector('.hwn-say');
       if (el._pend) { say.textContent = 'Подожди, ведьма ещё считает прошлый обмен.'; return; }
       if (have < price) { say.textContent = fill(pick(LINES.shopNo), { n: cnd(price - have) }); return; }
-      // 31.10: оружие на выбор - сначала выбор класса, конфеты спишутся только после выдачи
+
       if (b.dataset.pick) {
         const row = ((W.data && W.data.shop) || []).find((x) => x.n === +b.dataset.n) || {};
         const pw = PICK_WORD[pickSlot(row.pick)];
@@ -733,26 +733,26 @@ body.hwn-open .tip.card,body.hwn-open .lgi-tip{z-index:9100}
           hint: `${pw[2]}. ${pw[3]}${row.once ? ' Один раз за ивент.' : ''}` });
         return;
       }
-      // 29.10: покупка кнопкой: подтверждение «Обменять N 🍬 на <вещь>?» → W.buy → ответ комнаты (result)
+
       const nm = (b.closest('.hwn-g').querySelector('.hwn-nm') || {}).textContent || 'вещь', old = el.querySelector('.hwn-cf'); if (old) old.remove();
       const cf = document.createElement('div'); cf.className = 'hwn-cf'; cf.dataset.n = b.dataset.n; cf.dataset.p = String(price);
       cf.innerHTML = `<div class="hwn-cfb" role="alertdialog" aria-label="Подтверждение обмена"><p>Обменять <b>${price} ${art.candyIco}</b> на «${esc(nm)}»?</p><div class="hwn-cfr"><button type="button" class="hwn-xcb hwn-cfy">Обменять</button><button type="button" class="hwn-xcb hwn-cfn">Отмена</button></div></div>`;
       el.appendChild(cf);
-      try { cf.querySelector('.hwn-cfy').focus({ preventScroll: true }); } catch (e2) { /* без фокуса */ }
+      try { cf.querySelector('.hwn-cfy').focus({ preventScroll: true }); } catch (e2) {   }
     });
     document.addEventListener('keydown', key, true);
     document.addEventListener('pointerdown', down, true);
-    // подсказка вещи сайта (.tip.card, z-index 270) - поверх окна НПС (9000), пока оно открыто
+
     document.body.classList.add('hwn-open');
     document.body.appendChild(el);
     WIN = { el, key, down, back, W };
-    try { el.querySelector('.hwn-x').focus({ preventScroll: true }); } catch (e) { /* без фокуса */ }
+    try { el.querySelector('.hwn-x').focus({ preventScroll: true }); } catch (e) {   }
     return el;
   }
 
-  /* 31.10 (feat/hw-pass-claim, решение стримера 00:20): выбор оружия без окна НПС - кнопка «Забрать» у записи журнала (награда ур. 20,
-     незабранная до конца ивента). Тот же pickBox, поверх страницы. o: { rows, title, hint, go, hero() - герой (cb - новые классы), pick(id) -
-     Promise (запрос ушёл; отказ - выбор остаётся открытым) }. Возвращает закрыть() */
+  
+
+
   function pickOpen(o) {
     if (typeof document === 'undefined') return () => {};
     close();
@@ -772,38 +772,38 @@ body.hwn-open .tip.card,body.hwn-open .lgi-tip{z-index:9100}
     });
     document.addEventListener('keydown', key, true);
     document.body.appendChild(el);
-    try { (el.querySelector('.hwn-pky') || el.querySelector('.hwn-cfn')).focus({ preventScroll: true }); } catch (e) { /* без фокуса */ }
+    try { (el.querySelector('.hwn-pky') || el.querySelector('.hwn-cfn')).focus({ preventScroll: true }); } catch (e) {   }
     return shut;
   }
 
-  /* ===================== ПОЯВЛЕНИЕ НПС (30.10, feat/hw-npc-entrance) ===================== */
-  /* enter(spots, o) - разовое появление после превращения города (и при первом заходе в хэллоуинский «Город» за сессию):
-       Ступа сладостей ПРИЛЕТАЕТ (дуга из-за верхнего края вида, метла, искры и конфеты следом, посадка с пылью, ~2,8 с);
-       Призрачный Фонарщик ВЫХОДИТ из-за края вида по свободной земле (путь карты o.map; нет пути - плывёт над улицей) и зажигает арку (~3,5-4 с).
-     o: host - слой в координатах города (div, position: absolute), view - видимая часть города { x0, y0, x1, y1 }, map - карта (path / nearest),
-        lv - сколько огней зажечь (по умолчанию все 20), side - 'l' | 'r' (откуда идти; по умолчанию - ближняя к месту сторона),
-        title - вывеска Ступы, reduce - «меньше движения»: без пролёта, только проявление, done() - когда всё стоит на месте (дальше - обычный рисунок).
-     Всё движение - WAAPI transform / opacity на элементах SVG, без filter и без SMIL; слой живёт, пока играет, потом уходит. null - показать нельзя. */
+   
+  
+
+
+
+
+
+
   const rectOf = (sp) => { const H = SHAPE[sp.id], s = sp.s || S_BASE, tx = (cx) => sp.x + (cx - H.cx) * s, ty = (cy) => sp.y + (cy - GROUND) * s; return [tx(H.box[0]), ty(H.box[1]), tx(H.box[0] + H.box[2]), ty(H.box[1] + H.box[3])]; };
-  // место НПС (с запасом pad) попадает в видимую часть города
+
   function inView(sp, view, pad) { const r = rectOf(sp), p = pad || 0; return r[0] < view.x1 + p && r[2] > view.x0 - p && r[1] < view.y1 + p && r[3] > view.y0 - p; }
   const easeOut = (u) => 1 - Math.pow(1 - u, 2.2);
   const bez = (a, b, c, d, t) => { const m = 1 - t; return [m * m * m * a[0] + 3 * m * m * t * b[0] + 3 * m * t * t * c[0] + t * t * t * d[0], m * m * m * a[1] + 3 * m * m * t * b[1] + 3 * m * t * t * c[1] + t * t * t * d[1]]; };
-  // ломаная: at(d) - точка на расстоянии d от начала
+
   function polyline(pts) {
     const cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
     const len = cum[cum.length - 1];
     return { len, at(d) { d = Math.max(0, Math.min(len, d)); let i = 1; while (i < cum.length - 1 && cum[i] < d) i++; const a = pts[i - 1], b = pts[i], seg = cum[i] - cum[i - 1] || 1, t = (d - cum[i - 1]) / seg; return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]; } };
   }
-  // метла, на которой ведьма прилетела: торчит из-за ступы назад по ходу (dir = 1 - летит вправо), при посадке падает на землю
+
   const flyBroom = (dir) => `<g transform="translate(${dir > 0 ? 150 : 350} 372) scale(${-dir} 1)"><path d="M30 -8 L-190 92" stroke="${INK}" stroke-width="14" stroke-linecap="round"/><path d="M30 -8 L-190 92" stroke="${C.woodL}" stroke-width="8" stroke-linecap="round"/>`
     + `<g transform="translate(-190 92) rotate(24) scale(1.45)"><path d="M0 -8 q-40 -4 -62 20 q22 30 62 20 q10 -18 0 -40 z" fill="#e0b050" ${O(3)}/><path d="M-6 -4 q-30 0 -48 12 M-6 8 q-30 4 -48 8 M-6 20 q-26 4 -42 2" stroke="#a87a2a" stroke-width="2.4" fill="none"/><path d="M-2 -10 l-2 44" stroke="${C.vio}" stroke-width="7" stroke-linecap="round"/></g></g>`;
   const sparkPath = (x, y, k) => `<path d="M${f1(x)} ${f1(y - 8 * k)} l${f1(2 * k)} ${f1(6 * k)} l${f1(6 * k)} ${f1(2 * k)} l${f1(-6 * k)} ${f1(2 * k)} l${f1(-2 * k)} ${f1(6 * k)} l${f1(-2 * k)} ${f1(-6 * k)} l${f1(-6 * k)} ${f1(-2 * k)} l${f1(6 * k)} ${f1(-2 * k)} z" fill="#c8ffe4"/>`;
-  // призрак на ходу: низ подола - (0,0); шест стоит прямо, наверху фонарь (качается вокруг руки в (72,-110))
+
   function ghostWalkArt() {
     return ghostBody() + `<g transform="translate(72 -110)"><g data-k="sway"><path d="M0 34 L0 -118" stroke="${INK}" stroke-width="7" stroke-linecap="round"/><path d="M0 34 L0 -118" stroke="${C.woodL}" stroke-width="3" stroke-linecap="round"/><g transform="translate(0 -112) scale(1.05)"><use href="#hnLampOn"/></g></g></g>`;
   }
-  // путь Фонарщика: от края вида по свободной земле к двери и к своему месту; float - пути нет, плывёт над улицей
+
   function ghostRoute(sp, view, o) {
     const H = SHAPE[sp.id], s = sp.s || S_BASE, tx = (cx) => sp.x + (cx - H.cx) * s, ty = (cy) => sp.y + (cy - GROUND) * s;
     const fin = [tx(196), ty(470)], door = [tx(H.door[0]), ty(H.door[1])];
@@ -836,9 +836,9 @@ body.hwn-open .tip.card,body.hwn-open .lgi-tip{z-index:9100}
     const ent = document.createElement('div'); ent.className = 'hwn-ent'; ent.setAttribute('aria-hidden', 'true');
     ent.style.cssText = `position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;z-index:${Math.round(Math.max(...list.map((sp) => sp.y))) + 50}`;
     let svg = '', end = 0;
-    // что настроить после вставки в страницу
+
     const post = [];
-    // место на холсте (cx, cy) НПС → (x, y) города, масштаб s
+
     const at = (x, y, s, inner, att) => `<g transform="translate(${f1(x)} ${f1(y)})"><g ${att || ''}><g transform="scale(${s})">${inner}</g></g></g>`;
     const stuck = (x, y, inner, att) => `<g transform="translate(${f1(x)} ${f1(y)})"><g ${att || ''}>${inner}</g></g>`;
     const bit = (k) => ent.querySelector(`[data-k="${k}"]`);
@@ -849,7 +849,7 @@ body.hwn-open .tip.card,body.hwn-open .lgi-tip{z-index:9100}
       if (sp.id === 'hwshop') {
         const P = stupaParts(o.title), F = [sp.x, sp.y];
         const right = o.side ? o.side === 'r' : sp.x > (view.x0 + view.x1) / 2;
-        // летит слева направо - 1
+
         const dir = right ? -1 : 1;
         const A = [right ? view.x1 + 260 : view.x0 - 260, Math.min(view.y0 - 60, F[1] - 420)];
         const p1 = [A[0] + (F[0] - A[0]) * 0.5, A[1] - 140], p2 = [F[0] - dir * 150, F[1] - 400];
@@ -858,7 +858,7 @@ body.hwn-open .tip.card,body.hwn-open .lgi-tip{z-index:9100}
         svg += anchor(P.back, 'bk');
         svg += `<g transform="translate(${f1(F[0])} ${f1(F[1])})"><g data-k="fly-${id}" style="transform-origin:0px ${f1(-150 * s)}px"><g data-k="land-${id}" style="transform-origin:0px 0px"><g transform="scale(${s}) ${shifted(H.cx, GROUND)}"><g data-k="brm-${id}" style="transform-origin:${dir > 0 ? 150 : 350}px 372px">${flyBroom(dir)}</g>${P.body}</g></g></g></g>`;
         svg += anchor(P.front, 'fr');
-        // искры и конфеты, сыплющиеся следом (по пути полёта), пыль и искры при посадке
+
         const rnd = (() => { let a = 7 + si; return () => { a = (a * 16807) % 2147483647; return a / 2147483647; }; })();
         let parts = '';
         const trail = [];
@@ -883,7 +883,7 @@ body.hwn-open .tip.card,body.hwn-open .lgi-tip{z-index:9100}
           for (let i = 0; i <= N; i++) { const u = i / N, pos = bez(A, p1, p2, F, easeOut(u)), r = dir * 17 * Math.pow(1 - u, 1.3) + 5 * Math.sin(u * 17) * (1 - u); kf.push({ transform: `translate(${f1(pos[0] - F[0])}px,${f1(pos[1] - F[1])}px) rotate(${f1(r)}deg)` }); }
           an(bit(`fly-${id}`), kf, { duration: ms(T1) });
           an(bit(`land-${id}`), [{ transform: 'scale(1,1)' }, { transform: 'scale(1.09,.88)', offset: 0.3 }, { transform: 'translate(0px,-9px) scale(.98,1.03)', offset: 0.62 }, { transform: 'scale(1,1)' }], { duration: ms(0.7), delay: ms(T1 - 0.02) });
-          // метла, на которой ведьма летела, падает вниз и тает, когда ступа села (дальше - своя метла с вывеской слева)
+
           an(bit(`brm-${id}`), [{ opacity: 1, transform: 'translate(0px,0px) rotate(0deg)' }, { opacity: 1, transform: `translate(${f1(dir * -10)}px,16px) rotate(${f1(dir * -14)}deg)`, offset: 0.4 }, { opacity: 0, transform: `translate(${f1(dir * -30)}px,70px) rotate(${f1(dir * -55)}deg)` }], { duration: ms(0.7), delay: ms(T1 - 0.1), easing: 'ease-in' });
           an(bit(`bk-${id}`), [{ opacity: 0, transform: 'scale(.3,.3)' }, { opacity: 1, transform: 'scale(1,1)' }], { duration: ms(1.1), delay: ms(1.0), easing: 'ease-out' });
           an(bit(`fr-${id}`), [{ opacity: 0, transform: 'translateY(16px)' }, { opacity: 1, transform: 'translateY(0px)' }], { duration: ms(0.6), delay: ms(T1 + 0.08), easing: 'ease-out' });
@@ -912,7 +912,7 @@ body.hwn-open .tip.card,body.hwn-open .lgi-tip{z-index:9100}
           const kf = [], N = 36, n0 = R.line.len;
           for (let i = 0; i <= N; i++) { const u = i / N, p = R.line.at(n0 * easeOut(u)); kf.push({ transform: `translate(${f1(p[0] - R.fin[0])}px,${f1(p[1] - R.fin[1])}px)` }); }
           an(g, kf, { duration: ms(Tw), delay: ms(t1) });
-          // призрак проявляется на краю и к концу пути становится плотным (плыл над улицей - дольше полупрозрачным)
+
           an(g, [{ opacity: 0 }, { opacity: 0.35, offset: 0.1 }, { opacity: R.float ? 0.6 : 0.7, offset: 0.7 }, { opacity: 1 }], { duration: ms(Tw), delay: ms(t1) });
           an(bit(`bob-${id}`), [{ transform: 'translateY(0px)' }, { transform: 'translateY(-7px)' }], { duration: ms(0.55), direction: 'alternate', iterations: Math.ceil((Tw + 0.3) / 0.55) + 1, easing: 'ease-in-out', delay: ms(t1) });
           if (sway) an(sway, [{ transform: 'rotate(-9deg)' }, { transform: 'rotate(9deg)' }], { duration: ms(0.7), direction: 'alternate', iterations: Math.ceil(Tw / 0.7) + 2, easing: 'ease-in-out', delay: ms(t1) });
@@ -924,24 +924,24 @@ body.hwn-open .tip.card,body.hwn-open .lgi-tip{z-index:9100}
     });
 
     ent.innerHTML = `<svg width="1" height="1" overflow="visible" style="display:block;overflow:visible">${DEFS}${svg}</svg>`;
-    // все огни арки и ступа стоят в итоговом виде; пока играет, ничего лишнего не рисуется
+
     for (const e of ent.querySelectorAll('[data-k^="lp-"], [data-k^="tr-"], [data-k^="du-"], [data-k^="ls-"], [data-k^="bk-"], [data-k^="fr-"], [data-k^="ar-"], [data-k^="gh-"]')) e.style.opacity = '0';
     host.appendChild(ent);
     for (const f of post) f();
     let closed = false, tm = 0;
     const gone = () => { if (ent.parentNode) ent.remove(); };
-    const stop = () => { if (closed) return; closed = true; clearTimeout(tm); for (const a of anims) { try { a.cancel(); } catch (e) { /* уже снята */ } } gone(); };
+    const stop = () => { if (closed) return; closed = true; clearTimeout(tm); for (const a of anims) { try { a.cancel(); } catch (e) {   } } gone(); };
     tm = setTimeout(() => {
       if (closed) return; closed = true;
       if (o.done) { try { o.done(); } catch (e) { console.warn('[НПС] появление', e); } }
-      // обычный рисунок уже под слоем - слой растворяется (одно проявление, без скачка)
+
       try { ent.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 280, fill: 'forwards' }); } catch (e) { gone(); return; }
       setTimeout(gone, 340);
     }, ms(end) + 60);
     return { stop, dur: end, el: ent };
   }
 
-  // CSS живых слоёв (city.css / оверлей подключают один раз): только transform / opacity
+
   const LIVE_CSS = `.hwn-live{position:absolute;pointer-events:none}.hwn-live svg{display:block;overflow:visible}
 .hwn-tw path,.hwn-tw2 circle{animation:hwnTw 1.8s ease-in-out infinite}
 .hwn-tw2 circle{animation-duration:2.6s}
